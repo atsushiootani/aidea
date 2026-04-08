@@ -16,7 +16,7 @@
 │   - Obsidian  (URL scheme + FileManager)        │
 ├─────────────────────────────────────────────────┤
 │ Platform                                        │
-│   macOS 26+ / Swift 5.9+ / Xcode 16.4+          │
+│   macOS 15+ (Sequoia) / Swift 5.9+ / Xcode 16+  │
 └─────────────────────────────────────────────────┘
 ```
 
