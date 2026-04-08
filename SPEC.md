@@ -232,3 +232,4 @@ Aidea/
 - 2026-04-08: 初版作成 (MVP 範囲確定、Swift+SwiftUI 採用、外部依存 SwiftTerm のみ)
 - 2026-04-08: サポート OS を macOS 15 (Sequoia) 以上に変更
 - 2026-04-08: ファイラ機能と動的 projectRoot を MVP に追加 (4 ペイン構成へ更新)
+- 2026-04-08: ファイラ機能 / WorkspaceState / FilePreviewView の実装完了 (ADR 0009 参照)
