@@ -38,9 +38,11 @@ macOS ネイティブの個人用 AI コーディングワークスペース。�
 |---|---|---|
 | 1 | ターミナル埋め込み (PTY) | `zsh -l` を起動し、Claude Code CLI をその中で実行できる |
 | 2 | WebView (WKWebView) | 任意 URL を表示でき、Geolocation/OAuth popup が Safari と同じ挙動になる |
-| 3 | Skills / Commands / MCPs ビュー | `~/.claude/` 配下を走査し、frontmatter を抽出して一覧表示できる |
-| 4 | 分割レイアウト | 左サイドバー + 中央 + 右ペインの 3 ペイン構成をリサイズ可能で表示 |
-| 5 | ワークスペース起動 | アプリを開くと上記 4 機能のペインが表示される |
+| 3 | Skills / Commands / MCPs ビュー | `~/.claude/` 配下と `<project>/.claude/` 配下を走査し、frontmatter を抽出して一覧表示できる |
+| 4 | 4 ペインレイアウト | 左上=ファイラ / 左下=Skills/Commands/MCPs / 中央=ターミナル / 右=WebView+プレビュー切替 をリサイズ可能で表示 |
+| 5 | ファイラ機能 | NSOutlineView ベースのツリー、SF Symbols アイコン、FSEvents による外部変更の自動反映、クリックで右ペインに内蔵プレビュー表示 |
+| 6 | プロジェクトルートの動的指定 | メニュー「ファイル → ディレクトリを開く」で選んだディレクトリを `WorkspaceState.projectRoot` に設定し、ファイラ・ターミナル cwd・Skills/Commands ローダ全てに反映する |
+| 7 | ワークスペース起動 | アプリ起動時、前回開いていた projectRoot があれば自動で復元 (なければ「ディレクトリを開く」を促す) |
 
 ### MVP に含まないもの (将来検討)
 - Git ビュー (status / diff)
@@ -50,8 +52,9 @@ macOS ネイティブの個人用 AI コーディングワークスペース。�
 - MCP サーバーの追加・編集 UI
 - セッションログ閲覧
 - コストトラッキング
-- **複数プロジェクト対応**: 現状 `TerminalView` がプロジェクトルートをハードコードしているため、
-  ワークスペース切替や cwd 指定 UI を入れる際に解消する
+- **複数プロジェクト同時オープン**: 1 ウィンドウ = 1 プロジェクトとし、複数プロジェクトの並行表示は行わない
+- **ファイラの編集系操作** (作成・リネーム・削除・ドラッグ&ドロップ) は MVP 範囲外。閲覧と外部変更検知のみ
+- **gitignore / 隠しファイル除外**: MVP では全ファイルをそのまま表示する
 
 ### 永久にやらないこと (非要件)
 - ❌ コードエディタ機能
@@ -72,8 +75,9 @@ macOS ネイティブの個人用 AI コーディングワークスペース。�
 
 ### フレームワーク
 - **SwiftUI** (UI 主体)
-- **AppKit** (`NSViewRepresentable` 経由で WebKit / SwiftTerm をラップ)
+- **AppKit** (`NSViewRepresentable` 経由で WebKit / SwiftTerm / NSOutlineView をラップ)
 - **WebKit** (`WKWebView`、`isInspectable = true`)
+- **CoreServices** (`FSEventStream` でファイルシステム監視)
 - **Foundation** / **Security** (Keychain) はすべて Apple 標準
 
 ### 外部依存
@@ -100,20 +104,25 @@ Aidea/
 │   └─ AideaApp.swift              // @main エントリポイント
 │
 ├─ Views/
-│   ├─ ContentView.swift           // ルート (3 ペイン分割)
+│   ├─ ContentView.swift           // ルート (4 ペイン分割)
 │   ├─ Sidebar/
+│   │   ├─ FileTreeView.swift      // NSOutlineView ラッパ (左上ペイン)
 │   │   ├─ SkillsListView.swift
 │   │   ├─ CommandsListView.swift
 │   │   └─ McpListView.swift
 │   ├─ Main/
 │   │   └─ TerminalView.swift      // SwiftTerm を NSViewRepresentable でラップ
 │   └─ RightPanel/
-│       └─ WebView.swift           // WKWebView を NSViewRepresentable でラップ
+│       ├─ WebView.swift           // WKWebView を NSViewRepresentable でラップ
+│       └─ FilePreviewView.swift   // 選択ファイルの内蔵プレビュー (テキスト/画像)
 │
 ├─ Services/
-│   ├─ SkillsLoader.swift          // ~/.claude/skills/*/SKILL.md 走査
-│   ├─ CommandsLoader.swift        // ~/.claude/commands/*.md 走査
-│   └─ McpLoader.swift             // ~/.claude.json 等のパース
+│   ├─ WorkspaceState.swift        // projectRoot などのアプリ全体の状態
+│   ├─ SkillsLoader.swift          // <project>/.claude/skills/*/SKILL.md と ~/.claude/skills/ 走査
+│   ├─ CommandsLoader.swift        // 同上 commands
+│   ├─ McpLoader.swift             // ~/.claude.json 等のパース
+│   ├─ FileTreeLoader.swift        // ディレクトリ走査 (遅延読み込み対応)
+│   └─ FileWatcher.swift           // FSEventStream ラッパ
 │
 ├─ Models/
 │   ├─ Skill.swift
@@ -222,3 +231,4 @@ Aidea/
 ## 改訂履歴
 - 2026-04-08: 初版作成 (MVP 範囲確定、Swift+SwiftUI 採用、外部依存 SwiftTerm のみ)
 - 2026-04-08: サポート OS を macOS 15 (Sequoia) 以上に変更
+- 2026-04-08: ファイラ機能と動的 projectRoot を MVP に追加 (4 ペイン構成へ更新)

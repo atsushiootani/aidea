@@ -5,65 +5,59 @@
 
 import SwiftUI
 
-/// アプリのルート View。3 ペイン (左サイドバー + 中央ターミナル + 右 WebView) を
-/// HSplitView で均一に並べる。将来ペイン配置・サイズ変更の機能拡張を前提とした構成。
+/// アプリのルート View。4 ペイン構成:
+///   左上 = ファイラ / 左下 = Skills/Commands/MCPs
+///   中央 = ターミナル
+///   右   = WebView + ファイルプレビュー切替
 struct ContentView: View {
-    /// サイドバーで選択中のセクション
-    @State private var section: SidebarSection = .skills
+    @Environment(WorkspaceState.self) private var workspace
 
     var body: some View {
-        HSplitView {
-            // 左サイドバー: セクション切替 + 一覧
-            VStack(spacing: 0) {
-                Picker("", selection: $section) {
-                    ForEach(SidebarSection.allCases) { item in
-                        Text(item.label).tag(item)
+        Group {
+            if let root = workspace.projectRoot {
+                HSplitView {
+                    VSplitView {
+                        FileTreeView()
+                            .frame(minHeight: 150, idealHeight: 300)
+                        SidebarTabsView()
+                            .frame(minHeight: 150, idealHeight: 300)
                     }
-                }
-                .pickerStyle(.segmented)
-                .padding(8)
+                    .frame(minWidth: 220, idealWidth: 300)
 
-                Divider()
+                    TerminalView(projectRoot: root)
+                        .id(root)
+                        .frame(minWidth: 400, idealWidth: 600)
 
-                switch section {
-                case .skills:   SkillsListView()
-                case .commands: CommandsListView()
-                case .mcp:      McpListView()
+                    RightPaneView()
+                        .frame(minWidth: 300, idealWidth: 500)
                 }
+                .frame(minWidth: 1100, minHeight: 600)
+                .navigationTitle(root.lastPathComponent)
+            } else {
+                emptyState
+                    .frame(minWidth: 600, minHeight: 400)
+                    .navigationTitle("Aidea")
             }
-            .frame(minWidth: 220, idealWidth: 280)
-
-            // 中央: ターミナル
-            TerminalView()
-                .frame(minWidth: 400, idealWidth: 600)
-
-            // 右: WebView
-            WebView(url: URL(string: "https://www.apple.com")!)
-                .frame(minWidth: 300, idealWidth: 500)
         }
-        .frame(minWidth: 1000, minHeight: 600)
-        .navigationTitle(currentDirectoryName)
     }
 
-    /// ウィンドウタイトルに表示するカレントディレクトリ名 (プロジェクトルート最終要素)
-    private var currentDirectoryName: String {
-        URL(fileURLWithPath: "/Users/atsushiotani/PROGRAM/AI/aidea").lastPathComponent
-    }
-}
-
-/// サイドバーのセクション種別
-enum SidebarSection: String, CaseIterable, Identifiable {
-    case skills, commands, mcp
-    var id: String { rawValue }
-    var label: String {
-        switch self {
-        case .skills:   return "Skills"
-        case .commands: return "Commands"
-        case .mcp:      return "MCPs"
+    /// projectRoot が未設定のときに表示するプレースホルダー
+    private var emptyState: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "folder.badge.questionmark")
+                .font(.system(size: 48))
+                .foregroundStyle(.secondary)
+            Text("プロジェクトルートが未設定です")
+                .font(.headline)
+            Text("メニュー [ファイル → ディレクトリを開く] (⌘O) から選択してください")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
 #Preview {
     ContentView()
+        .environment(WorkspaceState())
 }

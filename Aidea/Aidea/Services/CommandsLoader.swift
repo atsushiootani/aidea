@@ -6,17 +6,22 @@
 import Foundation
 import Observation
 
-/// `~/.claude/commands/` と `<project>/.claude/commands/` を走査して Command 一覧を提供するサービス。
+/// `~/.claude/commands/` と `<projectRoot>/.claude/commands/` を走査して Command 一覧を提供するサービス。
 @Observable
 final class CommandsLoader {
     /// 読み込み済み Command 一覧
     var commands: [Command] = []
 
-    /// 両スコープを走査して commands を更新する。
-    func reload() {
+    /// 両スコープを走査して commands を更新する。projectRoot が nil なら user スコープのみ。
+    func reload(projectRoot: URL?) {
+        let userRoot = FileManager.default.homeDirectoryForCurrentUser
+            .appending(path: ".claude", directoryHint: .isDirectory)
         var loaded: [Command] = []
-        loaded.append(contentsOf: load(from: ClaudeRoots.userRoot, scope: .user))
-        loaded.append(contentsOf: load(from: ClaudeRoots.projectRoot, scope: .project))
+        loaded.append(contentsOf: load(from: userRoot, scope: .user))
+        if let projectRoot = projectRoot {
+            let projectClaude = projectRoot.appending(path: ".claude", directoryHint: .isDirectory)
+            loaded.append(contentsOf: load(from: projectClaude, scope: .project))
+        }
         self.commands = loaded.sorted {
             if $0.name == $1.name { return $0.scope == .project }
             return $0.name < $1.name
@@ -36,7 +41,6 @@ final class CommandsLoader {
             guard let source = try? String(contentsOf: file, encoding: .utf8) else { continue }
             let (front, body) = FrontmatterParser.parse(source)
             let baseName = file.deletingPathExtension().lastPathComponent
-            // description が無ければ本文の最初の非空行を採用
             let fallbackDescription = body
                 .split(separator: "\n")
                 .first { !$0.trimmingCharacters(in: .whitespaces).isEmpty }

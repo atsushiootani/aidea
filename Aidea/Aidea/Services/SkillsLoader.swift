@@ -6,33 +6,23 @@
 import Foundation
 import Observation
 
-/// Skill / Command の取得元となるディレクトリのルートを集約する定数。
-enum ClaudeRoots {
-    /// ~/.claude
-    static var userRoot: URL {
-        FileManager.default.homeDirectoryForCurrentUser
-            .appending(path: ".claude", directoryHint: .isDirectory)
-    }
-    /// プロジェクトルート直下の .claude
-    /// MEMO: 当面は単一プロジェクトのためハードコード (SPEC.md 将来項目参照)
-    static var projectRoot: URL {
-        URL(fileURLWithPath: "/Users/atsushiotani/PROGRAM/AI/aidea/.claude", isDirectory: true)
-    }
-}
-
-/// `~/.claude/skills/` と `<project>/.claude/skills/` を走査して Skill 一覧を提供するサービス。
+/// `~/.claude/skills/` と `<projectRoot>/.claude/skills/` を走査して Skill 一覧を提供するサービス。
 @Observable
 final class SkillsLoader {
     /// 読み込み済み Skill 一覧
     var skills: [Skill] = []
 
-    /// 両スコープを走査して skills を更新する。
-    func reload() {
+    /// 両スコープを走査して skills を更新する。projectRoot が nil なら user スコープのみ。
+    func reload(projectRoot: URL?) {
+        let userRoot = FileManager.default.homeDirectoryForCurrentUser
+            .appending(path: ".claude", directoryHint: .isDirectory)
         var loaded: [Skill] = []
-        loaded.append(contentsOf: load(from: ClaudeRoots.userRoot, scope: .user))
-        loaded.append(contentsOf: load(from: ClaudeRoots.projectRoot, scope: .project))
+        loaded.append(contentsOf: load(from: userRoot, scope: .user))
+        if let projectRoot = projectRoot {
+            let projectClaude = projectRoot.appending(path: ".claude", directoryHint: .isDirectory)
+            loaded.append(contentsOf: load(from: projectClaude, scope: .project))
+        }
         self.skills = loaded.sorted {
-            // 同名は project を優先表示
             if $0.name == $1.name { return $0.scope == .project }
             return $0.name < $1.name
         }

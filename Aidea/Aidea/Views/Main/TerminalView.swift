@@ -8,21 +8,18 @@ import AppKit
 import SwiftTerm
 
 /// SwiftTerm の LocalProcessTerminalView を SwiftUI から使うためのラッパ View。
-/// 起動時に `zsh -l` を立ち上げ、Claude Code CLI などをそのまま実行できるようにする。
+/// 起動時にプロジェクトルートに cd した対話 zsh を起動する。
+/// projectRoot 切り替え時は親 View 側で `.id(projectRoot)` を付与して再生成する想定。
 struct TerminalView: NSViewRepresentable {
-
-    /// 起動時にカレントディレクトリにする Aidea プロジェクトルートのパス
-    private static let projectRoot = "/Users/atsushiotani/PROGRAM/AI/aidea"
+    let projectRoot: URL
 
     func makeNSView(context: Context) -> LocalProcessTerminalView {
         let terminal = LocalProcessTerminalView(frame: .zero)
-        // ログインシェルとして zsh を起動。プロジェクトルートに cd してから claude を exec する。
-        // exec を使うことで claude 終了時に空のシェルが残らず、そのままターミナルが終了する。
+        // プロジェクトルートに cd してから対話 zsh を exec する。
+        // claude は手動で起動する (ADR 0008 参照)
         var env = Terminal.getEnvironmentVariables(termName: "xterm-256color")
         env.append("SHELL=/bin/zsh")
-        // プロジェクトルートに cd してから対話 zsh を exec する。
-        // claude は手動で起動する (非対話シェルから起動するとサードパーティ判定される問題を回避)。
-        let command = "cd \(Self.projectRoot) && exec zsh -l"
+        let command = "cd \(projectRoot.path.replacingOccurrences(of: "'", with: "'\\''")) && exec zsh -l"
         terminal.startProcess(
             executable: "/bin/zsh",
             args: ["-c", command],

@@ -5,17 +5,16 @@
 
 import SwiftUI
 
-/// `~/.claude/commands/` と `<project>/.claude/commands/` の Command 一覧をグループ化して表示する View。
-/// 名前のピリオド区切り先頭部分でグルーピングし、DisclosureGroup で折りたたむ。
+/// `~/.claude/commands/` と `<projectRoot>/.claude/commands/` の Command 一覧を表示する View。
 struct CommandsListView: View {
+    @Environment(WorkspaceState.self) private var workspace
     @State private var loader = CommandsLoader()
     @State private var selection: Command.ID?
     @State private var expanded: Set<String> = []
 
-    /// Command 一覧を `<prefix>` (ピリオド区切りの先頭) でグループ化したリスト。
+    /// Command 一覧を `<prefix>` (ピリオド/ハイフン区切りの先頭) でグループ化したリスト。
     private var groups: [(key: String, items: [Command])] {
         let dict = Dictionary(grouping: loader.commands) { command -> String in
-            // 名前の先頭から . または - までをグループキーにする
             let name = command.name
             let separators: Set<Character> = [".", "-"]
             if let idx = name.firstIndex(where: { separators.contains($0) }) {
@@ -53,7 +52,10 @@ struct CommandsListView: View {
                 }
             }
         }
-        .onAppear { loader.reload() }
+        .onAppear { loader.reload(projectRoot: workspace.projectRoot) }
+        .onChange(of: workspace.projectRoot) { _, newValue in
+            loader.reload(projectRoot: newValue)
+        }
     }
 
     /// 1 件の Command 行を生成

@@ -5,18 +5,16 @@
 
 import SwiftUI
 
-/// `~/.claude/skills/` と `<project>/.claude/skills/` の Skill 一覧をグループ化して表示する View。
-/// 名前のピリオド区切り先頭部分でグルーピングし、DisclosureGroup で折りたたむ。
+/// `~/.claude/skills/` と `<projectRoot>/.claude/skills/` の Skill 一覧を表示する View。
 struct SkillsListView: View {
+    @Environment(WorkspaceState.self) private var workspace
     @State private var loader = SkillsLoader()
     @State private var selection: Skill.ID?
     @State private var expanded: Set<String> = []
 
-    /// Skill 一覧を `<prefix>` (ピリオド区切りの先頭) でグループ化したリスト。
-    /// グループ名昇順、グループ内も name 昇順。
+    /// Skill 一覧を `<prefix>` (ピリオド/ハイフン区切りの先頭) でグループ化したリスト。
     private var groups: [(key: String, items: [Skill])] {
         let dict = Dictionary(grouping: loader.skills) { skill -> String in
-            // 名前の先頭から . または - までをグループキーにする
             let name = skill.name
             let separators: Set<Character> = [".", "-"]
             if let idx = name.firstIndex(where: { separators.contains($0) }) {
@@ -32,7 +30,6 @@ struct SkillsListView: View {
         List(selection: $selection) {
             ForEach(groups, id: \.key) { group in
                 if group.items.count == 1, group.items[0].name == group.key {
-                    // ピリオドを含まない単独 Skill は DisclosureGroup ではなくそのまま行表示
                     skillRow(group.items[0])
                 } else {
                     DisclosureGroup(
@@ -55,7 +52,10 @@ struct SkillsListView: View {
                 }
             }
         }
-        .onAppear { loader.reload() }
+        .onAppear { loader.reload(projectRoot: workspace.projectRoot) }
+        .onChange(of: workspace.projectRoot) { _, newValue in
+            loader.reload(projectRoot: newValue)
+        }
     }
 
     /// 1 件の Skill 行を生成
