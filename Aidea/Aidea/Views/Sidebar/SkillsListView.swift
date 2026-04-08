@@ -55,7 +55,6 @@ struct SkillsListView: View {
                 }
             }
         }
-        .navigationTitle("Skills")
         .onAppear { loader.reload() }
     }
 

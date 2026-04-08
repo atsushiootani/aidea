@@ -21,7 +21,6 @@ struct McpListView: View {
             }
             .tag(server.id)
         }
-        .navigationTitle("MCP Servers")
         .onAppear { loader.reload() }
     }
 }

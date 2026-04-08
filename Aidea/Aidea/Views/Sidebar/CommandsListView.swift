@@ -53,7 +53,6 @@ struct CommandsListView: View {
                 }
             }
         }
-        .navigationTitle("Commands")
         .onAppear { loader.reload() }
     }
 
