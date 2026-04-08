@@ -17,7 +17,7 @@ Claude Code をはじめとする AI エージェントとの連携、本物の 
 | [features.md](./features.md) | 実装する機能の詳細 |
 | [webview-notes.md](./webview-notes.md) | WKWebView vs Safari vs Chrome の比較 |
 | [roadmap.md](./roadmap.md) | 実装スケジュール |
-| [decisions.md](./decisions.md) | 設計判断の記録 |
+| [decisions/](./decisions/README.md) | 設計判断の記録 (ADR) |
 
 ## プロジェクト名の由来
 
