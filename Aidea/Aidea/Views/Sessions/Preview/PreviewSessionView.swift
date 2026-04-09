@@ -17,32 +17,43 @@ struct PreviewSessionView: View {
 
     var body: some View {
         Group {
-            switch preview {
-            case .empty:
-                placeholder("ファイルが選択されていません\n(ファイラでファイルをクリックすると表示されます)")
-            case .loading:
-                placeholder("読み込み中...")
-            case .text(let content):
-                if isMarkdownURL(state.url) {
-                    MarkdownPreview(text: content)
-                } else {
-                    NSTextPreview(text: content)
+            if let url = state.url, isDrawioURL(url) {
+                // drawio は専用の DrawioPreview で直接ファイルを扱う (preview enum は使わない)
+                DrawioPreview(url: url)
+            } else {
+                switch preview {
+                case .empty:
+                    placeholder("ファイルが選択されていません\n(ファイラでファイルをクリックすると表示されます)")
+                case .loading:
+                    placeholder("読み込み中...")
+                case .text(let content):
+                    if isMarkdownURL(state.url) {
+                        MarkdownPreview(text: content)
+                    } else {
+                        NSTextPreview(text: content)
+                    }
+                case .image(let image):
+                    ScrollView([.horizontal, .vertical]) {
+                        Image(nsImage: image)
+                            .resizable()
+                            .scaledToFit()
+                            .padding()
+                    }
+                case .message(let text):
+                    placeholder(text)
                 }
-            case .image(let image):
-                ScrollView([.horizontal, .vertical]) {
-                    Image(nsImage: image)
-                        .resizable()
-                        .scaledToFit()
-                        .padding()
-                }
-            case .message(let text):
-                placeholder(text)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .task(id: state.url) {
             await loadPreview(for: state.url)
         }
+    }
+
+    /// 拡張子から drawio ファイルか判定する (.drawio.svg / .drawio)
+    private func isDrawioURL(_ url: URL) -> Bool {
+        let name = url.lastPathComponent.lowercased()
+        return name.hasSuffix(".drawio.svg") || name.hasSuffix(".drawio")
     }
 
     /// プレースホルダー文言
