@@ -14,6 +14,10 @@ struct DrawioStaticView: NSViewRepresentable {
     let url: URL
     /// 親から reload を促すためのトリガ値 (保存後に変化させる)
     let reloadTick: Int
+    /// 値が変化すると drawio に xmlsvg export を要求し、結果を `onConvert` に渡す
+    var convertTick: Int = 0
+    /// xmlsvg export 完了時のコールバック (生成された SVG 文字列)
+    var onConvert: ((String) -> Void)? = nil
 
     func makeNSView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
@@ -32,11 +36,21 @@ struct DrawioStaticView: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: WKWebView, context: Context) {
+        // 最新のコールバックを Coordinator にセット
+        context.coordinator.onConvert = onConvert
+
         if context.coordinator.lastLoadedURL != url
             || context.coordinator.lastReloadTick != reloadTick {
             loadDrawio(into: nsView, coordinator: context.coordinator)
             context.coordinator.lastLoadedURL = url
             context.coordinator.lastReloadTick = reloadTick
+        }
+        // convertTick が増えたら drawio に xmlsvg export を要求する
+        if context.coordinator.lastConvertTick != convertTick {
+            context.coordinator.lastConvertTick = convertTick
+            if convertTick > 0 {
+                context.coordinator.requestExport()
+            }
         }
     }
 
@@ -130,9 +144,16 @@ struct DrawioStaticView: NSViewRepresentable {
     final class Coordinator: NSObject, WKScriptMessageHandler {
         var lastLoadedURL: URL?
         var lastReloadTick: Int = -1
+        var lastConvertTick: Int = 0
         weak var webView: WKWebView?
         /// embed viewer 経由でロードする XML (init イベント受信時に送信する)
         var pendingXML: String?
+        /// drawio が init を返したか
+        var isReady: Bool = false
+        /// xmlsvg export の結果を渡すコールバック
+        var onConvert: ((String) -> Void)?
+        /// init 前に export 要求を受けた場合に保留する
+        var pendingExportRequest: Bool = false
 
         func userContentController(
             _ userContentController: WKUserContentController,
@@ -144,19 +165,48 @@ struct DrawioStaticView: NSViewRepresentable {
                   let event = json["event"] as? String else {
                 return
             }
-            // drawio embed の準備完了 → pending XML をロードさせる
-            if event == "init", let xml = pendingXML {
-                sendLoad(xml: xml)
+            switch event {
+            case "init":
+                isReady = true
+                if let xml = pendingXML {
+                    sendLoad(xml: xml)
+                }
+                if pendingExportRequest {
+                    pendingExportRequest = false
+                    sendExport()
+                }
+            case "export":
+                if let dataURL = json["data"] as? String,
+                   let svg = DrawioEditor.Coordinator.decodeDataURLToString(dataURL) {
+                    onConvert?(svg)
+                }
+            default:
+                break
+            }
+        }
+
+        /// 親から呼ばれて xmlsvg export を要求する
+        func requestExport() {
+            if isReady {
+                sendExport()
+            } else {
+                // drawio がまだ init を返していない場合は保留しておく
+                pendingExportRequest = true
             }
         }
 
         /// drawio embed に load アクションを送る
         private func sendLoad(xml: String) {
-            let payload: [String: Any] = [
-                "action": "load",
-                "xml": xml,
-                "autosave": 0
-            ]
+            send(payload: ["action": "load", "xml": xml, "autosave": 0])
+        }
+
+        /// drawio embed に export アクションを送る (xmlsvg 形式)
+        private func sendExport() {
+            send(payload: ["action": "export", "format": "xmlsvg"])
+        }
+
+        /// JSON ペイロードを iframe の drawio に postMessage で送信する
+        private func send(payload: [String: Any]) {
             guard let data = try? JSONSerialization.data(withJSONObject: payload),
                   let jsonString = String(data: data, encoding: .utf8) else { return }
             let escaped = jsonString

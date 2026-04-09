@@ -35,6 +35,14 @@ enum FileTreeLoader {
     /// FileTreeNode に対応する SF Symbols 名を返す
     static func iconName(for node: FileTreeNode) -> String {
         if node.isDirectory { return "folder" }
+        // drawio は拡張子だけでは判定できない (.drawio.svg は ext = svg) ので
+        // ファイル名末尾を見る
+        let name = node.url.lastPathComponent.lowercased()
+        if name.hasSuffix(".drawio") || name.hasSuffix(".drawio.svg") {
+            // Assets.xcassets の "drawio" という名前のアセットを参照する
+            // (FileTreeViewController のセル生成側で NSImage(named:) でフォールバックする)
+            return "drawio"
+        }
         switch node.url.pathExtension.lowercased() {
         case "swift":                return "swift"
         case "md", "markdown":       return "doc.text"

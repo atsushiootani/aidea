@@ -498,10 +498,11 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
         } else {
             cell.textField?.stringValue = node.name
         }
-        cell.imageView?.image = NSImage(
-            systemSymbolName: FileTreeLoader.iconName(for: node),
-            accessibilityDescription: nil
-        )
+        let iconName = FileTreeLoader.iconName(for: node)
+        // SF Symbols で見つからなければ Assets.xcassets の named asset にフォールバック
+        // (例: `drawio` は独自アセット)
+        cell.imageView?.image = NSImage(systemSymbolName: iconName, accessibilityDescription: nil)
+            ?? NSImage(named: iconName)
         return cell
     }
 

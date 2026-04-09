@@ -183,6 +183,7 @@ struct DrawioEditor: NSViewRepresentable {
         }
 
         /// data:image/svg+xml;base64,... または data:image/svg+xml;utf8,... を文字列に戻す
+        /// 他の View からも使えるよう public 相当 (internal) で公開
         static func decodeDataURLToString(_ dataURL: String) -> String? {
             guard let commaIndex = dataURL.firstIndex(of: ",") else { return nil }
             let meta = String(dataURL[..<commaIndex])

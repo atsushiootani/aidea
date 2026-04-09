@@ -17,6 +17,7 @@ struct DrawioPreview: View {
     @State private var fileContents: String = ""
     @State private var loadError: String?
     @State private var reloadTick = 0
+    @State private var convertTick = 0
 
     enum Mode {
         case view
@@ -55,7 +56,14 @@ struct DrawioPreview: View {
     private var content: some View {
         switch mode {
         case .view:
-            DrawioStaticView(url: url, reloadTick: reloadTick)
+            DrawioStaticView(
+                url: url,
+                reloadTick: reloadTick,
+                convertTick: convertTick,
+                onConvert: { svg in
+                    convertedSVG(svg)
+                }
+            )
         case .edit:
             DrawioEditor(
                 initialXML: fileContents,
@@ -70,18 +78,31 @@ struct DrawioPreview: View {
         }
     }
 
-    /// 右上のフローティングツールバー (view モード時のみ Edit ボタン表示)
+    /// 右上のフローティングツールバー (view モード時のみ表示)
     @ViewBuilder
     private var toolbar: some View {
         if mode == .view {
-            Button {
-                mode = .edit
-            } label: {
-                Label("Edit", systemImage: "pencil")
-                    .labelStyle(.titleAndIcon)
+            VStack(alignment: .trailing, spacing: 6) {
+                Button {
+                    mode = .edit
+                } label: {
+                    Label("Edit", systemImage: "pencil")
+                        .labelStyle(.titleAndIcon)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+
+                // .drawio (純 XML) のときのみ "SVG に変換して保存" ボタンを表示
+                if !isSVGFormat {
+                    Button {
+                        convertTick &+= 1
+                    } label: {
+                        Label("SVG に変換して保存", systemImage: "square.and.arrow.down")
+                            .labelStyle(.titleAndIcon)
+                    }
+                    .controlSize(.small)
+                }
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.small)
             .padding(10)
         }
     }
@@ -103,6 +124,37 @@ struct DrawioPreview: View {
             fileContents = newContent
             reloadTick &+= 1
             mode = .view
+        } catch {
+            NSAlert(error: error).runModal()
+        }
+    }
+
+    /// drawio から xmlsvg export を受け取ったときの処理。
+    /// 元ファイル名の末尾に `.svg` を付けて同じディレクトリに書き出す。
+    /// 同名ファイルが既にある場合は上書き確認ダイアログを表示する。
+    private func convertedSVG(_ svg: String) {
+        let destURL = url.deletingLastPathComponent()
+            .appendingPathComponent(url.lastPathComponent + ".svg")
+
+        if FileManager.default.fileExists(atPath: destURL.path) {
+            let confirm = NSAlert()
+            confirm.messageText = "\(destURL.lastPathComponent) は既に存在します"
+            confirm.informativeText = "上書きしますか？"
+            confirm.alertStyle = .warning
+            confirm.addButton(withTitle: "上書き")
+            let cancel = confirm.addButton(withTitle: "キャンセル")
+            cancel.keyEquivalent = "\u{1b}" // Esc でキャンセル
+            guard confirm.runModal() == .alertFirstButtonReturn else { return }
+        }
+
+        do {
+            try svg.write(to: destURL, atomically: true, encoding: .utf8)
+            let done = NSAlert()
+            done.messageText = "SVG として保存しました"
+            done.informativeText = destURL.lastPathComponent
+            done.alertStyle = .informational
+            done.addButton(withTitle: "OK")
+            done.runModal()
         } catch {
             NSAlert(error: error).runModal()
         }
