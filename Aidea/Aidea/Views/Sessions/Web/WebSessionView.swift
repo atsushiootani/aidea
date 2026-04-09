@@ -15,8 +15,9 @@ struct WebSessionView: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: WKWebView, context: Context) {
-        if nsView.url != state.url {
-            nsView.load(URLRequest(url: state.url))
-        }
+        // 初期 URL のロードは state.webView の lazy getter で 1 度だけ行う。
+        // ここで url 不一致を検出して reload すると、ページ内遷移後に
+        // ペイン移動した際に initial URL へ戻ってしまう (リロード) ため、
+        // updateNSView ではあえて何もしない。
     }
 }
