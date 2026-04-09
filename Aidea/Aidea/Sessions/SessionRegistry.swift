@@ -87,6 +87,45 @@ final class SessionRegistry {
         activeSessionID = id
     }
 
+    /// ファイル/ディレクトリが削除されたとき、そのファイルを表示していた
+    /// Preview タブをすべて閉じる。ディレクトリ削除時は配下のファイルも対象。
+    func closePreviewsForDeleted(_ deleted: URL, isDirectory: Bool) {
+        let deletedPath = deleted.path
+        for pane in layout.allPanes {
+            var indicesToRemove: [Int] = []
+            for (idx, id) in pane.tabs.enumerated() where id.tool == .preview {
+                guard let state = states[id] as? PreviewSessionState,
+                      let url = state.url else { continue }
+                let path = url.path
+                let matches: Bool
+                if isDirectory {
+                    matches = (path == deletedPath) || path.hasPrefix(deletedPath + "/")
+                } else {
+                    matches = (path == deletedPath)
+                }
+                if matches {
+                    indicesToRemove.append(idx)
+                }
+            }
+            // 後ろから削除することでインデックスのずれを防ぐ
+            for idx in indicesToRemove.reversed() {
+                pane.tabs.remove(at: idx)
+            }
+            if pane.tabs.isEmpty {
+                pane.activeIndex = 0
+            } else if pane.activeIndex >= pane.tabs.count {
+                pane.activeIndex = pane.tabs.count - 1
+            }
+        }
+        // アクティブ Session が閉じられていたらフォールバック
+        if let active = activeSessionID,
+           !layout.allPanes.contains(where: { $0.tabs.contains(active) }) {
+            activeSessionID = layout.allPanes
+                .compactMap { $0.activeSessionID }
+                .first
+        }
+    }
+
     /// Tab のドラッグ&ドロップ: 指定 Session を移動する (同ペイン内の並び替えも対応)。
     /// - Parameters:
     ///   - id: 移動対象の SessionID

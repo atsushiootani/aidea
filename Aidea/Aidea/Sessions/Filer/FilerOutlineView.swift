@@ -1,0 +1,54 @@
+//
+//  FilerOutlineView.swift
+//  Aidea
+//
+
+import AppKit
+
+/// Filer 用にキーボード入力をハンドリングする NSOutlineView サブクラス。
+/// `controller` 経由で FileTreeViewController にキー操作を委譲する。
+final class FilerOutlineView: NSOutlineView {
+    weak var controller: FileTreeViewController?
+
+    override var acceptsFirstResponder: Bool { true }
+
+    override func keyDown(with event: NSEvent) {
+        guard let controller = controller else {
+            super.keyDown(with: event)
+            return
+        }
+
+        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        let shift = flags.contains(.shift)
+        let cmd = flags.contains(.command)
+        let chars = (event.charactersIgnoringModifiers ?? "").lowercased()
+
+        // Enter (keyCode 36) / Return (keyCode 76 on some keyboards)
+        if event.keyCode == 36 || event.keyCode == 76 {
+            if shift {
+                controller.renameSelectedAction()
+            } else {
+                controller.previewSelectedAction()
+            }
+            return
+        }
+
+        // Backspace (keyCode 51) / Forward Delete (keyCode 117)
+        if event.keyCode == 51 || event.keyCode == 117 {
+            controller.deleteSelectedAction()
+            return
+        }
+
+        // Cmd + N / Cmd + Shift + N
+        if cmd, chars == "n" {
+            if shift {
+                controller.createDirectoryAction()
+            } else {
+                controller.createFileAction()
+            }
+            return
+        }
+
+        super.keyDown(with: event)
+    }
+}

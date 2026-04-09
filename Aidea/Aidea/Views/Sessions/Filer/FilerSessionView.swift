@@ -32,7 +32,7 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
     /// 現在表示中のルート (差分検知用)
     var currentRoot: URL?
 
-    private let outlineView = NSOutlineView()
+    private let outlineView = FilerOutlineView()
     private let scrollView = NSScrollView()
     private let watcher = FileWatcher()
     private var rootNodes: [FileTreeNode] = []
@@ -53,6 +53,8 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
         outlineView.style = .sourceList
         outlineView.allowsMultipleSelection = false
         outlineView.indentationPerLevel = 14
+        // キーボードイベントをこのコントローラに委譲
+        outlineView.controller = self
         // ダブルクリックで Preview Session を新規作成
         outlineView.target = self
         outlineView.doubleAction = #selector(handleDoubleClick)
@@ -107,13 +109,41 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
         }
     }
 
-    /// FSEvents 通知を受けたときの処理
+    /// FSEvents 通知を受けたときの処理。展開状態と選択状態を可能な限り保持する。
     private func handleFileSystemChange() {
         guard let root = currentRoot else { return }
         let expandedURLs = collectExpandedURLs()
+        let selectedURL = selectedNodeURL()
         rootNodes = FileTreeLoader.load(directory: root).filter { !Self.excludedDirs.contains($0.name) }
         outlineView.reloadData()
         restoreExpandedState(in: rootNodes, expandedURLs: expandedURLs)
+        if let url = selectedURL {
+            restoreSelection(to: url)
+        }
+    }
+
+    /// 現在選択されているノードの URL (なければ nil)
+    private func selectedNodeURL() -> URL? {
+        let row = outlineView.selectedRow
+        guard row >= 0,
+              let node = outlineView.item(atRow: row) as? FileTreeNode else { return nil }
+        return node.url
+    }
+
+    /// 指定 URL にマッチするノードを現在のツリーから探して選択状態に戻す
+    private func restoreSelection(to url: URL) {
+        func walk(_ nodes: [FileTreeNode]) -> FileTreeNode? {
+            for node in nodes {
+                if node.url == url { return node }
+                if let children = node.children, let found = walk(children) { return found }
+            }
+            return nil
+        }
+        guard let node = walk(rootNodes) else { return }
+        let row = outlineView.row(forItem: node)
+        if row >= 0 {
+            outlineView.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
+        }
     }
 
     /// 現在 outlineView で展開されているノードの URL を集める
@@ -211,5 +241,175 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
             return
         }
         owner?.selectedFile = node.url
+    }
+
+    // MARK: - Keyboard Actions
+
+    /// Enter キー: 選択ノードがファイルなら Preview で開く、ディレクトリなら展開/折りたたみ
+    func previewSelectedAction() {
+        let row = outlineView.selectedRow
+        guard row >= 0,
+              let node = outlineView.item(atRow: row) as? FileTreeNode else { return }
+        if node.isDirectory {
+            if outlineView.isItemExpanded(node) {
+                outlineView.collapseItem(node)
+            } else {
+                outlineView.expandItem(node)
+            }
+        } else {
+            owner?.registry?.openPreview(for: node.url)
+        }
+    }
+
+    /// Shift+Enter キー: 選択ノードの名前変更
+    func renameSelectedAction() {
+        let row = outlineView.selectedRow
+        guard row >= 0,
+              let node = outlineView.item(atRow: row) as? FileTreeNode else { return }
+        // projectRoot (ルート) 自身は変更不可
+        if node.url == currentRoot { return }
+
+        let parent = node.url.deletingLastPathComponent()
+        guard let newName = FileNameInputDialog.show(
+            title: "名前を変更",
+            prompt: "新しい名前を入力してください",
+            initial: node.name,
+            parentDirectory: parent,
+            excludingName: node.name
+        ) else { return }
+
+        let newURL = parent.appendingPathComponent(newName)
+        do {
+            try FileManager.default.moveItem(at: node.url, to: newURL)
+            focusOnURL(newURL)
+        } catch {
+            NSAlert(error: error).runModal()
+        }
+    }
+
+    /// Backspace キー: 選択ノードを削除 (確認ダイアログ → ゴミ箱)
+    func deleteSelectedAction() {
+        let row = outlineView.selectedRow
+        guard row >= 0,
+              let node = outlineView.item(atRow: row) as? FileTreeNode else { return }
+        if node.url == currentRoot { return }
+
+        let alert = NSAlert()
+        alert.messageText = "\(node.name) を削除しますか？"
+        alert.informativeText = node.isDirectory
+            ? "このディレクトリと配下のすべてのファイルがゴミ箱に移動されます。"
+            : "このファイルはゴミ箱に移動されます。"
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "削除")
+        let cancelButton = alert.addButton(withTitle: "キャンセル")
+        cancelButton.keyEquivalent = "\u{1b}" // Esc でキャンセル
+
+        if alert.runModal() == .alertFirstButtonReturn {
+            do {
+                try FileManager.default.trashItem(at: node.url, resultingItemURL: nil)
+                // 削除したファイル/ディレクトリを表示している Preview タブを閉じる
+                owner?.registry?.closePreviewsForDeleted(node.url, isDirectory: node.isDirectory)
+            } catch {
+                NSAlert(error: error).runModal()
+            }
+        }
+    }
+
+    /// Cmd+N キー: 新規ファイル作成
+    func createFileAction() {
+        guard let parent = targetParentDirectory() else { return }
+        guard let name = FileNameInputDialog.show(
+            title: "新しいファイル",
+            prompt: "ファイル名を入力してください",
+            initial: "",
+            parentDirectory: parent
+        ) else { return }
+
+        let newURL = parent.appendingPathComponent(name)
+        let created = FileManager.default.createFile(atPath: newURL.path, contents: nil)
+        if created {
+            focusOnURL(newURL)
+        } else {
+            let alert = NSAlert()
+            alert.messageText = "ファイルを作成できませんでした"
+            alert.informativeText = newURL.path
+            alert.alertStyle = .warning
+            alert.runModal()
+        }
+    }
+
+    /// Cmd+Shift+N キー: 新規ディレクトリ作成
+    func createDirectoryAction() {
+        guard let parent = targetParentDirectory() else { return }
+        guard let name = FileNameInputDialog.show(
+            title: "新しいディレクトリ",
+            prompt: "ディレクトリ名を入力してください",
+            initial: "",
+            parentDirectory: parent
+        ) else { return }
+
+        let newURL = parent.appendingPathComponent(name)
+        do {
+            try FileManager.default.createDirectory(
+                at: newURL,
+                withIntermediateDirectories: false
+            )
+            focusOnURL(newURL)
+        } catch {
+            NSAlert(error: error).runModal()
+        }
+    }
+
+    /// 新規作成時の親ディレクトリを決定する:
+    /// - 選択がディレクトリなら: その中
+    /// - 選択がファイルなら: その親
+    /// - 選択なし: projectRoot
+    private func targetParentDirectory() -> URL? {
+        let row = outlineView.selectedRow
+        if row >= 0, let node = outlineView.item(atRow: row) as? FileTreeNode {
+            return node.isDirectory ? node.url : node.url.deletingLastPathComponent()
+        }
+        return currentRoot
+    }
+
+    /// 指定 URL のノードにフォーカスする (明示的に再取得してから選択する)。
+    /// 親ディレクトリを順に展開してターゲットを可視化する。
+    func focusOnURL(_ url: URL) {
+        guard let root = currentRoot else { return }
+        // 再取得 (展開状態は collectExpandedURLs / restoreExpandedState で復元される)
+        handleFileSystemChange()
+
+        // root からの相対パスを取り出す
+        let rootPath = root.path
+        guard url.path.hasPrefix(rootPath) else { return }
+        let relative = String(url.path.dropFirst(rootPath.count))
+            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        if relative.isEmpty { return }
+        let components = relative.split(separator: "/").map(String.init)
+
+        // ツリーを辿りながら親ディレクトリを展開していく
+        var currentList: [FileTreeNode] = rootNodes
+        var targetNode: FileTreeNode?
+        for (i, name) in components.enumerated() {
+            guard let node = currentList.first(where: { $0.name == name }) else { return }
+            targetNode = node
+            // 末端以外のディレクトリは展開する
+            if i < components.count - 1 {
+                if node.children == nil {
+                    node.children = FileTreeLoader.load(directory: node.url, parent: node)
+                }
+                outlineView.expandItem(node)
+                currentList = node.children ?? []
+            }
+        }
+
+        guard let target = targetNode else { return }
+        let row = outlineView.row(forItem: target)
+        if row >= 0 {
+            outlineView.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
+            outlineView.scrollRowToVisible(row)
+            outlineView.window?.makeFirstResponder(outlineView)
+            // selection change で owner?.selectedFile が更新される
+        }
     }
 }

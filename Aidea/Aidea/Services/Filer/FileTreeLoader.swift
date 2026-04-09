@@ -14,11 +14,12 @@ enum FileTreeLoader {
         guard let entries = try? fm.contentsOfDirectory(
             at: url,
             includingPropertiesForKeys: [.isDirectoryKey],
-            options: [.skipsHiddenFiles]
+            options: []
         ) else {
             return []
         }
-        let excluded: Set<String> = [".git", "node_modules", "DerivedData", ".build"]
+        // ノイズが大きいディレクトリ (.git など) のみ除外。その他の隠しファイルは表示する
+        let excluded: Set<String> = [".git", "node_modules", "DerivedData", ".build", ".DS_Store"]
         let nodes = entries.compactMap { entry -> FileTreeNode? in
             if excluded.contains(entry.lastPathComponent) { return nil }
             let isDir = (try? entry.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false

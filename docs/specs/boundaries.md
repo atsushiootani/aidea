@@ -30,6 +30,13 @@ CLAUDE.md やコードレビュー時に参照する。
 - ❌ **グローバル state に "selectedFile" のような cross-tool 状態を置かない**
   (ペイン/Session ごとに独立した状態を持たせ、tool 間連携は明示的な API で行う)
 
+## UI Conventions (UI 共通ルール)
+
+- **ダイアログの Cancel ボタンは Esc キーで発火する**: すべての `NSAlert` / 独自モーダルダイアログで共通。実装上は Cancel に相当するボタンに `keyEquivalent = "\u{1b}"` を明示的に割り当てる
+- **ダイアログの OK ボタンは Enter キーで発火する** (NSAlert は first button に自動割当なので追加作業不要)
+- **破壊的操作 (削除・上書き等) は必ず確認ダイアログを挟む**
+- **ファイル/ディレクトリ名の入力時はリアルタイム重複チェック** を行い、重複時は赤字エラー + OK 無効化
+
 ## 参考
 - [SPEC.md](./SPEC.md) — 仕様本体
 - [decisions/](../decisions/README.md) — 設計判断の記録
