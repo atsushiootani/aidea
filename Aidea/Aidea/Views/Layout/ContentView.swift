@@ -6,6 +6,8 @@
 import SwiftUI
 
 /// アプリのルート View。4 ペイン構成 (Phase 1: ペイン位置は固定、各ペインは複数 Tab を持てる)。
+/// レイアウトは NSSplitViewController ラッパ (`SplitLayoutView`) で構築し、
+/// ディバイダ位置は autosaveName 経由で自動保存される。
 struct ContentView: View {
     @Environment(WorkspaceState.self) private var workspace
     @Environment(SessionRegistry.self) private var registry
@@ -14,22 +16,11 @@ struct ContentView: View {
     var body: some View {
         Group {
             if let root = workspace.projectRoot {
-                HSplitView {
-                    VSplitView {
-                        PaneView(pane: layout.topLeft)
-                            .frame(minHeight: 150, idealHeight: 300)
-                        PaneView(pane: layout.bottomLeft)
-                            .frame(minHeight: 150, idealHeight: 300)
-                    }
-                    .frame(minWidth: 220, idealWidth: 300)
-
-                    PaneView(pane: layout.center)
-                        .id(root)
-                        .frame(minWidth: 400, idealWidth: 600)
-
-                    PaneView(pane: layout.right)
-                        .frame(minWidth: 300, idealWidth: 500)
-                }
+                SplitLayoutView(
+                    layout: layout,
+                    workspace: workspace,
+                    registry: registry
+                )
                 .frame(minWidth: 1100, minHeight: 600)
                 .navigationTitle(root.lastPathComponent)
             } else {
