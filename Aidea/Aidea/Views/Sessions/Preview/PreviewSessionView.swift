@@ -21,6 +21,17 @@ struct PreviewSessionView: View {
             if let url = state.url, isDrawioURL(url) {
                 // drawio は専用の DrawioPreview で直接ファイルを扱う (preview enum は使わない)
                 DrawioPreview(url: url)
+            } else if let url = state.url, isMarkdownURL(url) {
+                // Markdown は専用の MarkdownContainer で view/edit モードを管理
+                MarkdownContainer(
+                    url: url,
+                    onLinkTap: { resolvedURL in
+                        registry.openPreviewAsSibling(
+                            for: resolvedURL,
+                            title: resolvedURL.lastPathComponent
+                        )
+                    }
+                )
             } else {
                 switch preview {
                 case .empty:
@@ -28,22 +39,7 @@ struct PreviewSessionView: View {
                 case .loading:
                     placeholder("読み込み中...")
                 case .text(let content):
-                    if isMarkdownURL(state.url) {
-                        MarkdownPreview(
-                            text: content,
-                            baseURL: state.url?.deletingLastPathComponent(),
-                            onLinkTap: { resolvedURL in
-                                // リンク先を同じペインの右隣タブで開く
-                                // (既に開いていればそれをアクティブ化)
-                                registry.openPreviewAsSibling(
-                                    for: resolvedURL,
-                                    title: resolvedURL.lastPathComponent
-                                )
-                            }
-                        )
-                    } else {
-                        NSTextPreview(text: content)
-                    }
+                    NSTextPreview(text: content)
                 case .image(let image):
                     ScrollView([.horizontal, .vertical]) {
                         Image(nsImage: image)

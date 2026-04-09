@@ -22,16 +22,24 @@ struct MarkdownPreview: View {
     let baseURL: URL?
     /// ローカルファイルへのリンクがクリックされたときに呼ばれる (resolved 絶対 URL)
     let onLinkTap: ((URL) -> Void)?
+    /// 目次 (ToC) の上部に確保する追加のマージン (親側にフローティングボタン等がある場合)
+    let tocTopInset: CGFloat
 
     /// 折りたたみ中の見出し行インデックス集合
     @State private var collapsedHeadings: Set<Int> = []
     /// ToC の表示/非表示
     @State private var showTOC: Bool = true
 
-    init(text: String, baseURL: URL? = nil, onLinkTap: ((URL) -> Void)? = nil) {
+    init(
+        text: String,
+        baseURL: URL? = nil,
+        onLinkTap: ((URL) -> Void)? = nil,
+        tocTopInset: CGFloat = 0
+    ) {
         self.text = text
         self.baseURL = baseURL
         self.onLinkTap = onLinkTap
+        self.tocTopInset = tocTopInset
     }
 
     var body: some View {
@@ -53,6 +61,7 @@ struct MarkdownPreview: View {
                 })
                 .overlay(alignment: .topTrailing) {
                     tableOfContents(proxy: proxy)
+                        .padding(.top, tocTopInset)
                 }
             }
         }
@@ -251,49 +260,47 @@ struct MarkdownPreview: View {
         let headings = collectHeadings()
         if !headings.isEmpty {
             VStack(alignment: .leading, spacing: 0) {
+                // ヘッダー: 全体がクリック可能領域 (折りたたみトグル)
                 HStack {
                     Text("目次")
                         .font(.system(size: 11, weight: .bold))
                         .foregroundStyle(.secondary)
                     Spacer()
-                    Button {
-                        showTOC.toggle()
-                    } label: {
-                        Image(systemName: showTOC ? "chevron.up" : "chevron.down")
-                            .font(.system(size: 9))
-                    }
-                    .buttonStyle(.plain)
+                    Image(systemName: showTOC ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 9))
+                        .foregroundStyle(.secondary)
                 }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 6)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        showTOC.toggle()
+                    }
+                }
                 if showTOC {
                     Divider()
                     ScrollView {
-                        VStack(alignment: .leading, spacing: 2) {
+                        VStack(alignment: .leading, spacing: 0) {
                             ForEach(headings, id: \.index) { heading in
-                                Button {
-                                    withAnimation {
-                                        proxy.scrollTo("line-\(heading.index)", anchor: .top)
+                                TOCRow(
+                                    heading: heading,
+                                    onTap: {
+                                        withAnimation {
+                                            proxy.scrollTo("line-\(heading.index)", anchor: .top)
+                                        }
                                     }
-                                } label: {
-                                    Text(heading.text)
-                                        .font(.system(size: 11))
-                                        .lineLimit(1)
-                                        .foregroundStyle(.primary)
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                        .padding(.leading, CGFloat(heading.level - 1) * 10)
-                                        .padding(.vertical, 2)
-                                }
-                                .buttonStyle(.plain)
+                                )
                             }
                         }
-                        .padding(.horizontal, 8)
                         .padding(.vertical, 4)
                     }
                     .frame(maxHeight: 300)
                 }
             }
-            .frame(width: 200)
+            // 展開時は幅 200、折りたたみ時は内容に合わせて縮める
+            .frame(width: showTOC ? 200 : nil)
+            .fixedSize(horizontal: !showTOC, vertical: false)
             .background(.regularMaterial)
             .overlay(
                 RoundedRectangle(cornerRadius: 6)
@@ -301,7 +308,10 @@ struct MarkdownPreview: View {
             )
             .clipShape(RoundedRectangle(cornerRadius: 6))
             .shadow(color: .black.opacity(0.2), radius: 4, y: 2)
-            .padding(12)
+            .padding(.top, 12)
+            .padding(.trailing, 22) // スクロールバーと重ならないように余裕
+            .padding(.leading, 12)
+            .padding(.bottom, 12)
         }
     }
 
@@ -496,6 +506,32 @@ struct MarkdownPreview: View {
             return (true, String(content.dropFirst(4)))
         }
         return nil
+    }
+}
+
+/// 目次の 1 行。ホバー時にアクセントカラー背景でハイライト表示する。
+private struct TOCRow: View {
+    let heading: (index: Int, level: Int, text: String)
+    let onTap: () -> Void
+    @State private var isHovered = false
+
+    var body: some View {
+        HStack {
+            Text(heading.text)
+                .font(.system(size: 11))
+                .lineLimit(1)
+                .foregroundStyle(isHovered ? Color.white : Color.primary)
+            Spacer(minLength: 0)
+        }
+        .padding(.leading, 8 + CGFloat(heading.level - 1) * 10)
+        .padding(.trailing, 8)
+        .padding(.vertical, 3)
+        .background(isHovered ? Color.accentColor : Color.clear)
+        .contentShape(Rectangle())
+        .onHover { hovered in
+            isHovered = hovered
+        }
+        .onTapGesture { onTap() }
     }
 }
 
