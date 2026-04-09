@@ -214,6 +214,8 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
             }
             return
         }
+        // openPreview はアクティブ Session のペインを回避するので、先に自分を active に設定
+        owner?.registry?.activeSessionID = SessionID(.filer, instance: 0)
         owner?.registry?.openPreview(for: node.url)
     }
 
@@ -496,10 +498,11 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
         } else {
             cell.textField?.stringValue = node.name
         }
-        cell.imageView?.image = NSImage(
-            systemSymbolName: FileTreeLoader.iconName(for: node),
-            accessibilityDescription: nil
-        )
+        let iconName = FileTreeLoader.iconName(for: node)
+        // SF Symbols で見つからなければ Assets.xcassets の named asset にフォールバック
+        // (例: `drawio` は独自アセット)
+        cell.imageView?.image = NSImage(systemSymbolName: iconName, accessibilityDescription: nil)
+            ?? NSImage(named: iconName)
         return cell
     }
 
@@ -546,10 +549,12 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
                     outlineView.expandItem(node)
                 }
             } else {
+                owner?.registry?.activeSessionID = SessionID(.filer, instance: 0)
                 owner?.registry?.openPreview(for: node.url)
             }
             return
         }
+        owner?.registry?.activeSessionID = SessionID(.filer, instance: 0)
         for node in nodes where !node.isDirectory {
             owner?.registry?.openPreview(for: node.url)
         }

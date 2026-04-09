@@ -37,7 +37,7 @@ final class LayoutConfig {
 
     init() {
         self.topLeft    = Pane(tabs: [SessionID(.filer)])
-        self.bottomLeft = Pane(tabs: [SessionID(.skills), SessionID(.commands), SessionID(.mcps)])
+        self.bottomLeft = Pane(tabs: [SessionID(.kit)])
         self.center     = Pane(tabs: [SessionID(.terminal)])
         self.right      = Pane(tabs: [SessionID(.web)])
     }

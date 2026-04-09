@@ -9,6 +9,7 @@ import AppKit
 /// Preview Session の SwiftUI View。state.url のファイルを表示する。
 struct PreviewSessionView: View {
     let state: PreviewSessionState
+    @Environment(SessionRegistry.self) private var registry
     @State private var preview: PreviewContent = .empty
     @State private var loadedURL: URL?
 
@@ -17,28 +18,54 @@ struct PreviewSessionView: View {
 
     var body: some View {
         Group {
-            switch preview {
-            case .empty:
-                placeholder("ファイルが選択されていません\n(ファイラでファイルをクリックすると表示されます)")
-            case .loading:
-                placeholder("読み込み中...")
-            case .text(let content):
-                NSTextPreview(text: content)
-            case .image(let image):
-                ScrollView([.horizontal, .vertical]) {
-                    Image(nsImage: image)
-                        .resizable()
-                        .scaledToFit()
-                        .padding()
+            if let url = state.url, isDrawioURL(url) {
+                // drawio は専用の DrawioPreview で直接ファイルを扱う (preview enum は使わない)
+                DrawioPreview(url: url)
+            } else {
+                switch preview {
+                case .empty:
+                    placeholder("ファイルが選択されていません\n(ファイラでファイルをクリックすると表示されます)")
+                case .loading:
+                    placeholder("読み込み中...")
+                case .text(let content):
+                    if isMarkdownURL(state.url) {
+                        MarkdownPreview(
+                            text: content,
+                            baseURL: state.url?.deletingLastPathComponent(),
+                            onLinkTap: { resolvedURL in
+                                // リンク先を同じペインの右隣タブで開く
+                                // (既に開いていればそれをアクティブ化)
+                                registry.openPreviewAsSibling(
+                                    for: resolvedURL,
+                                    title: resolvedURL.lastPathComponent
+                                )
+                            }
+                        )
+                    } else {
+                        NSTextPreview(text: content)
+                    }
+                case .image(let image):
+                    ScrollView([.horizontal, .vertical]) {
+                        Image(nsImage: image)
+                            .resizable()
+                            .scaledToFit()
+                            .padding()
+                    }
+                case .message(let text):
+                    placeholder(text)
                 }
-            case .message(let text):
-                placeholder(text)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .task(id: state.url) {
             await loadPreview(for: state.url)
         }
+    }
+
+    /// 拡張子から drawio ファイルか判定する (.drawio.svg / .drawio)
+    private func isDrawioURL(_ url: URL) -> Bool {
+        let name = url.lastPathComponent.lowercased()
+        return name.hasSuffix(".drawio.svg") || name.hasSuffix(".drawio")
     }
 
     /// プレースホルダー文言
@@ -88,6 +115,13 @@ struct PreviewSessionView: View {
         if loadedURL == url {
             preview = result
         }
+    }
+
+    /// 拡張子から Markdown ファイルか判定する
+    private func isMarkdownURL(_ url: URL?) -> Bool {
+        guard let url = url else { return false }
+        let ext = url.pathExtension.lowercased()
+        return ext == "md" || ext == "markdown"
     }
 
     /// 先頭 8KB に NUL バイトが含まれていればバイナリとみなす

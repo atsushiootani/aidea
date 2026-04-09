@@ -10,9 +10,7 @@ import UniformTypeIdentifiers
 /// 機能の種別を表す Tool。Window 内のすべての Session はいずれかの Tool に属する。
 enum Tool: String, CaseIterable, Identifiable, Hashable, Codable, Sendable {
     case filer
-    case skills
-    case commands
-    case mcps
+    case kit
     case terminal
     case web
     case preview
@@ -23,9 +21,7 @@ enum Tool: String, CaseIterable, Identifiable, Hashable, Codable, Sendable {
     var displayName: String {
         switch self {
         case .filer:    return "Files"
-        case .skills:   return "Skills"
-        case .commands: return "Commands"
-        case .mcps:     return "MCPs"
+        case .kit:      return "Kit"
         case .terminal: return "Terminal"
         case .web:      return "Web"
         case .preview:  return "Preview"
@@ -36,9 +32,7 @@ enum Tool: String, CaseIterable, Identifiable, Hashable, Codable, Sendable {
     var systemImageName: String {
         switch self {
         case .filer:    return "folder"
-        case .skills:   return "star"
-        case .commands: return "terminal"
-        case .mcps:     return "network"
+        case .kit:      return "shippingbox"
         case .terminal: return "apple.terminal"
         case .web:      return "globe"
         case .preview:  return "doc.text.magnifyingglass"

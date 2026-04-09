@@ -15,6 +15,7 @@ Aidea の設計判断を 1 件ずつ記録する。フォーマットは [Michae
 | [0007](./0007-name-aidea.md) | プロジェクト名は Aidea | 確定 |
 | [0008](./0008-no-claude-autostart.md) | ターミナルでは claude を自動起動しない | 採用 |
 | [0009](./0009-nsoutlineview-and-fsevents.md) | ファイラは NSOutlineView + FSEvents で実装する | 採用 |
+| [0010](./0010-drawio-rendering-paths.md) | drawio ファイルの描画は形式ごとに異なる経路を使う | 採用 |
 
 ## 新規追加方法
 

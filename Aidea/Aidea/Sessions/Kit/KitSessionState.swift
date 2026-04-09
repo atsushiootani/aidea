@@ -1,0 +1,48 @@
+//
+//  KitSessionState.swift
+//  Aidea
+//
+
+import Foundation
+import Observation
+
+/// Kit Tool のセクション種別。4 つのリソースカテゴリを表す。
+enum KitSection: String, CaseIterable, Identifiable, Hashable {
+    case agents
+    case skills
+    case commands
+    case mcps
+
+    var id: String { rawValue }
+
+    /// セクションヘッダーに表示するラベル (大文字)
+    var title: String {
+        switch self {
+        case .agents:   return "AGENTS"
+        case .skills:   return "SKILLS"
+        case .commands: return "COMMANDS"
+        case .mcps:     return "MCP SERVERS"
+        }
+    }
+}
+
+/// Kit Session の内部状態。4 つの Loader と展開状態・選択を保持する。
+@Observable
+final class KitSessionState: SessionState {
+    let workspace: WorkspaceState
+    let agentsLoader = AgentsLoader()
+    let skillsLoader = SkillsLoader()
+    let commandsLoader = CommandsLoader()
+    let mcpLoader = McpLoader()
+
+    /// 展開中のセクション集合 (初期は全て展開)
+    var expandedSections: Set<KitSection> = Set(KitSection.allCases)
+    /// 展開中のサブグループキー集合 ("section.prefix" 形式)
+    var expandedGroups: Set<String> = []
+    /// 選択中の項目キー (`section:id`)
+    var selection: String?
+
+    init(workspace: WorkspaceState) {
+        self.workspace = workspace
+    }
+}
