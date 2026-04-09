@@ -52,6 +52,27 @@ CLAUDE.md やコードレビュー時に参照する。
 - **新規作成・リネーム・移動など、結果として別のノードにフォーカスすべき操作の後は、明示的に新ノードを選択 + 可視スクロール + first responder 再設定**する
 - フィルタ/検索/並び替えによる reloadData 後は、事前の選択状態を可能な限り復元する
 
+### キーボードナビゲーション (Emacs ライク)
+リスト/ツリーを扱うすべての Session は、以下のキーバインディングを必ずサポートする。
+
+| キー | 動作 | マップ先 |
+|---|---|---|
+| **Ctrl + P** | 上へ移動 | `moveUp` |
+| **Ctrl + N** | 下へ移動 | `moveDown` |
+| **Ctrl + F** | 右へ移動 | `moveRight` |
+| **Ctrl + B** | 左へ移動 | `moveLeft` |
+| **Ctrl + V** | ページダウン | `pageDown` |
+| **Ctrl + Z** | ページアップ | `pageUp` |
+
+実装は `Aidea/Utilities/EmacsNavigation.swift` の `EmacsNavigation.handle(event:responder:)`
+を使う。NSOutlineView / NSTableView サブクラスは `keyDown(with:)` 内で以下のように呼び出す:
+
+```swift
+if EmacsNavigation.handle(event: event, responder: self) { return }
+```
+
+SwiftUI 主体の Session も同等のショートカットを提供する (将来 `onKeyPress` で実装)。
+
 ## 参考
 - [SPEC.md](./SPEC.md) — 仕様本体
 - [decisions/](../decisions/README.md) — 設計判断の記録

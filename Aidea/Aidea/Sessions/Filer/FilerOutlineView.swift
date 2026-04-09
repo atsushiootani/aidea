@@ -62,6 +62,12 @@ final class FilerOutlineView: NSOutlineView {
             }
         }
 
+        // Emacs ライクナビゲーション (Ctrl+P/N/F/B)
+        // Ctrl+V/Z のページ送りは Filer では使わない (他の Tool で検討)
+        if EmacsNavigation.handle(event: event, table: self, allowPageNav: false) {
+            return
+        }
+
         super.keyDown(with: event)
     }
 
