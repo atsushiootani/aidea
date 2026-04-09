@@ -9,6 +9,8 @@ import SwiftUI
 /// 「+」ボタンで新しい Session を追加、「x」ボタンでタブを閉じることができる。
 struct PaneView: View {
     @Bindable var pane: Pane
+    /// このペインが属する LayoutNode。split / removeLeaf 操作で使う。
+    let layoutNode: LayoutNode
     @Environment(SessionRegistry.self) private var registry
     @Environment(LayoutConfig.self) private var layout
 
@@ -43,23 +45,58 @@ struct PaneView: View {
         }
     }
 
-    /// タブバー: Slot と Tab を交互に配置。最後の Tab の右にも Slot を置くが、
-    /// `+` ボタンより右には Slot を置かない。
+    /// タブバー: 左側はスクロール可能な Tab 領域、右端に分割ボタンを固定配置する
     private var tabBar: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 0) {
-                TabSlotView(pane: pane, index: 0)
-                ForEach(Array(pane.tabs.enumerated()), id: \.element) { index, sessionID in
-                    tabItem(sessionID: sessionID, index: index)
-                    TabSlotView(pane: pane, index: index + 1)
+        HStack(spacing: 0) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 0) {
+                    TabSlotView(pane: pane, index: 0)
+                    ForEach(Array(pane.tabs.enumerated()), id: \.element) { index, sessionID in
+                        tabItem(sessionID: sessionID, index: index)
+                        TabSlotView(pane: pane, index: index + 1)
+                    }
+                    addButton
                 }
-                addButton
-                Spacer(minLength: 0)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 3)
             }
-            .padding(.horizontal, 6)
-            .padding(.vertical, 3)
+            splitButtons
+                .padding(.trailing, 6)
         }
         .background(Color(nsColor: .windowBackgroundColor))
+    }
+
+    /// ペインを左右 / 上下に分割するボタン (タブバーの右端)
+    /// 分割操作は SwiftUI の update サイクル外で実行するため DispatchQueue で遅延させる。
+    private var splitButtons: some View {
+        HStack(spacing: 4) {
+            Button {
+                let node = layoutNode
+                let lay = layout
+                DispatchQueue.main.async {
+                    lay.splitLeaf(node, axis: .horizontal)
+                }
+            } label: {
+                Image(systemName: "rectangle.split.2x1")
+                    .font(.system(size: 11))
+            }
+            .buttonStyle(.plain)
+            .help("左右に分割")
+
+            Button {
+                let node = layoutNode
+                let lay = layout
+                DispatchQueue.main.async {
+                    lay.splitLeaf(node, axis: .vertical)
+                }
+            } label: {
+                Image(systemName: "rectangle.split.1x2")
+                    .font(.system(size: 11))
+            }
+            .buttonStyle(.plain)
+            .help("上下に分割")
+        }
+        .padding(.horizontal, 4)
     }
 
     /// 1 つの Tab。クリックでアクティブ化、× でクローズ。
@@ -171,6 +208,7 @@ struct PaneView: View {
     }
 
     /// タブをクローズ。クローズ対象がグローバルアクティブだった場合は更新する。
+    /// 全タブが閉じられた場合、このペイン自体をレイアウトツリーから取り除く。
     private func closeTab(at index: Int) {
         guard index >= 0, index < pane.tabs.count else { return }
         let closed = pane.tabs[index]
@@ -180,6 +218,18 @@ struct PaneView: View {
         }
         if registry.activeSessionID == closed {
             registry.activeSessionID = pane.activeSessionID
+        }
+        // 全タブが閉じられたらペイン自体を削除 (update サイクル外で実行)
+        if pane.tabs.isEmpty {
+            let node = layoutNode
+            let lay = layout
+            let reg = registry
+            DispatchQueue.main.async {
+                lay.removeLeaf(node)
+                if let firstPane = lay.allPanes.first {
+                    reg.activeSessionID = firstPane.activeSessionID
+                }
+            }
         }
     }
 }

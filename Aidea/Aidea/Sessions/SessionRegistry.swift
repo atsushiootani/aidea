@@ -12,7 +12,9 @@ import Observation
 @Observable
 final class SessionRegistry {
     /// SessionID -> SessionState の保持 (型消去)
-    private var states: [SessionID: any SessionState] = [:]
+    /// SwiftUI の update サイクル中に mutate するとクラッシュするため、
+    /// Observation 追跡から除外する (キャッシュ用途なのでビューが再評価を必要としない)
+    @ObservationIgnored private var states: [SessionID: any SessionState] = [:]
     /// 共有のワークスペース状態 (各 SessionState から参照される)
     let workspace: WorkspaceState
     /// Tab のレイアウト設定 (新しい Preview タブ作成などで参照)

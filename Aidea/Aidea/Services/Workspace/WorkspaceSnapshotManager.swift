@@ -10,6 +10,8 @@ import Foundation
 final class WorkspaceSnapshotManager {
     /// 保存先ファイル URL
     let fileURL: URL
+    /// 現在のスナップショットフォーマットバージョン
+    private static let currentVersion: Int = 2
 
     init() {
         let support = FileManager.default.urls(
@@ -56,8 +58,6 @@ final class WorkspaceSnapshotManager {
                     }
                 case .filer:
                     if let state = registry.peekState(for: id) as? FilerSessionState {
-                        // NSOutlineView から現在の展開状態をその場で取得する
-                        // (delegate 経由の expandedURLs 同期に依存しないため確実)
                         let live = state.controller.collectExpandedURLs()
                         state.expandedURLs = live
                         filers.append(FilerSnapshot(id: id, expandedURLs: Array(live)))
@@ -77,13 +77,8 @@ final class WorkspaceSnapshotManager {
         }
 
         return WorkspaceSnapshot(
-            version: 1,
-            layout: LayoutSnapshot(
-                topLeft: PaneSnapshot(tabs: layout.topLeft.tabs, activeIndex: layout.topLeft.activeIndex),
-                bottomLeft: PaneSnapshot(tabs: layout.bottomLeft.tabs, activeIndex: layout.bottomLeft.activeIndex),
-                center: PaneSnapshot(tabs: layout.center.tabs, activeIndex: layout.center.activeIndex),
-                right: PaneSnapshot(tabs: layout.right.tabs, activeIndex: layout.right.activeIndex)
-            ),
+            version: Self.currentVersion,
+            layoutRoot: buildLayoutNodeSnapshot(from: layout.root),
             previews: previews,
             webs: webs,
             filers: filers,
@@ -92,23 +87,44 @@ final class WorkspaceSnapshotManager {
         )
     }
 
+    /// LayoutNode ツリーを Codable 型に変換する
+    private func buildLayoutNodeSnapshot(from node: LayoutNode) -> LayoutNodeSnapshot {
+        switch node.value {
+        case .leaf(let pane):
+            return .leaf(
+                id: node.id,
+                pane: PaneSnapshot(tabs: pane.tabs, activeIndex: pane.activeIndex)
+            )
+        case .split(let axis, let children):
+            return .split(
+                id: node.id,
+                axis: axis.rawValue,
+                children: children.map { buildLayoutNodeSnapshot(from: $0) }
+            )
+        }
+    }
+
     // MARK: - Load
 
-    /// 保存済みスナップショットを読み込む (無ければ nil)
+    /// 保存済みスナップショットを読み込む (無ければ or 非互換なら nil)
     func load() -> WorkspaceSnapshot? {
         guard let data = try? Data(contentsOf: fileURL) else { return nil }
-        return try? JSONDecoder().decode(WorkspaceSnapshot.self, from: data)
+        guard let snapshot = try? JSONDecoder().decode(WorkspaceSnapshot.self, from: data) else {
+            return nil
+        }
+        // version が古い場合は互換性がないので破棄 (既定レイアウトにフォールバック)
+        if snapshot.version != Self.currentVersion {
+            return nil
+        }
+        return snapshot
     }
 
     /// スナップショットを layout / registry に適用する
     func apply(_ snapshot: WorkspaceSnapshot, to layout: LayoutConfig, registry: SessionRegistry) {
-        applyPane(snapshot.layout.topLeft, to: layout.topLeft)
-        applyPane(snapshot.layout.bottomLeft, to: layout.bottomLeft)
-        applyPane(snapshot.layout.center, to: layout.center)
-        applyPane(snapshot.layout.right, to: layout.right)
+        // レイアウトツリーを復元
+        layout.root = buildLayoutNode(from: snapshot.layoutRoot)
 
-        // Preview/Web/Filer の状態を事前にセットしておく
-        // (state(for:) がオンデマンドで初期状態のインスタンスを作ってしまう前に値を注入)
+        // Preview/Web/Filer/Kit の状態を事前にセット
         for preview in snapshot.previews {
             let state = registry.state(for: preview.id) as! PreviewSessionState
             state.url = preview.url
@@ -131,10 +147,16 @@ final class WorkspaceSnapshotManager {
         registry.activeSessionID = snapshot.activeSessionID
     }
 
-    /// 1 ペイン分の状態を適用
-    private func applyPane(_ snapshot: PaneSnapshot, to pane: Pane) {
-        pane.tabs = snapshot.tabs
-        let clamped = max(0, min(snapshot.activeIndex, pane.tabs.count - 1))
-        pane.activeIndex = pane.tabs.isEmpty ? 0 : clamped
+    /// Codable 型から LayoutNode ツリーを復元する (id を保持して autosaveName 整合を取る)
+    private func buildLayoutNode(from snapshot: LayoutNodeSnapshot) -> LayoutNode {
+        switch snapshot {
+        case .leaf(let id, let paneSnapshot):
+            let pane = Pane(tabs: paneSnapshot.tabs, activeIndex: paneSnapshot.activeIndex)
+            return LayoutNode(id: id, value: .leaf(pane))
+        case .split(let id, let axisRaw, let childrenSnapshot):
+            let axis = LayoutNode.Axis(rawValue: axisRaw) ?? .horizontal
+            let children = childrenSnapshot.map { buildLayoutNode(from: $0) }
+            return LayoutNode(id: id, value: .split(axis: axis, children: children))
+        }
     }
 }
