@@ -39,7 +39,7 @@ final class LayoutConfig {
         self.topLeft    = Pane(tabs: [SessionID(.filer)])
         self.bottomLeft = Pane(tabs: [SessionID(.skills), SessionID(.commands), SessionID(.mcps)])
         self.center     = Pane(tabs: [SessionID(.terminal)])
-        self.right      = Pane(tabs: [SessionID(.web), SessionID(.preview)])
+        self.right      = Pane(tabs: [SessionID(.web)])
     }
 
     /// 全 Pane の配列 (Session ID 一意化のため横断的に参照する)

@@ -53,11 +53,31 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
         outlineView.style = .sourceList
         outlineView.allowsMultipleSelection = false
         outlineView.indentationPerLevel = 14
+        // ダブルクリックで Preview Session を新規作成
+        outlineView.target = self
+        outlineView.doubleAction = #selector(handleDoubleClick)
 
         scrollView.documentView = outlineView
         scrollView.hasVerticalScroller = true
         scrollView.drawsBackground = false
         self.view = scrollView
+    }
+
+    /// NSOutlineView のダブルクリックハンドラ: ファイルなら新しい Preview を開く
+    @objc private func handleDoubleClick() {
+        let row = outlineView.clickedRow
+        guard row >= 0,
+              let node = outlineView.item(atRow: row) as? FileTreeNode else { return }
+        if node.isDirectory {
+            // ディレクトリは展開/折りたたみをトグル
+            if outlineView.isItemExpanded(node) {
+                outlineView.collapseItem(node)
+            } else {
+                outlineView.expandItem(node)
+            }
+            return
+        }
+        owner?.registry?.openPreview(for: node.url)
     }
 
     /// ルートディレクトリを WorkspaceState から取得して再読み込みする
@@ -191,9 +211,5 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
             return
         }
         owner?.selectedFile = node.url
-        // Filer はシングルトン前提なので instance: 0 を自分の ID とする
-        owner?.registry?.activeSessionID = SessionID(.filer, instance: 0)
-        // アクティブな Session に転送 (Preview ならそこに表示される)
-        owner?.registry?.openInActiveSession(node.url)
     }
 }

@@ -17,7 +17,7 @@ struct AideaApp: App {
     init() {
         let ws = WorkspaceState()
         let lay = LayoutConfig()
-        let reg = SessionRegistry(workspace: ws)
+        let reg = SessionRegistry(workspace: ws, layout: lay)
         // 初期のアクティブ Session は左上ペインの先頭タブ
         reg.activeSessionID = lay.topLeft.activeSessionID
         _workspace = State(initialValue: ws)
