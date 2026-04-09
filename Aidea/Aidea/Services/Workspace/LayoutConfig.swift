@@ -26,30 +26,88 @@ final class Pane: Identifiable {
     }
 }
 
-/// 4 ペイン固定レイアウトでの Pane 集合。
-/// Phase 2 で動的な LayoutTree に置き換える予定。
+/// 動的ペイン構成。`root` は LayoutNode ツリーで、leaf が Pane を保持する。
 @Observable
 final class LayoutConfig {
-    let topLeft: Pane
-    let bottomLeft: Pane
-    let center: Pane
-    let right: Pane
+    /// レイアウトツリーのルート
+    var root: LayoutNode
 
     init() {
-        self.topLeft    = Pane(tabs: [SessionID(.filer)])
-        self.bottomLeft = Pane(tabs: [SessionID(.kit)])
-        self.center     = Pane(tabs: [SessionID(.terminal)])
-        self.right      = Pane(tabs: [SessionID(.web)])
+        self.root = Self.defaultRoot()
     }
 
-    /// 全 Pane の配列 (Session ID 一意化のため横断的に参照する)
-    var allPanes: [Pane] { [topLeft, bottomLeft, center, right] }
+    init(root: LayoutNode) {
+        self.root = root
+    }
 
-    /// 指定 tool の新しい Session インスタンス番号を採番する (全ペイン横断で未使用の最小値)
+    /// 既定の 4 ペインレイアウトを構築する
+    static func defaultRoot() -> LayoutNode {
+        let topLeft = LayoutNode(value: .leaf(Pane(tabs: [SessionID(.filer)])))
+        let bottomLeft = LayoutNode(value: .leaf(Pane(tabs: [SessionID(.kit)])))
+        let left = LayoutNode(value: .split(axis: .vertical, children: [topLeft, bottomLeft]))
+        let center = LayoutNode(value: .leaf(Pane(tabs: [SessionID(.terminal)])))
+        let right = LayoutNode(value: .leaf(Pane(tabs: [SessionID(.web)])))
+        return LayoutNode(value: .split(axis: .horizontal, children: [left, center, right]))
+    }
+
+    /// 全 Pane の配列 (Tool インスタンス番号採番などで横断的に参照)
+    var allPanes: [Pane] { root.collectPanes() }
+
+    /// 全 leaf LayoutNode の配列
+    var allLeafNodes: [LayoutNode] { root.collectLeafNodes() }
+
+    /// 指定 tool の新しい Session インスタンス番号を採番する
     func nextSessionInstance(of tool: Tool) -> Int {
         let used = Set(allPanes.flatMap { $0.tabs }.filter { $0.tool == tool }.map { $0.instance })
         var instance = 0
         while used.contains(instance) { instance += 1 }
         return instance
+    }
+
+    /// 指定の leaf ノードを分割する。`target` を新しい split ノードで置き換え、
+    /// 既存のペインと空の新ペイン (Terminal) を並べる。
+    func splitLeaf(_ target: LayoutNode, axis: LayoutNode.Axis) {
+        guard case .leaf(let existingPane) = target.value else { return }
+        // 新しい空ペイン: とりあえず Terminal を 1 つ置く (インスタンスは採番)
+        let newInstance = nextSessionInstance(of: .terminal)
+        let newPane = Pane(tabs: [SessionID(.terminal, instance: newInstance)])
+        let keptLeaf = LayoutNode(value: .leaf(existingPane))
+        let newLeaf = LayoutNode(value: .leaf(newPane))
+        // target のノード値を split に差し替え (id は維持)
+        target.value = .split(axis: axis, children: [keptLeaf, newLeaf])
+    }
+
+    /// 指定の leaf ノードを削除する。親 split の子が 1 つ残った場合は
+    /// その親 split を折りたたんで単一 leaf に置き換える。
+    /// ルート自身が leaf の場合は何もしない (最後のペインは残す)。
+    func removeLeaf(_ target: LayoutNode) {
+        if root.id == target.id {
+            return
+        }
+        _ = removeFromTree(target: target, in: root)
+    }
+
+    /// 再帰的に target を親 split から取り除く。取り除いた場合 true。
+    @discardableResult
+    private func removeFromTree(target: LayoutNode, in node: LayoutNode) -> Bool {
+        guard case .split(let axis, var children) = node.value else {
+            return false
+        }
+        if let index = children.firstIndex(where: { $0.id == target.id }) {
+            children.remove(at: index)
+            if children.count == 1 {
+                // 親 split の子が 1 つだけ → 親を子の値で置き換える
+                node.value = children[0].value
+            } else {
+                node.value = .split(axis: axis, children: children)
+            }
+            return true
+        }
+        for child in children {
+            if removeFromTree(target: target, in: child) {
+                return true
+            }
+        }
+        return false
     }
 }

@@ -26,7 +26,7 @@ struct AideaApp: App {
         if let snapshot = manager.load() {
             manager.apply(snapshot, to: lay, registry: reg)
         } else {
-            reg.activeSessionID = lay.topLeft.activeSessionID
+            reg.activeSessionID = lay.allPanes.first?.activeSessionID
         }
 
         _workspace = State(initialValue: ws)

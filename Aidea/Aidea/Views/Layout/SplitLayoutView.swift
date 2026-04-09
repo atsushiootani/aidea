@@ -6,75 +6,71 @@
 import SwiftUI
 import AppKit
 
-/// 4 ペインレイアウトを NSSplitViewController で構築するラッパ。
-///
-/// HSplitView / VSplitView ではペイン幅を API 経由で保存・復元できないため、
-/// 代わりに NSSplitView の `autosaveName` を使ってディバイダ位置を
-/// UserDefaults に自動保存する。
-///
-/// 階層:
-/// ```
-/// 水平分割 (Aidea.splitMain) : left | center | right
-///   └ 垂直分割 (Aidea.splitLeft) : topLeft / bottomLeft
-/// ```
+/// LayoutConfig のツリーを再帰的に NSSplitViewController に展開するラッパ。
+/// ツリーが変わるたびに root controller を差し替えて反映する。
 struct SplitLayoutView: NSViewControllerRepresentable {
     let layout: LayoutConfig
     let workspace: WorkspaceState
     let registry: SessionRegistry
 
-    func makeNSViewController(context: Context) -> NSSplitViewController {
-        // --- 左カラム (上下分割) ---
-        let leftSplit = NSSplitViewController()
-        leftSplit.splitView.isVertical = false // 水平ディバイダで上下に分ける
-        leftSplit.splitView.dividerStyle = .thin
-        leftSplit.splitView.autosaveName = "Aidea.splitLeft"
-
-        let topLeftItem = NSSplitViewItem(viewController: hosting(pane: layout.topLeft))
-        topLeftItem.minimumThickness = 150
-        topLeftItem.canCollapse = false
-
-        let bottomLeftItem = NSSplitViewItem(viewController: hosting(pane: layout.bottomLeft))
-        bottomLeftItem.minimumThickness = 150
-        bottomLeftItem.canCollapse = false
-
-        leftSplit.addSplitViewItem(topLeftItem)
-        leftSplit.addSplitViewItem(bottomLeftItem)
-
-        // --- メイン (水平分割: left | center | right) ---
-        let main = NSSplitViewController()
-        main.splitView.isVertical = true // 垂直ディバイダで左右に分ける
-        main.splitView.dividerStyle = .thin
-        main.splitView.autosaveName = "Aidea.splitMain"
-
-        let leftItem = NSSplitViewItem(viewController: leftSplit)
-        leftItem.minimumThickness = 220
-        leftItem.canCollapse = false
-
-        let centerItem = NSSplitViewItem(viewController: hosting(pane: layout.center))
-        centerItem.minimumThickness = 400
-        centerItem.canCollapse = false
-
-        let rightItem = NSSplitViewItem(viewController: hosting(pane: layout.right))
-        rightItem.minimumThickness = 300
-        rightItem.canCollapse = false
-
-        main.addSplitViewItem(leftItem)
-        main.addSplitViewItem(centerItem)
-        main.addSplitViewItem(rightItem)
-
-        return main
+    func makeNSViewController(context: Context) -> LayoutContainerViewController {
+        let container = LayoutContainerViewController()
+        container.childController = buildController(for: layout.root)
+        context.coordinator.lastSignature = Self.signature(of: layout.root)
+        return container
     }
 
-    func updateNSViewController(_ controller: NSSplitViewController, context: Context) {
-        // Pane は参照型でタブ等の変更は @Observable で追跡されるため、再構築不要
+    func updateNSViewController(_ container: LayoutContainerViewController, context: Context) {
+        // ツリー構造が変化したら再構築 (divider 位置は autosaveName 経由で復元される)
+        let newSignature = Self.signature(of: layout.root)
+        if context.coordinator.lastSignature != newSignature {
+            container.childController = buildController(for: layout.root)
+            context.coordinator.lastSignature = newSignature
+        }
     }
 
-    /// 1 ペイン分の SwiftUI View を NSHostingController に包む
-    private func hosting(pane: Pane) -> NSViewController {
-        let root = PaneView(pane: pane)
-            .environment(workspace)
-            .environment(registry)
-            .environment(layout)
-        return NSHostingController(rootView: root)
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    final class Coordinator {
+        var lastSignature: String = ""
+    }
+
+    /// ツリー構造を識別する文字列 (差分検知用)。
+    /// 構造が同じなら再構築をスキップできる。
+    private static func signature(of node: LayoutNode) -> String {
+        switch node.value {
+        case .leaf(let pane):
+            return "L[\(pane.id.uuidString)]"
+        case .split(let axis, let children):
+            let parts = children.map { signature(of: $0) }.joined(separator: ",")
+            return "S[\(node.id.uuidString):\(axis.rawValue):\(parts)]"
+        }
+    }
+
+    /// LayoutNode から再帰的に NSViewController を構築する
+    private func buildController(for node: LayoutNode) -> NSViewController {
+        switch node.value {
+        case .leaf(let pane):
+            let root = PaneView(pane: pane, layoutNode: node)
+                .environment(workspace)
+                .environment(registry)
+                .environment(layout)
+            return NSHostingController(rootView: root)
+
+        case .split(let axis, let children):
+            let splitVC = NSSplitViewController()
+            // axis.horizontal = 左右分割 = 垂直ディバイダ = isVertical: true
+            splitVC.splitView.isVertical = (axis == .horizontal)
+            splitVC.splitView.dividerStyle = .thin
+            splitVC.splitView.autosaveName = "Aidea.split.\(node.id.uuidString)"
+
+            for child in children {
+                let item = NSSplitViewItem(viewController: buildController(for: child))
+                item.minimumThickness = 200
+                item.canCollapse = false
+                splitVC.addSplitViewItem(item)
+            }
+            return splitVC
+        }
     }
 }

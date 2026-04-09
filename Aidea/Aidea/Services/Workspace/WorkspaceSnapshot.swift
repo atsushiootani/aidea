@@ -9,9 +9,10 @@ import Foundation
 /// `workspace.json` にシリアライズされ、起動時に復元される。
 struct WorkspaceSnapshot: Codable {
     /// スナップショットフォーマットのバージョン (将来のマイグレーション用)
+    /// v2: レイアウトを LayoutNode ツリーで保存する形式
     let version: Int
-    /// 4 ペインの構成
-    let layout: LayoutSnapshot
+    /// レイアウトツリーのルートノード
+    let layoutRoot: LayoutNodeSnapshot
     /// Preview Session の状態一覧
     let previews: [PreviewSnapshot]
     /// Web Session の状態一覧
@@ -24,12 +25,10 @@ struct WorkspaceSnapshot: Codable {
     let activeSessionID: SessionID?
 }
 
-/// 4 ペインのタブ構成
-struct LayoutSnapshot: Codable {
-    let topLeft: PaneSnapshot
-    let bottomLeft: PaneSnapshot
-    let center: PaneSnapshot
-    let right: PaneSnapshot
+/// LayoutNode ツリーの永続化用表現 (再帰 enum)
+indirect enum LayoutNodeSnapshot: Codable {
+    case leaf(id: UUID, pane: PaneSnapshot)
+    case split(id: UUID, axis: String, children: [LayoutNodeSnapshot])
 }
 
 /// 1 ペインの中身
