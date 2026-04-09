@@ -33,6 +33,44 @@ macOS ネイティブの個人用 AI コーディングワークスペース。�
 
 ## 2. スコープ (Scope)
 
+### 概念モデル (Phase 1 で導入)
+
+```
+Window
+ └─ Pane (リサイズ可能な物理区画。HSplitView/VSplitView でツリー状)
+     └─ Tool (機能の論理単位。1ペインに複数Tool=タブで持てる)
+```
+
+- **Window**: アプリの 1 ウィンドウ
+- **Pane**: 物理的な区画。境界をドラッグでリサイズ可
+- **Tool**: 機能の論理単位 (Filer / Skills / Commands / MCPs / Terminal / Web / Preview など)
+- **ToolID**: Tool を一意に識別するキー。`<kind>:<instanceID>` 形式 (Phase 5 でマルチインスタンス対応)
+- **Layout**: 「どのペインにどの Tool が入っているか」のツリー構造
+- **ToolState**: Tool ごとの内部状態 (展開フォルダ・選択ファイル・URL など)。
+  ペイン移動で失われない / 起動時に復元される
+
+### Tool 一覧と内部状態の保持方針
+
+| ID | 名前 | 復元する内部状態 |
+|---|---|---|
+| `filer` | ファイラ | 展開フォルダ集合・選択ファイル |
+| `skills` | Skills | 選択中 Skill・グループ開閉状態 |
+| `commands` | Commands | 選択中 Command・グループ開閉状態 |
+| `mcps` | MCPs | 選択中 MCP |
+| `terminal` | ターミナル | (保持しない — PTY を毎回新規起動) |
+| `web` | Web | URL のみ (スクロール位置は諦める) |
+| `preview` | Preview | プレビュー中ファイル (filer.selectedFile と連動) |
+
+### Phase ロードマップ
+
+| Phase | 内容 | 状態 |
+|---|---|---|
+| 1 | Tool 概念導入。既存機能を Tool 化、ペイン⇄Tool マッピング、ToolState 切り出し。レイアウトは 4 ペイン固定 | 実装中 |
+| 2 | 動的レイアウト (LayoutNode によるツリー構造、ペイン分割/統合 API) | 未着手 |
+| 3 | Tool タブのドラッグ&ドロップ (端ドロップで分割、中央ドロップでタブ追加) | 未着手 |
+| 4 | レイアウトと ToolState の永続化 (`workspace.json`) | 未着手 |
+| 5 | Tool マルチインスタンス (`terminal:1` `terminal:2` 等) | 未着手 |
+
 ### MVP に含むもの
 | # | 機能 | 完了条件 |
 |---|---|---|
@@ -104,25 +142,36 @@ Aidea/
 │   └─ AideaApp.swift              // @main エントリポイント
 │
 ├─ Views/
-│   ├─ ContentView.swift           // ルート (4 ペイン分割)
-│   ├─ Sidebar/
-│   │   ├─ FileTreeView.swift      // NSOutlineView ラッパ (左上ペイン)
-│   │   ├─ SkillsListView.swift
-│   │   ├─ CommandsListView.swift
-│   │   └─ McpListView.swift
-│   ├─ Main/
-│   │   └─ TerminalView.swift      // SwiftTerm を NSViewRepresentable でラップ
-│   └─ RightPanel/
-│       ├─ WebView.swift           // WKWebView を NSViewRepresentable でラップ
-│       └─ FilePreviewView.swift   // 選択ファイルの内蔵プレビュー (テキスト/画像)
+│   ├─ Layout/
+│   │   ├─ ContentView.swift       // ルート (4 ペイン分割)
+│   │   ├─ PaneView.swift          // 1 ペインの容器 (タブヘッダ + 中身)
+│   │   └─ EmptyStateView.swift    // projectRoot 未設定時
+│   ├─ Tools/
+│   │   ├─ Filer/FilerToolView.swift
+│   │   ├─ Skills/SkillsToolView.swift
+│   │   ├─ Commands/CommandsToolView.swift
+│   │   ├─ Mcps/McpsToolView.swift
+│   │   ├─ Terminal/TerminalToolView.swift
+│   │   ├─ Web/WebToolView.swift
+│   │   └─ Preview/PreviewToolView.swift
+│   └─ Common/
+│       ├─ ScopeTagView.swift
+│       └─ TriangleDisclosureStyle.swift
+│
+├─ Tools/
+│   ├─ Tool.swift                  // ToolKind enum, ToolID, factory プロトコル
+│   └─ ToolRegistry.swift          // ToolKind → ToolState 取得 / View 生成
 │
 ├─ Services/
-│   ├─ WorkspaceState.swift        // projectRoot などのアプリ全体の状態
-│   ├─ SkillsLoader.swift          // <project>/.claude/skills/*/SKILL.md と ~/.claude/skills/ 走査
-│   ├─ CommandsLoader.swift        // 同上 commands
-│   ├─ McpLoader.swift             // ~/.claude.json 等のパース
-│   ├─ FileTreeLoader.swift        // ディレクトリ走査 (遅延読み込み対応)
-│   └─ FileWatcher.swift           // FSEventStream ラッパ
+│   ├─ Workspace/
+│   │   ├─ WorkspaceState.swift    // projectRoot, layout, selectedFile
+│   │   └─ LayoutConfig.swift      // ペイン⇄Tool マッピング (Phase 1 は 4 ペイン固定)
+│   ├─ Filer/
+│   │   ├─ FileTreeLoader.swift
+│   │   └─ FileWatcher.swift
+│   ├─ Skills/SkillsLoader.swift
+│   ├─ Commands/CommandsLoader.swift
+│   └─ Mcps/McpLoader.swift
 │
 ├─ Models/
 │   ├─ Skill.swift
@@ -233,3 +282,4 @@ Aidea/
 - 2026-04-08: サポート OS を macOS 15 (Sequoia) 以上に変更
 - 2026-04-08: ファイラ機能と動的 projectRoot を MVP に追加 (4 ペイン構成へ更新)
 - 2026-04-08: ファイラ機能 / WorkspaceState / FilePreviewView の実装完了 (ADR 0009 参照)
+- 2026-04-08: Tool 概念モデルを導入 (Phase 1)。Models/Services をツール別サブディレクトリに再編。Phase ロードマップ追加

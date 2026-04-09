@@ -1,25 +1,23 @@
 //
-//  FileTreeView.swift
+//  FilerSessionView.swift
 //  Aidea
 //
 
 import SwiftUI
 import AppKit
 
-/// プロジェクトルート配下のファイルツリーを NSOutlineView で表示する View。
-/// SwiftUI からは NSViewControllerRepresentable 経由で利用する。
-struct FileTreeView: NSViewControllerRepresentable {
+/// Filer Session の SwiftUI ラッパ。FilerSessionState が保持する NSViewController を再利用する。
+struct FilerSessionView: NSViewControllerRepresentable {
+    let state: FilerSessionState
     @Environment(WorkspaceState.self) private var workspace
 
     func makeNSViewController(context: Context) -> FileTreeViewController {
-        let vc = FileTreeViewController()
-        vc.workspace = workspace
-        vc.reload()
-        return vc
+        state.controller.workspace = workspace
+        state.controller.reload()
+        return state.controller
     }
 
     func updateNSViewController(_ vc: FileTreeViewController, context: Context) {
-        // projectRoot が変わっていたら全リロード
         if vc.currentRoot != workspace.projectRoot {
             vc.reload()
         }
@@ -29,6 +27,8 @@ struct FileTreeView: NSViewControllerRepresentable {
 /// NSOutlineView を保持する NSViewController。データソース・デリゲート・ファイル監視を兼ねる。
 final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, NSOutlineViewDelegate {
     var workspace: WorkspaceState?
+    /// この Controller を所有する FilerSessionState (選択ファイルの書き戻し先)
+    weak var owner: FilerSessionState?
     /// 現在表示中のルート (差分検知用)
     var currentRoot: URL?
 
@@ -36,9 +36,7 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
     private let scrollView = NSScrollView()
     private let watcher = FileWatcher()
     private var rootNodes: [FileTreeNode] = []
-    /// FSEvents 通知のデバウンス用
     private var reloadWorkItem: DispatchWorkItem?
-    /// 監視対象から除外するディレクトリ名 (頻繁に書き換わるため)
     private static let excludedDirs: Set<String> = [".git", "node_modules", ".DS_Store", "DerivedData", ".build"]
 
     /// View 階層を構築する
@@ -74,15 +72,12 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
         currentRoot = root
         rootNodes = FileTreeLoader.load(directory: root).filter { !Self.excludedDirs.contains($0.name) }
         outlineView.reloadData()
-        // FSEvents 監視を張り直す。除外ディレクトリ配下の通知は無視する。
         watcher.start(path: root.path) { [weak self] paths in
             guard let self = self else { return }
-            // 除外パスのみの通知ならスキップ
             let relevant = paths.filter { path in
                 !Self.excludedDirs.contains(where: { path.contains("/\($0)/") || path.hasSuffix("/\($0)") })
             }
             if relevant.isEmpty { return }
-            // デバウンス: 200ms 待って連続変更をまとめる
             self.reloadWorkItem?.cancel()
             let work = DispatchWorkItem { [weak self] in
                 self?.handleFileSystemChange()
@@ -92,7 +87,7 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
         }
     }
 
-    /// FSEvents 通知を受けたときの処理。展開済みノードの子だけを差分なく再読み込みする。
+    /// FSEvents 通知を受けたときの処理
     private func handleFileSystemChange() {
         guard let root = currentRoot else { return }
         let expandedURLs = collectExpandedURLs()
@@ -195,6 +190,10 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
               !node.isDirectory else {
             return
         }
-        workspace?.selectedFile = node.url
+        owner?.selectedFile = node.url
+        // Filer はシングルトン前提なので instance: 0 を自分の ID とする
+        owner?.registry?.activeSessionID = SessionID(.filer, instance: 0)
+        // アクティブな Session に転送 (Preview ならそこに表示される)
+        owner?.registry?.openInActiveSession(node.url)
     }
 }

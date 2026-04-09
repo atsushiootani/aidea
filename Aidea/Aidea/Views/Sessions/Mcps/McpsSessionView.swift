@@ -1,17 +1,16 @@
 //
-//  McpListView.swift
+//  McpsSessionView.swift
 //  Aidea
 //
 
 import SwiftUI
 
-/// `~/.claude.json` の mcpServers 一覧をサイドバーに表示する View。
-struct McpListView: View {
-    @State private var loader = McpLoader()
-    @State private var selection: McpServer.ID?
+/// MCPs Session の SwiftUI View。McpsSessionState を参照する。
+struct McpsSessionView: View {
+    @Bindable var state: McpsSessionState
 
     var body: some View {
-        List(loader.servers, selection: $selection) { server in
+        List(state.loader.servers, selection: $state.selection) { server in
             VStack(alignment: .leading, spacing: 2) {
                 Text(server.name).font(.headline)
                 Text("\(server.command) \(server.args.joined(separator: " "))")
@@ -21,6 +20,6 @@ struct McpListView: View {
             }
             .tag(server.id)
         }
-        .onAppear { loader.reload() }
+        .onAppear { state.loader.reload() }
     }
 }

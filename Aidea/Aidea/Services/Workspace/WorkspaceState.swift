@@ -6,15 +6,12 @@
 import Foundation
 import Observation
 
-/// アプリ全体のワークスペース状態を保持する Observable オブジェクト。
-/// projectRoot / selectedFile を変更すると関連 View が自動更新される。
+/// アプリ全体のワークスペース状態。Phase 1 では projectRoot のみを集中管理する。
+/// 選択ファイルなどの "ツール固有の状態" は各 ToolState に置き、ここには持たない。
 @Observable
 final class WorkspaceState {
     /// 現在開いているプロジェクトのルートディレクトリ
     var projectRoot: URL?
-
-    /// ファイラで選択中のファイル (右ペイン Preview に表示する対象)
-    var selectedFile: URL?
 
     private static let projectRootKey = "aidea.projectRoot"
 
@@ -29,7 +26,6 @@ final class WorkspaceState {
     /// projectRoot を更新して UserDefaults にも保存する
     func setProjectRoot(_ url: URL) {
         self.projectRoot = url
-        self.selectedFile = nil
         UserDefaults.standard.set(url.path, forKey: Self.projectRootKey)
     }
 }

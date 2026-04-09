@@ -5,30 +5,29 @@
 
 import SwiftUI
 
-/// アプリのルート View。4 ペイン構成:
-///   左上 = ファイラ / 左下 = Skills/Commands/MCPs
-///   中央 = ターミナル
-///   右   = WebView + ファイルプレビュー切替
+/// アプリのルート View。4 ペイン構成 (Phase 1: ペイン位置は固定、各ペインは複数 Tab を持てる)。
 struct ContentView: View {
     @Environment(WorkspaceState.self) private var workspace
+    @Environment(SessionRegistry.self) private var registry
+    @Environment(LayoutConfig.self) private var layout
 
     var body: some View {
         Group {
             if let root = workspace.projectRoot {
                 HSplitView {
                     VSplitView {
-                        FileTreeView()
+                        PaneView(pane: layout.topLeft)
                             .frame(minHeight: 150, idealHeight: 300)
-                        SidebarTabsView()
+                        PaneView(pane: layout.bottomLeft)
                             .frame(minHeight: 150, idealHeight: 300)
                     }
                     .frame(minWidth: 220, idealWidth: 300)
 
-                    TerminalView(projectRoot: root)
+                    PaneView(pane: layout.center)
                         .id(root)
                         .frame(minWidth: 400, idealWidth: 600)
 
-                    RightPaneView()
+                    PaneView(pane: layout.right)
                         .frame(minWidth: 300, idealWidth: 500)
                 }
                 .frame(minWidth: 1100, minHeight: 600)
@@ -55,9 +54,4 @@ struct ContentView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
-}
-
-#Preview {
-    ContentView()
-        .environment(WorkspaceState())
 }

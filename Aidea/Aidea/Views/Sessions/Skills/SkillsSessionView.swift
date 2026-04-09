@@ -1,20 +1,18 @@
 //
-//  SkillsListView.swift
+//  SkillsSessionView.swift
 //  Aidea
 //
 
 import SwiftUI
 
-/// `~/.claude/skills/` と `<projectRoot>/.claude/skills/` の Skill 一覧を表示する View。
-struct SkillsListView: View {
+/// Skills Session の SwiftUI View。SkillsSessionState を参照する。
+struct SkillsSessionView: View {
+    @Bindable var state: SkillsSessionState
     @Environment(WorkspaceState.self) private var workspace
-    @State private var loader = SkillsLoader()
-    @State private var selection: Skill.ID?
-    @State private var expanded: Set<String> = []
 
-    /// Skill 一覧を `<prefix>` (ピリオド/ハイフン区切りの先頭) でグループ化したリスト。
+    /// Skill 一覧をピリオド/ハイフン区切りでグループ化したリスト。
     private var groups: [(key: String, items: [Skill])] {
-        let dict = Dictionary(grouping: loader.skills) { skill -> String in
+        let dict = Dictionary(grouping: state.loader.skills) { skill -> String in
             let name = skill.name
             let separators: Set<Character> = [".", "-"]
             if let idx = name.firstIndex(where: { separators.contains($0) }) {
@@ -27,17 +25,17 @@ struct SkillsListView: View {
     }
 
     var body: some View {
-        List(selection: $selection) {
+        List(selection: $state.selection) {
             ForEach(groups, id: \.key) { group in
                 if group.items.count == 1, group.items[0].name == group.key {
                     skillRow(group.items[0])
                 } else {
                     DisclosureGroup(
                         isExpanded: Binding(
-                            get: { expanded.contains(group.key) },
+                            get: { state.expanded.contains(group.key) },
                             set: { isOpen in
-                                if isOpen { expanded.insert(group.key) }
-                                else { expanded.remove(group.key) }
+                                if isOpen { state.expanded.insert(group.key) }
+                                else { state.expanded.remove(group.key) }
                             }
                         )
                     ) {
@@ -45,16 +43,15 @@ struct SkillsListView: View {
                             skillRow(skill)
                         }
                     } label: {
-                        Text(group.key)
-                            .font(.headline)
+                        Text(group.key).font(.headline)
                     }
                     .disclosureGroupStyle(TriangleDisclosureStyle())
                 }
             }
         }
-        .onAppear { loader.reload(projectRoot: workspace.projectRoot) }
+        .onAppear { state.loader.reload(projectRoot: workspace.projectRoot) }
         .onChange(of: workspace.projectRoot) { _, newValue in
-            loader.reload(projectRoot: newValue)
+            state.loader.reload(projectRoot: newValue)
         }
     }
 
