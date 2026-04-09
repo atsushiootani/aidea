@@ -7,8 +7,9 @@ import SwiftUI
 import WebKit
 
 /// drawio ファイルを静的に表示する WKWebView ラッパ。
-/// NSImage による SVG レンダリングは text 要素が欠落するため、WebKit の本物の
-/// SVG レンダラを使って完全なフォント・スタイル再現を行う。
+///
+/// - `.drawio.svg`: SVG を inline で HTML に埋め込んで WebKit に描画させる
+/// - `.drawio` (純 XML): drawio embed を `chrome=0` でロードし、postMessage 経由で XML をロード
 struct DrawioStaticView: NSViewRepresentable {
     let url: URL
     /// 親から reload を促すためのトリガ値 (保存後に変化させる)
@@ -16,18 +17,24 @@ struct DrawioStaticView: NSViewRepresentable {
 
     func makeNSView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
+        // .drawio (純 XML) のとき drawio からのメッセージを受信する用
+        let controller = WKUserContentController()
+        controller.add(context.coordinator, name: "drawio")
+        config.userContentController = controller
+
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.setValue(false, forKey: "drawsBackground")
         webView.isInspectable = true
-        loadDrawio(into: webView)
+        context.coordinator.webView = webView
+
+        loadDrawio(into: webView, coordinator: context.coordinator)
         return webView
     }
 
     func updateNSView(_ nsView: WKWebView, context: Context) {
-        // URL 変更または保存後の reloadTick 変化で再ロード
         if context.coordinator.lastLoadedURL != url
             || context.coordinator.lastReloadTick != reloadTick {
-            loadDrawio(into: nsView)
+            loadDrawio(into: nsView, coordinator: context.coordinator)
             context.coordinator.lastLoadedURL = url
             context.coordinator.lastReloadTick = reloadTick
         }
@@ -35,31 +42,28 @@ struct DrawioStaticView: NSViewRepresentable {
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
-    /// .drawio.svg はファイル内容を inline SVG として HTML に埋め込んで表示する。
-    /// `<img src="...">` 経由だと WKWebView の baseURL + loadHTMLString の制限で
-    /// ローカルファイルが読めないため、SVG 文字列を直接本文に入れる方式を取る。
-    private func loadDrawio(into webView: WKWebView) {
+    /// ファイル種別に応じた読み込みパスを実行する
+    private func loadDrawio(into webView: WKWebView, coordinator: Coordinator) {
         let name = url.lastPathComponent.lowercased()
+        let contents = (try? String(contentsOf: url, encoding: .utf8)) ?? ""
+
         if name.hasSuffix(".drawio.svg") {
-            let svg = (try? String(contentsOf: url, encoding: .utf8)) ?? ""
-            let html = Self.wrapperHTML(inlineSVG: svg)
+            // SVG はそのまま inline で表示できる
+            let html = Self.svgWrapperHTML(inlineSVG: contents)
+            coordinator.pendingXML = nil
             webView.loadHTMLString(html, baseURL: nil)
         } else {
-            // .drawio (純 XML) は現状プレビュー非対応 (Phase 2)
-            let message = """
-            <!DOCTYPE html>
-            <html><body style="margin:0;padding:20px;background:#1e1e1e;color:#aaa;\
-            font-family:-apple-system,sans-serif;font-size:12px;">\
-            .drawio (純 XML) のプレビューはまだサポートされていません。<br>\
-            Edit ボタンでエディタを開いて確認してください。\
-            </body></html>
-            """
-            webView.loadHTMLString(message, baseURL: nil)
+            // 純 XML は drawio embed (chrome=0) を読み込んで postMessage でロード
+            coordinator.pendingXML = contents
+            let html = Self.embedViewerHTML
+            webView.loadHTMLString(html, baseURL: URL(string: "https://embed.diagrams.net/"))
         }
     }
 
-    /// SVG を中央配置・アスペクト維持で表示する HTML ラッパ (inline SVG 埋め込み)
-    private static func wrapperHTML(inlineSVG: String) -> String {
+    // MARK: - HTML templates
+
+    /// SVG 文字列を中央配置で表示する HTML
+    private static func svgWrapperHTML(inlineSVG: String) -> String {
         """
         <!DOCTYPE html>
         <html>
@@ -90,9 +94,80 @@ struct DrawioStaticView: NSViewRepresentable {
         """
     }
 
-    /// 最後にロードした URL / reloadTick を記録する Coordinator
-    final class Coordinator {
+    /// drawio embed (編集 UI なし) を iframe でホストする HTML。
+    /// `chrome=0` で編集ツールバーを非表示にし、純粋な viewer として動作させる。
+    private static let embedViewerHTML: String = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <style>
+            html, body { margin: 0; padding: 0; height: 100%; background: #1e1e1e; }
+            iframe { width: 100%; height: 100%; border: 0; display: block; }
+        </style>
+    </head>
+    <body>
+        <iframe id="drawioFrame"
+                src="https://embed.diagrams.net/?embed=1&ui=dark&proto=json&chrome=0&nav=1">
+        </iframe>
+        <script>
+            const frame = document.getElementById("drawioFrame");
+            window.addEventListener("message", function(e) {
+                if (e.source !== frame.contentWindow) return;
+                if (typeof e.data === "string") {
+                    window.webkit.messageHandlers.drawio.postMessage(e.data);
+                }
+            });
+            window.sendToDrawio = function(jsonString) {
+                frame.contentWindow.postMessage(jsonString, "*");
+            };
+        </script>
+    </body>
+    </html>
+    """
+
+    /// .drawio (純 XML) ロード時の状態を保持する Coordinator
+    final class Coordinator: NSObject, WKScriptMessageHandler {
         var lastLoadedURL: URL?
         var lastReloadTick: Int = -1
+        weak var webView: WKWebView?
+        /// embed viewer 経由でロードする XML (init イベント受信時に送信する)
+        var pendingXML: String?
+
+        func userContentController(
+            _ userContentController: WKUserContentController,
+            didReceive message: WKScriptMessage
+        ) {
+            guard let body = message.body as? String,
+                  let data = body.data(using: .utf8),
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let event = json["event"] as? String else {
+                return
+            }
+            // drawio embed の準備完了 → pending XML をロードさせる
+            if event == "init", let xml = pendingXML {
+                sendLoad(xml: xml)
+            }
+        }
+
+        /// drawio embed に load アクションを送る
+        private func sendLoad(xml: String) {
+            let payload: [String: Any] = [
+                "action": "load",
+                "xml": xml,
+                "autosave": 0
+            ]
+            guard let data = try? JSONSerialization.data(withJSONObject: payload),
+                  let jsonString = String(data: data, encoding: .utf8) else { return }
+            let escaped = jsonString
+                .replacingOccurrences(of: "\\", with: "\\\\")
+                .replacingOccurrences(of: "'", with: "\\'")
+                .replacingOccurrences(of: "\n", with: "\\n")
+                .replacingOccurrences(of: "\r", with: "")
+            let js = "window.sendToDrawio('\(escaped)');"
+            DispatchQueue.main.async { [weak self] in
+                self?.webView?.evaluateJavaScript(js)
+            }
+        }
     }
 }

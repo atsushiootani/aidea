@@ -10,9 +10,17 @@ import WebKit
 /// `embed.diagrams.net` を iframe でロードしたラッパ HTML を表示し、
 /// postMessage プロトコル経由で XML のロードと保存を行う。
 struct DrawioEditor: NSViewRepresentable {
+    /// drawio エクスポート形式。`xmlsvg` は SVG (.drawio.svg)、`xml` は純 XML (.drawio)。
+    enum ExportFormat: String {
+        case xmlsvg
+        case xml
+    }
+
     /// 初期ロードする drawio XML (または .drawio.svg の内容)
     let initialXML: String
-    /// 保存時に新しい .drawio.svg 形式の SVG 文字列を受け取る
+    /// drawio からの保存時に受け取る形式
+    let exportFormat: ExportFormat
+    /// 保存時に新しいファイル内容 (SVG 文字列 or XML) を受け取る
     let onSave: (String) -> Void
     /// キャンセル時に呼ばれる
     let onCancel: () -> Void
@@ -36,7 +44,12 @@ struct DrawioEditor: NSViewRepresentable {
     func updateNSView(_ nsView: WKWebView, context: Context) {}
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(initialXML: initialXML, onSave: onSave, onCancel: onCancel)
+        Coordinator(
+            initialXML: initialXML,
+            exportFormat: exportFormat,
+            onSave: onSave,
+            onCancel: onCancel
+        )
     }
 
     /// drawio embed を iframe でホストするラッパ HTML。
@@ -75,12 +88,19 @@ struct DrawioEditor: NSViewRepresentable {
     /// WKWebView と drawio 間の postMessage を仲介する Coordinator
     final class Coordinator: NSObject, WKScriptMessageHandler {
         let initialXML: String
+        let exportFormat: ExportFormat
         let onSave: (String) -> Void
         let onCancel: () -> Void
         weak var webView: WKWebView?
 
-        init(initialXML: String, onSave: @escaping (String) -> Void, onCancel: @escaping () -> Void) {
+        init(
+            initialXML: String,
+            exportFormat: ExportFormat,
+            onSave: @escaping (String) -> Void,
+            onCancel: @escaping () -> Void
+        ) {
             self.initialXML = initialXML
+            self.exportFormat = exportFormat
             self.onSave = onSave
             self.onCancel = onCancel
         }
@@ -102,8 +122,16 @@ struct DrawioEditor: NSViewRepresentable {
                 // drawio の準備完了 → 初期 XML をロードさせる
                 sendLoad(xml: initialXML)
             case "save":
-                // ユーザーが drawio で保存ボタンを押した → xmlsvg 形式でエクスポート要求
-                sendExport()
+                // ユーザーが drawio で保存ボタンを押した
+                if exportFormat == .xml {
+                    // 純 XML 形式: save イベントの xml フィールドがそのまま使える
+                    if let xml = json["xml"] as? String {
+                        onSave(xml)
+                    }
+                } else {
+                    // xmlsvg 形式: export アクションで SVG+XML の data URL を取得する
+                    sendExport()
+                }
             case "export":
                 // エクスポート完了 → data URL から SVG を取り出して onSave に渡す
                 if let dataURL = json["data"] as? String,
@@ -127,11 +155,11 @@ struct DrawioEditor: NSViewRepresentable {
             sendToDrawio(payload)
         }
 
-        /// drawio に export アクションを送る (xmlsvg 形式)
+        /// drawio に export アクションを送る
         private func sendExport() {
             let payload: [String: Any] = [
                 "action": "export",
-                "format": "xmlsvg"
+                "format": exportFormat.rawValue
             ]
             sendToDrawio(payload)
         }
