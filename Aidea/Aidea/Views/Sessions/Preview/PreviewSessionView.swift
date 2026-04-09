@@ -23,7 +23,11 @@ struct PreviewSessionView: View {
             case .loading:
                 placeholder("読み込み中...")
             case .text(let content):
-                NSTextPreview(text: content)
+                if isMarkdownURL(state.url) {
+                    MarkdownPreview(text: content)
+                } else {
+                    NSTextPreview(text: content)
+                }
             case .image(let image):
                 ScrollView([.horizontal, .vertical]) {
                     Image(nsImage: image)
@@ -88,6 +92,13 @@ struct PreviewSessionView: View {
         if loadedURL == url {
             preview = result
         }
+    }
+
+    /// 拡張子から Markdown ファイルか判定する
+    private func isMarkdownURL(_ url: URL?) -> Bool {
+        guard let url = url else { return false }
+        let ext = url.pathExtension.lowercased()
+        return ext == "md" || ext == "markdown"
     }
 
     /// 先頭 8KB に NUL バイトが含まれていればバイナリとみなす
