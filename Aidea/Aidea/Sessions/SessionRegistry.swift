@@ -45,14 +45,18 @@ final class SessionRegistry {
         return created
     }
 
-    /// Filer のダブルクリック等から呼ばれる: 新しい Preview Tab を
-    /// 「アクティブ履歴のうち、Filer とは異なるペインに属していた最新セッションのペイン」に作成する。
-    /// 該当がなければ Filer 以外の最初のペインにフォールバックする。
-    func openPreview(for url: URL) {
+    /// Filer や Kit のダブルクリック等から呼ばれる: 新しい Preview Tab を
+    /// 「呼び出し元 Session のペイン以外で、履歴上もっとも新しい Session のペイン」に作成する。
+    ///
+    /// 呼び出し元 Session は `activeSessionID` から取得される。呼び出し側は openPreview の前に
+    /// 自身を activeSessionID に設定しておくこと。
+    func openPreview(for url: URL, title: String? = nil) {
         // 既に同じファイルを開いている Preview があれば、そのタブをアクティブ化するだけ
+        // (タイトルが指定されていれば既存ステートのタイトルも更新する)
         for pane in layout.allPanes {
             for (index, id) in pane.tabs.enumerated() where id.tool == .preview {
                 if let preview = states[id] as? PreviewSessionState, preview.url == url {
+                    if let title = title { preview.title = title }
                     pane.activeIndex = index
                     activeSessionID = id
                     return
@@ -60,21 +64,22 @@ final class SessionRegistry {
             }
         }
 
-        let filerPane = layout.allPanes.first { pane in
-            pane.tabs.contains { $0.tool == .filer }
+        // 呼び出し元 Session が属するペイン (回避対象)
+        let callerPane: Pane? = activeSessionID.flatMap { id in
+            layout.allPanes.first { $0.tabs.contains(id) }
         }
-        // 履歴を新しい順にたどり、Filer のペイン以外に属していた最新 Session を探す
+        // 履歴を新しい順にたどり、callerPane 以外に属していた最新 Session を探す
         var targetPane: Pane?
         for id in activeHistory.reversed() {
             if let pane = layout.allPanes.first(where: { $0.tabs.contains(id) }),
-               pane !== filerPane {
+               pane !== callerPane {
                 targetPane = pane
                 break
             }
         }
-        // フォールバック: Filer ペイン以外の最初のペイン
+        // フォールバック: callerPane 以外の最初のペイン
         if targetPane == nil {
-            targetPane = layout.allPanes.first { $0 !== filerPane }
+            targetPane = layout.allPanes.first { $0 !== callerPane }
         }
         guard let pane = targetPane else { return }
 
@@ -82,6 +87,7 @@ final class SessionRegistry {
         let id = SessionID(.preview, instance: instance)
         let state = self.state(for: id) as! PreviewSessionState
         state.url = url
+        state.title = title
         pane.tabs.append(id)
         pane.activeIndex = pane.tabs.count - 1
         activeSessionID = id
@@ -170,9 +176,7 @@ final class SessionRegistry {
             let state = FilerSessionState(workspace: workspace)
             state.registry = self
             return state
-        case .skills:   return SkillsSessionState(workspace: workspace)
-        case .commands: return CommandsSessionState(workspace: workspace)
-        case .mcps:     return McpsSessionState()
+        case .kit:      return KitSessionState(workspace: workspace)
         case .terminal: return TerminalSessionState(workspace: workspace)
         case .web:      return WebSessionState()
         case .preview:  return PreviewSessionState()
@@ -185,9 +189,7 @@ final class SessionRegistry {
         let state = state(for: id)
         switch id.tool {
         case .filer:    FilerSessionView(state: state as! FilerSessionState)
-        case .skills:   SkillsSessionView(state: state as! SkillsSessionState)
-        case .commands: CommandsSessionView(state: state as! CommandsSessionState)
-        case .mcps:     McpsSessionView(state: state as! McpsSessionState)
+        case .kit:      KitSessionView(state: state as! KitSessionState, sessionID: id)
         case .terminal: TerminalSessionView(state: state as! TerminalSessionState)
         case .web:      WebSessionView(state: state as! WebSessionState)
         case .preview:  PreviewSessionView(state: state as! PreviewSessionState)

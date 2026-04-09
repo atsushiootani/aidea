@@ -104,13 +104,13 @@ struct PaneView: View {
     }
 
     /// タブヘッダの表示名。
-    /// - Preview: 表示中ファイルの最終要素 (なければ "Preview")
+    /// - Preview: state.title があればそれ、なければ URL の lastPathComponent、どちらも無ければ "Preview"
     /// - その他: tool 名 + (instance > 0 のとき番号)
     private func displayLabel(for sessionID: SessionID) -> String {
         if sessionID.tool == .preview,
-           let preview = registry.state(for: sessionID) as? PreviewSessionState,
-           let url = preview.url {
-            return url.lastPathComponent
+           let preview = registry.state(for: sessionID) as? PreviewSessionState {
+            if let title = preview.title, !title.isEmpty { return title }
+            if let url = preview.url { return url.lastPathComponent }
         }
         if sessionID.instance == 0 { return sessionID.tool.displayName }
         return "\(sessionID.tool.displayName) \(sessionID.instance + 1)"

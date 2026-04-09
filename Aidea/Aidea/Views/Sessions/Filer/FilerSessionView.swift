@@ -214,6 +214,8 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
             }
             return
         }
+        // openPreview はアクティブ Session のペインを回避するので、先に自分を active に設定
+        owner?.registry?.activeSessionID = SessionID(.filer, instance: 0)
         owner?.registry?.openPreview(for: node.url)
     }
 
@@ -546,10 +548,12 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
                     outlineView.expandItem(node)
                 }
             } else {
+                owner?.registry?.activeSessionID = SessionID(.filer, instance: 0)
                 owner?.registry?.openPreview(for: node.url)
             }
             return
         }
+        owner?.registry?.activeSessionID = SessionID(.filer, instance: 0)
         for node in nodes where !node.isDirectory {
             owner?.registry?.openPreview(for: node.url)
         }
