@@ -51,4 +51,14 @@ final class FilerOutlineView: NSOutlineView {
 
         super.keyDown(with: event)
     }
+
+    /// 右クリック時にコンテキストメニューを返す。クリックされた行がまだ選択されていなければ選択する。
+    override func menu(for event: NSEvent) -> NSMenu? {
+        let point = convert(event.locationInWindow, from: nil)
+        let row = self.row(at: point)
+        if row >= 0 && !selectedRowIndexes.contains(row) {
+            selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
+        }
+        return controller?.buildContextMenu()
+    }
 }

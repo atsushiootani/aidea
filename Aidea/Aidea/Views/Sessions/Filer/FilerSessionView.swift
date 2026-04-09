@@ -51,10 +51,14 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
         outlineView.dataSource = self
         outlineView.delegate = self
         outlineView.style = .sourceList
-        outlineView.allowsMultipleSelection = false
+        outlineView.allowsMultipleSelection = true
         outlineView.indentationPerLevel = 14
         // キーボードイベントをこのコントローラに委譲
         outlineView.controller = self
+        // ドラッグ&ドロップ: ファイル URL の並び替え/移動を受け付ける
+        outlineView.registerForDraggedTypes([.fileURL])
+        outlineView.setDraggingSourceOperationMask([.move], forLocal: true)
+        outlineView.setDraggingSourceOperationMask([.move], forLocal: false)
         // ダブルクリックで Preview Session を新規作成
         outlineView.target = self
         outlineView.doubleAction = #selector(handleDoubleClick)
@@ -113,36 +117,37 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
     private func handleFileSystemChange() {
         guard let root = currentRoot else { return }
         let expandedURLs = collectExpandedURLs()
-        let selectedURL = selectedNodeURL()
+        let selectedURLs = selectedNodeURLs()
         rootNodes = FileTreeLoader.load(directory: root).filter { !Self.excludedDirs.contains($0.name) }
         outlineView.reloadData()
         restoreExpandedState(in: rootNodes, expandedURLs: expandedURLs)
-        if let url = selectedURL {
-            restoreSelection(to: url)
+        restoreSelection(to: selectedURLs)
+    }
+
+    /// 現在選択されているノードの URL 一覧
+    private func selectedNodeURLs() -> [URL] {
+        outlineView.selectedRowIndexes.compactMap { row in
+            (outlineView.item(atRow: row) as? FileTreeNode)?.url
         }
     }
 
-    /// 現在選択されているノードの URL (なければ nil)
-    private func selectedNodeURL() -> URL? {
-        let row = outlineView.selectedRow
-        guard row >= 0,
-              let node = outlineView.item(atRow: row) as? FileTreeNode else { return nil }
-        return node.url
-    }
-
-    /// 指定 URL にマッチするノードを現在のツリーから探して選択状態に戻す
-    private func restoreSelection(to url: URL) {
-        func walk(_ nodes: [FileTreeNode]) -> FileTreeNode? {
+    /// 指定 URL 集合にマッチするノードを現在のツリーから探して選択状態に戻す
+    private func restoreSelection(to urls: [URL]) {
+        guard !urls.isEmpty else { return }
+        let urlSet = Set(urls)
+        var rows: IndexSet = []
+        func walk(_ nodes: [FileTreeNode]) {
             for node in nodes {
-                if node.url == url { return node }
-                if let children = node.children, let found = walk(children) { return found }
+                if urlSet.contains(node.url) {
+                    let row = outlineView.row(forItem: node)
+                    if row >= 0 { rows.insert(row) }
+                }
+                if let children = node.children { walk(children) }
             }
-            return nil
         }
-        guard let node = walk(rootNodes) else { return }
-        let row = outlineView.row(forItem: node)
-        if row >= 0 {
-            outlineView.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
+        walk(rootNodes)
+        if !rows.isEmpty {
+            outlineView.selectRowIndexes(rows, byExtendingSelection: false)
         }
     }
 
@@ -195,6 +200,122 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
         (item as? FileTreeNode)?.isDirectory ?? false
     }
 
+    // MARK: - Drag & Drop
+
+    /// ドラッグ対象をペーストボードに書き込む。root 自身はドラッグ禁止。
+    func outlineView(_ outlineView: NSOutlineView, pasteboardWriterForItem item: Any) -> NSPasteboardWriting? {
+        guard let node = item as? FileTreeNode else { return nil }
+        if node.url == currentRoot { return nil }
+        return node.url as NSURL
+    }
+
+    /// ドロップターゲットの検証。ディレクトリ or 空白のみ accept。
+    func outlineView(
+        _ outlineView: NSOutlineView,
+        validateDrop info: NSDraggingInfo,
+        proposedItem item: Any?,
+        proposedChildIndex index: Int
+    ) -> NSDragOperation {
+        let targetDir = targetDirectoryForDrop(item: item, outlineView: outlineView)
+        guard let targetDir = targetDir else { return [] }
+
+        // ペーストボードからソース URL を取得して妥当性を検証
+        let sourceURLs = draggedURLs(from: info)
+        for source in sourceURLs {
+            // 移動元ディレクトリが同じ (同一親) なら no-op
+            if source.deletingLastPathComponent().standardizedFileURL == targetDir.standardizedFileURL {
+                return []
+            }
+            // ディレクトリを自身 or その配下にドロップ禁止
+            if source.standardizedFileURL == targetDir.standardizedFileURL { return [] }
+            if targetDir.path.hasPrefix(source.path + "/") { return [] }
+        }
+        return .move
+    }
+
+    /// ドロップを受け入れて FileManager.moveItem で実際に移動する。
+    func outlineView(
+        _ outlineView: NSOutlineView,
+        acceptDrop info: NSDraggingInfo,
+        item: Any?,
+        childIndex index: Int
+    ) -> Bool {
+        guard let targetDir = targetDirectoryForDrop(item: item, outlineView: outlineView) else { return false }
+        let sourceURLs = draggedURLs(from: info)
+        if sourceURLs.isEmpty { return false }
+
+        var lastMoved: URL?
+        for source in sourceURLs {
+            let dest = targetDir.appendingPathComponent(source.lastPathComponent)
+
+            // 同名が既にある場合は上書き確認ダイアログ
+            if FileManager.default.fileExists(atPath: dest.path) {
+                let alert = NSAlert()
+                alert.messageText = "\(source.lastPathComponent) は既に存在します"
+                alert.informativeText = "上書きしますか？"
+                alert.alertStyle = .warning
+                alert.addButton(withTitle: "上書き")
+                let cancel = alert.addButton(withTitle: "キャンセル")
+                cancel.keyEquivalent = "\u{1b}"
+                if alert.runModal() != .alertFirstButtonReturn {
+                    continue
+                }
+                do {
+                    try FileManager.default.removeItem(at: dest)
+                } catch {
+                    NSAlert(error: error).runModal()
+                    continue
+                }
+            }
+
+            do {
+                try FileManager.default.moveItem(at: source, to: dest)
+                lastMoved = dest
+                // 移動元ファイルを表示していた Preview タブを閉じる
+                owner?.registry?.closePreviewsForDeleted(source, isDirectory: isDirectoryAt(dest))
+            } catch {
+                NSAlert(error: error).runModal()
+            }
+        }
+
+        if let moved = lastMoved {
+            focusOnURL(moved)
+        }
+        return lastMoved != nil
+    }
+
+    /// ドロップ対象アイテムから実際の移動先ディレクトリを決定する
+    private func targetDirectoryForDrop(item: Any?, outlineView: NSOutlineView) -> URL? {
+        if item == nil {
+            return currentRoot
+        }
+        guard let node = item as? FileTreeNode else { return nil }
+        if node.isDirectory {
+            return node.url
+        }
+        // ファイルにドロップしたら親ディレクトリに移動扱いにする
+        return node.url.deletingLastPathComponent()
+    }
+
+    /// ドラッグ情報からファイル URL 配列を取り出す
+    private func draggedURLs(from info: NSDraggingInfo) -> [URL] {
+        let pb = info.draggingPasteboard
+        let options: [NSPasteboard.ReadingOptionKey: Any] = [
+            .urlReadingFileURLsOnly: true
+        ]
+        guard let urls = pb.readObjects(forClasses: [NSURL.self], options: options) as? [URL] else {
+            return []
+        }
+        return urls
+    }
+
+    /// 指定 URL がディレクトリか (存在しない場合は false)
+    private func isDirectoryAt(_ url: URL) -> Bool {
+        var isDir: ObjCBool = false
+        let exists = FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir)
+        return exists && isDir.boolValue
+    }
+
     // MARK: - NSOutlineViewDelegate
 
     func outlineView(_ outlineView: NSOutlineView, viewFor tableColumn: NSTableColumn?, item: Any) -> NSView? {
@@ -245,27 +366,38 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
 
     // MARK: - Keyboard Actions
 
-    /// Enter キー: 選択ノードがファイルなら Preview で開く、ディレクトリなら展開/折りたたみ
+    /// Enter キー: 単一選択中のノードがファイルなら Preview で開く、
+    /// ディレクトリなら展開/折りたたみ。複数選択時はファイルのみ Preview で開く。
     func previewSelectedAction() {
-        let row = outlineView.selectedRow
-        guard row >= 0,
-              let node = outlineView.item(atRow: row) as? FileTreeNode else { return }
-        if node.isDirectory {
-            if outlineView.isItemExpanded(node) {
-                outlineView.collapseItem(node)
+        let nodes = selectedNodes()
+        if nodes.count == 1, let node = nodes.first {
+            if node.isDirectory {
+                if outlineView.isItemExpanded(node) {
+                    outlineView.collapseItem(node)
+                } else {
+                    outlineView.expandItem(node)
+                }
             } else {
-                outlineView.expandItem(node)
+                owner?.registry?.openPreview(for: node.url)
             }
-        } else {
+            return
+        }
+        for node in nodes where !node.isDirectory {
             owner?.registry?.openPreview(for: node.url)
         }
     }
 
-    /// Shift+Enter キー: 選択ノードの名前変更
+    /// 選択中の FileTreeNode 一覧
+    private func selectedNodes() -> [FileTreeNode] {
+        outlineView.selectedRowIndexes.compactMap { row in
+            outlineView.item(atRow: row) as? FileTreeNode
+        }
+    }
+
+    /// Shift+Enter キー: 選択ノードの名前変更 (単一選択時のみ)
     func renameSelectedAction() {
-        let row = outlineView.selectedRow
-        guard row >= 0,
-              let node = outlineView.item(atRow: row) as? FileTreeNode else { return }
+        let nodes = selectedNodes()
+        guard nodes.count == 1, let node = nodes.first else { return }
         // projectRoot (ルート) 自身は変更不可
         if node.url == currentRoot { return }
 
@@ -287,27 +419,33 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
         }
     }
 
-    /// Backspace キー: 選択ノードを削除 (確認ダイアログ → ゴミ箱)
+    /// Backspace キー: 選択ノードを削除 (確認ダイアログ → ゴミ箱)。複数選択対応。
     func deleteSelectedAction() {
-        let row = outlineView.selectedRow
-        guard row >= 0,
-              let node = outlineView.item(atRow: row) as? FileTreeNode else { return }
-        if node.url == currentRoot { return }
+        let nodes = selectedNodes().filter { $0.url != currentRoot }
+        if nodes.isEmpty { return }
 
         let alert = NSAlert()
-        alert.messageText = "\(node.name) を削除しますか？"
-        alert.informativeText = node.isDirectory
-            ? "このディレクトリと配下のすべてのファイルがゴミ箱に移動されます。"
-            : "このファイルはゴミ箱に移動されます。"
+        if nodes.count == 1, let node = nodes.first {
+            alert.messageText = "\(node.name) を削除しますか？"
+            alert.informativeText = node.isDirectory
+                ? "このディレクトリと配下のすべてのファイルがゴミ箱に移動されます。"
+                : "このファイルはゴミ箱に移動されます。"
+        } else {
+            alert.messageText = "\(nodes.count) 個の項目を削除しますか？"
+            let names = nodes.prefix(5).map(\.name).joined(separator: ", ")
+            let suffix = nodes.count > 5 ? "\(names), ... など \(nodes.count) 個" : names
+            alert.informativeText = "選択中のファイル/ディレクトリがゴミ箱に移動されます。\n\(suffix)"
+        }
         alert.alertStyle = .warning
         alert.addButton(withTitle: "削除")
         let cancelButton = alert.addButton(withTitle: "キャンセル")
-        cancelButton.keyEquivalent = "\u{1b}" // Esc でキャンセル
+        cancelButton.keyEquivalent = "\u{1b}"
 
-        if alert.runModal() == .alertFirstButtonReturn {
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+
+        for node in nodes {
             do {
                 try FileManager.default.trashItem(at: node.url, resultingItemURL: nil)
-                // 削除したファイル/ディレクトリを表示している Preview タブを閉じる
                 owner?.registry?.closePreviewsForDeleted(node.url, isDirectory: node.isDirectory)
             } catch {
                 NSAlert(error: error).runModal()
@@ -361,16 +499,90 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
     }
 
     /// 新規作成時の親ディレクトリを決定する:
-    /// - 選択がディレクトリなら: その中
-    /// - 選択がファイルなら: その親
-    /// - 選択なし: projectRoot
+    /// - 選択が単一でディレクトリなら: その中
+    /// - 選択が単一でファイルなら: その親
+    /// - 複数選択 or 選択なし: projectRoot
     private func targetParentDirectory() -> URL? {
-        let row = outlineView.selectedRow
-        if row >= 0, let node = outlineView.item(atRow: row) as? FileTreeNode {
+        let nodes = selectedNodes()
+        if nodes.count == 1, let node = nodes.first {
             return node.isDirectory ? node.url : node.url.deletingLastPathComponent()
         }
         return currentRoot
     }
+
+    // MARK: - Context Menu
+
+    /// 右クリックメニューを生成する。選択状態に応じて項目の有効/無効を切替。
+    func buildContextMenu() -> NSMenu {
+        let menu = NSMenu()
+        menu.autoenablesItems = false
+
+        let nodes = selectedNodes()
+        let hasSelection = !nodes.isEmpty
+        let isSingle = nodes.count == 1
+        let singleIsRoot = isSingle && nodes.first?.url == currentRoot
+        let hasOnlyFiles = hasSelection && nodes.allSatisfy { !$0.isDirectory }
+
+        let previewItem = NSMenuItem(
+            title: "プレビューで開く",
+            action: #selector(contextPreview),
+            keyEquivalent: "\r"
+        )
+        previewItem.target = self
+        previewItem.isEnabled = hasOnlyFiles
+        menu.addItem(previewItem)
+
+        let renameItem = NSMenuItem(
+            title: "名前を変更",
+            action: #selector(contextRename),
+            keyEquivalent: "\r"
+        )
+        renameItem.keyEquivalentModifierMask = [.shift]
+        renameItem.target = self
+        renameItem.isEnabled = isSingle && !singleIsRoot
+        menu.addItem(renameItem)
+
+        menu.addItem(NSMenuItem.separator())
+
+        let newFileItem = NSMenuItem(
+            title: "新規ファイル",
+            action: #selector(contextNewFile),
+            keyEquivalent: "n"
+        )
+        newFileItem.keyEquivalentModifierMask = [.command]
+        newFileItem.target = self
+        newFileItem.isEnabled = true
+        menu.addItem(newFileItem)
+
+        let newDirItem = NSMenuItem(
+            title: "新規ディレクトリ",
+            action: #selector(contextNewDir),
+            keyEquivalent: "n"
+        )
+        newDirItem.keyEquivalentModifierMask = [.command, .shift]
+        newDirItem.target = self
+        newDirItem.isEnabled = true
+        menu.addItem(newDirItem)
+
+        menu.addItem(NSMenuItem.separator())
+
+        let deleteItem = NSMenuItem(
+            title: "削除",
+            action: #selector(contextDelete),
+            keyEquivalent: String(Character(UnicodeScalar(NSDeleteCharacter)!))
+        )
+        deleteItem.target = self
+        deleteItem.isEnabled = hasSelection && nodes.contains { $0.url != currentRoot }
+        menu.addItem(deleteItem)
+
+        return menu
+    }
+
+    @objc private func contextPreview() { previewSelectedAction() }
+    @objc private func contextRename() { renameSelectedAction() }
+    @objc private func contextNewFile() { createFileAction() }
+    @objc private func contextNewDir() { createDirectoryAction() }
+    @objc private func contextDelete() { deleteSelectedAction() }
 
     /// 指定 URL のノードにフォーカスする (明示的に再取得してから選択する)。
     /// 親ディレクトリを順に展開してターゲットを可視化する。
