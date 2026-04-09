@@ -9,6 +9,7 @@ import AppKit
 /// Preview Session の SwiftUI View。state.url のファイルを表示する。
 struct PreviewSessionView: View {
     let state: PreviewSessionState
+    @Environment(SessionRegistry.self) private var registry
     @State private var preview: PreviewContent = .empty
     @State private var loadedURL: URL?
 
@@ -28,7 +29,18 @@ struct PreviewSessionView: View {
                     placeholder("読み込み中...")
                 case .text(let content):
                     if isMarkdownURL(state.url) {
-                        MarkdownPreview(text: content)
+                        MarkdownPreview(
+                            text: content,
+                            baseURL: state.url?.deletingLastPathComponent(),
+                            onLinkTap: { resolvedURL in
+                                // リンク先を同じペインの右隣タブで開く
+                                // (既に開いていればそれをアクティブ化)
+                                registry.openPreviewAsSibling(
+                                    for: resolvedURL,
+                                    title: resolvedURL.lastPathComponent
+                                )
+                            }
+                        )
                     } else {
                         NSTextPreview(text: content)
                     }

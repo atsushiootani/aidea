@@ -15,6 +15,16 @@ import SwiftUI
 /// - YAML frontmatter (`---` で囲まれたブロック) は薄く表示
 struct MarkdownPreview: View {
     let text: String
+    /// 相対リンクを解決するためのベースディレクトリ (通常は元ファイルの親)
+    let baseURL: URL?
+    /// ローカルファイルへのリンクがクリックされたときに呼ばれる (resolved 絶対 URL)
+    let onLinkTap: ((URL) -> Void)?
+
+    init(text: String, baseURL: URL? = nil, onLinkTap: ((URL) -> Void)? = nil) {
+        self.text = text
+        self.baseURL = baseURL
+        self.onLinkTap = onLinkTap
+    }
 
     var body: some View {
         ScrollView {
@@ -27,6 +37,40 @@ struct MarkdownPreview: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .textSelection(.enabled)
         }
+        .environment(\.openURL, OpenURLAction { url in
+            handleLinkTap(url)
+        })
+    }
+
+    /// Markdown 内のリンクがクリックされたときの処理。
+    /// - 相対 or `file:` スキーム: ベース URL で解決してローカルファイルなら `onLinkTap` に委譲
+    /// - http / https / mailto: 既定動作 (システムで開く)
+    /// - それ以外: 何もしない
+    private func handleLinkTap(_ url: URL) -> OpenURLAction.Result {
+        let scheme = url.scheme?.lowercased() ?? ""
+        if ["http", "https", "mailto", "tel"].contains(scheme) {
+            return .systemAction
+        }
+        // 対象となるファイル URL を解決する
+        let target: URL
+        if scheme == "file" {
+            target = url.standardizedFileURL
+        } else {
+            // スキームなし: 相対 or 絶対パスと解釈する
+            let raw = url.absoluteString.removingPercentEncoding ?? url.absoluteString
+            if raw.hasPrefix("/") {
+                target = URL(fileURLWithPath: raw).standardizedFileURL
+            } else if let base = baseURL {
+                target = base.appendingPathComponent(raw).standardizedFileURL
+            } else {
+                return .discarded
+            }
+        }
+        guard FileManager.default.fileExists(atPath: target.path) else {
+            return .discarded
+        }
+        onLinkTap?(target)
+        return .handled
     }
 
     /// テキストを 1 行ずつパースした Markdown ラインの配列

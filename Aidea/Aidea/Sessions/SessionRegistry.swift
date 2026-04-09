@@ -93,6 +93,41 @@ final class SessionRegistry {
         activeSessionID = id
     }
 
+    /// Preview 内リンククリックなどから呼ばれる: 新しい Preview Tab を
+    /// **呼び出し元 (activeSessionID) と同じペイン** の現在タブの右隣に挿入する。
+    /// 同じ URL の Preview が既に存在する場合はそれをアクティブ化するだけ。
+    /// 呼び出し元ペインが見つからない場合は通常の `openPreview` にフォールバックする。
+    func openPreviewAsSibling(for url: URL, title: String? = nil) {
+        // dedupe: 同じ URL を表示中の Preview があればアクティブ化
+        for pane in layout.allPanes {
+            for (index, id) in pane.tabs.enumerated() where id.tool == .preview {
+                if let preview = states[id] as? PreviewSessionState, preview.url == url {
+                    if let title = title { preview.title = title }
+                    pane.activeIndex = index
+                    activeSessionID = id
+                    return
+                }
+            }
+        }
+        // 呼び出し元ペインの特定
+        guard let callerID = activeSessionID,
+              let pane = layout.allPanes.first(where: { $0.tabs.contains(callerID) }),
+              let currentIndex = pane.tabs.firstIndex(of: callerID) else {
+            openPreview(for: url, title: title)
+            return
+        }
+        // 新しい Preview を挿入
+        let instance = layout.nextSessionInstance(of: .preview)
+        let newID = SessionID(.preview, instance: instance)
+        let state = self.state(for: newID) as! PreviewSessionState
+        state.url = url
+        state.title = title
+        let insertIndex = currentIndex + 1
+        pane.tabs.insert(newID, at: insertIndex)
+        pane.activeIndex = insertIndex
+        activeSessionID = newID
+    }
+
     /// ファイル/ディレクトリが削除されたとき、そのファイルを表示していた
     /// Preview タブをすべて閉じる。ディレクトリ削除時は配下のファイルも対象。
     func closePreviewsForDeleted(_ deleted: URL, isDirectory: Bool) {
