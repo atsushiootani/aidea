@@ -87,6 +87,43 @@ final class SessionRegistry {
         activeSessionID = id
     }
 
+    /// Tab のドラッグ&ドロップ: 指定 Session を移動する (同ペイン内の並び替えも対応)。
+    /// - Parameters:
+    ///   - id: 移動対象の SessionID
+    ///   - target: 移動先のペイン
+    ///   - index: 移動先ペイン内の挿入位置 (末尾に追加したいなら tabs.count を渡す)
+    func moveSession(_ id: SessionID, toPane target: Pane, atIndex index: Int) {
+        guard let sourcePane = layout.allPanes.first(where: { $0.tabs.contains(id) }),
+              let sourceIndex = sourcePane.tabs.firstIndex(of: id) else {
+            return
+        }
+        if sourcePane === target {
+            // 同じ Slot への no-op (自身の直前/直後の Slot にドロップしても位置が変わらない)
+            if index == sourceIndex || index == sourceIndex + 1 {
+                activeSessionID = id
+                return
+            }
+            // 同一ペイン内での並び替え: 削除後に挿入位置を補正する
+            sourcePane.tabs.remove(at: sourceIndex)
+            let adjusted = sourceIndex < index ? index - 1 : index
+            let clamped = max(0, min(adjusted, sourcePane.tabs.count))
+            sourcePane.tabs.insert(id, at: clamped)
+            sourcePane.activeIndex = clamped
+        } else {
+            // ペイン間の移動
+            sourcePane.tabs.remove(at: sourceIndex)
+            if sourcePane.tabs.isEmpty {
+                sourcePane.activeIndex = 0
+            } else if sourcePane.activeIndex >= sourcePane.tabs.count {
+                sourcePane.activeIndex = sourcePane.tabs.count - 1
+            }
+            let clamped = max(0, min(index, target.tabs.count))
+            target.tabs.insert(id, at: clamped)
+            target.activeIndex = clamped
+        }
+        activeSessionID = id
+    }
+
     /// tool に応じた SessionState インスタンスを生成する
     private func makeState(for tool: Tool) -> any SessionState {
         switch tool {

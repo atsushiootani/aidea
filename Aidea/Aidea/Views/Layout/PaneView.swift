@@ -43,12 +43,15 @@ struct PaneView: View {
         }
     }
 
-    /// タブバー: 現在ペイン内の全 Tab + 追加メニュー
+    /// タブバー: Slot と Tab を交互に配置。最後の Tab の右にも Slot を置くが、
+    /// `+` ボタンより右には Slot を置かない。
     private var tabBar: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 4) {
+            HStack(spacing: 0) {
+                TabSlotView(pane: pane, index: 0)
                 ForEach(Array(pane.tabs.enumerated()), id: \.element) { index, sessionID in
                     tabItem(sessionID: sessionID, index: index)
+                    TabSlotView(pane: pane, index: index + 1)
                 }
                 addButton
                 Spacer(minLength: 0)
@@ -97,6 +100,7 @@ struct PaneView: View {
             pane.activeIndex = index
             registry.activeSessionID = sessionID
         }
+        .draggable(sessionID)
     }
 
     /// タブヘッダの表示名。

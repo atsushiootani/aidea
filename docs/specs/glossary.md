@@ -17,6 +17,7 @@ Aidea プロジェクトで使われる用語の定義。
 | **Window** | アプリの 1 ウィンドウ。Aidea は 1 Window = 1 プロジェクト |
 | **Pane** | Window 内の物理的な区画。`HSplitView` / `VSplitView` で分割される。境界をドラッグでリサイズ可。Phase 1 は 4 ペイン固定 (左上 / 左下 / 中央 / 右) |
 | **Tab** | ペイン内の表示切替単位。1 つの Session を参照する。タブヘッダに表示される |
+| **TabSlot** | タブバー上の挿入位置。タブとタブの間、および両端に配置される。タブが N 個あるとき TabSlot は N+1 個存在し、ドラッグ&ドロップで Session を移動/並び替えするときの drop destination になる。ホバー時にアクセントカラーの縦線で可視化 |
 | **Session** | 1 つの実体。Window 全体で一意の `SessionID` を持ち、独立した状態 (`SessionState`) を保持する。ペイン移動で状態は失われない |
 | **Tool** | 機能の種別を表す enum (`filer` / `skills` / `commands` / `mcps` / `terminal` / `web` / `preview`)。Tool そのものは状態を持たない |
 
