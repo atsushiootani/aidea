@@ -45,6 +45,12 @@ final class SessionRegistry {
         return created
     }
 
+    /// 指定 ID の状態を取得する。未生成なら nil を返す (副作用なし)。
+    /// 永続化時に "既に使われている Session だけ" を保存するのに使う。
+    func peekState(for id: SessionID) -> (any SessionState)? {
+        return states[id]
+    }
+
     /// Filer や Kit のダブルクリック等から呼ばれる: 新しい Preview Tab を
     /// 「呼び出し元 Session のペイン以外で、履歴上もっとも新しい Session のペイン」に作成する。
     ///
