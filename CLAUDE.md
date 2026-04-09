@@ -1,12 +1,12 @@
 # Aidea
 
 個人用の macOS ネイティブ AI 連携ワークスペース。Swift + SwiftUI 製。
-詳細は [SPEC.md](./SPEC.md) と [docs/decisions/](./docs/decisions/README.md) を参照。
+詳細は [docs/SPEC.md](./docs/SPEC.md) と [docs/decisions/](./docs/decisions/README.md) を参照。
 
 ## トップレベル構成
 
 ```
-SPEC.md            → 仕様書 (Single Source of Truth)
+docs/SPEC.md       → 仕様書 (Single Source of Truth)
 Aidea/             → macOS アプリ本体 (Xcode プロジェクト)
 docs/              → 設計ドキュメント (vision / architecture / features / ADR)
 skills/            → agent-skills 由来の参照リソース
@@ -27,7 +27,7 @@ skills/            → agent-skills 由来の参照リソース
 
 | 知りたいこと | 参照先 |
 |---|---|
-| 仕様 / MVP 範囲 / 境界 | [SPEC.md](./SPEC.md) |
+| 仕様 / MVP 範囲 / 境界 | [docs/SPEC.md](./docs/SPEC.md) |
 | ビルド & 起動方法 | [Aidea/README.md](./Aidea/README.md) |
 | なぜこの技術選定？ | [docs/decisions/](./docs/decisions/README.md) |
 | 全体像 / 経緯 | [docs/vision.md](./docs/vision.md) |
@@ -37,6 +37,6 @@ skills/            → agent-skills 由来の参照リソース
 ## 開発時の注意
 
 - 新しい設計判断は [`docs/decisions/`](./docs/decisions/README.md) に ADR として追記する
-- View プロパティラッパの並び順は SPEC.md 5 章のルールに従う
+- View プロパティラッパの並び順は docs/SPEC.md のルールに従う
 - 1 ファイル 1 型 (struct/class/enum) を原則とする
 - ターミナルから `claude` を自動起動してはならない (理由: [ADR 0008](./docs/decisions/0008-no-claude-autostart.md))
