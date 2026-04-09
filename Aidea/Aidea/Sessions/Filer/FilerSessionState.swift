@@ -16,6 +16,8 @@ final class FilerSessionState: SessionState {
     let controller: FileTreeViewController
     /// 現在この Filer で選択されているファイル
     var selectedFile: URL?
+    /// 展開されているディレクトリの URL 集合 (永続化対象、ユーザーの展開操作と同期される)
+    var expandedURLs: Set<URL> = []
     /// アクティブな Session に転送するためのレジストリ参照
     weak var registry: SessionRegistry?
 

@@ -16,6 +16,10 @@ struct WorkspaceSnapshot: Codable {
     let previews: [PreviewSnapshot]
     /// Web Session の状態一覧
     let webs: [WebSnapshot]
+    /// Filer Session の状態一覧 (展開ディレクトリ等)
+    let filers: [FilerSnapshot]
+    /// Kit Session の状態一覧 (セクション・サブグループの開閉)
+    let kits: [KitSnapshot]
     /// 最後にアクティブだった Session
     let activeSessionID: SessionID?
 }
@@ -45,4 +49,19 @@ struct PreviewSnapshot: Codable {
 struct WebSnapshot: Codable {
     let id: SessionID
     let url: URL
+}
+
+/// Filer Session の永続化対象 (展開ディレクトリ一覧)
+struct FilerSnapshot: Codable {
+    let id: SessionID
+    let expandedURLs: [URL]
+}
+
+/// Kit Session の永続化対象 (セクション・サブグループの開閉状態)
+struct KitSnapshot: Codable {
+    let id: SessionID
+    /// 展開中のセクション (KitSection.rawValue)
+    let expandedSections: [String]
+    /// 展開中のサブグループキー ("section.prefix" 形式)
+    let expandedGroups: [String]
 }

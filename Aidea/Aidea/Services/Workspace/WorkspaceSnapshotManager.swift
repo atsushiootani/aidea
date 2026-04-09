@@ -40,6 +40,8 @@ final class WorkspaceSnapshotManager {
     private func buildSnapshot(layout: LayoutConfig, registry: SessionRegistry) -> WorkspaceSnapshot {
         var previews: [PreviewSnapshot] = []
         var webs: [WebSnapshot] = []
+        var filers: [FilerSnapshot] = []
+        var kits: [KitSnapshot] = []
 
         for pane in layout.allPanes {
             for id in pane.tabs {
@@ -51,6 +53,22 @@ final class WorkspaceSnapshotManager {
                 case .web:
                     if let state = registry.peekState(for: id) as? WebSessionState {
                         webs.append(WebSnapshot(id: id, url: state.url))
+                    }
+                case .filer:
+                    if let state = registry.peekState(for: id) as? FilerSessionState {
+                        // NSOutlineView から現在の展開状態をその場で取得する
+                        // (delegate 経由の expandedURLs 同期に依存しないため確実)
+                        let live = state.controller.collectExpandedURLs()
+                        state.expandedURLs = live
+                        filers.append(FilerSnapshot(id: id, expandedURLs: Array(live)))
+                    }
+                case .kit:
+                    if let state = registry.peekState(for: id) as? KitSessionState {
+                        kits.append(KitSnapshot(
+                            id: id,
+                            expandedSections: state.expandedSections.map(\.rawValue),
+                            expandedGroups: Array(state.expandedGroups)
+                        ))
                     }
                 default:
                     break
@@ -68,6 +86,8 @@ final class WorkspaceSnapshotManager {
             ),
             previews: previews,
             webs: webs,
+            filers: filers,
+            kits: kits,
             activeSessionID: registry.activeSessionID
         )
     }
@@ -87,7 +107,7 @@ final class WorkspaceSnapshotManager {
         applyPane(snapshot.layout.center, to: layout.center)
         applyPane(snapshot.layout.right, to: layout.right)
 
-        // Preview/Web の状態を事前にセットしておく
+        // Preview/Web/Filer の状態を事前にセットしておく
         // (state(for:) がオンデマンドで初期状態のインスタンスを作ってしまう前に値を注入)
         for preview in snapshot.previews {
             let state = registry.state(for: preview.id) as! PreviewSessionState
@@ -97,6 +117,15 @@ final class WorkspaceSnapshotManager {
         for web in snapshot.webs {
             let state = registry.state(for: web.id) as! WebSessionState
             state.url = web.url
+        }
+        for filer in snapshot.filers {
+            let state = registry.state(for: filer.id) as! FilerSessionState
+            state.expandedURLs = Set(filer.expandedURLs)
+        }
+        for kit in snapshot.kits {
+            let state = registry.state(for: kit.id) as! KitSessionState
+            state.expandedSections = Set(kit.expandedSections.compactMap { KitSection(rawValue: $0) })
+            state.expandedGroups = Set(kit.expandedGroups)
         }
 
         registry.activeSessionID = snapshot.activeSessionID
