@@ -13,6 +13,10 @@ struct FilerSessionView: NSViewControllerRepresentable {
 
     func makeNSViewController(context: Context) -> FileTreeViewController {
         state.controller.workspace = workspace
+        // reload() の前に loadView() を走らせておく必要がある
+        // (NSOutlineView の column/delegate は loadView 内で設定されるため、
+        //  view 未構築の状態で reloadData/expandItem を呼ぶと反映されない)
+        state.controller.loadViewIfNeeded()
         state.controller.reload()
         return state.controller
     }
@@ -231,6 +235,10 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
         currentRoot = root
         rootNodes = FileTreeLoader.load(directory: root).filter { !Self.excludedDirs.contains($0.name) }
         outlineView.reloadData()
+        // owner に保存された展開 URL があればそれを復元する
+        if let saved = owner?.expandedURLs, !saved.isEmpty {
+            restoreExpandedState(in: rootNodes, expandedURLs: saved)
+        }
         watcher.start(path: root.path) { [weak self] paths in
             guard let self = self else { return }
             let relevant = paths.filter { path in
@@ -284,8 +292,8 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
         }
     }
 
-    /// 現在 outlineView で展開されているノードの URL を集める
-    private func collectExpandedURLs() -> Set<URL> {
+    /// 現在 outlineView で展開されているノードの URL を集める (永続化・リロード用)
+    func collectExpandedURLs() -> Set<URL> {
         var urls: Set<URL> = []
         func walk(_ nodes: [FileTreeNode]) {
             for node in nodes where outlineView.isItemExpanded(node) {
@@ -533,6 +541,18 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
             return
         }
         owner?.selectedFile = node.url
+    }
+
+    /// ユーザー操作でノードが展開されたとき、owner の expandedURLs に記録する (永続化対象)
+    func outlineViewItemDidExpand(_ notification: Notification) {
+        guard let node = notification.userInfo?["NSObject"] as? FileTreeNode else { return }
+        owner?.expandedURLs.insert(node.url)
+    }
+
+    /// ユーザー操作でノードが折りたたまれたとき、owner の expandedURLs から削除する
+    func outlineViewItemDidCollapse(_ notification: Notification) {
+        guard let node = notification.userInfo?["NSObject"] as? FileTreeNode else { return }
+        owner?.expandedURLs.remove(node.url)
     }
 
     // MARK: - Keyboard Actions
