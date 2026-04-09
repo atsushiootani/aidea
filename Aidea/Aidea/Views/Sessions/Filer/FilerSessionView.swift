@@ -25,7 +25,7 @@ struct FilerSessionView: NSViewControllerRepresentable {
 }
 
 /// NSOutlineView を保持する NSViewController。データソース・デリゲート・ファイル監視を兼ねる。
-final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, NSOutlineViewDelegate {
+final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, NSOutlineViewDelegate, NSSearchFieldDelegate {
     var workspace: WorkspaceState?
     /// この Controller を所有する FilerSessionState (選択ファイルの書き戻し先)
     weak var owner: FilerSessionState?
@@ -34,10 +34,20 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
 
     private let outlineView = FilerOutlineView()
     private let scrollView = NSScrollView()
+    private let searchField = NSSearchField()
     private let watcher = FileWatcher()
     private var rootNodes: [FileTreeNode] = []
     private var reloadWorkItem: DispatchWorkItem?
     private static let excludedDirs: Set<String> = [".git", "node_modules", ".DS_Store", "DerivedData", ".build"]
+
+    // 検索関連の状態
+    private var searchQuery: String = ""
+    private var filteredRoots: [FileTreeNode] = []
+    /// 検索中のフィルタ済み子ノード (ObjectIdentifier をキーに)
+    private var filteredChildren: [ObjectIdentifier: [FileTreeNode]] = [:]
+
+    /// 検索中か
+    private var isSearching: Bool { !searchQuery.isEmpty }
 
     /// View 階層を構築する
     override func loadView() {
@@ -66,7 +76,128 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
         scrollView.documentView = outlineView
         scrollView.hasVerticalScroller = true
         scrollView.drawsBackground = false
-        self.view = scrollView
+
+        // 検索フィールド (非表示で開始)
+        searchField.placeholderString = "ファイル名を検索"
+        searchField.delegate = self
+        searchField.target = self
+        searchField.action = #selector(searchFieldChanged)
+        searchField.isHidden = true
+
+        let stack = NSStackView(views: [searchField, scrollView])
+        stack.orientation = .vertical
+        stack.spacing = 4
+        stack.edgeInsets = NSEdgeInsets(top: 4, left: 6, bottom: 0, right: 6)
+        stack.distribution = .fill
+        // searchField は hugging を強めに (縦方向に伸びないように)
+        searchField.setContentHuggingPriority(.required, for: .vertical)
+        scrollView.setContentHuggingPriority(.defaultLow, for: .vertical)
+        self.view = stack
+    }
+
+    // MARK: - Search
+
+    /// Cmd+F で呼ばれる: 検索バーの表示をトグル
+    func toggleSearchBar() {
+        if searchField.isHidden {
+            searchField.isHidden = false
+            searchField.stringValue = ""
+            view.window?.makeFirstResponder(searchField)
+        } else {
+            closeSearchBar()
+        }
+    }
+
+    /// 検索バーを閉じて通常表示に戻す
+    private func closeSearchBar() {
+        searchField.stringValue = ""
+        searchField.isHidden = true
+        applySearch("")
+        view.window?.makeFirstResponder(outlineView)
+    }
+
+    /// 検索バーが開いていれば閉じて true を返す。そうでなければ false。
+    /// FilerOutlineView の Esc ハンドラから呼ばれる。
+    func closeSearchBarIfOpen() -> Bool {
+        if !searchField.isHidden {
+            closeSearchBar()
+            return true
+        }
+        return false
+    }
+
+    /// 検索フィールドの入力が変わったときに呼ばれる
+    @objc private func searchFieldChanged() {
+        applySearch(searchField.stringValue)
+    }
+
+    /// フィルタを適用して outlineView を更新する
+    private func applySearch(_ query: String) {
+        searchQuery = query.trimmingCharacters(in: .whitespaces)
+        filteredChildren = [:]
+        filteredRoots = []
+
+        if !searchQuery.isEmpty {
+            let lower = searchQuery.lowercased()
+            for root in rootNodes {
+                if walkForSearch(node: root, query: lower) {
+                    filteredRoots.append(root)
+                }
+            }
+        }
+
+        outlineView.reloadData()
+
+        if isSearching {
+            // マッチしたすべてのディレクトリを展開
+            expandFilteredTree(filteredRoots)
+        }
+    }
+
+    /// 指定ノード以下を走査し、マッチするノードを filteredChildren に蓄積する。
+    /// - Returns: このノードが結果に含まれるべきか (自身がマッチ or 子孫がマッチ)
+    private func walkForSearch(node: FileTreeNode, query: String) -> Bool {
+        let isMatch = node.name.lowercased().contains(query)
+        if node.isDirectory {
+            if node.children == nil {
+                node.children = FileTreeLoader.load(directory: node.url, parent: node)
+            }
+            var matchedChildren: [FileTreeNode] = []
+            for child in node.children ?? [] {
+                if walkForSearch(node: child, query: query) {
+                    matchedChildren.append(child)
+                }
+            }
+            if isMatch || !matchedChildren.isEmpty {
+                filteredChildren[ObjectIdentifier(node)] = matchedChildren
+                return true
+            }
+            return false
+        }
+        return isMatch
+    }
+
+    /// フィルタされたツリーのディレクトリをすべて展開する
+    private func expandFilteredTree(_ nodes: [FileTreeNode]) {
+        for node in nodes where node.isDirectory {
+            outlineView.expandItem(node)
+            expandFilteredTree(filteredChildren[ObjectIdentifier(node)] ?? [])
+        }
+    }
+
+    // NSSearchFieldDelegate / NSControlTextEditingDelegate: Esc や Enter の処理
+    func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
+        if commandSelector == #selector(NSResponder.cancelOperation(_:)) {
+            // Esc で検索バーを閉じる
+            closeSearchBar()
+            return true
+        }
+        if commandSelector == #selector(NSResponder.insertNewline(_:)) {
+            // Enter で選択中を Preview で開く (フォーカスは outlineView 側)
+            previewSelectedAction()
+            return true
+        }
+        return false
     }
 
     /// NSOutlineView のダブルクリックハンドラ: ファイルなら新しい Preview を開く
@@ -180,6 +311,13 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
     // MARK: - NSOutlineViewDataSource
 
     func outlineView(_ outlineView: NSOutlineView, numberOfChildrenOfItem item: Any?) -> Int {
+        if isSearching {
+            if item == nil { return filteredRoots.count }
+            if let node = item as? FileTreeNode {
+                return filteredChildren[ObjectIdentifier(node)]?.count ?? 0
+            }
+            return 0
+        }
         let node = item as? FileTreeNode
         if node == nil { return rootNodes.count }
         guard node!.isDirectory else { return 0 }
@@ -190,6 +328,12 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
     }
 
     func outlineView(_ outlineView: NSOutlineView, child index: Int, ofItem item: Any?) -> Any {
+        if isSearching {
+            if item == nil { return filteredRoots[index] }
+            if let node = item as? FileTreeNode {
+                return filteredChildren[ObjectIdentifier(node)]![index]
+            }
+        }
         if let node = item as? FileTreeNode {
             return node.children![index]
         }
@@ -346,12 +490,36 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
                 label.centerYAnchor.constraint(equalTo: cell.centerYAnchor)
             ])
         }
-        cell.textField?.stringValue = node.name
+        // 検索中はマッチ文字をハイライトした AttributedString を使う
+        if isSearching, let textField = cell.textField {
+            textField.attributedStringValue = makeHighlightedName(node.name, query: searchQuery)
+        } else {
+            cell.textField?.stringValue = node.name
+        }
         cell.imageView?.image = NSImage(
             systemSymbolName: FileTreeLoader.iconName(for: node),
             accessibilityDescription: nil
         )
         return cell
+    }
+
+    /// 検索クエリにマッチした文字をハイライトした NSAttributedString を作る
+    private func makeHighlightedName(_ name: String, query: String) -> NSAttributedString {
+        let attributed = NSMutableAttributedString(string: name)
+        let fullRange = NSRange(location: 0, length: (name as NSString).length)
+        attributed.addAttribute(.foregroundColor, value: NSColor.labelColor, range: fullRange)
+        guard !query.isEmpty else { return attributed }
+        var searchStart = name.startIndex
+        let lowerName = name.lowercased()
+        let lowerQuery = query.lowercased()
+        while searchStart < name.endIndex,
+              let range = lowerName.range(of: lowerQuery, options: [], range: searchStart..<name.endIndex) {
+            let nsRange = NSRange(range, in: name)
+            attributed.addAttribute(.backgroundColor, value: NSColor.systemYellow.withAlphaComponent(0.6), range: nsRange)
+            attributed.addAttribute(.font, value: NSFont.boldSystemFont(ofSize: NSFont.systemFontSize), range: nsRange)
+            searchStart = range.upperBound
+        }
+        return attributed
     }
 
     func outlineViewSelectionDidChange(_ notification: Notification) {

@@ -49,6 +49,19 @@ final class FilerOutlineView: NSOutlineView {
             return
         }
 
+        // Cmd + F: 検索バー表示
+        if cmd, chars == "f" {
+            controller.toggleSearchBar()
+            return
+        }
+
+        // Esc: 検索バーが開いていれば閉じる (それ以外は super に任せる)
+        if event.keyCode == 53 {
+            if controller.closeSearchBarIfOpen() {
+                return
+            }
+        }
+
         super.keyDown(with: event)
     }
 
