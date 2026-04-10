@@ -22,11 +22,11 @@ struct AideaApp: App {
         let reg = SessionRegistry(workspace: ws, layout: lay)
         let manager = WorkspaceSnapshotManager()
 
-        // 起動時にスナップショットがあれば適用、無ければ既定のアクティブ Session を設定
+        // 起動時にスナップショットがあれば適用、無ければ既定のアクティブ Pane を設定
         if let snapshot = manager.load() {
             manager.apply(snapshot, to: lay, registry: reg)
-        } else {
-            reg.activeSessionID = lay.allPanes.first?.activeSessionID
+        } else if let firstPane = lay.allPanes.first {
+            reg.setActiveTab(paneID: firstPane.id, tabIndex: firstPane.activeIndex)
         }
 
         _workspace = State(initialValue: ws)
@@ -138,55 +138,34 @@ struct AideaApp: App {
                 image: NSImage(systemSymbolName: tool.systemImageName, accessibilityDescription: nil)
             ) {
                 let instance = lay.nextSessionInstance(of: tool)
+                let _ = reg.createSession(tool: tool, instance: instance)
                 let id = SessionID(tool, instance: instance)
                 pane.tabs.append(id)
-                pane.activeIndex = pane.tabs.count - 1
-                reg.activeSessionID = id
+                reg.setActiveTab(paneID: pane.id, tabIndex: pane.tabs.count - 1)
             }
             menu.addItem(item)
         }
-        // 現在のマウス位置にスクリーン座標で表示
         menu.popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
     }
 
-    /// Cmd+W: 現在アクティブなタブを閉じる。全タブ消滅時はペインも削除。
+    /// Cmd+W: 現在アクティブなタブを閉じる (メニュー経由)
     private func closeCurrentTab() {
-        guard let activeID = registry.activeSessionID,
-              let pane = layout.allPanes.first(where: { $0.tabs.contains(activeID) }),
-              let index = pane.tabs.firstIndex(of: activeID) else { return }
-        pane.tabs.remove(at: index)
-        if pane.activeIndex >= pane.tabs.count {
-            pane.activeIndex = max(0, pane.tabs.count - 1)
-        }
-        registry.activeSessionID = pane.activeSessionID
-
-        if pane.tabs.isEmpty, let node = leafNode(for: pane) {
-            DispatchQueue.main.async {
-                layout.removeLeaf(node)
-                if let firstPane = layout.allPanes.first {
-                    registry.activeSessionID = firstPane.activeSessionID
-                }
-            }
-        }
+        Self.closeCurrentTabStatic(layout: layout, registry: registry)
     }
 
     /// Cmd+Shift+[ / ] : 現在ペイン内でタブを左右に移動 (ラップ)。
-    /// SwiftUI の update サイクルと競合しないよう次 runloop に遅延する。
     private func moveTab(offset: Int) {
         let lay = layout
         let reg = registry
         DispatchQueue.main.async {
-            guard let activeID = reg.activeSessionID,
-                  let pane = lay.allPanes.first(where: { $0.tabs.contains(activeID) }),
-                  !pane.tabs.isEmpty else { return }
+            guard let pane = reg.activePane, !pane.tabs.isEmpty else { return }
             let count = pane.tabs.count
             let newIndex = ((pane.activeIndex + offset) % count + count) % count
-            pane.activeIndex = newIndex
-            reg.activeSessionID = pane.tabs[newIndex]
+            reg.setActiveTab(paneID: pane.id, tabIndex: newIndex)
         }
     }
 
-    /// Cmd+[ / ] : ペイン間をラップで移動。移動先ペインの現在タブをアクティブにする。
+    /// Cmd+[ / ] : ペイン間をラップで移動。
     private func movePane(offset: Int) {
         let lay = layout
         let reg = registry
@@ -194,38 +173,36 @@ struct AideaApp: App {
             let panes = lay.allPanes
             guard !panes.isEmpty else { return }
             let currentIndex: Int
-            if let activeID = reg.activeSessionID,
-               let idx = panes.firstIndex(where: { $0.tabs.contains(activeID) }) {
+            if let activePID = reg.activePaneID,
+               let idx = panes.firstIndex(where: { $0.id == activePID }) {
                 currentIndex = idx
             } else {
                 currentIndex = 0
             }
             let newIndex = ((currentIndex + offset) % panes.count + panes.count) % panes.count
             let targetPane = panes[newIndex]
-            // 移動先ペインの activeIndex が不正なら先頭に補正
-            if targetPane.activeIndex < 0 || targetPane.activeIndex >= targetPane.tabs.count {
-                if !targetPane.tabs.isEmpty {
-                    targetPane.activeIndex = 0
-                }
-            }
-            reg.activeSessionID = targetPane.activeSessionID
+            reg.setActiveTab(paneID: targetPane.id, tabIndex: targetPane.activeIndex)
         }
     }
 
     /// Cmd+Shift+↓ / → : 現在のペインを分割し、新しく作られたペインのタブを active にする
     private func splitCurrent(axis: LayoutNode.Axis) {
         guard let pane = currentPane(), let node = leafNode(for: pane) else { return }
+        let reg = registry
+        let lay = layout
         DispatchQueue.main.async {
-            if let newPane = layout.splitLeaf(node, axis: axis) {
-                registry.activeSessionID = newPane.activeSessionID
+            if let newPane = lay.splitLeaf(node, axis: axis) {
+                reg.setActiveTab(paneID: newPane.id, tabIndex: newPane.activeIndex)
             }
         }
     }
 
     /// Cmd+1..0 : 指定 Tool のタブへフォーカス。既にその Tool がアクティブなら次のインスタンスへ循環。
     private func focusTool(_ tool: Tool) {
-        let matches: [(pane: Pane, id: SessionID)] = layout.allPanes.flatMap { pane in
-            pane.tabs.filter { $0.tool == tool }.map { (pane, $0) }
+        let matches: [(pane: Pane, id: SessionID, tabIndex: Int)] = layout.allPanes.flatMap { pane in
+            pane.tabs.enumerated().compactMap { index, id in
+                id.tool == tool ? (pane, id, index) : nil
+            }
         }
         guard !matches.isEmpty else { return }
         let targetIndex: Int
@@ -237,21 +214,14 @@ struct AideaApp: App {
             targetIndex = 0
         }
         let target = matches[targetIndex]
-        if let tabIndex = target.pane.tabs.firstIndex(of: target.id) {
-            target.pane.activeIndex = tabIndex
-        }
-        registry.activeSessionID = target.id
+        registry.setActiveTab(paneID: target.pane.id, tabIndex: target.tabIndex)
     }
 
     // MARK: - Helpers
 
-    /// 現在アクティブな Session が属する Pane を返す (無ければ最初のペイン)
+    /// 現在アクティブなペインを返す (無ければ最初のペイン)
     private func currentPane() -> Pane? {
-        if let activeID = registry.activeSessionID,
-           let pane = layout.allPanes.first(where: { $0.tabs.contains(activeID) }) {
-            return pane
-        }
-        return layout.allPanes.first
+        return registry.activePane ?? layout.allPanes.first
     }
 
     /// 指定 Pane を持つ LayoutNode (leaf) を探す
@@ -291,10 +261,13 @@ struct AideaApp: App {
               let pane = layout.allPanes.first(where: { $0.tabs.contains(activeID) }),
               let index = pane.tabs.firstIndex(of: activeID) else { return }
         pane.tabs.remove(at: index)
+        registry.destroySession(activeID)
         if pane.activeIndex >= pane.tabs.count {
             pane.activeIndex = max(0, pane.tabs.count - 1)
         }
-        registry.activeSessionID = pane.activeSessionID
+        if !pane.tabs.isEmpty {
+            registry.setActiveTab(paneID: pane.id, tabIndex: pane.activeIndex)
+        }
 
         if pane.tabs.isEmpty {
             let target = layout.allLeafNodes.first { node in
@@ -307,7 +280,7 @@ struct AideaApp: App {
                 DispatchQueue.main.async {
                     layout.removeLeaf(node)
                     if let firstPane = layout.allPanes.first {
-                        registry.activeSessionID = firstPane.activeSessionID
+                        registry.setActiveTab(paneID: firstPane.id, tabIndex: firstPane.activeIndex)
                     }
                 }
             }

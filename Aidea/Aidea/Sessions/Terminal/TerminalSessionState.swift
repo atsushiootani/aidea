@@ -20,6 +20,11 @@ final class TerminalSessionState: SessionState {
         self.workspace = workspace
     }
 
+    /// Terminal がアクティブになったら terminalView を focusableView に設定する
+    func didBecomeActive(session: Session) {
+        session.focusableView = cached
+    }
+
     /// View 側で参照する PersistentTerminalView (初回のみ PTY を起動)
     var terminalView: PersistentTerminalView {
         if let cached = cached { return cached }

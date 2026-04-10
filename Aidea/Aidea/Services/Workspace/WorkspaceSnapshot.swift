@@ -21,8 +21,8 @@ struct WorkspaceSnapshot: Codable {
     let filers: [FilerSnapshot]
     /// Kit Session の状態一覧 (セクション・サブグループの開閉)
     let kits: [KitSnapshot]
-    /// 最後にアクティブだった Session
-    let activeSessionID: SessionID?
+    /// アクティブなペインの ID
+    let activePaneID: UUID?
 }
 
 /// LayoutNode ツリーの永続化用表現 (再帰 enum)
@@ -33,6 +33,7 @@ indirect enum LayoutNodeSnapshot: Codable {
 
 /// 1 ペインの中身
 struct PaneSnapshot: Codable {
+    let paneID: UUID
     let tabs: [SessionID]
     let activeIndex: Int
 }

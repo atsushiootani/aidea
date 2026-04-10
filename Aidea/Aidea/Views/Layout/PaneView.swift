@@ -37,7 +37,7 @@ struct PaneView: View {
                         .allowsHitTesting(isActive)
                         .simultaneousGesture(
                             TapGesture().onEnded {
-                                registry.activeSessionID = id
+                                registry.setActiveTab(paneID: pane.id, tabIndex: pane.activeIndex)
                             }
                         )
                 }
@@ -77,7 +77,7 @@ struct PaneView: View {
                 let reg = registry
                 DispatchQueue.main.async {
                     if let newPane = lay.splitLeaf(node, axis: .horizontal) {
-                        reg.activeSessionID = newPane.activeSessionID
+                        reg.setActiveTab(paneID: newPane.id, tabIndex: newPane.activeIndex)
                     }
                 }
             } label: {
@@ -93,7 +93,7 @@ struct PaneView: View {
                 let reg = registry
                 DispatchQueue.main.async {
                     if let newPane = lay.splitLeaf(node, axis: .vertical) {
-                        reg.activeSessionID = newPane.activeSessionID
+                        reg.setActiveTab(paneID: newPane.id, tabIndex: newPane.activeIndex)
                     }
                 }
             } label: {
@@ -141,8 +141,7 @@ struct PaneView: View {
         )
         .contentShape(Rectangle())
         .onTapGesture {
-            pane.activeIndex = index
-            registry.activeSessionID = sessionID
+            registry.setActiveTab(paneID: pane.id, tabIndex: index)
         }
         .draggable(sessionID)
     }
@@ -152,7 +151,8 @@ struct PaneView: View {
     /// - その他: tool 名 + (instance > 0 のとき番号)
     private func displayLabel(for sessionID: SessionID) -> String {
         if sessionID.tool == .preview,
-           let preview = registry.state(for: sessionID) as? PreviewSessionState {
+           let s = registry.session(for: sessionID),
+           let preview = s.state as? PreviewSessionState {
             if let title = preview.title, !title.isEmpty { return title }
             if let url = preview.url { return url.lastPathComponent }
         }
@@ -208,25 +208,26 @@ struct PaneView: View {
     /// 新しい Session を追加 (常に新インスタンスを採番)
     private func addSession(tool: Tool) {
         let instance = layout.nextSessionInstance(of: tool)
+        let _ = registry.createSession(tool: tool, instance: instance)
         let id = SessionID(tool, instance: instance)
         pane.tabs.append(id)
-        pane.activeIndex = pane.tabs.count - 1
-        registry.activeSessionID = id
+        registry.setActiveTab(paneID: pane.id, tabIndex: pane.tabs.count - 1)
     }
 
-    /// タブをクローズ。クローズ対象がグローバルアクティブだった場合は更新する。
-    /// 全タブが閉じられた場合、このペイン自体をレイアウトツリーから取り除く。
+    /// タブをクローズ。全タブが閉じられた場合、このペイン自体をレイアウトツリーから取り除く。
     private func closeTab(at index: Int) {
         guard index >= 0, index < pane.tabs.count else { return }
         let closed = pane.tabs[index]
         pane.tabs.remove(at: index)
+        registry.destroySession(closed)
         if pane.activeIndex >= pane.tabs.count {
             pane.activeIndex = max(0, pane.tabs.count - 1)
         }
-        if registry.activeSessionID == closed {
-            registry.activeSessionID = pane.activeSessionID
+        // 現在のペインがアクティブなら新しいアクティブタブに切替
+        if registry.activePaneID == pane.id {
+            registry.setActiveTab(paneID: pane.id, tabIndex: pane.activeIndex)
         }
-        // 全タブが閉じられたらペイン自体を削除 (update サイクル外で実行)
+        // 全タブが閉じられたらペイン自体を削除
         if pane.tabs.isEmpty {
             let node = layoutNode
             let lay = layout
@@ -234,7 +235,7 @@ struct PaneView: View {
             DispatchQueue.main.async {
                 lay.removeLeaf(node)
                 if let firstPane = lay.allPanes.first {
-                    reg.activeSessionID = firstPane.activeSessionID
+                    reg.setActiveTab(paneID: firstPane.id, tabIndex: firstPane.activeIndex)
                 }
             }
         }

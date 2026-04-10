@@ -4,6 +4,7 @@
 //
 
 import Foundation
+import AppKit
 import CoreTransferable
 import UniformTypeIdentifiers
 
@@ -52,9 +53,21 @@ struct SessionID: Hashable, Codable, Sendable {
     }
 }
 
-/// Session の内部状態を表すマーカープロトコル。
-/// Phase 4 で永続化エンコーディング用に拡張する想定。
-protocol SessionState: AnyObject {}
+/// Session の内部状態を表すプロトコル。Tool 固有のデータとライフサイクルを定義する。
+/// focusableView は Session クラスに移動済み (SessionState からは分離)。
+protocol SessionState: AnyObject {
+    /// このセッションがアクティブになったとき呼ばれる。
+    /// フォーカス制御やデータリロード等、Tool 固有の活性化処理を実装する。
+    func didBecomeActive(session: Session)
+
+    /// このセッションが非アクティブになったとき呼ばれる。
+    func didResignActive(session: Session)
+}
+
+extension SessionState {
+    func didBecomeActive(session: Session) {}
+    func didResignActive(session: Session) {}
+}
 
 /// Tab のドラッグ&ドロップのために SessionID を Transferable にする。
 /// ペイロードは "<tool>:<instance>" 形式の文字列 (Swift 6 の Sendable 要件を回避)。

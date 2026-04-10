@@ -42,7 +42,19 @@ final class KitSessionState: SessionState {
     /// 選択中の項目キー (`section:id`)
     var selection: String?
 
+    /// Kit がアクティブかどうか。KitSessionView が @FocusState と連動させる。
+    var isActive: Bool = false
+
     init(workspace: WorkspaceState) {
         self.workspace = workspace
+    }
+
+    /// Kit は純 SwiftUI なので focusableView ではなく isActive フラグで通知
+    func didBecomeActive(session: Session) {
+        isActive = true
+    }
+
+    func didResignActive(session: Session) {
+        isActive = false
     }
 }

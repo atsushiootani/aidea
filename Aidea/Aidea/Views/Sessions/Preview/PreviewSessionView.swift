@@ -8,10 +8,10 @@ import AppKit
 
 /// Preview Session の SwiftUI View。state.url のファイルを表示する。
 struct PreviewSessionView: View {
+    let session: Session
     let state: PreviewSessionState
     let sessionID: SessionID
     @Environment(SessionRegistry.self) private var registry
-    @FocusState private var isFocused: Bool
     @State private var preview: PreviewContent = .empty
     @State private var loadedURL: URL?
 
@@ -21,12 +21,11 @@ struct PreviewSessionView: View {
     var body: some View {
         Group {
             if let url = state.url, isDrawioURL(url) {
-                // drawio は専用の DrawioPreview で直接ファイルを扱う (preview enum は使わない)
-                DrawioPreview(url: url)
+                DrawioPreview(url: url, session: session)
             } else if let url = state.url, isMarkdownURL(url) {
-                // Markdown は専用の MarkdownContainer で view/edit モードを管理
                 MarkdownContainer(
                     url: url,
+                    session: session,
                     onLinkTap: { resolvedURL in
                         registry.openPreviewAsSibling(
                             for: resolvedURL,
@@ -41,7 +40,7 @@ struct PreviewSessionView: View {
                 case .loading:
                     placeholder("読み込み中...")
                 case .text(let content):
-                    NSTextPreview(text: content)
+                    NSTextPreview(text: content, onViewCreated: { session.focusableView = $0 })
                 case .image(let image):
                     ScrollView([.horizontal, .vertical]) {
                         Image(nsImage: image)
@@ -55,16 +54,14 @@ struct PreviewSessionView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .focusable()
-        .focused($isFocused)
         .task(id: state.url) {
+            // URL 変更時は focusableView をクリア (子ビューが再設定する)
+            session.focusableView = nil
             await loadPreview(for: state.url)
-        }
-        .onAppear {
-            if registry.activeSessionID == sessionID { isFocused = true }
-        }
-        .onChange(of: registry.activeSessionID) { _, newValue in
-            if newValue == sessionID { isFocused = true }
+            // コンテンツロード後にリフォーカス
+            if registry.activeSessionID == sessionID {
+                registry.reactivateCurrentSession()
+            }
         }
     }
 
@@ -151,6 +148,8 @@ enum PreviewContent {
 /// NSTextView を NSViewRepresentable でラップして大きなテキストでも高速にスクロールできるようにする。
 struct NSTextPreview: NSViewRepresentable {
     let text: String
+    /// NSTextView が生成されたときに呼ばれるコールバック (focusableView 報告用)
+    var onViewCreated: ((NSView) -> Void)? = nil
 
     func makeNSView(context: Context) -> NSScrollView {
         let scroll = NSTextView.scrollableTextView()
@@ -161,6 +160,7 @@ struct NSTextPreview: NSViewRepresentable {
         textView.font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
         textView.textContainerInset = NSSize(width: 8, height: 8)
         textView.string = text
+        onViewCreated?(textView)
         return scroll
     }
 

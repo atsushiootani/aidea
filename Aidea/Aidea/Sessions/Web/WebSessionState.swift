@@ -17,6 +17,11 @@ final class WebSessionState: SessionState {
     @ObservationIgnored private var cached: WKWebView?
     @ObservationIgnored private var urlObservation: NSKeyValueObservation?
 
+    /// Web がアクティブになったら webView を focusableView に設定する
+    func didBecomeActive(session: Session) {
+        session.focusableView = cached
+    }
+
     /// View 側で参照する WKWebView (初回のみ生成)
     var webView: WKWebView {
         if let cached = cached { return cached }

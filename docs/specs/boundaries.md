@@ -1,7 +1,28 @@
 # Boundaries
 
-Aidea の境界。**常に行うこと** / **最初に確認すること** / **決して行わないこと** を明示する。
-CLAUDE.md やコードレビュー時に参照する。
+Aidea の境界と設計原則。CLAUDE.md やコードレビュー時に参照する。
+
+---
+
+## Design Principles (設計原則)
+
+設計・実装のあらゆる場面で常に意識する原則。個別の判断に迷ったときはここに立ち返る。
+
+設計原則の詳細は **[principles.md](./principles.md)** を参照。
+以下はその中で特に重要なものの要約:
+
+- **Tell, Don't Ask**: 子の型を調べて分岐するのではなく、子に「やって」と伝える
+- **Single Responsibility**: クラスの変更理由は 1 つだけ
+- **Open/Closed**: 拡張は新コード追加で、既存コード修正なしで
+- **Polymorphism**: 型ごとの分岐は if/switch ではなくプロトコルメソッドで
+- **Information Expert**: その情報を一番知っているクラスにその責務を割り当てる
+- **Composition over Inheritance**: class 継承より protocol + 合成
+- **Separation of Concerns**: Views / Sessions / Services / Models の責務を混ぜない
+
+**対の原則**: 「全体を横断する共通ルール」(例: Esc でキャンセル、破壊的操作は確認ダイアログ) は
+親レベルで一律に適用する。子が独自に判断すべきでない共通の振る舞いは [UI Conventions](#ui-conventions-ui-共通ルール) に集約する。
+
+---
 
 ## Always (常に行うこと)
 

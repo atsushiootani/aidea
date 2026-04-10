@@ -10,11 +10,12 @@ import Observation
 /// 各 Tab は 1 つの Session を参照する。
 @Observable
 final class Pane: Identifiable {
-    let id = UUID()
+    let id: UUID
     var tabs: [SessionID]
     var activeIndex: Int
 
-    init(tabs: [SessionID], activeIndex: Int = 0) {
+    init(id: UUID = UUID(), tabs: [SessionID], activeIndex: Int = 0) {
+        self.id = id
         self.tabs = tabs
         self.activeIndex = activeIndex
     }

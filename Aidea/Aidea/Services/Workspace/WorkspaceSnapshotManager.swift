@@ -49,21 +49,25 @@ final class WorkspaceSnapshotManager {
             for id in pane.tabs {
                 switch id.tool {
                 case .preview:
-                    if let state = registry.peekState(for: id) as? PreviewSessionState {
+                    if let s = registry.session(for: id),
+                   let state = s.state as? PreviewSessionState {
                         previews.append(PreviewSnapshot(id: id, url: state.url, title: state.title))
                     }
                 case .web:
-                    if let state = registry.peekState(for: id) as? WebSessionState {
+                    if let s = registry.session(for: id),
+                   let state = s.state as? WebSessionState {
                         webs.append(WebSnapshot(id: id, url: state.url))
                     }
                 case .filer:
-                    if let state = registry.peekState(for: id) as? FilerSessionState {
+                    if let s = registry.session(for: id),
+                   let state = s.state as? FilerSessionState {
                         let live = state.controller.collectExpandedURLs()
                         state.expandedURLs = live
                         filers.append(FilerSnapshot(id: id, expandedURLs: Array(live)))
                     }
                 case .kit:
-                    if let state = registry.peekState(for: id) as? KitSessionState {
+                    if let s = registry.session(for: id),
+                   let state = s.state as? KitSessionState {
                         kits.append(KitSnapshot(
                             id: id,
                             expandedSections: state.expandedSections.map(\.rawValue),
@@ -83,7 +87,7 @@ final class WorkspaceSnapshotManager {
             webs: webs,
             filers: filers,
             kits: kits,
-            activeSessionID: registry.activeSessionID
+            activePaneID: registry.activePaneID
         )
     }
 
@@ -93,7 +97,7 @@ final class WorkspaceSnapshotManager {
         case .leaf(let pane):
             return .leaf(
                 id: node.id,
-                pane: PaneSnapshot(tabs: pane.tabs, activeIndex: pane.activeIndex)
+                pane: PaneSnapshot(paneID: pane.id, tabs: pane.tabs, activeIndex: pane.activeIndex)
             )
         case .split(let axis, let children):
             return .split(
@@ -126,32 +130,41 @@ final class WorkspaceSnapshotManager {
 
         // Preview/Web/Filer/Kit の状態を事前にセット
         for preview in snapshot.previews {
-            let state = registry.state(for: preview.id) as! PreviewSessionState
+            let session = registry.ensureSession(for: preview.id)
+            let state = session.state as! PreviewSessionState
             state.url = preview.url
             state.title = preview.title
         }
         for web in snapshot.webs {
-            let state = registry.state(for: web.id) as! WebSessionState
+            let session = registry.ensureSession(for: web.id)
+            let state = session.state as! WebSessionState
             state.url = web.url
         }
         for filer in snapshot.filers {
-            let state = registry.state(for: filer.id) as! FilerSessionState
+            let session = registry.ensureSession(for: filer.id)
+            let state = session.state as! FilerSessionState
             state.expandedURLs = Set(filer.expandedURLs)
         }
         for kit in snapshot.kits {
-            let state = registry.state(for: kit.id) as! KitSessionState
+            let session = registry.ensureSession(for: kit.id)
+            let state = session.state as! KitSessionState
             state.expandedSections = Set(kit.expandedSections.compactMap { KitSection(rawValue: $0) })
             state.expandedGroups = Set(kit.expandedGroups)
         }
 
-        registry.activeSessionID = snapshot.activeSessionID
+        // Active Pane を復元
+        if let activePID = snapshot.activePaneID {
+            registry.setActiveTab(paneID: activePID)
+        } else if let firstPane = layout.allPanes.first {
+            registry.setActiveTab(paneID: firstPane.id)
+        }
     }
 
     /// Codable 型から LayoutNode ツリーを復元する (id を保持して autosaveName 整合を取る)
     private func buildLayoutNode(from snapshot: LayoutNodeSnapshot) -> LayoutNode {
         switch snapshot {
         case .leaf(let id, let paneSnapshot):
-            let pane = Pane(tabs: paneSnapshot.tabs, activeIndex: paneSnapshot.activeIndex)
+            let pane = Pane(id: paneSnapshot.paneID, tabs: paneSnapshot.tabs, activeIndex: paneSnapshot.activeIndex)
             return LayoutNode(id: id, value: .leaf(pane))
         case .split(let id, let axisRaw, let childrenSnapshot):
             let axis = LayoutNode.Axis(rawValue: axisRaw) ?? .horizontal
