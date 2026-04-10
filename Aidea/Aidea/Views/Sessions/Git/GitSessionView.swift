@@ -33,6 +33,7 @@ final class GitFileListViewController: NSViewController, NSOutlineViewDataSource
     var session: Session?
     let outlineView = NSOutlineView()
     private let scrollView = NSScrollView()
+    private let branchBadge = BranchBadgeView()
     private let watcher = FileWatcher()
     private var reloadWorkItem: DispatchWorkItem?
 
@@ -64,8 +65,11 @@ final class GitFileListViewController: NSViewController, NSOutlineViewDataSource
         picker.selectedSegment = 0
         picker.translatesAutoresizingMaskIntoConstraints = false
 
+        branchBadge.translatesAutoresizingMaskIntoConstraints = false
+
         let container = NSView()
         container.addSubview(picker)
+        container.addSubview(branchBadge)
         container.addSubview(scrollView)
         picker.translatesAutoresizingMaskIntoConstraints = false
         scrollView.translatesAutoresizingMaskIntoConstraints = false
@@ -73,7 +77,10 @@ final class GitFileListViewController: NSViewController, NSOutlineViewDataSource
             picker.topAnchor.constraint(equalTo: container.topAnchor, constant: 6),
             picker.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 8),
             picker.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -8),
-            scrollView.topAnchor.constraint(equalTo: picker.bottomAnchor, constant: 6),
+            branchBadge.topAnchor.constraint(equalTo: picker.bottomAnchor, constant: 4),
+            branchBadge.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 10),
+            branchBadge.heightAnchor.constraint(equalToConstant: 22),
+            scrollView.topAnchor.constraint(equalTo: branchBadge.bottomAnchor, constant: 4),
             scrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
@@ -91,8 +98,20 @@ final class GitFileListViewController: NSViewController, NSOutlineViewDataSource
 
     func reload() {
         state?.reload()
+        updateBranchLabel()
         outlineView.reloadData()
         outlineView.expandItem(nil, expandChildren: true)
+    }
+
+    /// モードに応じてブランチラベルを更新する
+    private func updateBranchLabel() {
+        guard let state else { return }
+        switch state.mode {
+        case .workingChanges:
+            branchBadge.setBranches([state.currentBranch])
+        case .prPreview:
+            branchBadge.setBranches([state.baseBranch, state.currentBranch])
+        }
     }
 
     private func scheduleReload() {
@@ -193,5 +212,68 @@ final class GitFileListViewController: NSViewController, NSOutlineViewDataSource
         let row = outlineView.selectedRow
         guard row >= 0, let node = outlineView.item(atRow: row) as? GitFileTreeNode else { return }
         state?.selectedPath = node.relativePath
+    }
+}
+
+/// ブランチ名を角丸四角形の塗りつぶし背景で表示するバッジ。
+/// 複数ブランチの場合は ".." で区切って個別のバッジを表示する。
+final class BranchBadgeView: NSView {
+    private let stack = NSStackView()
+
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        setup()
+    }
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        setup()
+    }
+
+    private func setup() {
+        stack.orientation = .horizontal
+        stack.spacing = 4
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(stack)
+        NSLayoutConstraint.activate([
+            stack.leadingAnchor.constraint(equalTo: leadingAnchor),
+            stack.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor),
+            stack.centerYAnchor.constraint(equalTo: centerYAnchor),
+        ])
+    }
+
+    /// ブランチ名を設定する。1つなら単独バッジ、2つなら ".." 区切りで2バッジ。
+    func setBranches(_ branches: [String]) {
+        stack.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        for (i, branch) in branches.enumerated() {
+            if i > 0 {
+                let separator = NSTextField(labelWithString: "..")
+                separator.font = .monospacedSystemFont(ofSize: 11, weight: .medium)
+                separator.textColor = .secondaryLabelColor
+                stack.addArrangedSubview(separator)
+            }
+            stack.addArrangedSubview(makeBadge(branch))
+        }
+    }
+
+    private func makeBadge(_ text: String) -> NSView {
+        let label = NSTextField(labelWithString: text)
+        label.font = .monospacedSystemFont(ofSize: 11, weight: .medium)
+        label.textColor = .secondaryLabelColor
+        label.lineBreakMode = .byTruncatingTail
+
+        let badge = NSView()
+        badge.wantsLayer = true
+        badge.layer?.cornerRadius = 4
+        badge.layer?.backgroundColor = NSColor.secondaryLabelColor.withAlphaComponent(0.15).cgColor
+
+        label.translatesAutoresizingMaskIntoConstraints = false
+        badge.addSubview(label)
+        NSLayoutConstraint.activate([
+            label.leadingAnchor.constraint(equalTo: badge.leadingAnchor, constant: 6),
+            label.trailingAnchor.constraint(equalTo: badge.trailingAnchor, constant: -6),
+            label.centerYAnchor.constraint(equalTo: badge.centerYAnchor),
+            badge.heightAnchor.constraint(equalToConstant: 20),
+        ])
+        return badge
     }
 }

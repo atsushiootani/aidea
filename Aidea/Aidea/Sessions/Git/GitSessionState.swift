@@ -23,6 +23,9 @@ final class GitSessionState: SessionState {
     var mode: GitMode = .workingChanges
     var treeNodes: [GitFileTreeNode] = []
     var selectedPath: String?
+    var currentBranch: String = ""
+    /// PR Preview の比較対象ブランチ
+    let baseBranch: String = "main"
 
     init(workspace: WorkspaceState) {
         self.workspace = workspace
@@ -35,6 +38,7 @@ final class GitSessionState: SessionState {
             return
         }
         do {
+            currentBranch = (try? GitService.currentBranch(cwd: root)) ?? ""
             var files: [GitChangedFile] = []
             switch mode {
             case .workingChanges:

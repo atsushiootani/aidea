@@ -28,6 +28,11 @@ enum GitService {
         try run(["diff", "--name-status"], cwd: cwd)
     }
 
+    /// 現在のブランチ名を取得する
+    static func currentBranch(cwd: URL) throws -> String {
+        try run(["rev-parse", "--abbrev-ref", "HEAD"], cwd: cwd).trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     /// ステージ済みの変更ファイル一覧 (staged)
     static func diffCachedNameStatus(cwd: URL) throws -> String {
         try run(["diff", "--cached", "--name-status"], cwd: cwd)
