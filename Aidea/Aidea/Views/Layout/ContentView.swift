@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import AppKit
 
 /// アプリのルート View。4 ペイン構成 (Phase 1: ペイン位置は固定、各ペインは複数 Tab を持てる)。
 /// レイアウトは NSSplitViewController ラッパ (`SplitLayoutView`) で構築し、
@@ -28,6 +29,20 @@ struct ContentView: View {
                     .frame(minWidth: 600, minHeight: 400)
                     .navigationTitle("Aidea")
             }
+        }
+        .onChange(of: registry.activeSessionID) { _, newValue in
+            updateFirstResponder(to: newValue)
+        }
+    }
+
+    /// アクティブ Session が変わったときに対応する NSView を First Responder にする。
+    /// NSView を直接持たない SwiftUI 系 Session (kit / preview 等) は何もしない。
+    private func updateFirstResponder(to sessionID: SessionID?) {
+        guard let sessionID = sessionID else { return }
+        DispatchQueue.main.async {
+            guard let view = registry.focusableView(for: sessionID) else { return }
+            let window = view.window ?? NSApp.keyWindow
+            window?.makeFirstResponder(view)
         }
     }
 

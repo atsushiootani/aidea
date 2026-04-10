@@ -88,6 +88,41 @@ if EmacsNavigation.handle(event: event, responder: self) { return }
 
 SwiftUI 主体の Session も同等のショートカットを提供する (将来 `onKeyPress` で実装)。
 
+### タブ / ペイン / ツール操作 (グローバルショートカット)
+どの Tool にフォーカスしていても共通で効く、アプリ全体のナビゲーション系ショートカット。
+`AideaApp.body.commands` の `CommandMenu("タブ")` / `CommandMenu("ツール")` で実装する。
+
+#### タブ・ペイン操作
+
+| キー | 動作 |
+|---|---|
+| **⌘ T** | 新しいタブを追加 (NSAlert ベースの Tool 選択ダイアログを開く) |
+| **⌘ W** | 現在のタブを閉じる。全タブ消滅時はペインも削除 |
+| **⌘ ⇧ [** | 現在ペイン内で左のタブへ (ラップ) |
+| **⌘ ⇧ ]** | 現在ペイン内で右のタブへ (ラップ) |
+| **⌘ [** | 前のペインへ (ラップ) |
+| **⌘ ]** | 次のペインへ (ラップ) |
+| **⌘ ⇧ →** | 現在のペインを左右に分割 |
+| **⌘ ⇧ ↓** | 現在のペインを上下に分割 |
+
+#### ツール切替 (インスタンスの循環フォーカス)
+現在アクティブ Session が同じ Tool なら **次のインスタンスに循環**、違う場合は最初のマッチに移動する。
+
+| キー | Tool |
+|---|---|
+| **⌘ 1** | Filer |
+| **⌘ 2** | Kit |
+| **⌘ 8** | Terminal |
+| **⌘ 9** | Web |
+| **⌘ 0** | Preview |
+
+#### 実装上の注意
+- tree ミューテーション (`splitLeaf` / `removeLeaf`) は `DispatchQueue.main.async` で
+  次 runloop に遅延させて SwiftUI の update サイクル外で実行する
+  (さもないと `AttributeGraph precondition failure: setting value during update` でクラッシュ)
+- ヘルパー `currentPane()` / `leafNode(for:)` で `activeSessionID` から対応する `Pane` / `LayoutNode` を逆引きする
+- Filer はシングルトン制約があるため、⌘T の Tool 選択肢からは既存時に除外する
+
 ## 参考
 - [SPEC.md](./SPEC.md) — 仕様本体
 - [decisions/](../decisions/README.md) — 設計判断の記録

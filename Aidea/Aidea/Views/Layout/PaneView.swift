@@ -68,13 +68,17 @@ struct PaneView: View {
 
     /// ペインを左右 / 上下に分割するボタン (タブバーの右端)
     /// 分割操作は SwiftUI の update サイクル外で実行するため DispatchQueue で遅延させる。
+    /// 新しく作られたペインのタブを自動で active にする。
     private var splitButtons: some View {
         HStack(spacing: 4) {
             Button {
                 let node = layoutNode
                 let lay = layout
+                let reg = registry
                 DispatchQueue.main.async {
-                    lay.splitLeaf(node, axis: .horizontal)
+                    if let newPane = lay.splitLeaf(node, axis: .horizontal) {
+                        reg.activeSessionID = newPane.activeSessionID
+                    }
                 }
             } label: {
                 Image(systemName: "rectangle.split.2x1")
@@ -86,8 +90,11 @@ struct PaneView: View {
             Button {
                 let node = layoutNode
                 let lay = layout
+                let reg = registry
                 DispatchQueue.main.async {
-                    lay.splitLeaf(node, axis: .vertical)
+                    if let newPane = lay.splitLeaf(node, axis: .vertical) {
+                        reg.activeSessionID = newPane.activeSessionID
+                    }
                 }
             } label: {
                 Image(systemName: "rectangle.split.1x2")

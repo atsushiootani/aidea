@@ -36,7 +36,8 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
     /// 現在表示中のルート (差分検知用)
     var currentRoot: URL?
 
-    private let outlineView = FilerOutlineView()
+    /// NSOutlineView 本体。外部から First Responder にするためのアクセス用に internal。
+    let outlineView = FilerOutlineView()
     private let scrollView = NSScrollView()
     private let searchField = NSSearchField()
     private let watcher = FileWatcher()

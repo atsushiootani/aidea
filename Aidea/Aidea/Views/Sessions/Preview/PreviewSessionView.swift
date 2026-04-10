@@ -9,7 +9,9 @@ import AppKit
 /// Preview Session の SwiftUI View。state.url のファイルを表示する。
 struct PreviewSessionView: View {
     let state: PreviewSessionState
+    let sessionID: SessionID
     @Environment(SessionRegistry.self) private var registry
+    @FocusState private var isFocused: Bool
     @State private var preview: PreviewContent = .empty
     @State private var loadedURL: URL?
 
@@ -53,8 +55,16 @@ struct PreviewSessionView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .focusable()
+        .focused($isFocused)
         .task(id: state.url) {
             await loadPreview(for: state.url)
+        }
+        .onAppear {
+            if registry.activeSessionID == sessionID { isFocused = true }
+        }
+        .onChange(of: registry.activeSessionID) { _, newValue in
+            if newValue == sessionID { isFocused = true }
         }
     }
 

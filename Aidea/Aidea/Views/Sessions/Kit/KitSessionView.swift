@@ -13,6 +13,7 @@ struct KitSessionView: View {
     let sessionID: SessionID
     @Environment(WorkspaceState.self) private var workspace
     @Environment(SessionRegistry.self) private var registry
+    @FocusState private var isFocused: Bool
 
     var body: some View {
         ScrollView {
@@ -78,8 +79,16 @@ struct KitSessionView: View {
                 }
             }
         }
-        .onAppear { reloadAll() }
+        .focusable()
+        .focused($isFocused)
+        .onAppear {
+            reloadAll()
+            if registry.activeSessionID == sessionID { isFocused = true }
+        }
         .onChange(of: workspace.projectRoot) { _, _ in reloadAll() }
+        .onChange(of: registry.activeSessionID) { _, newValue in
+            if newValue == sessionID { isFocused = true }
+        }
     }
 
     // MARK: - Data reload

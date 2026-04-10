@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import AppKit
 import Observation
 
 /// Session 実体のライフサイクルを管理するレジストリ。
@@ -51,6 +52,23 @@ final class SessionRegistry {
     /// 永続化時に "既に使われている Session だけ" を保存するのに使う。
     func peekState(for id: SessionID) -> (any SessionState)? {
         return states[id]
+    }
+
+    /// アクティブタブ切替時に First Responder にしたい NSView を返す。
+    /// NSView を直接保持する Session (filer / terminal / web) だけ対応。
+    /// SwiftUI 系 Session は nil を返す (将来 NSHostingView 経由で対応予定)。
+    func focusableView(for id: SessionID) -> NSView? {
+        guard let state = states[id] else { return nil }
+        switch id.tool {
+        case .filer:
+            return (state as? FilerSessionState)?.controller.outlineView
+        case .terminal:
+            return (state as? TerminalSessionState)?.terminalView
+        case .web:
+            return (state as? WebSessionState)?.webView
+        default:
+            return nil
+        }
     }
 
     /// Filer や Kit のダブルクリック等から呼ばれる: 新しい Preview Tab を
@@ -235,7 +253,7 @@ final class SessionRegistry {
         case .kit:      KitSessionView(state: state as! KitSessionState, sessionID: id)
         case .terminal: TerminalSessionView(state: state as! TerminalSessionState)
         case .web:      WebSessionView(state: state as! WebSessionState)
-        case .preview:  PreviewSessionView(state: state as! PreviewSessionState)
+        case .preview:  PreviewSessionView(state: state as! PreviewSessionState, sessionID: id)
         }
     }
 }

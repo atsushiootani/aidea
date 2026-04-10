@@ -16,6 +16,8 @@ Aidea の設計判断を 1 件ずつ記録する。フォーマットは [Michae
 | [0008](./0008-no-claude-autostart.md) | ターミナルでは claude を自動起動しない | 採用 |
 | [0009](./0009-nsoutlineview-and-fsevents.md) | ファイラは NSOutlineView + FSEvents で実装する | 採用 |
 | [0010](./0010-drawio-rendering-paths.md) | drawio ファイルの描画は形式ごとに異なる経路を使う | 採用 |
+| [0011](./0011-cmd-w-via-nsevent-monitor.md) | Cmd+W のタブクローズは NSEvent local monitor で実装する | 採用 |
+| [0012](./0012-keyboard-focus-dual-path.md) | キーボードフォーカスは AppKit と SwiftUI の 2 経路で管理する | 採用 |
 
 ## 新規追加方法
 
