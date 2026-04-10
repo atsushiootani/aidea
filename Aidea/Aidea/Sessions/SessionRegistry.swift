@@ -225,6 +225,46 @@ final class SessionRegistry {
         setActiveTab(paneID: pane.id, tabIndex: insertIndex)
     }
 
+    /// Git ツールから GitDiff を別ペインの新規タブに開く。
+    /// 既に同じファイルの GitDiff が開いていればそれをアクティブ化する。
+    func openGitDiff(for filePath: String, mode: GitMode, isUntracked: Bool = false, isStaged: Bool = false) {
+        // dedupe: 同じファイルの GitDiff があればアクティブ化
+        for pane in layout.allPanes {
+            for (index, id) in pane.tabs.enumerated() where id.tool == .gitDiff {
+                if let s = session(for: id),
+                   let state = s.state as? GitDiffSessionState,
+                   state.filePath == filePath {
+                    setActiveTab(paneID: pane.id, tabIndex: index)
+                    return
+                }
+            }
+        }
+        // 呼び出し元ペイン以外に配置
+        let callerPane = activePane
+        var targetPane: Pane?
+        for id in activeHistory.reversed() {
+            if let pane = layout.allPanes.first(where: { $0.tabs.contains(id) }),
+               pane !== callerPane {
+                targetPane = pane
+                break
+            }
+        }
+        if targetPane == nil {
+            targetPane = layout.allPanes.first { $0 !== callerPane }
+        }
+        guard let pane = targetPane else { return }
+
+        let instance = layout.nextSessionInstance(of: .gitDiff)
+        let session = createSession(tool: .gitDiff, instance: instance)
+        let diffState = session.state as! GitDiffSessionState
+        diffState.filePath = filePath
+        diffState.mode = mode
+        diffState.isUntracked = isUntracked
+        diffState.isStaged = isStaged
+        pane.tabs.append(session.id)
+        setActiveTab(paneID: pane.id, tabIndex: pane.tabs.count - 1)
+    }
+
     /// 削除されたファイル/ディレクトリを表示していた Preview タブを閉じる
     func closePreviewsForDeleted(_ deleted: URL, isDirectory: Bool) {
         let deletedPath = deleted.path
@@ -294,6 +334,8 @@ final class SessionRegistry {
         case .terminal: TerminalSessionView(state: session.state as! TerminalSessionState)
         case .web:      WebSessionView(state: session.state as! WebSessionState)
         case .preview:  PreviewSessionView(session: session, state: session.state as! PreviewSessionState, sessionID: id)
+        case .git:      GitSessionView(session: session, state: session.state as! GitSessionState)
+        case .gitDiff:  GitDiffSessionView(session: session, state: session.state as! GitDiffSessionState)
         }
     }
 
@@ -316,6 +358,11 @@ final class SessionRegistry {
             state.registry = self
             return state
         case .preview:  return PreviewSessionState()
+        case .git:
+            let state = GitSessionState(workspace: workspace)
+            state.registry = self
+            return state
+        case .gitDiff:  return GitDiffSessionState(workspace: workspace)
         }
     }
 }

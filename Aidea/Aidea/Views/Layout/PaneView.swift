@@ -156,6 +156,13 @@ struct PaneView: View {
             if let title = preview.title, !title.isEmpty { return title }
             if let url = preview.url { return url.lastPathComponent }
         }
+        if sessionID.tool == .gitDiff,
+           let s = registry.session(for: sessionID),
+           let diffState = s.state as? GitDiffSessionState,
+           !diffState.filePath.isEmpty {
+            let fileName = diffState.filePath.split(separator: "/").last.map(String.init) ?? diffState.filePath
+            return "diff | \(fileName)"
+        }
         if sessionID.instance == 0 { return sessionID.tool.displayName }
         return "\(sessionID.tool.displayName) \(sessionID.instance + 1)"
     }
@@ -183,13 +190,16 @@ struct PaneView: View {
         .fixedSize()
     }
 
-    /// 指定 tool が追加可能か。Filer はアプリ全体で 1 つだけ持てる仕様。
+    /// 指定 tool が追加可能か。シングルトン Tool はアプリ全体で 1 つだけ。
     private func isAddable(_ tool: Tool) -> Bool {
-        if tool == .filer {
+        let singletons: Set<Tool> = [.filer, .git]
+        if singletons.contains(tool) {
             return !layout.allPanes.contains { pane in
-                pane.tabs.contains { $0.tool == .filer }
+                pane.tabs.contains { $0.tool == tool }
             }
         }
+        // gitDiff はメニューからは追加しない (Git ツール経由で開く)
+        if tool == .gitDiff { return false }
         return true
     }
 
