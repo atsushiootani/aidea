@@ -23,7 +23,7 @@ struct AideaApp: App {
         let manager = WorkspaceSnapshotManager()
 
         // 起動時にスナップショットがあれば適用、無ければ既定のアクティブ Pane を設定
-        if let snapshot = manager.load() {
+        if let snapshot = manager.load(projectRoot: ws.projectRoot) {
             manager.apply(snapshot, to: lay, registry: reg)
         } else if let firstPane = lay.allPanes.first {
             reg.setActiveTab(paneID: firstPane.id, tabIndex: firstPane.activeIndex)
@@ -292,8 +292,9 @@ struct AideaApp: App {
         let manager = snapshotManager
         let layout = self.layout
         let registry = self.registry
+        let workspace = self.workspace
         let saveAction = {
-            manager.save(layout: layout, registry: registry)
+            manager.save(layout: layout, registry: registry, projectRoot: workspace.projectRoot)
         }
         NotificationCenter.default.addObserver(
             forName: NSApplication.willTerminateNotification,
