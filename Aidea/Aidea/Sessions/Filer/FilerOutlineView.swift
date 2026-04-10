@@ -12,6 +12,12 @@ final class FilerOutlineView: NSOutlineView {
 
     override var acceptsFirstResponder: Bool { true }
 
+    /// クリック時にこの Filer セッションをアクティブにする
+    override func mouseDown(with event: NSEvent) {
+        controller?.owner?.registry?.activateSession(SessionID(.filer, instance: 0))
+        super.mouseDown(with: event)
+    }
+
     override func keyDown(with event: NSEvent) {
         guard let controller = controller else {
             super.keyDown(with: event)

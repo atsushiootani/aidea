@@ -20,6 +20,9 @@ final class PersistentTerminalView: LocalProcessTerminalView {
     /// レイアウトをスキップする閾値 (ポイント)
     private static let minimumLayoutSize: CGFloat = 10
 
+    /// クリック時にこのセッションをアクティブにするためのコールバック
+    var onInteraction: (() -> Void)?
+
     override func layout() {
         if bounds.width < Self.minimumLayoutSize || bounds.height < Self.minimumLayoutSize {
             return

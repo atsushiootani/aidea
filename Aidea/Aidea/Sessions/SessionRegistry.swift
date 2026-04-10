@@ -4,79 +4,176 @@
 //
 
 import SwiftUI
+import AppKit
 import Observation
 
 /// Session 実体のライフサイクルを管理するレジストリ。
-/// SessionID をキーに SessionState を保持し、対応する SwiftUI View を生成する。
-/// "アクティブな Session" とレイアウトへの参照もここで集中管理する。
+/// sessions 配列で全 Session を公開し、Active Pane + Active Tab から
+/// Active Session を導出する。ライフサイクルコールバック (activate/deactivate)
+/// を通じてフォーカス管理は各 Session の自己責務。
 @Observable
 final class SessionRegistry {
-    /// SessionID -> SessionState の保持 (型消去)
-    /// SwiftUI の update サイクル中に mutate するとクラッシュするため、
-    /// Observation 追跡から除外する (キャッシュ用途なのでビューが再評価を必要としない)
-    @ObservationIgnored private var states: [SessionID: any SessionState] = [:]
-    /// 共有のワークスペース状態 (各 SessionState から参照される)
+    /// 全 Session の一覧 (Window 全体で一意)
+    @ObservationIgnored private(set) var sessions: [Session] = []
+
+    /// 共有のワークスペース状態
     let workspace: WorkspaceState
-    /// Tab のレイアウト設定 (新しい Preview タブ作成などで参照)
+    /// レイアウト設定
     let layout: LayoutConfig
-    /// 現在ウィンドウ全体でアクティブな Session の ID (常に 1 つ)
-    var activeSessionID: SessionID? {
-        didSet {
-            guard let id = activeSessionID, id != oldValue else { return }
-            // 履歴の末尾が最新。重複は詰めて追加。最大 50 件保持
-            activeHistory.removeAll { $0 == id }
-            activeHistory.append(id)
-            if activeHistory.count > 50 {
-                activeHistory.removeFirst(activeHistory.count - 50)
-            }
-        }
-    }
-    /// activeSessionID の変更履歴 (末尾が最新)。openPreview が参照先ペインを選ぶのに使う。
-    private(set) var activeHistory: [SessionID] = []
+
+    /// アクティブなペインの ID (SwiftUI が Tab ハイライトを追跡するために Observable)
+    private var _activePaneID: UUID?
+    /// Pane.activeIndex が変わったことを SwiftUI に通知するためのカウンタ
+    private var _activeVersion: Int = 0
+
+    /// アクティブ Session ID の変更履歴 (末尾が最新)。openPreview のルーティングに使う。
+    @ObservationIgnored private(set) var activeHistory: [SessionID] = []
 
     init(workspace: WorkspaceState, layout: LayoutConfig) {
         self.workspace = workspace
         self.layout = layout
     }
 
-    /// 指定 ID の状態を取得 (なければ生成して保持)
-    func state(for id: SessionID) -> any SessionState {
-        if let existing = states[id] { return existing }
-        let created = makeState(for: id.tool)
-        states[id] = created
-        return created
+    // MARK: - Active state (3 階層)
+
+    /// アクティブなペインの ID
+    var activePaneID: UUID? {
+        get { _activePaneID }
     }
 
-    /// 指定 ID の状態を取得する。未生成なら nil を返す (副作用なし)。
-    /// 永続化時に "既に使われている Session だけ" を保存するのに使う。
-    func peekState(for id: SessionID) -> (any SessionState)? {
-        return states[id]
+    /// アクティブなペイン (computed)
+    var activePane: Pane? {
+        guard let id = _activePaneID else { return nil }
+        return layout.allPanes.first { $0.id == id }
     }
 
-    /// Filer や Kit のダブルクリック等から呼ばれる: 新しい Preview Tab を
-    /// 「呼び出し元 Session のペイン以外で、履歴上もっとも新しい Session のペイン」に作成する。
-    ///
-    /// 呼び出し元 Session は `activeSessionID` から取得される。呼び出し側は openPreview の前に
-    /// 自身を activeSessionID に設定しておくこと。
+    /// アクティブな Session ID (computed: Active Pane の Active Tab から導出)
+    /// _activeVersion を参照することで Pane.activeIndex 変更時にも SwiftUI が再評価する
+    var activeSessionID: SessionID? {
+        _ = _activeVersion
+        return activePane?.activeSessionID
+    }
+
+    /// アクティブな Session (computed)
+    var activeSession: Session? {
+        guard let id = activeSessionID else { return nil }
+        return session(for: id)
+    }
+
+    /// ペインとタブを指定してアクティブを切り替える。
+    /// ライフサイクルコールバック (deactivate → activate) と activeHistory 更新を一括で行う。
+    /// PaneView のタブクリック、Cmd+[, Cmd+Shift+] 等の全操作がこのメソッドを経由する。
+    func setActiveTab(paneID: UUID, tabIndex: Int? = nil) {
+        let oldSessionID = activeSessionID
+
+        _activePaneID = paneID
+        _activeVersion &+= 1
+        if let index = tabIndex, let pane = activePane {
+            let clamped = max(0, min(index, pane.tabs.count - 1))
+            pane.activeIndex = clamped
+        }
+
+        let newSessionID = activeSessionID
+        if oldSessionID != newSessionID {
+            if let oldID = oldSessionID, let oldSession = session(for: oldID) {
+                oldSession.deactivate()
+            }
+            if let newID = newSessionID, let newSession = session(for: newID) {
+                newSession.activate()
+                // 履歴更新
+                activeHistory.removeAll { $0 == newID }
+                activeHistory.append(newID)
+                if activeHistory.count > 50 {
+                    activeHistory.removeFirst(activeHistory.count - 50)
+                }
+            }
+        }
+    }
+
+    /// SessionID を指定してそのセッションをアクティブにする (AppKit ビューのクリック等から呼ばれる)。
+    /// 該当セッションを含むペインとタブを検索して setActiveTab を呼ぶ。
+    func activateSession(_ id: SessionID) {
+        for pane in layout.allPanes {
+            if let index = pane.tabs.firstIndex(of: id) {
+                setActiveTab(paneID: pane.id, tabIndex: index)
+                return
+            }
+        }
+    }
+
+    /// 現在のアクティブ Session を再度 activate する (focusableView 変更後の再フォーカス用)
+    func reactivateCurrentSession() {
+        activeSession?.activate()
+    }
+
+    // MARK: - Session CRUD
+
+    /// ID で Session を検索
+    func session(for id: SessionID) -> Session? {
+        sessions.first { $0.id == id }
+    }
+
+    /// Session を生成して一覧に追加。Tab 追加と同時に呼ばれる。
+    func createSession(tool: Tool, instance: Int) -> Session {
+        let id = SessionID(tool, instance: instance)
+        if let existing = session(for: id) { return existing }
+        let state = makeState(for: tool)
+        let session = Session(id: id, state: state)
+        sessions.append(session)
+        // Session/State 間の参照をセット
+        if let preview = state as? PreviewSessionState {
+            preview.session = session
+        }
+        if let web = state as? WebSessionState {
+            web.sessionID = id
+        }
+        // Preview / Web / Terminal 以外でも共通: focusableView 配下のクリックでアクティブ化
+        // (AppKit ビューが SwiftUI の simultaneousGesture を握りつぶすケースの対策)
+        let weakSession = session
+        let weakSelf = self
+        NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak weakSession, weak weakSelf] event in
+            guard let s = weakSession, let reg = weakSelf,
+                  let fv = s.focusableView,
+                  let clicked = event.window?.contentView?.hitTest(event.locationInWindow),
+                  clicked.isDescendant(of: fv) else { return event }
+            if reg.activeSessionID != s.id {
+                reg.activateSession(s.id)
+            }
+            return event
+        }
+        return session
+    }
+
+    /// Session を一覧から除去。Tab クローズと同時に呼ばれる。
+    func destroySession(_ id: SessionID) {
+        sessions.removeAll { $0.id == id }
+    }
+
+    /// Session を取得 (なければ作成)。Tab 追加時や View 描画時に使う。
+    func ensureSession(for id: SessionID) -> Session {
+        if let existing = session(for: id) { return existing }
+        return createSession(tool: id.tool, instance: id.instance)
+    }
+
+    // MARK: - Preview routing
+
+    /// Filer / Kit のダブルクリック等から呼ばれる: 新しい Preview Tab を
+    /// 「呼び出し元 (activeSessionID) のペイン以外」に作成する。
     func openPreview(for url: URL, title: String? = nil) {
-        // 既に同じファイルを開いている Preview があれば、そのタブをアクティブ化するだけ
-        // (タイトルが指定されていれば既存ステートのタイトルも更新する)
+        // 既に同じ URL を開いている Preview があればアクティブ化
         for pane in layout.allPanes {
             for (index, id) in pane.tabs.enumerated() where id.tool == .preview {
-                if let preview = states[id] as? PreviewSessionState, preview.url == url {
+                if let s = session(for: id),
+                   let preview = s.state as? PreviewSessionState,
+                   preview.url == url {
                     if let title = title { preview.title = title }
-                    pane.activeIndex = index
-                    activeSessionID = id
+                    setActiveTab(paneID: pane.id, tabIndex: index)
                     return
                 }
             }
         }
-
-        // 呼び出し元 Session が属するペイン (回避対象)
-        let callerPane: Pane? = activeSessionID.flatMap { id in
-            layout.allPanes.first { $0.tabs.contains(id) }
-        }
-        // 履歴を新しい順にたどり、callerPane 以外に属していた最新 Session を探す
+        // 呼び出し元ペインを回避して配置先を決定
+        let callerPane = activePane
         var targetPane: Pane?
         for id in activeHistory.reversed() {
             if let pane = layout.allPanes.first(where: { $0.tabs.contains(id) }),
@@ -85,80 +182,70 @@ final class SessionRegistry {
                 break
             }
         }
-        // フォールバック: callerPane 以外の最初のペイン
         if targetPane == nil {
             targetPane = layout.allPanes.first { $0 !== callerPane }
         }
         guard let pane = targetPane else { return }
 
         let instance = layout.nextSessionInstance(of: .preview)
-        let id = SessionID(.preview, instance: instance)
-        let state = self.state(for: id) as! PreviewSessionState
-        state.url = url
-        state.title = title
-        pane.tabs.append(id)
-        pane.activeIndex = pane.tabs.count - 1
-        activeSessionID = id
+        let session = createSession(tool: .preview, instance: instance)
+        let previewState = session.state as! PreviewSessionState
+        previewState.url = url
+        previewState.title = title
+        pane.tabs.append(session.id)
+        setActiveTab(paneID: pane.id, tabIndex: pane.tabs.count - 1)
     }
 
-    /// Preview 内リンククリックなどから呼ばれる: 新しい Preview Tab を
-    /// **呼び出し元 (activeSessionID) と同じペイン** の現在タブの右隣に挿入する。
-    /// 同じ URL の Preview が既に存在する場合はそれをアクティブ化するだけ。
-    /// 呼び出し元ペインが見つからない場合は通常の `openPreview` にフォールバックする。
+    /// Preview 内リンクから呼ばれる: 同じペインの右隣に Preview を挿入する。
     func openPreviewAsSibling(for url: URL, title: String? = nil) {
-        // dedupe: 同じ URL を表示中の Preview があればアクティブ化
+        // 既存 dedupe
         for pane in layout.allPanes {
             for (index, id) in pane.tabs.enumerated() where id.tool == .preview {
-                if let preview = states[id] as? PreviewSessionState, preview.url == url {
+                if let s = session(for: id),
+                   let preview = s.state as? PreviewSessionState,
+                   preview.url == url {
                     if let title = title { preview.title = title }
-                    pane.activeIndex = index
-                    activeSessionID = id
+                    setActiveTab(paneID: pane.id, tabIndex: index)
                     return
                 }
             }
         }
-        // 呼び出し元ペインの特定
         guard let callerID = activeSessionID,
               let pane = layout.allPanes.first(where: { $0.tabs.contains(callerID) }),
               let currentIndex = pane.tabs.firstIndex(of: callerID) else {
             openPreview(for: url, title: title)
             return
         }
-        // 新しい Preview を挿入
         let instance = layout.nextSessionInstance(of: .preview)
-        let newID = SessionID(.preview, instance: instance)
-        let state = self.state(for: newID) as! PreviewSessionState
-        state.url = url
-        state.title = title
+        let session = createSession(tool: .preview, instance: instance)
+        (session.state as? PreviewSessionState)?.url = url
+        (session.state as? PreviewSessionState)?.title = title
         let insertIndex = currentIndex + 1
-        pane.tabs.insert(newID, at: insertIndex)
-        pane.activeIndex = insertIndex
-        activeSessionID = newID
+        pane.tabs.insert(session.id, at: insertIndex)
+        setActiveTab(paneID: pane.id, tabIndex: insertIndex)
     }
 
-    /// ファイル/ディレクトリが削除されたとき、そのファイルを表示していた
-    /// Preview タブをすべて閉じる。ディレクトリ削除時は配下のファイルも対象。
+    /// 削除されたファイル/ディレクトリを表示していた Preview タブを閉じる
     func closePreviewsForDeleted(_ deleted: URL, isDirectory: Bool) {
         let deletedPath = deleted.path
         for pane in layout.allPanes {
             var indicesToRemove: [Int] = []
             for (idx, id) in pane.tabs.enumerated() where id.tool == .preview {
-                guard let state = states[id] as? PreviewSessionState,
-                      let url = state.url else { continue }
-                let path = url.path
+                guard let s = session(for: id),
+                      let preview = s.state as? PreviewSessionState,
+                      let url = preview.url else { continue }
                 let matches: Bool
                 if isDirectory {
-                    matches = (path == deletedPath) || path.hasPrefix(deletedPath + "/")
+                    matches = (url.path == deletedPath) || url.path.hasPrefix(deletedPath + "/")
                 } else {
-                    matches = (path == deletedPath)
+                    matches = (url.path == deletedPath)
                 }
-                if matches {
-                    indicesToRemove.append(idx)
-                }
+                if matches { indicesToRemove.append(idx) }
             }
-            // 後ろから削除することでインデックスのずれを防ぐ
             for idx in indicesToRemove.reversed() {
+                let removed = pane.tabs[idx]
                 pane.tabs.remove(at: idx)
+                destroySession(removed)
             }
             if pane.tabs.isEmpty {
                 pane.activeIndex = 0
@@ -166,39 +253,23 @@ final class SessionRegistry {
                 pane.activeIndex = pane.tabs.count - 1
             }
         }
-        // アクティブ Session が閉じられていたらフォールバック
-        if let active = activeSessionID,
-           !layout.allPanes.contains(where: { $0.tabs.contains(active) }) {
-            activeSessionID = layout.allPanes
-                .compactMap { $0.activeSessionID }
-                .first
-        }
     }
 
-    /// Tab のドラッグ&ドロップ: 指定 Session を移動する (同ペイン内の並び替えも対応)。
-    /// - Parameters:
-    ///   - id: 移動対象の SessionID
-    ///   - target: 移動先のペイン
-    ///   - index: 移動先ペイン内の挿入位置 (末尾に追加したいなら tabs.count を渡す)
+    /// Tab の D&D 移動
     func moveSession(_ id: SessionID, toPane target: Pane, atIndex index: Int) {
         guard let sourcePane = layout.allPanes.first(where: { $0.tabs.contains(id) }),
-              let sourceIndex = sourcePane.tabs.firstIndex(of: id) else {
-            return
-        }
+              let sourceIndex = sourcePane.tabs.firstIndex(of: id) else { return }
         if sourcePane === target {
-            // 同じ Slot への no-op (自身の直前/直後の Slot にドロップしても位置が変わらない)
             if index == sourceIndex || index == sourceIndex + 1 {
-                activeSessionID = id
+                setActiveTab(paneID: target.id, tabIndex: sourceIndex)
                 return
             }
-            // 同一ペイン内での並び替え: 削除後に挿入位置を補正する
             sourcePane.tabs.remove(at: sourceIndex)
             let adjusted = sourceIndex < index ? index - 1 : index
             let clamped = max(0, min(adjusted, sourcePane.tabs.count))
             sourcePane.tabs.insert(id, at: clamped)
-            sourcePane.activeIndex = clamped
+            setActiveTab(paneID: target.id, tabIndex: clamped)
         } else {
-            // ペイン間の移動
             sourcePane.tabs.remove(at: sourceIndex)
             if sourcePane.tabs.isEmpty {
                 sourcePane.activeIndex = 0
@@ -207,10 +278,26 @@ final class SessionRegistry {
             }
             let clamped = max(0, min(index, target.tabs.count))
             target.tabs.insert(id, at: clamped)
-            target.activeIndex = clamped
+            setActiveTab(paneID: target.id, tabIndex: clamped)
         }
-        activeSessionID = id
     }
+
+    // MARK: - View factory
+
+    /// SessionID に対応する SwiftUI View を返す
+    @ViewBuilder
+    func view(for id: SessionID) -> some View {
+        let session = ensureSession(for: id)
+        switch id.tool {
+        case .filer:    FilerSessionView(session: session, state: session.state as! FilerSessionState)
+        case .kit:      KitSessionView(state: session.state as! KitSessionState, sessionID: id)
+        case .terminal: TerminalSessionView(state: session.state as! TerminalSessionState)
+        case .web:      WebSessionView(state: session.state as! WebSessionState)
+        case .preview:  PreviewSessionView(session: session, state: session.state as! PreviewSessionState, sessionID: id)
+        }
+    }
+
+    // MARK: - State factory
 
     /// tool に応じた SessionState インスタンスを生成する
     private func makeState(for tool: Tool) -> any SessionState {
@@ -220,22 +307,15 @@ final class SessionRegistry {
             state.registry = self
             return state
         case .kit:      return KitSessionState(workspace: workspace)
-        case .terminal: return TerminalSessionState(workspace: workspace)
-        case .web:      return WebSessionState()
+        case .terminal:
+            let state = TerminalSessionState(workspace: workspace)
+            state.registry = self
+            return state
+        case .web:
+            let state = WebSessionState()
+            state.registry = self
+            return state
         case .preview:  return PreviewSessionState()
-        }
-    }
-
-    /// SessionID に対応する SwiftUI View を返す
-    @ViewBuilder
-    func view(for id: SessionID) -> some View {
-        let state = state(for: id)
-        switch id.tool {
-        case .filer:    FilerSessionView(state: state as! FilerSessionState)
-        case .kit:      KitSessionView(state: state as! KitSessionState, sessionID: id)
-        case .terminal: TerminalSessionView(state: state as! TerminalSessionState)
-        case .web:      WebSessionView(state: state as! WebSessionState)
-        case .preview:  PreviewSessionView(state: state as! PreviewSessionState)
         }
     }
 }

@@ -13,6 +13,9 @@ struct KitSessionView: View {
     let sessionID: SessionID
     @Environment(WorkspaceState.self) private var workspace
     @Environment(SessionRegistry.self) private var registry
+    @FocusState private var isFocused: Bool
+
+    // MARK: - Focus bridge (Session lifecycle → SwiftUI @FocusState)
 
     var body: some View {
         ScrollView {
@@ -78,8 +81,14 @@ struct KitSessionView: View {
                 }
             }
         }
+        .focusable()
+        .focused($isFocused)
+        .focusEffectDisabled()
         .onAppear { reloadAll() }
         .onChange(of: workspace.projectRoot) { _, _ in reloadAll() }
+        .onChange(of: state.isActive) { _, active in
+            if active { isFocused = true }
+        }
     }
 
     // MARK: - Data reload
@@ -285,16 +294,13 @@ struct KitSessionView: View {
         .contentShape(Rectangle())
         .onTapGesture(count: 2) {
             if let url = openPath {
-                // openPreview のペイン決定ロジックは activeSessionID を起点にするので
-                // 先に自分 (Kit) をアクティブに設定しておく
-                registry.activeSessionID = sessionID
+                // PaneView の simultaneousGesture が先に active を設定済み
                 registry.openPreview(for: url, title: name)
             }
         }
         .simultaneousGesture(
             TapGesture(count: 1).onEnded {
                 state.selection = tag
-                registry.activeSessionID = sessionID
             }
         )
     }

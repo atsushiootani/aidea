@@ -1,7 +1,28 @@
 # Boundaries
 
-Aidea の境界。**常に行うこと** / **最初に確認すること** / **決して行わないこと** を明示する。
-CLAUDE.md やコードレビュー時に参照する。
+Aidea の境界と設計原則。CLAUDE.md やコードレビュー時に参照する。
+
+---
+
+## Design Principles (設計原則)
+
+設計・実装のあらゆる場面で常に意識する原則。個別の判断に迷ったときはここに立ち返る。
+
+設計原則の詳細は **[principles.md](./principles.md)** を参照。
+以下はその中で特に重要なものの要約:
+
+- **Tell, Don't Ask**: 子の型を調べて分岐するのではなく、子に「やって」と伝える
+- **Single Responsibility**: クラスの変更理由は 1 つだけ
+- **Open/Closed**: 拡張は新コード追加で、既存コード修正なしで
+- **Polymorphism**: 型ごとの分岐は if/switch ではなくプロトコルメソッドで
+- **Information Expert**: その情報を一番知っているクラスにその責務を割り当てる
+- **Composition over Inheritance**: class 継承より protocol + 合成
+- **Separation of Concerns**: Views / Sessions / Services / Models の責務を混ぜない
+
+**対の原則**: 「全体を横断する共通ルール」(例: Esc でキャンセル、破壊的操作は確認ダイアログ) は
+親レベルで一律に適用する。子が独自に判断すべきでない共通の振る舞いは [UI Conventions](#ui-conventions-ui-共通ルール) に集約する。
+
+---
 
 ## Always (常に行うこと)
 
@@ -52,6 +73,24 @@ CLAUDE.md やコードレビュー時に参照する。
 - **新規作成・リネーム・移動など、結果として別のノードにフォーカスすべき操作の後は、明示的に新ノードを選択 + 可視スクロール + first responder 再設定**する
 - フィルタ/検索/並び替えによる reloadData 後は、事前の選択状態を可能な限り復元する
 
+### クリックによるセッションのアクティブ化
+
+すべての Session は、そのビュー上をクリックしたとき **自動的にアクティブセッションになる** 必要がある。
+この仕組みは `SessionRegistry.createSession` 内で全 Session に共通で登録される NSEvent local monitor
+によって実現されており、新しい Tool を追加する際に個別の実装は不要。
+
+**仕組み:**
+1. `createSession` 時に各 Session に対して `NSEvent.addLocalMonitorForEvents(.leftMouseDown)` を登録
+2. クリック位置 (`hitTest`) が `session.focusableView` の子孫 (`isDescendant(of:)`) かチェック
+3. マッチし、かつ現在の activeSessionID と異なれば `activateSession(session.id)` を呼ぶ
+4. `activateSession` がペイン + タブを逆引きして `setActiveTab` → ライフサイクル (activate/deactivate) が発火
+
+**新しい Tool を追加するときの注意:**
+- この共通モニタは `session.focusableView` に依存する。新しい Tool の子ビューが AppKit の NSView を
+  持つ場合、**`session.focusableView` に必ずそのビューをセットする**こと (セットしないとクリック検知が効かない)
+- 純 SwiftUI コンテンツの場合は `FocusCatcherView` を `.background()` に配置して
+  `session.focusableView` に報告すること
+
 ### Preview を開くときの規約
 
 ファイル/リソースを Preview Session として開くときは、必ず `SessionRegistry.openPreview(for:title:)` を使う。
@@ -87,6 +126,41 @@ if EmacsNavigation.handle(event: event, responder: self) { return }
 ```
 
 SwiftUI 主体の Session も同等のショートカットを提供する (将来 `onKeyPress` で実装)。
+
+### タブ / ペイン / ツール操作 (グローバルショートカット)
+どの Tool にフォーカスしていても共通で効く、アプリ全体のナビゲーション系ショートカット。
+`AideaApp.body.commands` の `CommandMenu("タブ")` / `CommandMenu("ツール")` で実装する。
+
+#### タブ・ペイン操作
+
+| キー | 動作 |
+|---|---|
+| **⌘ T** | 新しいタブを追加 (NSAlert ベースの Tool 選択ダイアログを開く) |
+| **⌘ W** | 現在のタブを閉じる。全タブ消滅時はペインも削除 |
+| **⌘ ⇧ [** | 現在ペイン内で左のタブへ (ラップ) |
+| **⌘ ⇧ ]** | 現在ペイン内で右のタブへ (ラップ) |
+| **⌘ [** | 前のペインへ (ラップ) |
+| **⌘ ]** | 次のペインへ (ラップ) |
+| **⌘ ⇧ →** | 現在のペインを左右に分割 |
+| **⌘ ⇧ ↓** | 現在のペインを上下に分割 |
+
+#### ツール切替 (インスタンスの循環フォーカス)
+現在アクティブ Session が同じ Tool なら **次のインスタンスに循環**、違う場合は最初のマッチに移動する。
+
+| キー | Tool |
+|---|---|
+| **⌘ 1** | Filer |
+| **⌘ 2** | Kit |
+| **⌘ 8** | Terminal |
+| **⌘ 9** | Web |
+| **⌘ 0** | Preview |
+
+#### 実装上の注意
+- tree ミューテーション (`splitLeaf` / `removeLeaf`) は `DispatchQueue.main.async` で
+  次 runloop に遅延させて SwiftUI の update サイクル外で実行する
+  (さもないと `AttributeGraph precondition failure: setting value during update` でクラッシュ)
+- ヘルパー `currentPane()` / `leafNode(for:)` で `activeSessionID` から対応する `Pane` / `LayoutNode` を逆引きする
+- Filer はシングルトン制約があるため、⌘T の Tool 選択肢からは既存時に除外する
 
 ## 参考
 - [SPEC.md](./SPEC.md) — 仕様本体

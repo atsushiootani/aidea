@@ -10,6 +10,7 @@ Aidea プロジェクトの仕様書群。変化頻度ごとにファイルを�
 | [architecture.md](./architecture.md) | **中** | 技術スタック / プロジェクト構造 / レイヤー・主要コンポーネント |
 | [coding-style.md](./coding-style.md) | **低** | Swift 規約 / プロパティラッパ並び順 / コメント方針 / 並行性 |
 | [testing.md](./testing.md) | **低** | テスト戦略 / 手動確認チェックリスト |
+| [principles.md](./principles.md) | **低** | 設計原則 (Tell Don't Ask / SOLID / GRASP 等) |
 | [boundaries.md](./boundaries.md) | **中低** | Always / Confirm First / Never |
 | [glossary.md](./glossary.md) | **低中** | 用語集 |
 

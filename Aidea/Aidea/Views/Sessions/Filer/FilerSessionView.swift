@@ -8,16 +8,16 @@ import AppKit
 
 /// Filer Session の SwiftUI ラッパ。FilerSessionState が保持する NSViewController を再利用する。
 struct FilerSessionView: NSViewControllerRepresentable {
+    let session: Session
     let state: FilerSessionState
     @Environment(WorkspaceState.self) private var workspace
 
     func makeNSViewController(context: Context) -> FileTreeViewController {
         state.controller.workspace = workspace
-        // reload() の前に loadView() を走らせておく必要がある
-        // (NSOutlineView の column/delegate は loadView 内で設定されるため、
-        //  view 未構築の状態で reloadData/expandItem を呼ぶと反映されない)
         state.controller.loadViewIfNeeded()
         state.controller.reload()
+        // 初期 focusableView を session にセット
+        session.focusableView = state.controller.outlineView
         return state.controller
     }
 
@@ -36,7 +36,8 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
     /// 現在表示中のルート (差分検知用)
     var currentRoot: URL?
 
-    private let outlineView = FilerOutlineView()
+    /// NSOutlineView 本体。外部から First Responder にするためのアクセス用に internal。
+    let outlineView = FilerOutlineView()
     private let scrollView = NSScrollView()
     private let searchField = NSSearchField()
     private let watcher = FileWatcher()
@@ -218,8 +219,7 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
             }
             return
         }
-        // openPreview はアクティブ Session のペインを回避するので、先に自分を active に設定
-        owner?.registry?.activeSessionID = SessionID(.filer, instance: 0)
+        // PaneView の simultaneousGesture が先に active を設定済み
         owner?.registry?.openPreview(for: node.url)
     }
 
@@ -569,12 +569,10 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
                     outlineView.expandItem(node)
                 }
             } else {
-                owner?.registry?.activeSessionID = SessionID(.filer, instance: 0)
                 owner?.registry?.openPreview(for: node.url)
             }
             return
         }
-        owner?.registry?.activeSessionID = SessionID(.filer, instance: 0)
         for node in nodes where !node.isDirectory {
             owner?.registry?.openPreview(for: node.url)
         }

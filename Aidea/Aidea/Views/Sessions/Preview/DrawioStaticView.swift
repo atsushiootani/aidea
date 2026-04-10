@@ -18,6 +18,8 @@ struct DrawioStaticView: NSViewRepresentable {
     var convertTick: Int = 0
     /// xmlsvg export 完了時のコールバック (生成された SVG 文字列)
     var onConvert: ((String) -> Void)? = nil
+    /// WKWebView が生成されたときに呼ばれるコールバック (focusableView 報告用)
+    var onViewCreated: ((NSView) -> Void)? = nil
 
     func makeNSView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
@@ -32,6 +34,7 @@ struct DrawioStaticView: NSViewRepresentable {
         context.coordinator.webView = webView
 
         loadDrawio(into: webView, coordinator: context.coordinator)
+        onViewCreated?(webView)
         return webView
     }
 

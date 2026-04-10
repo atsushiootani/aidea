@@ -4,10 +4,9 @@
 //
 
 import SwiftUI
+import AppKit
 
-/// アプリのルート View。4 ペイン構成 (Phase 1: ペイン位置は固定、各ペインは複数 Tab を持てる)。
-/// レイアウトは NSSplitViewController ラッパ (`SplitLayoutView`) で構築し、
-/// ディバイダ位置は autosaveName 経由で自動保存される。
+/// アプリのルート View。動的ペイン構成を NSSplitViewController ラッパで構築する。
 struct ContentView: View {
     @Environment(WorkspaceState.self) private var workspace
     @Environment(SessionRegistry.self) private var registry

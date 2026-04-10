@@ -10,11 +10,12 @@ import Observation
 /// 各 Tab は 1 つの Session を参照する。
 @Observable
 final class Pane: Identifiable {
-    let id = UUID()
+    let id: UUID
     var tabs: [SessionID]
     var activeIndex: Int
 
-    init(tabs: [SessionID], activeIndex: Int = 0) {
+    init(id: UUID = UUID(), tabs: [SessionID], activeIndex: Int = 0) {
+        self.id = id
         self.tabs = tabs
         self.activeIndex = activeIndex
     }
@@ -66,8 +67,10 @@ final class LayoutConfig {
 
     /// 指定の leaf ノードを分割する。`target` を新しい split ノードで置き換え、
     /// 既存のペインと空の新ペイン (Terminal) を並べる。
-    func splitLeaf(_ target: LayoutNode, axis: LayoutNode.Axis) {
-        guard case .leaf(let existingPane) = target.value else { return }
+    /// - Returns: 新しく作られたペイン (呼び出し側がフォーカスを当てられるように)
+    @discardableResult
+    func splitLeaf(_ target: LayoutNode, axis: LayoutNode.Axis) -> Pane? {
+        guard case .leaf(let existingPane) = target.value else { return nil }
         // 新しい空ペイン: とりあえず Terminal を 1 つ置く (インスタンスは採番)
         let newInstance = nextSessionInstance(of: .terminal)
         let newPane = Pane(tabs: [SessionID(.terminal, instance: newInstance)])
@@ -75,6 +78,7 @@ final class LayoutConfig {
         let newLeaf = LayoutNode(value: .leaf(newPane))
         // target のノード値を split に差し替え (id は維持)
         target.value = .split(axis: axis, children: [keptLeaf, newLeaf])
+        return newPane
     }
 
     /// 指定の leaf ノードを削除する。親 split の子が 1 つ残った場合は

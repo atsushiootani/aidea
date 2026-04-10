@@ -21,6 +21,15 @@ final class FilerSessionState: SessionState {
     /// アクティブな Session に転送するためのレジストリ参照
     weak var registry: SessionRegistry?
 
+    /// Filer がアクティブになったら outlineView にフォーカスを当てる
+    func didBecomeActive(session: Session) {
+        let view = controller.outlineView
+        session.focusableView = view
+        DispatchQueue.main.async {
+            view.window?.makeFirstResponder(view)
+        }
+    }
+
     init(workspace: WorkspaceState) {
         self.workspace = workspace
         self.controller = FileTreeViewController()
