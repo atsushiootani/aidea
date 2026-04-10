@@ -15,6 +15,8 @@ enum Tool: String, CaseIterable, Identifiable, Hashable, Codable, Sendable {
     case terminal
     case web
     case preview
+    case git
+    case gitDiff
 
     var id: String { rawValue }
 
@@ -26,6 +28,8 @@ enum Tool: String, CaseIterable, Identifiable, Hashable, Codable, Sendable {
         case .terminal: return "Terminal"
         case .web:      return "Web"
         case .preview:  return "Preview"
+        case .git:      return "Git"
+        case .gitDiff:  return "Diff"
         }
     }
 
@@ -37,6 +41,8 @@ enum Tool: String, CaseIterable, Identifiable, Hashable, Codable, Sendable {
         case .terminal: return "apple.terminal"
         case .web:      return "globe"
         case .preview:  return "doc.text.magnifyingglass"
+        case .git:      return "arrow.triangle.branch"
+        case .gitDiff:  return "doc.text.below.ecg"
         }
     }
 }
