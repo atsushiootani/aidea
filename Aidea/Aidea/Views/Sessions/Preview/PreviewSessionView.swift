@@ -12,8 +12,12 @@ struct PreviewSessionView: View {
     let state: PreviewSessionState
     let sessionID: SessionID
     @Environment(SessionRegistry.self) private var registry
+    @Environment(WorkspaceState.self) private var workspace
     @State private var preview: PreviewContent = .empty
     @State private var loadedURL: URL?
+    @State private var isEnglishText: Bool = false
+    @State private var isTranslating: Bool = false
+    @State private var hasCachedTranslation: Bool = false
 
     private static let maxFileSize: Int = 1_000_000
     private static let binarySniffSize: Int = 8192
@@ -40,7 +44,14 @@ struct PreviewSessionView: View {
                 case .loading:
                     placeholder("読み込み中...")
                 case .text(let content):
-                    NSTextPreview(text: content, onViewCreated: { session.focusableView = $0 })
+                    ZStack(alignment: .topTrailing) {
+                        NSTextPreview(text: content, onViewCreated: { session.focusableView = $0 })
+                        if isEnglishText {
+                            translateButton
+                                .padding(.top, 10)
+                                .padding(.trailing, 22)
+                        }
+                    }
                 case .image(let image):
                     ScrollView([.horizontal, .vertical]) {
                         Image(nsImage: image)
@@ -57,10 +68,67 @@ struct PreviewSessionView: View {
         .task(id: state.url) {
             // URL 変更時は focusableView をクリア (子ビューが再設定する)
             session.focusableView = nil
+            isEnglishText = false
             await loadPreview(for: state.url)
+            // テキストの場合は英語判定 + キャッシュ確認
+            if case .text(let content) = preview {
+                isEnglishText = LanguageDetector.isEnglish(content)
+                if isEnglishText, let url = state.url, let root = workspace.projectRoot,
+                   let cached = TranslationCache.cachedURL(for: url, projectRoot: root) {
+                    hasCachedTranslation = TranslationCache.isFresh(original: url, cached: cached)
+                } else {
+                    hasCachedTranslation = false
+                }
+            }
             // コンテンツロード後にリフォーカス
             if registry.activeSessionID == sessionID {
                 registry.reactivateCurrentSession()
+            }
+        }
+    }
+
+    /// 翻訳ボタン (テキスト全般用)
+    private var translateButton: some View {
+        Button {
+            translateDocument()
+        } label: {
+            if isTranslating {
+                Label("翻訳中...", systemImage: "hourglass")
+                    .labelStyle(.titleAndIcon)
+            } else {
+                Label("日本語", systemImage: hasCachedTranslation
+                      ? "character.book.closed.ja.fill"
+                      : "character.book.closed.ja")
+                    .labelStyle(.titleAndIcon)
+            }
+        }
+        .controlSize(.small)
+        .disabled(isTranslating)
+    }
+
+    /// Claude API で翻訳して隣タブに開く
+    private func translateDocument() {
+        guard let url = state.url, let projectRoot = workspace.projectRoot else { return }
+        isTranslating = true
+        Task {
+            do {
+                let cachedURL = try await TranslationService.translateIfNeeded(
+                    originalURL: url,
+                    projectRoot: projectRoot
+                )
+                await MainActor.run {
+                    isTranslating = false
+                    let fileName = url.deletingPathExtension().lastPathComponent
+                    registry.openPreviewAsSibling(
+                        for: cachedURL,
+                        title: "\(fileName) (日本語)"
+                    )
+                }
+            } catch {
+                await MainActor.run {
+                    isTranslating = false
+                    NSAlert(error: error).runModal()
+                }
             }
         }
     }
