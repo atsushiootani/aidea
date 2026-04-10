@@ -6,33 +6,30 @@
 import Foundation
 
 /// ワークスペース (タブ構成・Preview/Web の状態・アクティブセッション) の保存と復元を担う。
-/// `~/Library/Application Support/Aidea/workspace.json` に JSON で書き出す。
+/// `<projectRoot>/.aidea/workspace.json` にプロジェクトごとに JSON で書き出す。
 final class WorkspaceSnapshotManager {
-    /// 保存先ファイル URL
-    let fileURL: URL
     /// 現在のスナップショットフォーマットバージョン
     private static let currentVersion: Int = 2
 
-    init() {
-        let support = FileManager.default.urls(
-            for: .applicationSupportDirectory,
-            in: .userDomainMask
-        ).first ?? FileManager.default.temporaryDirectory
-        let dir = support.appending(path: "Aidea", directoryHint: .isDirectory)
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        self.fileURL = dir.appending(path: "workspace.json")
+    /// projectRoot から保存先 URL を導出する
+    static func fileURL(for projectRoot: URL) -> URL {
+        projectRoot
+            .appending(path: ".aidea", directoryHint: .isDirectory)
+            .appending(path: "workspace.json")
     }
 
     // MARK: - Save
 
     /// 現在の layout / registry の状態からスナップショットを作ってファイルに書き出す
-    func save(layout: LayoutConfig, registry: SessionRegistry) {
+    func save(layout: LayoutConfig, registry: SessionRegistry, projectRoot: URL?) {
+        guard let projectRoot = projectRoot else { return }
         let snapshot = buildSnapshot(layout: layout, registry: registry)
+        let url = Self.fileURL(for: projectRoot)
         do {
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             let data = try encoder.encode(snapshot)
-            try data.write(to: fileURL, options: .atomic)
+            try data.write(to: url, options: .atomic)
         } catch {
             NSLog("[Aidea] Failed to save workspace snapshot: \(error.localizedDescription)")
         }
@@ -111,8 +108,10 @@ final class WorkspaceSnapshotManager {
     // MARK: - Load
 
     /// 保存済みスナップショットを読み込む (無ければ or 非互換なら nil)
-    func load() -> WorkspaceSnapshot? {
-        guard let data = try? Data(contentsOf: fileURL) else { return nil }
+    func load(projectRoot: URL?) -> WorkspaceSnapshot? {
+        guard let projectRoot = projectRoot else { return nil }
+        let url = Self.fileURL(for: projectRoot)
+        guard let data = try? Data(contentsOf: url) else { return nil }
         guard let snapshot = try? JSONDecoder().decode(WorkspaceSnapshot.self, from: data) else {
             return nil
         }
