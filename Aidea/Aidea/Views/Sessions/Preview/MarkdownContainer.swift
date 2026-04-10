@@ -16,15 +16,22 @@ struct MarkdownContainer: View {
     /// Markdown 内のファイルリンクがタップされたときに呼ばれる
     let onLinkTap: ((URL) -> Void)?
 
+    @Environment(WorkspaceState.self) private var workspace
+    @Environment(SessionRegistry.self) private var registry
     @State private var mode: Mode = .view
     @State private var loadedText: String = ""
     @State private var draftText: String = ""
     @State private var loadError: String?
-    /// 自動保存デバウンス用のタスク
     @State private var autoSaveTask: Task<Void, Never>?
+    @State private var isTranslating: Bool = false
+    @State private var isEnglish: Bool = false
+    @State private var hasCachedTranslation: Bool = false
+
+    /// このファイルが .aidea/ja/ 配下の翻訳キャッシュかどうか
+    private var isCachedFile: Bool { TranslationCache.isCachedFile(url) }
 
     /// 右上ボタンの領域に ToC が重ならないよう、ToC を下に押し下げる量
-    private let toolbarHeight: CGFloat = 44
+    private let toolbarHeight: CGFloat = 80
 
     enum Mode {
         case view
@@ -65,20 +72,55 @@ struct MarkdownContainer: View {
         }
     }
 
-    /// 右上のフローティングツールバー (view モード: Edit / edit モード: View)
+    /// 右上のフローティングツールバー
     @ViewBuilder
     private var toolbar: some View {
-        Button {
-            toggleMode()
-        } label: {
-            Label(mode == .view ? "Edit" : "View",
-                  systemImage: mode == .view ? "pencil" : "eye")
-                .labelStyle(.titleAndIcon)
+        VStack(alignment: .trailing, spacing: 6) {
+            // .aidea/ja/ のキャッシュファイルなら Edit ではなく「英語」ボタンを表示
+            if isCachedFile {
+                if mode == .view {
+                    Button {
+                        openOriginalFile()
+                    } label: {
+                        Label("英語", systemImage: "character.book.closed")
+                            .labelStyle(.titleAndIcon)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                }
+            } else {
+                Button {
+                    toggleMode()
+                } label: {
+                    Label(mode == .view ? "Edit" : "View",
+                          systemImage: mode == .view ? "pencil" : "eye")
+                        .labelStyle(.titleAndIcon)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+            }
+
+            // 英語ドキュメントの場合に翻訳ボタンを表示 (キャッシュファイルでは非表示)
+            if mode == .view && isEnglish && !isCachedFile {
+                Button {
+                    translateDocument()
+                } label: {
+                    if isTranslating {
+                        Label("翻訳中...", systemImage: "hourglass")
+                            .labelStyle(.titleAndIcon)
+                    } else {
+                        Label("日本語", systemImage: hasCachedTranslation
+                              ? "character.book.closed.ja.fill"
+                              : "character.book.closed.ja")
+                            .labelStyle(.titleAndIcon)
+                    }
+                }
+                .controlSize(.small)
+                .disabled(isTranslating)
+            }
         }
-        .buttonStyle(.borderedProminent)
-        .controlSize(.small)
         .padding(.top, 10)
-        .padding(.trailing, 22) // スクロールバーと重ならないように余裕を持たせる
+        .padding(.trailing, 22)
     }
 
     /// view ⇄ edit のトグル
@@ -95,14 +137,63 @@ struct MarkdownContainer: View {
         }
     }
 
-    /// ファイルを読み込む
+    /// ファイルを読み込み、英語判定を行う
     private func reload() async {
         do {
             loadedText = try String(contentsOf: url, encoding: .utf8)
             draftText = loadedText
             loadError = nil
+            isEnglish = LanguageDetector.isEnglish(loadedText)
+            if isEnglish, let projectRoot = workspace.projectRoot {
+                hasCachedTranslation = checkCache(projectRoot: projectRoot)
+            } else {
+                hasCachedTranslation = false
+            }
         } catch {
             loadError = "ファイルを読み込めませんでした: \(error.localizedDescription)"
+            isEnglish = false
+            hasCachedTranslation = false
+        }
+    }
+
+    /// 元の英語ファイルを隣タブで開く (.aidea/ja/ → 元ファイル)
+    private func openOriginalFile() {
+        guard let projectRoot = workspace.projectRoot,
+              let originalURL = TranslationCache.originalURL(for: url, projectRoot: projectRoot) else { return }
+        let fileName = originalURL.deletingPathExtension().lastPathComponent
+        registry.openPreviewAsSibling(for: originalURL, title: fileName)
+    }
+
+    /// キャッシュが存在し鮮度があるか確認する
+    private func checkCache(projectRoot: URL) -> Bool {
+        guard let cached = TranslationCache.cachedURL(for: url, projectRoot: projectRoot) else { return false }
+        return TranslationCache.isFresh(original: url, cached: cached)
+    }
+
+    /// Claude API で翻訳して隣タブに開く
+    private func translateDocument() {
+        guard let projectRoot = workspace.projectRoot else { return }
+        isTranslating = true
+        Task {
+            do {
+                let cachedURL = try await TranslationService.translateIfNeeded(
+                    originalURL: url,
+                    projectRoot: projectRoot
+                )
+                await MainActor.run {
+                    isTranslating = false
+                    let fileName = url.deletingPathExtension().lastPathComponent
+                    registry.openPreviewAsSibling(
+                        for: cachedURL,
+                        title: "\(fileName) (日本語)"
+                    )
+                }
+            } catch {
+                await MainActor.run {
+                    isTranslating = false
+                    NSAlert(error: error).runModal()
+                }
+            }
         }
     }
 

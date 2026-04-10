@@ -55,6 +55,11 @@ struct AideaApp: App {
             }
             tabMenu
             toolMenu
+            CommandMenu("Aidea") {
+                Button("API キー設定...") {
+                    TranslationService.showApiKeyDialog()
+                }
+            }
         }
     }
 
