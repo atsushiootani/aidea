@@ -6,8 +6,8 @@
 import Foundation
 import Observation
 
-/// アプリ全体のワークスペース状態。Phase 1 では projectRoot のみを集中管理する。
-/// 選択ファイルなどの "ツール固有の状態" は各 ToolState に置き、ここには持たない。
+/// アプリ全体のワークスペース状態。projectRoot を集中管理する。
+/// 選択ファイルなどの "ツール固有の状態" は各 SessionState に置き、ここには持たない。
 @Observable
 final class WorkspaceState {
     /// 現在開いているプロジェクトのルートディレクトリ
@@ -19,7 +19,9 @@ final class WorkspaceState {
     init() {
         if let path = UserDefaults.standard.string(forKey: Self.projectRootKey),
            FileManager.default.fileExists(atPath: path) {
-            self.projectRoot = URL(fileURLWithPath: path, isDirectory: true)
+            let url = URL(fileURLWithPath: path, isDirectory: true)
+            self.projectRoot = url
+            Self.ensureAideaDirectory(at: url)
         }
     }
 
@@ -27,5 +29,33 @@ final class WorkspaceState {
     func setProjectRoot(_ url: URL) {
         self.projectRoot = url
         UserDefaults.standard.set(url.path, forKey: Self.projectRootKey)
+        Self.ensureAideaDirectory(at: url)
+    }
+
+    /// `.aidea/` と `.aidea/ja/` を作成し、`.gitignore` に `.aidea/` を追記する。
+    /// 既に存在する場合は何もしない。
+    private static func ensureAideaDirectory(at projectRoot: URL) {
+        let fm = FileManager.default
+        let aideaDir = projectRoot.appending(path: ".aidea", directoryHint: .isDirectory)
+        let jaDir = aideaDir.appending(path: "ja", directoryHint: .isDirectory)
+
+        // ディレクトリ作成
+        try? fm.createDirectory(at: jaDir, withIntermediateDirectories: true)
+
+        // .gitignore に .aidea/ を追記
+        let gitignore = projectRoot.appending(path: ".gitignore")
+        let entry = ".aidea/"
+        if fm.fileExists(atPath: gitignore.path) {
+            if let content = try? String(contentsOf: gitignore, encoding: .utf8) {
+                // 行単位でチェック (部分一致ではなく完全一致)
+                let lines = content.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+                if !lines.contains(where: { $0.trimmingCharacters(in: .whitespaces) == entry }) {
+                    let append = content.hasSuffix("\n") ? entry + "\n" : "\n" + entry + "\n"
+                    try? (content + append).write(to: gitignore, atomically: true, encoding: .utf8)
+                }
+            }
+        } else {
+            try? (entry + "\n").write(to: gitignore, atomically: true, encoding: .utf8)
+        }
     }
 }
