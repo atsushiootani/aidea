@@ -17,6 +17,11 @@ final class WebSessionState: SessionState {
     @ObservationIgnored private var cached: WKWebView?
     @ObservationIgnored private var urlObservation: NSKeyValueObservation?
 
+    /// SessionRegistry への弱参照 (クリック時のアクティブ化用)
+    weak var registry: SessionRegistry?
+    /// この Web セッションの SessionID
+    @ObservationIgnored var sessionID: SessionID?
+
     /// Web がアクティブになったら webView を focusableView に設定する
     func didBecomeActive(session: Session) {
         session.focusableView = cached
@@ -30,6 +35,19 @@ final class WebSessionState: SessionState {
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.isInspectable = true
         webView.load(URLRequest(url: url))
+        // WKWebView は mouseDown をオーバーライドできないので、
+        // becomeFirstResponder 時にこのセッションをアクティブにする
+        let reg = registry
+        let sid = sessionID
+        NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak webView] event in
+            if let wv = webView,
+               let sid = sid,
+               let clickedView = event.window?.contentView?.hitTest(event.locationInWindow),
+               clickedView.isDescendant(of: wv) {
+                reg?.activateSession(sid)
+            }
+            return event
+        }
         // ナビゲーションに追従して state.url を更新する (永続化時に最新 URL を保存するため)
         urlObservation = webView.observe(\.url, options: [.new]) { [weak self] webView, _ in
             guard let self, let newURL = webView.url, newURL != self.url else { return }

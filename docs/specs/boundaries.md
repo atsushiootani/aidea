@@ -73,6 +73,24 @@ Aidea の境界と設計原則。CLAUDE.md やコードレビュー時に参照�
 - **新規作成・リネーム・移動など、結果として別のノードにフォーカスすべき操作の後は、明示的に新ノードを選択 + 可視スクロール + first responder 再設定**する
 - フィルタ/検索/並び替えによる reloadData 後は、事前の選択状態を可能な限り復元する
 
+### クリックによるセッションのアクティブ化
+
+すべての Session は、そのビュー上をクリックしたとき **自動的にアクティブセッションになる** 必要がある。
+この仕組みは `SessionRegistry.createSession` 内で全 Session に共通で登録される NSEvent local monitor
+によって実現されており、新しい Tool を追加する際に個別の実装は不要。
+
+**仕組み:**
+1. `createSession` 時に各 Session に対して `NSEvent.addLocalMonitorForEvents(.leftMouseDown)` を登録
+2. クリック位置 (`hitTest`) が `session.focusableView` の子孫 (`isDescendant(of:)`) かチェック
+3. マッチし、かつ現在の activeSessionID と異なれば `activateSession(session.id)` を呼ぶ
+4. `activateSession` がペイン + タブを逆引きして `setActiveTab` → ライフサイクル (activate/deactivate) が発火
+
+**新しい Tool を追加するときの注意:**
+- この共通モニタは `session.focusableView` に依存する。新しい Tool の子ビューが AppKit の NSView を
+  持つ場合、**`session.focusableView` に必ずそのビューをセットする**こと (セットしないとクリック検知が効かない)
+- 純 SwiftUI コンテンツの場合は `FocusCatcherView` を `.background()` に配置して
+  `session.focusableView` に報告すること
+
 ### Preview を開くときの規約
 
 ファイル/リソースを Preview Session として開くときは、必ず `SessionRegistry.openPreview(for:title:)` を使う。

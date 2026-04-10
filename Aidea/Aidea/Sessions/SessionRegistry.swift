@@ -90,6 +90,17 @@ final class SessionRegistry {
         }
     }
 
+    /// SessionID を指定してそのセッションをアクティブにする (AppKit ビューのクリック等から呼ばれる)。
+    /// 該当セッションを含むペインとタブを検索して setActiveTab を呼ぶ。
+    func activateSession(_ id: SessionID) {
+        for pane in layout.allPanes {
+            if let index = pane.tabs.firstIndex(of: id) {
+                setActiveTab(paneID: pane.id, tabIndex: index)
+                return
+            }
+        }
+    }
+
     /// 現在のアクティブ Session を再度 activate する (focusableView 変更後の再フォーカス用)
     func reactivateCurrentSession() {
         activeSession?.activate()
@@ -109,9 +120,26 @@ final class SessionRegistry {
         let state = makeState(for: tool)
         let session = Session(id: id, state: state)
         sessions.append(session)
-        // Preview の state に session 参照をセット
+        // Session/State 間の参照をセット
         if let preview = state as? PreviewSessionState {
             preview.session = session
+        }
+        if let web = state as? WebSessionState {
+            web.sessionID = id
+        }
+        // Preview / Web / Terminal 以外でも共通: focusableView 配下のクリックでアクティブ化
+        // (AppKit ビューが SwiftUI の simultaneousGesture を握りつぶすケースの対策)
+        let weakSession = session
+        let weakSelf = self
+        NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak weakSession, weak weakSelf] event in
+            guard let s = weakSession, let reg = weakSelf,
+                  let fv = s.focusableView,
+                  let clicked = event.window?.contentView?.hitTest(event.locationInWindow),
+                  clicked.isDescendant(of: fv) else { return event }
+            if reg.activeSessionID != s.id {
+                reg.activateSession(s.id)
+            }
+            return event
         }
         return session
     }
@@ -279,8 +307,14 @@ final class SessionRegistry {
             state.registry = self
             return state
         case .kit:      return KitSessionState(workspace: workspace)
-        case .terminal: return TerminalSessionState(workspace: workspace)
-        case .web:      return WebSessionState()
+        case .terminal:
+            let state = TerminalSessionState(workspace: workspace)
+            state.registry = self
+            return state
+        case .web:
+            let state = WebSessionState()
+            state.registry = self
+            return state
         case .preview:  return PreviewSessionState()
         }
     }
