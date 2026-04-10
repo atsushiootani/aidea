@@ -23,9 +23,13 @@ final class TerminalSessionState: SessionState {
     /// SessionRegistry への弱参照 (クリック時のアクティブ化用)
     weak var registry: SessionRegistry?
 
-    /// Terminal がアクティブになったら terminalView を focusableView に設定する
+    /// Terminal がアクティブになったら terminalView にフォーカスを当てる
     func didBecomeActive(session: Session) {
-        session.focusableView = cached
+        guard let view = cached else { return }
+        session.focusableView = view
+        DispatchQueue.main.async {
+            view.window?.makeFirstResponder(view)
+        }
     }
 
     /// View 側で参照する PersistentTerminalView (初回のみ PTY を起動)

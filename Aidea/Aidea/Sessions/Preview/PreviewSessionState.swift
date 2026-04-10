@@ -22,14 +22,35 @@ final class PreviewSessionState: SessionState {
     /// Session への弱参照 (focusableView 報告用)。createSession 後にセットされる。
     @ObservationIgnored weak var session: Session?
 
-    /// Preview がアクティブになったら、現在の focusableView で First Responder を取る
+    /// activate 時に focusableView が nil だった場合の待ち受けフラグ。
+    /// setFocusableView で view がセットされた時点で自動フォーカスする。
+    @ObservationIgnored private var pendingActivation = false
+
+    /// Preview がアクティブになったら、focusableView があれば即フォーカス、
+    /// なければ pendingActivation をセットして子ビュー生成を待つ。
     func didBecomeActive(session: Session) {
-        // focusableView は子ビューが事前にセット済み。
-        // Session.activate() が makeFirstResponder を呼ぶ。
+        pendingActivation = false
+        if let view = session.focusableView {
+            DispatchQueue.main.async {
+                view.window?.makeFirstResponder(view)
+            }
+        } else {
+            pendingActivation = true
+        }
     }
 
-    /// 子ビューが focusableView を報告するヘルパー
-    func setFocusableView(_ view: NSView?) {
-        session?.focusableView = view
+    func didResignActive(session: Session) {
+        pendingActivation = false
+    }
+
+    /// session.focusableView が変更されたときに呼ばれる。
+    /// pendingActivation 中なら自動でフォーカスを取る。
+    func onFocusableViewChanged(session: Session, view: NSView?) {
+        guard pendingActivation, let view = view else { return }
+        pendingActivation = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak view] in
+            guard let view = view else { return }
+            view.window?.makeFirstResponder(view)
+        }
     }
 }

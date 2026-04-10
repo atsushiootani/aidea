@@ -62,11 +62,16 @@ protocol SessionState: AnyObject {
 
     /// このセッションが非アクティブになったとき呼ばれる。
     func didResignActive(session: Session)
+
+    /// session.focusableView が変更されたとき呼ばれる。
+    /// pendingActivation 等、focusableView の遅延セットに対応する処理を実装する。
+    func onFocusableViewChanged(session: Session, view: NSView?)
 }
 
 extension SessionState {
     func didBecomeActive(session: Session) {}
     func didResignActive(session: Session) {}
+    func onFocusableViewChanged(session: Session, view: NSView?) {}
 }
 
 /// Tab のドラッグ&ドロップのために SessionID を Transferable にする。

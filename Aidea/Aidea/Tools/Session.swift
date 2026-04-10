@@ -14,10 +14,21 @@ final class Session: Identifiable {
     let id: SessionID
     let state: any SessionState
 
+    /// focusableView の実体。@ObservationIgnored にして @Observable macro の変換を防ぎ、
+    /// 手動 computed property で setter に onFocusableViewChanged コールバックを仕込む。
+    @ObservationIgnored private var _focusableView: NSView?
+
     /// キー入力を受け取るべき NSView。
     /// 子ビュー (NSTextView, WKWebView, FocusCatcher 等) が動的に更新する。
     /// nil のときは SwiftUI の @FocusState パスが使われる (Kit 等)。
-    var focusableView: NSView?
+    /// セット時に state.onFocusableViewChanged が呼ばれる。
+    var focusableView: NSView? {
+        get { _focusableView }
+        set {
+            _focusableView = newValue
+            state.onFocusableViewChanged(session: self, view: newValue)
+        }
+    }
 
     init(id: SessionID, state: any SessionState) {
         self.id = id
@@ -25,14 +36,9 @@ final class Session: Identifiable {
     }
 
     /// このセッションがアクティブになったとき呼ばれる。
-    /// state のライフサイクルメソッドを呼んだ後、focusableView があれば First Responder にする。
+    /// 何をすべきかは各 SessionState が自分で決める (Tell, Don't Ask)。
     func activate() {
         state.didBecomeActive(session: self)
-        if let view = focusableView {
-            DispatchQueue.main.async {
-                view.window?.makeFirstResponder(view)
-            }
-        }
     }
 
     /// このセッションが非アクティブになったとき呼ばれる。

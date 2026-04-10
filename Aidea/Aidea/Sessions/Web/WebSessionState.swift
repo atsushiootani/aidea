@@ -22,9 +22,13 @@ final class WebSessionState: SessionState {
     /// この Web セッションの SessionID
     @ObservationIgnored var sessionID: SessionID?
 
-    /// Web がアクティブになったら webView を focusableView に設定する
+    /// Web がアクティブになったら webView にフォーカスを当てる
     func didBecomeActive(session: Session) {
-        session.focusableView = cached
+        guard let view = cached else { return }
+        session.focusableView = view
+        DispatchQueue.main.async {
+            view.window?.makeFirstResponder(view)
+        }
     }
 
     /// View 側で参照する WKWebView (初回のみ生成)
