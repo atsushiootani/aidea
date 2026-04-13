@@ -13,6 +13,7 @@ struct PaneView: View {
     let layoutNode: LayoutNode
     @Environment(SessionRegistry.self) private var registry
     @Environment(LayoutConfig.self) private var layout
+    @Environment(CompanionStore.self) private var companionStore
 
     var body: some View {
         VStack(spacing: 0) {
@@ -112,9 +113,7 @@ struct PaneView: View {
         let isGlobalActive = (registry.activeSessionID == sessionID)
         let isPaneActive = (index == pane.activeIndex)
         return HStack(spacing: 5) {
-            Image(systemName: sessionID.tool.systemImageName)
-                .font(.system(size: 11, weight: isGlobalActive ? .bold : .regular))
-                .foregroundStyle(isGlobalActive ? Color.white : Color.secondary)
+            tabIcon(sessionID: sessionID, isGlobalActive: isGlobalActive)
             Text(displayLabel(for: sessionID))
                 .font(.system(size: 12, weight: isGlobalActive ? .bold : (isPaneActive ? .semibold : .regular)))
                 .foregroundStyle(isGlobalActive ? Color.white : Color.primary)
@@ -146,6 +145,21 @@ struct PaneView: View {
         .draggable(sessionID)
     }
 
+    /// タブアイコン。Claude ツールは猫耳画像、それ以外は SF Symbol。
+    @ViewBuilder
+    private func tabIcon(sessionID: SessionID, isGlobalActive: Bool) -> some View {
+        if sessionID.tool == .claude {
+            Image("cat-ear")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 14, height: 14)
+        } else {
+            Image(systemName: sessionID.tool.systemImageName)
+                .font(.system(size: 11, weight: isGlobalActive ? .bold : .regular))
+                .foregroundStyle(isGlobalActive ? Color.white : Color.secondary)
+        }
+    }
+
     /// タブヘッダの表示名。
     /// - Preview: state.title があればそれ、なければ URL の lastPathComponent、どちらも無ければ "Preview"
     /// - その他: tool 名 + (instance > 0 のとき番号)
@@ -162,6 +176,10 @@ struct PaneView: View {
            !diffState.filePath.isEmpty {
             let fileName = diffState.filePath.split(separator: "/").last.map(String.init) ?? diffState.filePath
             return "diff | \(fileName)"
+        }
+        if sessionID.tool == .claude,
+           let name = companionStore.companionName(for: sessionID) {
+            return name
         }
         if sessionID.instance == 0 { return sessionID.tool.displayName }
         return "\(sessionID.tool.displayName) \(sessionID.instance + 1)"
@@ -229,6 +247,7 @@ struct PaneView: View {
         guard index >= 0, index < pane.tabs.count else { return }
         let closed = pane.tabs[index]
         pane.tabs.remove(at: index)
+        companionStore.unbindSession(closed)
         registry.destroySession(closed)
         if pane.activeIndex >= pane.tabs.count {
             pane.activeIndex = max(0, pane.tabs.count - 1)
