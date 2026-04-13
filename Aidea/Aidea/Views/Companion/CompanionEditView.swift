@@ -46,9 +46,6 @@ struct CompanionEditView: View {
                     .border(Color.secondary.opacity(0.3))
             }
 
-            // 自動起動
-            Toggle("Aidea 起動時に自動で開始する", isOn: $companion.autoLaunch)
-
             // ボタン
             HStack {
                 Button("キャンセル") {
