@@ -16,12 +16,14 @@ struct AideaApp: App {
     @State private var layout: LayoutConfig
     @State private var snapshotManager: WorkspaceSnapshotManager
     @State private var speechState: SpeechState
+    @State private var companionStore: CompanionStore
 
     init() {
         let ws = WorkspaceState()
         let lay = LayoutConfig()
         let reg = SessionRegistry(workspace: ws, layout: lay)
         let speech = SpeechState()
+        let companions = CompanionStore()
         let manager = WorkspaceSnapshotManager()
 
         // 起動時にスナップショットがあれば適用、無ければ既定のアクティブ Pane を設定
@@ -36,6 +38,7 @@ struct AideaApp: App {
         _registry = State(initialValue: reg)
         _snapshotManager = State(initialValue: manager)
         _speechState = State(initialValue: speech)
+        _companionStore = State(initialValue: companions)
     }
 
     var body: some Scene {
@@ -45,9 +48,11 @@ struct AideaApp: App {
                 .environment(registry)
                 .environment(layout)
                 .environment(speechState)
+                .environment(companionStore)
                 .onAppear {
                     registerTerminationObserver()
                     registerKeyEventMonitor()
+                    autoLaunchCompanions()
                 }
         }
         .commands {
@@ -129,6 +134,28 @@ struct AideaApp: App {
         }
     }
 
+    /// autoLaunch = true のコンパニオンの Claude セッションを自動起動する
+    private func autoLaunchCompanions() {
+        guard let root = workspace.projectRoot else { return }
+        companionStore.load(projectRoot: root)
+        // 少し遅延してスナップショット復元完了後に実行
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            for companion in companionStore.autoLaunchCompanions {
+                guard !companionStore.isActive(companion.id) else { continue }
+                let instance = layout.nextSessionInstance(of: .claude)
+                let session = registry.createSession(tool: .claude, instance: instance)
+                if let state = session.state as? ClaudeSessionState {
+                    state.companionPrompt = companion.initialPrompt
+                }
+                companionStore.bind(companionID: companion.id, sessionID: session.id)
+                if let pane = registry.activePane ?? layout.allPanes.first {
+                    pane.tabs.append(session.id)
+                    registry.setActiveTab(paneID: pane.id, tabIndex: pane.tabs.count - 1)
+                }
+            }
+        }
+    }
+
     // MARK: - Tab/pane keyboard actions
 
     /// Cmd+T: タブの `+` ボタンと同じ NSMenu を現在位置にポップアップ表示する
@@ -161,7 +188,7 @@ struct AideaApp: App {
 
     /// Cmd+W: 現在アクティブなタブを閉じる (メニュー経由)
     private func closeCurrentTab() {
-        Self.closeCurrentTabStatic(layout: layout, registry: registry)
+        Self.closeCurrentTabStatic(layout: layout, registry: registry, companionStore: companionStore)
     }
 
     /// Cmd+Shift+[ / ] : 現在ペイン内でタブを左右に移動 (ラップ)。
@@ -250,6 +277,7 @@ struct AideaApp: App {
     private func registerKeyEventMonitor() {
         let layout = self.layout
         let registry = self.registry
+        let companionStore = self.companionStore
         NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
             guard event.modifierFlags.contains(.command),
                   !event.modifierFlags.contains(.shift),
@@ -259,7 +287,7 @@ struct AideaApp: App {
             }
             let chars = event.charactersIgnoringModifiers?.lowercased() ?? ""
             if chars == "w" {
-                Self.closeCurrentTabStatic(layout: layout, registry: registry)
+                Self.closeCurrentTabStatic(layout: layout, registry: registry, companionStore: companionStore)
                 return nil
             }
             return event
@@ -267,11 +295,12 @@ struct AideaApp: App {
     }
 
     /// closeCurrentTab のスタティックヘルパ (NSEvent 監視クロージャから呼ぶため)
-    private static func closeCurrentTabStatic(layout: LayoutConfig, registry: SessionRegistry) {
+    private static func closeCurrentTabStatic(layout: LayoutConfig, registry: SessionRegistry, companionStore: CompanionStore? = nil) {
         guard let activeID = registry.activeSessionID,
               let pane = layout.allPanes.first(where: { $0.tabs.contains(activeID) }),
               let index = pane.tabs.firstIndex(of: activeID) else { return }
         pane.tabs.remove(at: index)
+        companionStore?.unbindSession(activeID)
         registry.destroySession(activeID)
         if pane.activeIndex >= pane.tabs.count {
             pane.activeIndex = max(0, pane.tabs.count - 1)

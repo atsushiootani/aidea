@@ -21,6 +21,8 @@ final class ClaudeSessionState: SessionState {
 
     /// SessionRegistry への弱参照 (クリック時のアクティブ化用)
     weak var registry: SessionRegistry?
+    /// 紐付けられたコンパニオンの初期プロンプト（nil なら Backchannel 指示のみ）
+    var companionPrompt: String?
 
     /// Claude がアクティブになったら terminalView にフォーカスを当てる
     func didBecomeActive(session: Session) {
@@ -74,11 +76,17 @@ final class ClaudeSessionState: SessionState {
     /// send() は PTY へのキー入力なので、ユーザーが手で打ったのと同等。
     /// (ADR 0008 の非対話シェル問題を回避)
     private func autoStartClaude(terminal: PersistentTerminalView) {
+        let prompt = companionPrompt
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             terminal.send(txt: "claude\n")
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
-            terminal.send(txt: ".aidea/claude/aidea.md を読んで、以降のレスポンスで従ってね\r")
+            // Backchannel 指示 + コンパニオンの初期プロンプト
+            var message = ".aidea/claude/aidea.md を読んで、以降のレスポンスで従ってね"
+            if let prompt, !prompt.isEmpty {
+                message += "\n\n" + prompt
+            }
+            terminal.send(txt: message + "\r")
         }
     }
 }
