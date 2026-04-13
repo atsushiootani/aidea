@@ -1,5 +1,5 @@
 //
-//  TerminalSessionState.swift
+//  ClaudeSessionState.swift
 //  Aidea
 //
 
@@ -8,11 +8,10 @@ import AppKit
 import Observation
 import SwiftTerm
 
-/// Terminal Session の内部状態。
-/// PersistentTerminalView を初回アクセス時に生成してキャッシュし、
-/// ペイン移動やタブ切替で再生成されないようにする。
+/// Claude Session の内部状態。
+/// Terminal と同じ PTY を起動した上で、claude コマンドと Backchannel 指示を自動送信する。
 @Observable
-final class TerminalSessionState: SessionState {
+final class ClaudeSessionState: SessionState {
     let workspace: WorkspaceState
     @ObservationIgnored private var cached: PersistentTerminalView?
 
@@ -23,7 +22,7 @@ final class TerminalSessionState: SessionState {
     /// SessionRegistry への弱参照 (クリック時のアクティブ化用)
     weak var registry: SessionRegistry?
 
-    /// Terminal がアクティブになったら terminalView にフォーカスを当てる
+    /// Claude がアクティブになったら terminalView にフォーカスを当てる
     func didBecomeActive(session: Session) {
         guard let view = cached else { return }
         session.focusableView = view
@@ -36,19 +35,16 @@ final class TerminalSessionState: SessionState {
     var terminalView: PersistentTerminalView {
         if let cached = cached { return cached }
         let terminal = PersistentTerminalView(frame: .zero)
-        // SwiftTerm の mouseDown はオーバーライド不可 (non-open) なので
-        // NSEvent local monitor でクリックを検知する
         let reg = registry
         NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak terminal, weak self] event in
             if let tv = terminal,
                let reg = self?.registry,
                let clickedView = event.window?.contentView?.hitTest(event.locationInWindow),
                clickedView.isDescendant(of: tv) {
-                // この Terminal の SessionID を探して activate
                 for pane in reg.layout.allPanes {
-                    for id in pane.tabs where id.tool == .terminal {
+                    for id in pane.tabs where id.tool == .claude {
                         if let s = reg.session(for: id),
-                           let state = s.state as? TerminalSessionState,
+                           let state = s.state as? ClaudeSessionState,
                            state === self {
                             reg.activateSession(id)
                             break
@@ -70,6 +66,19 @@ final class TerminalSessionState: SessionState {
             environment: env
         )
         cached = terminal
+        autoStartClaude(terminal: terminal)
         return terminal
+    }
+
+    /// 対話シェル準備完了後に claude を起動し、Backchannel 指示を送る。
+    /// send() は PTY へのキー入力なので、ユーザーが手で打ったのと同等。
+    /// (ADR 0008 の非対話シェル問題を回避)
+    private func autoStartClaude(terminal: PersistentTerminalView) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            terminal.send(txt: "claude\n")
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+            terminal.send(txt: ".aidea/claude/aidea.md を読んで、以降のレスポンスで従ってね\r")
+        }
     }
 }
