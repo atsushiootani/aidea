@@ -70,6 +70,23 @@ final class TerminalSessionState: SessionState {
             environment: env
         )
         cached = terminal
+        // 対話シェル起動後に claude を自動起動し、Backchannel 指示を送る
+        autoStartClaude(terminal: terminal)
         return terminal
+    }
+
+    /// 対話シェルが準備完了後に claude を起動し、初期指示を送る。
+    /// send() は PTY へのキー入力なので、ユーザーが手で打ったのと同等。
+    /// (ADR 0008 の非対話シェル問題を回避)
+    private func autoStartClaude(terminal: PersistentTerminalView) {
+        // zsh のプロンプトが出るのを待ってから claude を起動
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            terminal.send(txt: "claude\n")
+        }
+        // claude が起動完了するのを待ってから Backchannel 指示を送る
+        // Claude CLI は Enter を \r (CR) で受け取る
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+            terminal.send(txt: ".aidea/claude/aidea.md を読んで、以降のレスポンスで従ってね\r")
+        }
     }
 }

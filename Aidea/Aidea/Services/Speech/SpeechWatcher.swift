@@ -32,16 +32,14 @@ final class SpeechWatcher {
     private func handleChanges(_ paths: Set<String>) {
         let speechFiles = paths.filter { path in
             let name = (path as NSString).lastPathComponent
-            return name.hasPrefix("speech-") && name.hasSuffix(".txt")
-        }.sorted() // タイムスタンプ順
+            return name == "speech.txt" || (name.hasPrefix("speech-") && name.hasSuffix(".txt"))
+        }
 
         for path in speechFiles {
             let url = URL(fileURLWithPath: path)
             guard FileManager.default.fileExists(atPath: path),
                   let content = try? String(contentsOf: url, encoding: .utf8),
                   !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-                // 空ファイルは削除だけ
-                try? FileManager.default.removeItem(atPath: path)
                 continue
             }
             onSpeechFile?(content.trimmingCharacters(in: .whitespacesAndNewlines))
