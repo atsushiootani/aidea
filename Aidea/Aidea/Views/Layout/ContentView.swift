@@ -15,11 +15,15 @@ struct ContentView: View {
     var body: some View {
         Group {
             if let root = workspace.projectRoot {
-                SplitLayoutView(
-                    layout: layout,
-                    workspace: workspace,
-                    registry: registry
-                )
+                VStack(spacing: 0) {
+                    AppHeaderView()
+                    Divider()
+                    SplitLayoutView(
+                        layout: layout,
+                        workspace: workspace,
+                        registry: registry
+                    )
+                }
                 .frame(minWidth: 1100, minHeight: 600)
                 .navigationTitle(root.lastPathComponent)
             } else {

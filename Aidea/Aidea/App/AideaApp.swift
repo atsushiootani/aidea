@@ -15,11 +15,13 @@ struct AideaApp: App {
     @State private var registry: SessionRegistry
     @State private var layout: LayoutConfig
     @State private var snapshotManager: WorkspaceSnapshotManager
+    @State private var speechState: SpeechState
 
     init() {
         let ws = WorkspaceState()
         let lay = LayoutConfig()
         let reg = SessionRegistry(workspace: ws, layout: lay)
+        let speech = SpeechState()
         let manager = WorkspaceSnapshotManager()
 
         // 起動時にスナップショットがあれば適用、無ければ既定のアクティブ Pane を設定
@@ -33,6 +35,7 @@ struct AideaApp: App {
         _layout = State(initialValue: lay)
         _registry = State(initialValue: reg)
         _snapshotManager = State(initialValue: manager)
+        _speechState = State(initialValue: speech)
     }
 
     var body: some Scene {
@@ -41,6 +44,7 @@ struct AideaApp: App {
                 .environment(workspace)
                 .environment(registry)
                 .environment(layout)
+                .environment(speechState)
                 .onAppear {
                     registerTerminationObserver()
                     registerKeyEventMonitor()
