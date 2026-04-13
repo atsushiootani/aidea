@@ -17,17 +17,6 @@ struct AppHeaderView: View {
                 .resizable()
                 .frame(width: 36, height: 36)
 
-            // 読み上げトグルボタン
-            Button {
-                speech.toggle()
-            } label: {
-                Image(systemName: speech.isEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill")
-                    .font(.system(size: 14))
-                    .foregroundStyle(speech.isEnabled ? Color.accentColor : Color.secondary)
-            }
-            .buttonStyle(.plain)
-            .help(speech.isEnabled ? "読み上げ OFF" : "読み上げ ON")
-
             // 再生中インジケータ
             if speech.queue.isSpeaking {
                 Image(systemName: "waveform")
