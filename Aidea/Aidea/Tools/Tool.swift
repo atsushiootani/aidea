@@ -13,6 +13,7 @@ enum Tool: String, CaseIterable, Identifiable, Hashable, Codable, Sendable {
     case filer
     case kit
     case terminal
+    case claude
     case web
     case preview
     case git
@@ -26,6 +27,7 @@ enum Tool: String, CaseIterable, Identifiable, Hashable, Codable, Sendable {
         case .filer:    return "Files"
         case .kit:      return "Kit"
         case .terminal: return "Terminal"
+        case .claude:   return "Claude"
         case .web:      return "Web"
         case .preview:  return "Preview"
         case .git:      return "Git"
@@ -39,6 +41,7 @@ enum Tool: String, CaseIterable, Identifiable, Hashable, Codable, Sendable {
         case .filer:    return "folder"
         case .kit:      return "shippingbox"
         case .terminal: return "apple.terminal"
+        case .claude:   return "bubble.left.and.text.bubble.right"
         case .web:      return "globe"
         case .preview:  return "doc.text.magnifyingglass"
         case .git:      return "arrow.triangle.branch"

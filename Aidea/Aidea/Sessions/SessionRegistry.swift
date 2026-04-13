@@ -324,18 +324,19 @@ final class SessionRegistry {
 
     // MARK: - View factory
 
-    /// SessionID に対応する SwiftUI View を返す
-    @ViewBuilder
-    func view(for id: SessionID) -> some View {
+    /// SessionID に対応する SwiftUI View を返す。
+    /// AnyView でラップして @ViewBuilder の分岐数増加による SwiftUI の型推論問題を回避する。
+    func view(for id: SessionID) -> AnyView {
         let session = ensureSession(for: id)
         switch id.tool {
-        case .filer:    FilerSessionView(session: session, state: session.state as! FilerSessionState)
-        case .kit:      KitSessionView(state: session.state as! KitSessionState, sessionID: id)
-        case .terminal: TerminalSessionView(state: session.state as! TerminalSessionState)
-        case .web:      WebSessionView(state: session.state as! WebSessionState)
-        case .preview:  PreviewSessionView(session: session, state: session.state as! PreviewSessionState, sessionID: id)
-        case .git:      GitSessionView(session: session, state: session.state as! GitSessionState)
-        case .gitDiff:  GitDiffSessionView(session: session, state: session.state as! GitDiffSessionState)
+        case .filer:    return AnyView(FilerSessionView(session: session, state: session.state as! FilerSessionState))
+        case .kit:      return AnyView(KitSessionView(state: session.state as! KitSessionState, sessionID: id))
+        case .terminal: return AnyView(TerminalSessionView(state: session.state as! TerminalSessionState))
+        case .claude:   return AnyView(ClaudeSessionView(state: session.state as! ClaudeSessionState))
+        case .web:      return AnyView(WebSessionView(state: session.state as! WebSessionState))
+        case .preview:  return AnyView(PreviewSessionView(session: session, state: session.state as! PreviewSessionState, sessionID: id))
+        case .git:      return AnyView(GitSessionView(session: session, state: session.state as! GitSessionState))
+        case .gitDiff:  return AnyView(GitDiffSessionView(session: session, state: session.state as! GitDiffSessionState))
         }
     }
 
@@ -351,6 +352,10 @@ final class SessionRegistry {
         case .kit:      return KitSessionState(workspace: workspace)
         case .terminal:
             let state = TerminalSessionState(workspace: workspace)
+            state.registry = self
+            return state
+        case .claude:
+            let state = ClaudeSessionState(workspace: workspace)
             state.registry = self
             return state
         case .web:
