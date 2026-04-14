@@ -84,9 +84,9 @@ struct AideaApp: App {
                 .keyboardShortcut("w", modifiers: [.command])
             Divider()
             Button("左のタブ") { moveTab(offset: -1) }
-                .keyboardShortcut("[", modifiers: [.command, .shift])
+                .keyboardShortcut("[", modifiers: [.command, .option])
             Button("右のタブ") { moveTab(offset: 1) }
-                .keyboardShortcut("]", modifiers: [.command, .shift])
+                .keyboardShortcut("]", modifiers: [.command, .option])
             Divider()
             Button("前のペイン") { movePane(offset: -1) }
                 .keyboardShortcut("[", modifiers: [.command])
@@ -94,9 +94,9 @@ struct AideaApp: App {
                 .keyboardShortcut("]", modifiers: [.command])
             Divider()
             Button("左右に分割") { splitCurrent(axis: .horizontal) }
-                .keyboardShortcut(.rightArrow, modifiers: [.command, .shift])
+                .keyboardShortcut(.rightArrow, modifiers: [.command, .option])
             Button("上下に分割") { splitCurrent(axis: .vertical) }
-                .keyboardShortcut(.downArrow, modifiers: [.command, .shift])
+                .keyboardShortcut(.downArrow, modifiers: [.command, .option])
         }
     }
 
@@ -105,19 +105,25 @@ struct AideaApp: App {
     private var toolMenu: some Commands {
         CommandMenu("ツール") {
             Button("Filer") { focusTool(.filer) }
-                .keyboardShortcut("1", modifiers: [.command])
+                .keyboardShortcut("1", modifiers: [.command, .option])
             Button("Kit") { focusTool(.kit) }
-                .keyboardShortcut("2", modifiers: [.command])
+                .keyboardShortcut("2", modifiers: [.command, .option])
             Button("Git") { focusTool(.git) }
-                .keyboardShortcut("3", modifiers: [.command])
+                .keyboardShortcut("3", modifiers: [.command, .option])
             Button("Terminal") { focusTool(.terminal) }
-                .keyboardShortcut("7", modifiers: [.command])
+                .keyboardShortcut("7", modifiers: [.command, .option])
             Button("Claude") { focusTool(.claude) }
-                .keyboardShortcut("8", modifiers: [.command])
+                .keyboardShortcut("8", modifiers: [.command, .option])
             Button("Web") { focusTool(.web) }
-                .keyboardShortcut("9", modifiers: [.command])
+                .keyboardShortcut("9", modifiers: [.command, .option])
             Button("Preview") { focusTool(.preview) }
-                .keyboardShortcut("0", modifiers: [.command])
+                .keyboardShortcut("0", modifiers: [.command, .option])
+        }
+        CommandMenu("コンパニオン") {
+            ForEach(0..<8) { index in
+                Button("Companion \(index + 1)") { activateCompanion(index: index) }
+                    .keyboardShortcut(KeyEquivalent(Character(String(index + 1))), modifiers: [.command])
+            }
         }
     }
 
@@ -238,6 +244,35 @@ struct AideaApp: App {
     }
 
     /// Cmd+1..0 : 指定 Tool のタブへフォーカス。既にその Tool がアクティブなら次のインスタンスへ循環。
+    /// Cmd+1~8 でコンパニオンを起動またはアクティブにする
+    private func activateCompanion(index: Int) {
+        let icons = CompanionIconPresets.imageIcons
+        guard index < icons.count else { return }
+        let companion = companionStore.companion(forIndex: index)
+
+        if let companion, companionStore.isActive(companion.id),
+           let sessionID = companionStore.activeSessionMap[companion.id] {
+            // 既に起動中 → フォーカス
+            registry.activateSession(sessionID)
+        } else {
+            // 未起動 → 起動
+            let config = companion ?? companionStore.createDefault(forIndex: index)
+            if companionStore.companions.first(where: { $0.id == config.id }) == nil {
+                companionStore.add(config)
+            }
+            let instance = layout.nextSessionInstance(of: .claude)
+            let session = registry.createSession(tool: .claude, instance: instance)
+            if let state = session.state as? ClaudeSessionState {
+                state.companionPrompt = config.initialPrompt
+            }
+            companionStore.bind(companionID: config.id, sessionID: session.id)
+            if let pane = registry.activePane ?? layout.allPanes.first {
+                pane.tabs.append(session.id)
+                registry.setActiveTab(paneID: pane.id, tabIndex: pane.tabs.count - 1)
+            }
+        }
+    }
+
     private func focusTool(_ tool: Tool) {
         let matches: [(pane: Pane, id: SessionID, tabIndex: Int)] = layout.allPanes.flatMap { pane in
             pane.tabs.enumerated().compactMap { index, id in
