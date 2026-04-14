@@ -27,15 +27,42 @@ struct GitSessionView: NSViewControllerRepresentable {
     }
 }
 
+/// Tab キーで GitDiff にフォーカス移動する NSOutlineView サブクラス
+final class GitOutlineView: NSOutlineView {
+    var onTabPressed: (() -> Void)?
+    var onModeChanged: ((GitMode) -> Void)?
+
+    override func keyDown(with event: NSEvent) {
+        if event.keyCode == 48 {
+            onTabPressed?()
+            return
+        }
+        // Ctrl+4 = Working Changes, Ctrl+5 = PR Preview
+        if event.modifierFlags.contains(.control) {
+            if event.keyCode == 21 { onModeChanged?(.workingChanges); return }  // 4
+            if event.keyCode == 23 { onModeChanged?(.prPreview); return }       // 5
+        }
+        // W = Working Changes, P = PR Preview (フォールバック)
+        if let chars = event.charactersIgnoringModifiers?.lowercased(), !event.modifierFlags.contains(.command) {
+            if chars == "w" { onModeChanged?(.workingChanges); return }
+            if chars == "p" { onModeChanged?(.prPreview); return }
+        }
+        super.keyDown(with: event)
+    }
+}
+
 /// Git 変更ファイル一覧の NSViewController
 final class GitFileListViewController: NSViewController, NSOutlineViewDataSource, NSOutlineViewDelegate {
     var state: GitSessionState?
     var session: Session?
-    let outlineView = NSOutlineView()
+    let outlineView = GitOutlineView()
     private let scrollView = NSScrollView()
     private let branchBadge = BranchBadgeView()
+    private var picker: NSSegmentedControl?
     private let watcher = FileWatcher()
     private var reloadWorkItem: DispatchWorkItem?
+    /// Diff 追従による選択変更中は true（無限ループ防止）
+    private var isUpdatingFromDiff = false
 
     override func loadView() {
         let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("name"))
@@ -63,7 +90,9 @@ final class GitFileListViewController: NSViewController, NSOutlineViewDataSource
                                         target: self,
                                         action: #selector(modeChanged(_:)))
         picker.selectedSegment = 0
+        picker.segmentDistribution = .fillEqually
         picker.translatesAutoresizingMaskIntoConstraints = false
+        self.picker = picker
 
         branchBadge.translatesAutoresizingMaskIntoConstraints = false
 
@@ -79,6 +108,7 @@ final class GitFileListViewController: NSViewController, NSOutlineViewDataSource
             picker.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -8),
             branchBadge.topAnchor.constraint(equalTo: picker.bottomAnchor, constant: 4),
             branchBadge.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 10),
+            branchBadge.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -10),
             branchBadge.heightAnchor.constraint(equalToConstant: 22),
             scrollView.topAnchor.constraint(equalTo: branchBadge.bottomAnchor, constant: 4),
             scrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
@@ -86,6 +116,34 @@ final class GitFileListViewController: NSViewController, NSOutlineViewDataSource
             scrollView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
         ])
         self.view = container
+
+        // Tab キーで GitDiff にフォーカス移動
+        outlineView.onTabPressed = { [weak self] in
+            self?.focusGitDiff()
+        }
+
+        // W / P キーでモード切替
+        outlineView.onModeChanged = { [weak self] mode in
+            guard let self else { return }
+            self.state?.mode = mode
+            self.picker?.selectedSegment = GitMode.allCases.firstIndex(of: mode) ?? 0
+            self.reload()
+            // GitDiff も連動
+            self.switchDiffMode(mode)
+        }
+
+
+        // GitDiff のフォーカスファイル変化に追従して OutlineView の選択を更新
+        state?.onSelectedPathChanged = { [weak self] path in
+            guard let self, let path else { return }
+            self.selectNode(withPath: path)
+        }
+
+        // Viewed 状態変化時に OutlineView をリロード
+        state?.onViewedChanged = { [weak self] in
+            self?.outlineView.reloadData()
+            self?.outlineView.expandItem(nil, expandChildren: true)
+        }
 
         // .git 監視で自動更新
         if let root = state?.workspace.projectRoot {
@@ -103,14 +161,16 @@ final class GitFileListViewController: NSViewController, NSOutlineViewDataSource
         outlineView.expandItem(nil, expandChildren: true)
     }
 
-    /// モードに応じてブランチラベルを更新する
+    /// モードに応じてブランチラベルと合計行数を更新する
     private func updateBranchLabel() {
         guard let state else { return }
+        let totalAdded = state.fileStats.values.reduce(0) { $0 + $1.added }
+        let totalDeleted = state.fileStats.values.reduce(0) { $0 + $1.deleted }
         switch state.mode {
         case .workingChanges:
-            branchBadge.setBranches([state.currentBranch])
+            branchBadge.setBranches([state.currentBranch], added: totalAdded, deleted: totalDeleted)
         case .prPreview:
-            branchBadge.setBranches([state.baseBranch, state.currentBranch])
+            branchBadge.setBranches([state.baseBranch, state.currentBranch], added: totalAdded, deleted: totalDeleted)
         }
     }
 
@@ -130,16 +190,9 @@ final class GitFileListViewController: NSViewController, NSOutlineViewDataSource
 
     @objc private func handleDoubleClick() {
         let row = outlineView.clickedRow
-        guard row >= 0,
-              let node = outlineView.item(atRow: row) as? GitFileTreeNode,
-              !node.isDirectory else { return }
-        openDiff(for: node)
-    }
-
-    private func openDiff(for node: GitFileTreeNode) {
+        let filePath = (outlineView.item(atRow: row) as? GitFileTreeNode)?.relativePath
         guard let registry = state?.registry, let mode = state?.mode else { return }
-        let isUntracked = node.status == .untracked
-        registry.openGitDiff(for: node.relativePath, mode: mode, isUntracked: isUntracked, isStaged: node.isStaged)
+        registry.openGitDiff(mode: mode, scrollToFile: filePath)
     }
 
     // MARK: - NSOutlineViewDataSource
@@ -164,54 +217,187 @@ final class GitFileListViewController: NSViewController, NSOutlineViewDataSource
 
     func outlineView(_ outlineView: NSOutlineView, viewFor tableColumn: NSTableColumn?, item: Any) -> NSView? {
         guard let node = item as? GitFileTreeNode else { return nil }
-        let id = NSUserInterfaceItemIdentifier("GitCell")
-        let cell: NSTableCellView
-        if let recycled = outlineView.makeView(withIdentifier: id, owner: self) as? NSTableCellView {
+        let id = NSUserInterfaceItemIdentifier("GitCell2")
+        let cell: GitFileCellView
+        if let recycled = outlineView.makeView(withIdentifier: id, owner: self) as? GitFileCellView {
             cell = recycled
         } else {
-            cell = NSTableCellView()
+            cell = GitFileCellView()
             cell.identifier = id
-            let icon = NSImageView()
-            icon.translatesAutoresizingMaskIntoConstraints = false
-            let label = NSTextField(labelWithString: "")
-            label.translatesAutoresizingMaskIntoConstraints = false
-            label.lineBreakMode = .byTruncatingMiddle
-            cell.addSubview(icon)
-            cell.addSubview(label)
-            cell.imageView = icon
-            cell.textField = label
-            NSLayoutConstraint.activate([
-                icon.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: 2),
-                icon.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
-                icon.widthAnchor.constraint(equalToConstant: 16),
-                icon.heightAnchor.constraint(equalToConstant: 16),
-                label.leadingAnchor.constraint(equalTo: icon.trailingAnchor, constant: 6),
-                label.trailingAnchor.constraint(equalTo: cell.trailingAnchor, constant: -4),
-                label.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
-            ])
         }
-        cell.textField?.stringValue = node.name
-        cell.textField?.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
-        if node.isDirectory {
-            cell.imageView?.image = NSImage(systemSymbolName: "folder.fill", accessibilityDescription: nil)
-            cell.imageView?.contentTintColor = .secondaryLabelColor
-        } else if let status = node.status {
-            cell.imageView?.image = NSImage(systemSymbolName: status.iconName, accessibilityDescription: nil)
-            switch status {
-            case .modified:  cell.imageView?.contentTintColor = .systemOrange
-            case .added:     cell.imageView?.contentTintColor = .systemGreen
-            case .deleted:   cell.imageView?.contentTintColor = .systemRed
-            case .renamed:   cell.imageView?.contentTintColor = .systemBlue
-            case .untracked: cell.imageView?.contentTintColor = .systemGreen
-            }
-        }
+        let isViewed = !node.isDirectory && isFileViewed(node.relativePath)
+        let stat = node.isDirectory ? nil : fileStat(for: node.relativePath)
+        cell.configure(node: node, isViewed: isViewed, stat: stat)
         return cell
     }
 
     func outlineViewSelectionDidChange(_ notification: Notification) {
+        guard !isUpdatingFromDiff else { return }
         let row = outlineView.selectedRow
-        guard row >= 0, let node = outlineView.item(atRow: row) as? GitFileTreeNode else { return }
+        guard row >= 0, let node = outlineView.item(atRow: row) as? GitFileTreeNode, !node.isDirectory else { return }
         state?.selectedPath = node.relativePath
+        // 既に開いている GitDiff があればそのファイルにジャンプ
+        scrollDiffToFile(node.relativePath)
+    }
+
+    /// ファイルの追加/削除行数を返す
+    private func fileStat(for path: String) -> (added: Int, deleted: Int)? {
+        state?.fileStats[path]
+    }
+
+    /// ファイルが Viewed かどうかを GitDiff の viewedFiles から判定する
+    private func isFileViewed(_ path: String) -> Bool {
+        guard let registry = state?.registry else { return false }
+        for pane in registry.layout.allPanes {
+            for id in pane.tabs where id.tool == .gitDiff {
+                if let s = registry.session(for: id),
+                   let diffState = s.state as? GitDiffSessionState {
+                    return diffState.viewedFiles.contains { $0.contains(path) || path.contains($0) }
+                }
+            }
+        }
+        return false
+    }
+
+    /// ファイルパスに一致する行を OutlineView で選択する（Diff からの追従用）
+    private func selectNode(withPath path: String) {
+        isUpdatingFromDiff = true
+        for row in 0..<outlineView.numberOfRows {
+            if let node = outlineView.item(atRow: row) as? GitFileTreeNode,
+               !node.isDirectory,
+               path.contains(node.relativePath) || node.relativePath.contains(path) {
+                outlineView.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
+                outlineView.scrollRowToVisible(row)
+                break
+            }
+        }
+        isUpdatingFromDiff = false
+    }
+
+    /// GitDiff のモードを切り替える
+    private func switchDiffMode(_ mode: GitMode) {
+        guard let registry = state?.registry else { return }
+        for pane in registry.layout.allPanes {
+            for id in pane.tabs where id.tool == .gitDiff {
+                if let s = registry.session(for: id),
+                   let diffState = s.state as? GitDiffSessionState {
+                    diffState.mode = mode
+                    diffState.reload()
+                    return
+                }
+            }
+        }
+    }
+
+    /// GitDiff セッションにフォーカスを移す
+    private func focusGitDiff() {
+        guard let registry = state?.registry, let mode = state?.mode else { return }
+        // GitDiff が無ければ開く
+        registry.openGitDiff(mode: mode, scrollToFile: state?.selectedPath)
+    }
+
+    /// 既存の GitDiff セッションにスクロール指示を送る
+    private func scrollDiffToFile(_ filePath: String) {
+        guard let registry = state?.registry else { return }
+        for pane in registry.layout.allPanes {
+            for id in pane.tabs where id.tool == .gitDiff {
+                if let s = registry.session(for: id),
+                   let diffState = s.state as? GitDiffSessionState {
+                    diffState.scrollToFile = filePath
+                    return
+                }
+            }
+        }
+    }
+}
+
+/// Git ファイル一覧のセル。左にアイコン+ファイル名、右に行数統計+✅マーク。
+final class GitFileCellView: NSTableCellView {
+    private let icon = NSImageView()
+    private let label = NSTextField(labelWithString: "")
+    private let statLabel = NSTextField(labelWithString: "")
+    private let viewedLabel = NSTextField(labelWithString: "")
+
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        setup()
+    }
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        setup()
+    }
+
+    private func setup() {
+        icon.translatesAutoresizingMaskIntoConstraints = false
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.lineBreakMode = .byTruncatingMiddle
+        statLabel.translatesAutoresizingMaskIntoConstraints = false
+        statLabel.alignment = .right
+        statLabel.setContentHuggingPriority(.required, for: .horizontal)
+        statLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
+        viewedLabel.translatesAutoresizingMaskIntoConstraints = false
+        viewedLabel.setContentHuggingPriority(.required, for: .horizontal)
+        viewedLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
+
+        addSubview(icon)
+        addSubview(label)
+        addSubview(statLabel)
+        addSubview(viewedLabel)
+        imageView = icon
+        textField = label
+
+        NSLayoutConstraint.activate([
+            icon.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 2),
+            icon.centerYAnchor.constraint(equalTo: centerYAnchor),
+            icon.widthAnchor.constraint(equalToConstant: 16),
+            icon.heightAnchor.constraint(equalToConstant: 16),
+            label.leadingAnchor.constraint(equalTo: icon.trailingAnchor, constant: 6),
+            label.centerYAnchor.constraint(equalTo: centerYAnchor),
+            statLabel.leadingAnchor.constraint(greaterThanOrEqualTo: label.trailingAnchor, constant: 6),
+            statLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
+            viewedLabel.leadingAnchor.constraint(equalTo: statLabel.trailingAnchor, constant: 4),
+            viewedLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -6),
+            viewedLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
+        ])
+    }
+
+    func configure(node: GitFileTreeNode, isViewed: Bool, stat: (added: Int, deleted: Int)?) {
+        label.stringValue = node.name
+        label.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
+
+        if node.isDirectory {
+            icon.image = NSImage(systemSymbolName: "folder.fill", accessibilityDescription: nil)
+            icon.contentTintColor = .secondaryLabelColor
+            statLabel.stringValue = ""
+            viewedLabel.stringValue = ""
+        } else if let status = node.status {
+            icon.image = NSImage(systemSymbolName: status.iconName, accessibilityDescription: nil)
+            switch status {
+            case .modified:  icon.contentTintColor = .systemOrange
+            case .added:     icon.contentTintColor = .systemGreen
+            case .deleted:   icon.contentTintColor = .systemRed
+            case .renamed:   icon.contentTintColor = .systemBlue
+            case .untracked: icon.contentTintColor = .systemGreen
+            }
+
+            // 行数統計
+            if let stat {
+                let statStr = NSMutableAttributedString()
+                statStr.append(NSAttributedString(string: "+\(stat.added)", attributes: [
+                    .foregroundColor: NSColor.systemGreen,
+                    .font: NSFont.monospacedSystemFont(ofSize: 10, weight: .regular),
+                ]))
+                statStr.append(NSAttributedString(string: " -\(stat.deleted)", attributes: [
+                    .foregroundColor: NSColor.systemRed,
+                    .font: NSFont.monospacedSystemFont(ofSize: 10, weight: .regular),
+                ]))
+                statLabel.attributedStringValue = statStr
+            } else {
+                statLabel.stringValue = ""
+            }
+
+            viewedLabel.stringValue = isViewed ? "✅" : ""
+        }
     }
 }
 
@@ -236,13 +422,13 @@ final class BranchBadgeView: NSView {
         addSubview(stack)
         NSLayoutConstraint.activate([
             stack.leadingAnchor.constraint(equalTo: leadingAnchor),
-            stack.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor),
+            stack.trailingAnchor.constraint(equalTo: trailingAnchor),
             stack.centerYAnchor.constraint(equalTo: centerYAnchor),
         ])
     }
 
     /// ブランチ名を設定する。1つなら単独バッジ、2つなら ".." 区切りで2バッジ。
-    func setBranches(_ branches: [String]) {
+    func setBranches(_ branches: [String], added: Int = 0, deleted: Int = 0) {
         stack.arrangedSubviews.forEach { $0.removeFromSuperview() }
         for (i, branch) in branches.enumerated() {
             if i > 0 {
@@ -253,6 +439,28 @@ final class BranchBadgeView: NSView {
             }
             stack.addArrangedSubview(makeBadge(branch))
         }
+        if added > 0 || deleted > 0 {
+            // スペーサーで右寄せ
+            let spacer = NSView()
+            spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+            stack.addArrangedSubview(spacer)
+            stack.addArrangedSubview(makeStatLabel(added: added, deleted: deleted))
+        }
+    }
+
+    private func makeStatLabel(added: Int, deleted: Int) -> NSView {
+        let label = NSTextField(labelWithString: "")
+        let str = NSMutableAttributedString()
+        str.append(NSAttributedString(string: "+\(added)", attributes: [
+            .foregroundColor: NSColor.systemGreen,
+            .font: NSFont.monospacedSystemFont(ofSize: 10, weight: .regular),
+        ]))
+        str.append(NSAttributedString(string: " -\(deleted)", attributes: [
+            .foregroundColor: NSColor.systemRed,
+            .font: NSFont.monospacedSystemFont(ofSize: 10, weight: .regular),
+        ]))
+        label.attributedStringValue = str
+        return label
     }
 
     private func makeBadge(_ text: String) -> NSView {

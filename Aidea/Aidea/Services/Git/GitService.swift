@@ -23,6 +23,43 @@ enum GitService {
         return String(data: data, encoding: .utf8) ?? ""
     }
 
+    /// ワーキングツリーの変更行数統計 (numstat)
+    static func numstat(cwd: URL) throws -> String {
+        var result = ""
+        result += try run(["diff", "--numstat"], cwd: cwd)
+        result += try run(["diff", "--cached", "--numstat"], cwd: cwd)
+        return result
+    }
+
+    /// main との変更行数統計 (numstat)
+    static func numstatMain(cwd: URL) throws -> String {
+        try run(["diff", "main...HEAD", "--numstat"], cwd: cwd)
+    }
+
+    /// ワーキングツリーの全 diff (staged + unstaged + untracked)
+    static func diffAll(cwd: URL) throws -> String {
+        var result = ""
+        // staged
+        let staged = try run(["diff", "--cached"], cwd: cwd)
+        if !staged.isEmpty { result += staged }
+        // unstaged
+        let unstaged = try run(["diff"], cwd: cwd)
+        if !unstaged.isEmpty { result += unstaged }
+        // untracked: 空ファイルとの diff を生成
+        let untrackedFiles = try untrackedFiles(cwd: cwd)
+        for line in untrackedFiles.split(separator: "\n") {
+            let file = String(line)
+            let diff = try run(["diff", "--no-index", "--", "/dev/null", file], cwd: cwd)
+            if !diff.isEmpty { result += diff }
+        }
+        return result
+    }
+
+    /// main との全 diff
+    static func diffMain(cwd: URL) throws -> String {
+        try run(["diff", "main...HEAD"], cwd: cwd)
+    }
+
     /// ワーキングツリーの変更ファイル一覧 (unstaged)
     static func diffNameStatus(cwd: URL) throws -> String {
         try run(["diff", "--name-status"], cwd: cwd)

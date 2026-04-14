@@ -7,46 +7,72 @@ import Foundation
 import AppKit
 import Observation
 
-/// GitDiff Session の内部状態。ファイルパスと diff 出力テキストを保持する。
+/// GitDiff Session の内部状態。モードに応じた全ファイルの diff 出力を保持する。
 @Observable
 final class GitDiffSessionState: SessionState {
     let workspace: WorkspaceState
-    var filePath: String = ""
+    weak var registry: SessionRegistry?
     var mode: GitMode = .workingChanges
-    var isUntracked: Bool = false
-    var isStaged: Bool = false
     var diffOutput: String = ""
+    /// ジャンプ先ファイルパス（Git ツールからの選択で設定される）
+    var scrollToFile: String?
+    /// Viewed 済みファイルパスの集合
+    var viewedFiles: Set<String> = [] {
+        didSet { notifyGitToolViewedChanged() }
+    }
+
+    /// Git ツールの OutlineView を更新させる
+    private func notifyGitToolViewedChanged() {
+        guard let registry else { return }
+        for pane in registry.layout.allPanes {
+            for id in pane.tabs where id.tool == .git {
+                if let s = registry.session(for: id),
+                   let gitState = s.state as? GitSessionState {
+                    gitState.onViewedChanged?()
+                    return
+                }
+            }
+        }
+    }
+    /// 現在ビューポート中央に表示されているファイルパス。変化時に Git ツールに通知する。
+    var focusedFile: String? {
+        didSet {
+            guard focusedFile != oldValue, let focusedFile, let registry else { return }
+            // Git ツールの選択を追従させる
+            notifyGitTool(focusedFile: focusedFile, registry: registry)
+        }
+    }
+
+    /// Git ツールの選択を変更する
+    private func notifyGitTool(focusedFile: String, registry: SessionRegistry) {
+        for pane in registry.layout.allPanes {
+            for id in pane.tabs where id.tool == .git {
+                if let s = registry.session(for: id),
+                   let gitState = s.state as? GitSessionState {
+                    gitState.selectedPath = focusedFile
+                    return
+                }
+            }
+        }
+    }
 
     init(workspace: WorkspaceState) {
         self.workspace = workspace
     }
 
-    /// diff を取得する
+    /// 全 diff を取得する
     func reload() {
         guard let root = workspace.projectRoot else { return }
         do {
-            if isUntracked {
-                diffOutput = try GitService.diffUntracked(filePath, cwd: root)
-            } else if isStaged {
-                diffOutput = try GitService.diffCachedFile(filePath, cwd: root)
-            } else {
-                switch mode {
-                case .workingChanges:
-                    diffOutput = try GitService.diffFile(filePath, cwd: root)
-                case .prPreview:
-                    diffOutput = try GitService.diffMainFile(filePath, cwd: root)
-                }
+            switch mode {
+            case .workingChanges:
+                diffOutput = try GitService.diffAll(cwd: root)
+            case .prPreview:
+                diffOutput = try GitService.diffMain(cwd: root)
             }
         } catch {
             diffOutput = "diff の取得に失敗しました: \(error.localizedDescription)"
         }
-    }
-
-    /// ハンク (パッチ) を逆適用して変更を破棄する
-    func discardHunk(_ hunkPatch: String) throws {
-        guard let root = workspace.projectRoot else { return }
-        try GitService.applyReverse(patch: hunkPatch, cwd: root)
-        reload() // 更新
     }
 
     /// GitDiff がアクティブになったら WKWebView にフォーカス
