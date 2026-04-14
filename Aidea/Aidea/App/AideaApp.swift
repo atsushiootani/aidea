@@ -108,6 +108,8 @@ struct AideaApp: App {
                 .keyboardShortcut("1", modifiers: [.command])
             Button("Kit") { focusTool(.kit) }
                 .keyboardShortcut("2", modifiers: [.command])
+            Button("Git") { focusTool(.git) }
+                .keyboardShortcut("3", modifiers: [.command])
             Button("Terminal") { focusTool(.terminal) }
                 .keyboardShortcut("7", modifiers: [.command])
             Button("Claude") { focusTool(.claude) }

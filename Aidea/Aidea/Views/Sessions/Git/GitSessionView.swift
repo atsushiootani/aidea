@@ -30,12 +30,22 @@ struct GitSessionView: NSViewControllerRepresentable {
 /// Tab キーで GitDiff にフォーカス移動する NSOutlineView サブクラス
 final class GitOutlineView: NSOutlineView {
     var onTabPressed: (() -> Void)?
+    var onModeChanged: ((GitMode) -> Void)?
 
     override func keyDown(with event: NSEvent) {
-        // Tab キー
         if event.keyCode == 48 {
             onTabPressed?()
             return
+        }
+        // Ctrl+4 = Working Changes, Ctrl+5 = PR Preview
+        if event.modifierFlags.contains(.control) {
+            if event.keyCode == 21 { onModeChanged?(.workingChanges); return }  // 4
+            if event.keyCode == 23 { onModeChanged?(.prPreview); return }       // 5
+        }
+        // W = Working Changes, P = PR Preview (フォールバック)
+        if let chars = event.charactersIgnoringModifiers?.lowercased(), !event.modifierFlags.contains(.command) {
+            if chars == "w" { onModeChanged?(.workingChanges); return }
+            if chars == "p" { onModeChanged?(.prPreview); return }
         }
         super.keyDown(with: event)
     }
@@ -48,6 +58,7 @@ final class GitFileListViewController: NSViewController, NSOutlineViewDataSource
     let outlineView = GitOutlineView()
     private let scrollView = NSScrollView()
     private let branchBadge = BranchBadgeView()
+    private var picker: NSSegmentedControl?
     private let watcher = FileWatcher()
     private var reloadWorkItem: DispatchWorkItem?
     /// Diff 追従による選択変更中は true（無限ループ防止）
@@ -81,6 +92,7 @@ final class GitFileListViewController: NSViewController, NSOutlineViewDataSource
         picker.selectedSegment = 0
         picker.segmentDistribution = .fillEqually
         picker.translatesAutoresizingMaskIntoConstraints = false
+        self.picker = picker
 
         branchBadge.translatesAutoresizingMaskIntoConstraints = false
 
@@ -109,6 +121,17 @@ final class GitFileListViewController: NSViewController, NSOutlineViewDataSource
         outlineView.onTabPressed = { [weak self] in
             self?.focusGitDiff()
         }
+
+        // W / P キーでモード切替
+        outlineView.onModeChanged = { [weak self] mode in
+            guard let self else { return }
+            self.state?.mode = mode
+            self.picker?.selectedSegment = GitMode.allCases.firstIndex(of: mode) ?? 0
+            self.reload()
+            // GitDiff も連動
+            self.switchDiffMode(mode)
+        }
+
 
         // GitDiff のフォーカスファイル変化に追従して OutlineView の選択を更新
         state?.onSelectedPathChanged = { [weak self] path in
@@ -249,6 +272,21 @@ final class GitFileListViewController: NSViewController, NSOutlineViewDataSource
             }
         }
         isUpdatingFromDiff = false
+    }
+
+    /// GitDiff のモードを切り替える
+    private func switchDiffMode(_ mode: GitMode) {
+        guard let registry = state?.registry else { return }
+        for pane in registry.layout.allPanes {
+            for id in pane.tabs where id.tool == .gitDiff {
+                if let s = registry.session(for: id),
+                   let diffState = s.state as? GitDiffSessionState {
+                    diffState.mode = mode
+                    diffState.reload()
+                    return
+                }
+            }
+        }
     }
 
     /// GitDiff セッションにフォーカスを移す
