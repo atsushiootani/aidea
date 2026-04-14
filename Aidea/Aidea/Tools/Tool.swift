@@ -75,12 +75,20 @@ protocol SessionState: AnyObject {
     /// session.focusableView が変更されたとき呼ばれる。
     /// pendingActivation 等、focusableView の遅延セットに対応する処理を実装する。
     func onFocusableViewChanged(session: Session, view: NSView?)
+
+    /// 現在の Scene 識別子を返す
+    func currentScene() -> String?
+
+    /// デフォルトのレコメンドプロンプトを返す（永続化されていない場合のフォールバック）
+    func recommendedPrompts() -> [String]
 }
 
 extension SessionState {
     func didBecomeActive(session: Session) {}
     func didResignActive(session: Session) {}
     func onFocusableViewChanged(session: Session, view: NSView?) {}
+    func currentScene() -> String? { nil }
+    func recommendedPrompts() -> [String] { [] }
 }
 
 /// Tab のドラッグ&ドロップのために SessionID を Transferable にする。

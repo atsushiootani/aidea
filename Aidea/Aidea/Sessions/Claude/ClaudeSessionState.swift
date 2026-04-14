@@ -24,6 +24,11 @@ final class ClaudeSessionState: SessionState {
     /// 紐付けられたコンパニオンの初期プロンプト（nil なら Backchannel 指示のみ）
     var companionPrompt: String?
 
+    /// Frontchannel: Claude セッションにメッセージを送信する
+    func sendMessage(_ message: String) {
+        terminalView.send(txt: message + "\r")
+    }
+
     /// Claude がアクティブになったら terminalView にフォーカスを当てる
     func didBecomeActive(session: Session) {
         guard let view = cached else { return }

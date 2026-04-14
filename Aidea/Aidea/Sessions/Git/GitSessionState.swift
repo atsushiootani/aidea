@@ -96,6 +96,22 @@ final class GitSessionState: SessionState {
         return result
     }
 
+    /// 現在の Scene 識別子
+    func currentScene() -> String? {
+        switch mode {
+        case .workingChanges: return "git:workingChanges"
+        case .prPreview: return "git:prPreview"
+        }
+    }
+
+    /// デフォルトのレコメンドプロンプト
+    func recommendedPrompts() -> [String] {
+        switch mode {
+        case .workingChanges: return ["コミットして", "プッシュして", "PRを作って"]
+        case .prPreview: return ["PRをマージして", "レビューして"]
+        }
+    }
+
     /// Git がアクティブになったら outlineView にフォーカス
     func didBecomeActive(session: Session) {
         if let view = session.focusableView {
