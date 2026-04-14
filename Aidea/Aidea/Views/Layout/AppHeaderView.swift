@@ -23,6 +23,7 @@ struct AppHeaderView: View {
             if let root = workspace.projectRoot {
                 speech.start(projectRoot: root)
                 store.load(projectRoot: root)
+                RecommendStore.setup(projectRoot: root)
             }
         }
     }

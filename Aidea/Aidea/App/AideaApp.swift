@@ -343,9 +343,12 @@ struct AideaApp: App {
             // Cmd+Enter でレコメンドモード起動
             if event.modifierFlags.contains(.command), event.keyCode == 36 {
                 if let activeSession = registry.activeSession {
-                    let prompts = activeSession.state.recommendedPrompts()
+                    let scene = activeSession.state.currentScene()
+                    let defaults = activeSession.state.recommendedPrompts()
+                    let prompts = RecommendStore.resolve(scene: scene, defaults: defaults)
+                    let defaultCompanion = scene.map { RecommendStore.defaultCompanionIndex(for: $0) } ?? 0
                     if !prompts.isEmpty {
-                        recommend.activate(prompts: prompts)
+                        recommend.activate(prompts: prompts, companionIndex: defaultCompanion)
                         return nil
                     }
                 }

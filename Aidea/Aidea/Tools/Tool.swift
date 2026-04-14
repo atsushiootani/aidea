@@ -76,7 +76,10 @@ protocol SessionState: AnyObject {
     /// pendingActivation 等、focusableView の遅延セットに対応する処理を実装する。
     func onFocusableViewChanged(session: Session, view: NSView?)
 
-    /// レコメンドモードで表示するプロンプト候補を返す（最大 3 つ）
+    /// 現在の Scene 識別子を返す
+    func currentScene() -> String?
+
+    /// デフォルトのレコメンドプロンプトを返す（永続化されていない場合のフォールバック）
     func recommendedPrompts() -> [String]
 }
 
@@ -84,6 +87,7 @@ extension SessionState {
     func didBecomeActive(session: Session) {}
     func didResignActive(session: Session) {}
     func onFocusableViewChanged(session: Session, view: NSView?) {}
+    func currentScene() -> String? { nil }
     func recommendedPrompts() -> [String] { [] }
 }
 

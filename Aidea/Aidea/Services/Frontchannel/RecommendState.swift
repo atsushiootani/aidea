@@ -15,10 +15,10 @@ final class RecommendState {
     var prompts: [String] = []
 
     /// レコメンドモードを開始する
-    func activate(prompts: [String]) {
+    func activate(prompts: [String], companionIndex: Int = 0) {
         guard !prompts.isEmpty else { return }
         self.prompts = prompts
-        self.selectedCompanionIndex = 0
+        self.selectedCompanionIndex = companionIndex
         self.selectedPromptIndex = 0
         self.isActive = true
     }
