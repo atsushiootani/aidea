@@ -14,9 +14,9 @@ final class SpeechWatcher {
     /// 読み上げ対象テキストが検知されたときのコールバック
     var onSpeechFile: ((String) -> Void)?
 
-    /// 監視を開始する。projectRoot の .aidea/terminals/ を監視する。
+    /// 監視を開始する。projectRoot の .aidea/backchannels/ を監視する。
     func start(projectRoot: URL) {
-        let terminalsDir = projectRoot.appending(path: ".aidea/terminals").path
+        let terminalsDir = projectRoot.appending(path: ".aidea/backchannels").path
         watchPath = terminalsDir
         watcher.start(path: terminalsDir) { [weak self] paths in
             self?.handleChanges(paths)

@@ -16,7 +16,7 @@ Aidea は `.aidea/` ディレクトリを共有バスとして使用し、FSEven
 ## 設計原則
 
 1. **ファイルが API** — プロセス間通信はすべてファイル読み書きで行う
-2. **段階的開示** — CLAUDE.md → `.aidea/claude/aidea.md` の参照チェーンで Claude に指示を渡す
+2. **機能宣言方式** — コンパニオンの `initialPrompt` で `.aidea/claude/{feature}.md` を参照することで、Claude 側の Backchannel 機能を有効化する
 3. **ターミナル非依存** — ターミナル出力のパースに依存せず、Claude が明示的にファイルを書く
 4. **複数ターミナル対応** — 各ターミナルセッションが固有の ID で隔離されたディレクトリを持つ
 
@@ -27,8 +27,9 @@ Aidea は `.aidea/` ディレクトリを共有バスとして使用し、FSEven
 ```
 .aidea/
 ├── claude/
-│   └── aidea.md              # Aidea が Claude に与える指示書（段階的開示）
-├── terminals/
+│   ├── speech.md             # 読み上げ機能の定義
+│   └── {feature}.md          # 将来の機能ごとに 1 ファイル
+├── backchannels/
 │   ├── speech-{timestamp}.txt  # VOICEVOX 読み上げ用テキスト
 │   ├── notify-{timestamp}.txt  # 通知バナー用テキスト (将来)
 │   └── ...                     # 将来の Backchannel メッセージ
@@ -39,30 +40,40 @@ Aidea は `.aidea/` ディレクトリを共有バスとして使用し、FSEven
 
 - `{id}`: ターミナルセッションの一意識別子（UUID またはインスタンス番号）
 - `{timestamp}`: ISO 8601 コンパクト形式 (`20260413T153000`)
+- `{feature}`: Backchannel 機能名 (例: `speech`)
 
 ---
 
-## 段階的開示チェーン
+## 機能宣言チェーン
 
-Aidea はプロジェクトの `CLAUDE.md` に以下の参照を**自動で追記**する:
+Aidea は Claude セッション起動時に、紐付けられたコンパニオンの `initialPrompt` **のみ**を Claude に送信する。
+共通プロンプトのハードコードや `CLAUDE.md` への自動追記は行わない。
 
-```markdown
-@.aidea/claude/aidea.md
+コンパニオン側は、`initialPrompt` 内で `.aidea/claude/{feature}.md` を読み込ませることで任意の
+Backchannel 機能を有効化する。
+
+### initialPrompt の例
+
+読み上げのみ有効にする場合:
+
+```
+.aidea/claude/speech.md を読んで読み上げを有効にしてね
 ```
 
-`.aidea/claude/aidea.md` の内容は Aidea が生成・管理する。Claude はこのファイルを
-通じて Backchannel のプロトコルを知る。
+複数機能を有効にする場合は、参照行を複数書く。
+`initialPrompt` が空のコンパニオンは Backchannel 機能を一切持たず、送信メッセージも発生しない。
 
-### aidea.md の構成
+### 機能ファイルの構成
 
-aidea.md は有効な Backchannel 機能に応じてセクションが追加される。
-各 Backchannel 機能（Speech 等）が独自のセクションを持つ。
+各 Backchannel 機能は `.aidea/claude/{feature}.md` として独立した 1 ファイルを持ち、
+ファイル内容は該当機能の単独の指示書として完結している。
+Aidea は起動時に既知の機能ファイルを自動生成・上書きする。
 
 ---
 
 ## ファイル監視
 
-Aidea は `.aidea/terminals/` ディレクトリを FSEvents で監視する。
+Aidea は `.aidea/backchannels/` ディレクトリを FSEvents で監視する。
 ファイルパターンに応じて対応するハンドラにディスパッチする。
 
 | ファイルパターン | ハンドラ | 参照仕様 |
@@ -89,13 +100,13 @@ Aidea は `.aidea/terminals/` ディレクトリを FSEvents で監視する。
 ### Always
 - `.aidea/` 配下のファイル監視は FSEvents を使う
 - 処理済みファイルは削除してクリーンアップする
-- 全ターミナルから `.aidea/terminals/` に書き出す
-- `.aidea/claude/aidea.md` は Aidea が自動生成・管理する
-
-### Confirm First
-- `CLAUDE.md` への `@.aidea/claude/aidea.md` 追記（初回のみ確認）
+- 全ターミナルから `.aidea/backchannels/` に書き出す
+- `.aidea/claude/{feature}.md` は Aidea が自動生成・管理する
+- Claude セッション起動時に送信するのはコンパニオンの `initialPrompt` のみ
 
 ### Never
 - ターミナル出力の直接パースに依存しない
 - Claude のプロンプトパターンマッチに依存しない
-- `.aidea/claude/aidea.md` をユーザーに手動編集させない
+- `.aidea/claude/{feature}.md` をユーザーに手動編集させない
+- Aidea 側から共通プロンプトをハードコードで送信しない
+- `CLAUDE.md` を Aidea が自動改変しない

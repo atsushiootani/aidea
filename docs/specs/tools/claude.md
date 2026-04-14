@@ -66,7 +66,7 @@ Claude ツールは起動時に以下を自動で行う:
 
 1. `.aidea/claude/aidea.md` が存在することを確認（BackchannelSetup が生成済み）
 2. Claude に aidea.md の読み込みを指示
-3. 以降 Claude が `.aidea/terminals/speech-{timestamp}.txt` にレスポンス要約を書き出す
+3. 以降 Claude が `.aidea/backchannels/speech-{timestamp}.txt` にレスポンス要約を書き出す
 4. Aidea の SpeechWatcher が検知して VOICEVOX で読み上げ
 
 詳細は [backchannels/voicevox.md](../backchannels/voicevox.md) を参照。

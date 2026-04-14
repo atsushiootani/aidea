@@ -129,7 +129,11 @@ final class CompanionStore {
     /// アイコンインデックスからデフォルト設定のコンパニオンを生成する（まだ store に未登録）
     func createDefault(forIndex index: Int) -> CompanionConfig {
         let icon = CompanionIconPresets.imageIcons[index]
-        return CompanionConfig(name: "Companion \(index + 1)", icon: icon)
+        return CompanionConfig(
+            name: "Companion \(index + 1)",
+            icon: icon,
+            initialPrompt: ".aidea/claude/speech.md を読んで読み上げを有効にしてね"
+        )
     }
 
     /// 追加または更新する

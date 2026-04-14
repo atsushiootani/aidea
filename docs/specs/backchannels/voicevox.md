@@ -8,7 +8,7 @@
 
 ## 概要
 
-ターミナルで動作する Claude が `.aidea/terminals/speech-{timestamp}.txt` に
+ターミナルで動作する Claude が `.aidea/backchannels/speech-{timestamp}.txt` に
 要約テキストを書き出し、Aidea がそれを検知して VOICEVOX で読み上げる。
 
 ---
@@ -16,8 +16,8 @@
 ## フロー
 
 ```
-1. Claude が CLAUDE.md → .aidea/claude/aidea.md を読み込む
-2. Claude がレスポンス毎に .aidea/terminals/speech-{timestamp}.txt を書き出す
+1. コンパニオンの initialPrompt が .aidea/claude/speech.md を参照し、Claude がそれを読み込む
+2. Claude がレスポンス毎に .aidea/backchannels/speech-{timestamp}.txt を書き出す
 3. Aidea が FSEvents で speech-*.txt の作成を検知
 4. ファイル内容を読み取り → VoicevoxService で音声合成 → AVAudioPlayer で再生
 5. 読み上げ完了後、ファイルを削除
@@ -25,21 +25,32 @@
 
 ---
 
-## Claude への指示 (aidea.md 内のセクション)
+## Claude への指示 (.aidea/claude/speech.md)
+
+Aidea が起動時に生成・上書きするファイル。全文:
 
 ```markdown
-## 読み上げ (Speech)
+# 読み上げ機能
 
 レスポンスの最後に、要点を100文字以内の日本語で要約し、
 以下のファイルに書き出してください:
 
-.aidea/terminals/speech-{timestamp}.txt
+.aidea/backchannels/speech-{timestamp}.txt
 
 - {timestamp}: 現在時刻 (YYYYMMDDTHHmmss)
 - 1ファイル1メッセージ（追記ではなく新規作成）
 - VOICEVOXで読み上げるため、英単語はカタカナに変換すること
 - 記号は省略すること
 ```
+
+### 有効化方法 (コンパニオン initialPrompt)
+
+```
+.aidea/claude/speech.md を読んで読み上げを有効にしてね
+```
+
+デフォルトコンパニオン (`CompanionStore.createDefault`) の `initialPrompt` に
+上記が初期値として設定される。無効化したい場合はコンパニオン編集で空にする。
 
 ---
 
@@ -62,7 +73,7 @@
 
 | コンポーネント | 責務 |
 |---------------|------|
-| **SpeechWatcher** | FSEvents で `.aidea/terminals/speech-*.txt` を監視、検知時にファイル読み取り → SpeechQueue に投入 |
+| **SpeechWatcher** | FSEvents で `.aidea/backchannels/speech-*.txt` を監視、検知時にファイル読み取り → SpeechQueue に投入 |
 | **VoicevoxService** | VOICEVOX REST API クライアント (audio_query → synthesis) |
 | **SpeechQueue** | テキストをキューに積み、VOICEVOX → AVAudioPlayer で順番に再生 |
 | **SpeechState** | 読み上げ ON/OFF 状態管理 (@Observable)、ヘッダ UI と接続 |

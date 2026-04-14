@@ -21,7 +21,9 @@ final class ClaudeSessionState: SessionState {
 
     /// SessionRegistry への弱参照 (クリック時のアクティブ化用)
     weak var registry: SessionRegistry?
-    /// 紐付けられたコンパニオンの初期プロンプト（nil なら Backchannel 指示のみ）
+    /// 紐付けられたコンパニオンの初期プロンプト。
+    /// nil または空のときは起動時に何も送信しない。
+    /// initialPrompt 内で `.aidea/claude/{feature}.md` を参照することで Backchannel 機能を有効化する。
     var companionPrompt: String?
 
     /// Frontchannel: Claude セッションにメッセージを送信する
@@ -77,7 +79,7 @@ final class ClaudeSessionState: SessionState {
         return terminal
     }
 
-    /// 対話シェル準備完了後に claude を起動し、Backchannel 指示を送る。
+    /// 対話シェル準備完了後に claude を起動し、コンパニオンの initialPrompt を送る。
     /// send() は PTY へのキー入力なので、ユーザーが手で打ったのと同等。
     /// (ADR 0008 の非対話シェル問題を回避)
     private func autoStartClaude(terminal: PersistentTerminalView) {
@@ -85,13 +87,9 @@ final class ClaudeSessionState: SessionState {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             terminal.send(txt: "claude\n")
         }
+        guard let prompt, !prompt.isEmpty else { return }
         DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
-            // Backchannel 指示 + コンパニオンの初期プロンプト
-            var message = ".aidea/claude/aidea.md を読んで、以降のレスポンスで従ってね"
-            if let prompt, !prompt.isEmpty {
-                message += "\n\n" + prompt
-            }
-            terminal.send(txt: message + "\r")
+            terminal.send(txt: prompt + "\r")
         }
     }
 }

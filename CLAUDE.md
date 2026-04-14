@@ -40,5 +40,3 @@ skills/            → agent-skills 由来の参照リソース
 - View プロパティラッパの並び順は docs/specs/SPEC.md のルールに従う
 - 1 ファイル 1 型 (struct/class/enum) を原則とする
 - ターミナルから `claude` を自動起動してはならない (理由: [ADR 0008](./docs/decisions/0008-no-claude-autostart.md))
-
-@.aidea/claude/aidea.md

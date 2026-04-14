@@ -11,7 +11,7 @@ PTY の `send(txt:)` で Claude セッションに直接プロンプトを送る
 
 | 方向 | 名前 | 手段 |
 |------|------|------|
-| Claude → Aidea | [Backchannel](../backchannels/backchannel.md) | ファイル書き出し (`.aidea/terminals/`) |
+| Claude → Aidea | [Backchannel](../backchannels/backchannel.md) | ファイル書き出し (`.aidea/backchannels/`) |
 | Aidea → Claude | **Frontchannel** | PTY に `send(txt:)` |
 
 ---
