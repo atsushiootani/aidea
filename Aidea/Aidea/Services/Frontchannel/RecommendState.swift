@@ -35,24 +35,25 @@ final class RecommendState {
         return prompts[selectedPromptIndex]
     }
 
-    /// プロンプト選択を上に移動
+    /// プロンプト選択を上に移動（ループ）
     func moveUp() {
-        if selectedPromptIndex > 0 { selectedPromptIndex -= 1 }
+        selectedPromptIndex = (selectedPromptIndex - 1 + prompts.count) % prompts.count
     }
 
-    /// プロンプト選択を下に移動
+    /// プロンプト選択を下に移動（ループ）
     func moveDown() {
-        if selectedPromptIndex < prompts.count - 1 { selectedPromptIndex += 1 }
+        selectedPromptIndex = (selectedPromptIndex + 1) % prompts.count
     }
 
-    /// コンパニオン選択を左に移動
+    /// コンパニオン選択を左に移動（ループ）
     func moveLeft() {
-        if selectedCompanionIndex > 0 { selectedCompanionIndex -= 1 }
+        let count = CompanionIconPresets.imageIcons.count
+        selectedCompanionIndex = (selectedCompanionIndex - 1 + count) % count
     }
 
-    /// コンパニオン選択を右に移動
+    /// コンパニオン選択を右に移動（ループ）
     func moveRight() {
-        let maxIndex = CompanionIconPresets.imageIcons.count - 1
-        if selectedCompanionIndex < maxIndex { selectedCompanionIndex += 1 }
+        let count = CompanionIconPresets.imageIcons.count
+        selectedCompanionIndex = (selectedCompanionIndex + 1) % count
     }
 }

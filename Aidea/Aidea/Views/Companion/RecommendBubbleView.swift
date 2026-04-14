@@ -22,9 +22,10 @@ struct RecommendBubbleView: View {
                 ForEach(Array(recommend.prompts.enumerated()), id: \.offset) { index, prompt in
                     let isSelected = index == recommend.selectedPromptIndex
                     HStack(spacing: 8) {
-                        Image(systemName: "arrow.right.circle.fill")
-                            .font(.system(size: 10))
-                            .foregroundStyle(isSelected ? Color.white : Color.accentColor)
+                        Image("cat-ear")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 12, height: 12)
                         Text(prompt)
                             .font(.system(size: 12))
                             .foregroundStyle(isSelected ? Color.white : Color.primary)
