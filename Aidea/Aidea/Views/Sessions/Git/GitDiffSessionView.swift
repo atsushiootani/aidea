@@ -16,27 +16,20 @@ final class GitDiffWebView: WKWebView {
         case 48: // Tab
             onTabPressed?()
             return
-        case 49: // Space - フォーカスファイルの Viewed チェックボックスをトグル
+        case 49: // Space - focusFile の Viewed チェックボックスをトグル
             evaluateJavaScript("""
                 (function() {
-                    const centerY = window.innerHeight / 2;
-                    const wrappers = document.querySelectorAll('.d2h-file-wrapper');
-                    for (const w of wrappers) {
-                        const rect = w.getBoundingClientRect();
-                        if (rect.top <= centerY && rect.bottom >= centerY) {
-                            const cb = w.querySelector('input[type="checkbox"]');
-                            if (cb) {
-                                cb.click();
-                                // 折りたたみでファイルが画面外に行く場合、ヘッダ位置にスクロール
-                                setTimeout(function() {
-                                    const newRect = w.getBoundingClientRect();
-                                    if (newRect.bottom < 0 || newRect.top > window.innerHeight) {
-                                        window.scrollBy({ top: newRect.top - 8, behavior: 'smooth' });
-                                    }
-                                }, 100);
+                    if (!window._aidea || !window._aidea.focusEl) return;
+                    const w = window._aidea.focusEl;
+                    const cb = w.querySelector('input[type="checkbox"]');
+                    if (cb) {
+                        cb.click();
+                        setTimeout(function() {
+                            const newRect = w.getBoundingClientRect();
+                            if (newRect.bottom < 0 || newRect.top > window.innerHeight) {
+                                window.scrollBy({ top: newRect.top - 8, behavior: 'smooth' });
                             }
-                            return;
-                        }
+                        }, 100);
                     }
                 })();
                 """, completionHandler: nil)
@@ -226,8 +219,30 @@ struct GitDiffSessionView: NSViewRepresentable {
                     diff2htmlUi.draw();
                     diff2htmlUi.highlightCode();
 
-                    // スクロール時にビューポート中央のファイルを検知して Swift に通知
-                    let lastFocusFile = { value: '', el: null };
+                    // フォーカスファイル管理をグローバルに公開（Swift の keyDown から参照する）
+                    window._aidea = {
+                        focusName: '',
+                        focusEl: null,
+                        setFocus: function(el) {
+                            if (el === this.focusEl) return;
+                            if (this.focusEl) {
+                                const prev = this.focusEl.querySelector('.d2h-file-header');
+                                if (prev) prev.style.background = '#252526';
+                            }
+                            const cur = el.querySelector('.d2h-file-header');
+                            if (cur) cur.style.background = 'rgb(30, 60, 110)';
+                            this.focusEl = el;
+                            if (cur) {
+                                const name = cur.textContent.trim();
+                                if (name !== this.focusName) {
+                                    this.focusName = name;
+                                    window.webkit.messageHandlers.focusFile.postMessage(name);
+                                }
+                            }
+                        }
+                    };
+
+                    // スクロール時にビューポート中央のファイルを検知
                     window.addEventListener('scroll', function() {
                         const centerY = window.innerHeight / 2;
                         const wrappers = document.querySelectorAll('.d2h-file-wrapper');
@@ -247,23 +262,7 @@ struct GitDiffSessionView: NSViewRepresentable {
                                 if (dist < minDist) { minDist = dist; focused = w; }
                             }
                         }
-                        if (focused && focused !== lastFocusFile.el) {
-                            if (lastFocusFile.el) {
-                                const prevHeader = lastFocusFile.el.querySelector('.d2h-file-header');
-                                if (prevHeader) { prevHeader.style.background = '#252526'; }
-                            }
-                            const curHeader = focused.querySelector('.d2h-file-header');
-                            if (curHeader) { curHeader.style.background = 'rgb(30, 60, 110)'; }
-                            lastFocusFile.el = focused;
-                            const header = focused.querySelector('.d2h-file-header');
-                            if (header) {
-                                const name = header.textContent.trim();
-                                if (name !== lastFocusFile.value) {
-                                    lastFocusFile.value = name;
-                                    window.webkit.messageHandlers.focusFile.postMessage(name);
-                                }
-                            }
-                        }
+                        if (focused) { window._aidea.setFocus(focused); }
                     }, { passive: true });
 
                     // Viewed チェックボックスの変更を Swift に通知
@@ -276,6 +275,32 @@ struct GitDiffSessionView: NSViewRepresentable {
                                 window.webkit.messageHandlers.viewedFile.postMessage({ file: name, viewed: cb.checked });
                             }
                         });
+                    });
+
+                    // 上下キー: スクロール端ならフォーカス移動、そうでなければ標準スクロール
+                    document.addEventListener('keydown', function(e) {
+                        if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+                        const dir = e.key === 'ArrowDown' ? 1 : -1;
+                        const scrollTop = window.scrollY;
+                        const scrollMax = document.documentElement.scrollHeight - window.innerHeight;
+                        const atBottom = scrollTop >= scrollMax - 2;
+                        const atTop = scrollTop <= 2;
+                        const atEdge = (dir > 0 && atBottom) || (dir < 0 && atTop);
+                        if (!atEdge) return; // 標準スクロールに任せる
+
+                        const wrappers = Array.from(document.querySelectorAll('.d2h-file-wrapper'));
+                        if (wrappers.length === 0) return;
+                        let focusIdx = -1;
+                        if (window._aidea && window._aidea.focusEl) {
+                            focusIdx = wrappers.indexOf(window._aidea.focusEl);
+                        }
+                        if (focusIdx < 0) focusIdx = dir > 0 ? -1 : wrappers.length;
+                        const nextIdx = focusIdx + dir;
+                        if (nextIdx < 0 || nextIdx >= wrappers.length) return;
+
+                        e.preventDefault();
+                        const nextEl = wrappers[nextIdx];
+                        window._aidea.setFocus(nextEl);
                     });
                 }
             </script>
