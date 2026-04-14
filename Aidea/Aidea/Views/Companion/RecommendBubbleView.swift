@@ -10,15 +10,12 @@ struct RecommendBubbleView: View {
     @Environment(RecommendState.self) private var recommend
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // 吹き出しの三角
-            HStack {
-                Spacer().frame(width: 16)
-                Triangle()
-                    .fill(Color(nsColor: .controlBackgroundColor))
-                    .frame(width: 12, height: 6)
-                Spacer()
-            }
+        VStack(alignment: .leading, spacing: -1) {
+            // 吹き出しの三角（左上）— 本体背景より明るくして視認性を確保
+            Triangle()
+                .fill(Color.gray.opacity(0.3))
+                .frame(width: 14, height: 8)
+                .padding(.leading, 20)
 
             // プロンプト一覧
             VStack(alignment: .leading, spacing: 0) {
@@ -40,8 +37,8 @@ struct RecommendBubbleView: View {
             }
             .background(Color(nsColor: .controlBackgroundColor))
             .cornerRadius(8)
-            .shadow(color: .black.opacity(0.3), radius: 4, y: 2)
         }
+        .shadow(color: .black.opacity(0.3), radius: 4, y: 2)
         .frame(width: 180)
     }
 }
