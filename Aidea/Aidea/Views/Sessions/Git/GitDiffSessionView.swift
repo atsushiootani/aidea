@@ -42,15 +42,39 @@ final class GitDiffWebView: WKWebView {
                 """, completionHandler: nil)
             return
         case 123: // 左矢印
-            evaluateJavaScript("window.scrollBy(-100, 0)", completionHandler: nil)
+            scrollFocusedFile(by: -20)
             return
         case 124: // 右矢印
-            evaluateJavaScript("window.scrollBy(100, 0)", completionHandler: nil)
+            scrollFocusedFile(by: 20)
             return
         default:
             break
         }
         super.keyDown(with: event)
+    }
+
+    /// フォーカスファイルの diff 領域を水平スクロールする
+    private func scrollFocusedFile(by delta: Int) {
+        evaluateJavaScript("""
+            (function() {
+                const centerY = window.innerHeight / 2;
+                const wrappers = document.querySelectorAll('.d2h-file-wrapper');
+                for (const w of wrappers) {
+                    const rect = w.getBoundingClientRect();
+                    if (rect.top <= centerY && rect.bottom >= centerY) {
+                        // スクロール可能な要素を探す
+                        const scrollables = w.querySelectorAll('*');
+                        for (const el of scrollables) {
+                            if (el.scrollWidth > el.clientWidth) {
+                                el.scrollLeft += \(delta);
+                                return;
+                            }
+                        }
+                        return;
+                    }
+                }
+            })();
+            """, completionHandler: nil)
     }
 }
 

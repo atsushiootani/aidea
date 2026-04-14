@@ -79,6 +79,7 @@ final class GitFileListViewController: NSViewController, NSOutlineViewDataSource
                                         target: self,
                                         action: #selector(modeChanged(_:)))
         picker.selectedSegment = 0
+        picker.segmentDistribution = .fillEqually
         picker.translatesAutoresizingMaskIntoConstraints = false
 
         branchBadge.translatesAutoresizingMaskIntoConstraints = false
@@ -95,6 +96,7 @@ final class GitFileListViewController: NSViewController, NSOutlineViewDataSource
             picker.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -8),
             branchBadge.topAnchor.constraint(equalTo: picker.bottomAnchor, constant: 4),
             branchBadge.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 10),
+            branchBadge.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -10),
             branchBadge.heightAnchor.constraint(equalToConstant: 22),
             scrollView.topAnchor.constraint(equalTo: branchBadge.bottomAnchor, constant: 4),
             scrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
@@ -136,14 +138,16 @@ final class GitFileListViewController: NSViewController, NSOutlineViewDataSource
         outlineView.expandItem(nil, expandChildren: true)
     }
 
-    /// モードに応じてブランチラベルを更新する
+    /// モードに応じてブランチラベルと合計行数を更新する
     private func updateBranchLabel() {
         guard let state else { return }
+        let totalAdded = state.fileStats.values.reduce(0) { $0 + $1.added }
+        let totalDeleted = state.fileStats.values.reduce(0) { $0 + $1.deleted }
         switch state.mode {
         case .workingChanges:
-            branchBadge.setBranches([state.currentBranch])
+            branchBadge.setBranches([state.currentBranch], added: totalAdded, deleted: totalDeleted)
         case .prPreview:
-            branchBadge.setBranches([state.baseBranch, state.currentBranch])
+            branchBadge.setBranches([state.baseBranch, state.currentBranch], added: totalAdded, deleted: totalDeleted)
         }
     }
 
@@ -380,13 +384,13 @@ final class BranchBadgeView: NSView {
         addSubview(stack)
         NSLayoutConstraint.activate([
             stack.leadingAnchor.constraint(equalTo: leadingAnchor),
-            stack.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor),
+            stack.trailingAnchor.constraint(equalTo: trailingAnchor),
             stack.centerYAnchor.constraint(equalTo: centerYAnchor),
         ])
     }
 
     /// ブランチ名を設定する。1つなら単独バッジ、2つなら ".." 区切りで2バッジ。
-    func setBranches(_ branches: [String]) {
+    func setBranches(_ branches: [String], added: Int = 0, deleted: Int = 0) {
         stack.arrangedSubviews.forEach { $0.removeFromSuperview() }
         for (i, branch) in branches.enumerated() {
             if i > 0 {
@@ -397,6 +401,28 @@ final class BranchBadgeView: NSView {
             }
             stack.addArrangedSubview(makeBadge(branch))
         }
+        if added > 0 || deleted > 0 {
+            // スペーサーで右寄せ
+            let spacer = NSView()
+            spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+            stack.addArrangedSubview(spacer)
+            stack.addArrangedSubview(makeStatLabel(added: added, deleted: deleted))
+        }
+    }
+
+    private func makeStatLabel(added: Int, deleted: Int) -> NSView {
+        let label = NSTextField(labelWithString: "")
+        let str = NSMutableAttributedString()
+        str.append(NSAttributedString(string: "+\(added)", attributes: [
+            .foregroundColor: NSColor.systemGreen,
+            .font: NSFont.monospacedSystemFont(ofSize: 10, weight: .regular),
+        ]))
+        str.append(NSAttributedString(string: " -\(deleted)", attributes: [
+            .foregroundColor: NSColor.systemRed,
+            .font: NSFont.monospacedSystemFont(ofSize: 10, weight: .regular),
+        ]))
+        label.attributedStringValue = str
+        return label
     }
 
     private func makeBadge(_ text: String) -> NSView {
