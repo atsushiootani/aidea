@@ -170,12 +170,8 @@ struct PaneView: View {
             if let title = preview.title, !title.isEmpty { return title }
             if let url = preview.url { return url.lastPathComponent }
         }
-        if sessionID.tool == .gitDiff,
-           let s = registry.session(for: sessionID),
-           let diffState = s.state as? GitDiffSessionState,
-           !diffState.filePath.isEmpty {
-            let fileName = diffState.filePath.split(separator: "/").last.map(String.init) ?? diffState.filePath
-            return "diff | \(fileName)"
+        if sessionID.tool == .gitDiff {
+            return "Diff"
         }
         if sessionID.tool == .claude,
            let name = companionStore.companionName(for: sessionID) {

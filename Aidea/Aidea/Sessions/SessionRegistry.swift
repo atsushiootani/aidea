@@ -227,13 +227,15 @@ final class SessionRegistry {
 
     /// Git ツールから GitDiff を別ペインの新規タブに開く。
     /// 既に同じファイルの GitDiff が開いていればそれをアクティブ化する。
-    func openGitDiff(for filePath: String, mode: GitMode, isUntracked: Bool = false, isStaged: Bool = false) {
-        // dedupe: 同じファイルの GitDiff があればアクティブ化
+    func openGitDiff(mode: GitMode, scrollToFile: String? = nil) {
+        // dedupe: 既に GitDiff が開いていればアクティブ化
         for pane in layout.allPanes {
             for (index, id) in pane.tabs.enumerated() where id.tool == .gitDiff {
                 if let s = session(for: id),
-                   let state = s.state as? GitDiffSessionState,
-                   state.filePath == filePath {
+                   let state = s.state as? GitDiffSessionState {
+                    state.mode = mode
+                    state.scrollToFile = scrollToFile
+                    state.reload()
                     setActiveTab(paneID: pane.id, tabIndex: index)
                     return
                 }
@@ -257,10 +259,8 @@ final class SessionRegistry {
         let instance = layout.nextSessionInstance(of: .gitDiff)
         let session = createSession(tool: .gitDiff, instance: instance)
         let diffState = session.state as! GitDiffSessionState
-        diffState.filePath = filePath
         diffState.mode = mode
-        diffState.isUntracked = isUntracked
-        diffState.isStaged = isStaged
+        diffState.scrollToFile = scrollToFile
         pane.tabs.append(session.id)
         setActiveTab(paneID: pane.id, tabIndex: pane.tabs.count - 1)
     }
@@ -367,7 +367,10 @@ final class SessionRegistry {
             let state = GitSessionState(workspace: workspace)
             state.registry = self
             return state
-        case .gitDiff:  return GitDiffSessionState(workspace: workspace)
+        case .gitDiff:
+            let state = GitDiffSessionState(workspace: workspace)
+            state.registry = self
+            return state
         }
     }
 }

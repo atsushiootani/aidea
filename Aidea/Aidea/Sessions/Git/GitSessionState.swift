@@ -22,10 +22,19 @@ final class GitSessionState: SessionState {
 
     var mode: GitMode = .workingChanges
     var treeNodes: [GitFileTreeNode] = []
-    var selectedPath: String?
+    var selectedPath: String? {
+        didSet {
+            if selectedPath != oldValue { onSelectedPathChanged?(selectedPath) }
+        }
+    }
+    /// OutlineView の選択を追従させるためのコールバック
+    @ObservationIgnored var onSelectedPathChanged: ((String?) -> Void)?
+    /// Viewed 状態が変化した時に OutlineView をリロードするコールバック
+    @ObservationIgnored var onViewedChanged: (() -> Void)?
     var currentBranch: String = ""
-    /// PR Preview の比較対象ブランチ
     let baseBranch: String = "main"
+    /// ファイルパス → (追加行数, 削除行数) のキャッシュ
+    var fileStats: [String: (added: Int, deleted: Int)] = [:]
 
     init(workspace: WorkspaceState) {
         self.workspace = workspace
@@ -56,9 +65,35 @@ final class GitSessionState: SessionState {
                 files = GitChangesParser.parse(output)
             }
             treeNodes = GitFileTreeNode.buildTree(from: files)
+            // numstat でファイルごとの追加/削除行数を取得
+            let numstatOutput: String
+            switch mode {
+            case .workingChanges: numstatOutput = (try? GitService.numstat(cwd: root)) ?? ""
+            case .prPreview: numstatOutput = (try? GitService.numstatMain(cwd: root)) ?? ""
+            }
+            fileStats = parseNumstat(numstatOutput)
         } catch {
             treeNodes = []
         }
+    }
+
+    /// numstat 出力をパースする (形式: "追加\t削除\tファイルパス")
+    private func parseNumstat(_ output: String) -> [String: (added: Int, deleted: Int)] {
+        var result: [String: (added: Int, deleted: Int)] = [:]
+        for line in output.split(separator: "\n") {
+            let parts = line.split(separator: "\t", maxSplits: 2)
+            guard parts.count == 3 else { continue }
+            let added = Int(parts[0]) ?? 0
+            let deleted = Int(parts[1]) ?? 0
+            let path = String(parts[2])
+            // 同じファイルが staged + unstaged にある場合は合算
+            if let existing = result[path] {
+                result[path] = (existing.added + added, existing.deleted + deleted)
+            } else {
+                result[path] = (added, deleted)
+            }
+        }
+        return result
     }
 
     /// Git がアクティブになったら outlineView にフォーカス
