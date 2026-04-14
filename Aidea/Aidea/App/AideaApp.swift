@@ -17,6 +17,7 @@ struct AideaApp: App {
     @State private var snapshotManager: WorkspaceSnapshotManager
     @State private var speechState: SpeechState
     @State private var companionStore: CompanionStore
+    @State private var recommendState: RecommendState
 
     init() {
         let ws = WorkspaceState()
@@ -24,6 +25,7 @@ struct AideaApp: App {
         let reg = SessionRegistry(workspace: ws, layout: lay)
         let speech = SpeechState()
         let companions = CompanionStore()
+        let recommend = RecommendState()
         let manager = WorkspaceSnapshotManager()
 
         // 起動時にスナップショットがあれば適用、無ければ既定のアクティブ Pane を設定
@@ -39,6 +41,7 @@ struct AideaApp: App {
         _snapshotManager = State(initialValue: manager)
         _speechState = State(initialValue: speech)
         _companionStore = State(initialValue: companions)
+        _recommendState = State(initialValue: recommend)
     }
 
     var body: some Scene {
@@ -49,6 +52,7 @@ struct AideaApp: App {
                 .environment(layout)
                 .environment(speechState)
                 .environment(companionStore)
+                .environment(recommendState)
                 .onAppear {
                     registerTerminationObserver()
                     registerKeyEventMonitor()
@@ -315,7 +319,40 @@ struct AideaApp: App {
         let layout = self.layout
         let registry = self.registry
         let companionStore = self.companionStore
+        let recommend = self.recommendState
         NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            // レコメンドモード中のキー操作
+            if recommend.isActive {
+                switch event.keyCode {
+                case 126: recommend.moveUp(); return nil        // ↑
+                case 125: recommend.moveDown(); return nil      // ↓
+                case 123: recommend.moveLeft(); return nil      // ←
+                case 124: recommend.moveRight(); return nil     // →
+                case 36:  // Enter - 送信
+                    Self.sendRecommendedPrompt(recommend: recommend, companionStore: companionStore, registry: registry, layout: layout)
+                    return nil
+                case 53:  // Esc - キャンセル
+                    recommend.deactivate()
+                    return nil
+                default:
+                    recommend.deactivate()
+                    return event
+                }
+            }
+
+            // Cmd+Enter でレコメンドモード起動
+            if event.modifierFlags.contains(.command), event.keyCode == 36 {
+                if let activeSession = registry.activeSession {
+                    let prompts = activeSession.state.recommendedPrompts()
+                    if !prompts.isEmpty {
+                        recommend.activate(prompts: prompts)
+                        return nil
+                    }
+                }
+                return event
+            }
+
+            // Cmd+W
             guard event.modifierFlags.contains(.command),
                   !event.modifierFlags.contains(.shift),
                   !event.modifierFlags.contains(.option),
@@ -328,6 +365,50 @@ struct AideaApp: App {
                 return nil
             }
             return event
+        }
+    }
+
+    /// レコメンドモードで選択されたプロンプトをコンパニオンに送信する
+    private static func sendRecommendedPrompt(recommend: RecommendState, companionStore: CompanionStore, registry: SessionRegistry, layout: LayoutConfig) {
+        guard let prompt = recommend.selectedPrompt else {
+            recommend.deactivate()
+            return
+        }
+        let index = recommend.selectedCompanionIndex
+        recommend.deactivate()
+
+        let companion = companionStore.companion(forIndex: index)
+
+        // 既に起動中ならメッセージを送信
+        if let companion, companionStore.isActive(companion.id),
+           let sessionID = companionStore.activeSessionMap[companion.id],
+           let session = registry.session(for: sessionID),
+           let state = session.state as? ClaudeSessionState {
+            registry.activateSession(sessionID)
+            state.sendMessage(prompt)
+            return
+        }
+
+        // 未起動 → 起動してから送信
+        let config = companion ?? companionStore.createDefault(forIndex: index)
+        if companionStore.companions.first(where: { $0.id == config.id }) == nil {
+            companionStore.add(config)
+        }
+        let instance = layout.nextSessionInstance(of: .claude)
+        let session = registry.createSession(tool: .claude, instance: instance)
+        if let claudeState = session.state as? ClaudeSessionState {
+            claudeState.companionPrompt = config.initialPrompt
+        }
+        companionStore.bind(companionID: config.id, sessionID: session.id)
+        if let pane = registry.activePane ?? layout.allPanes.first {
+            pane.tabs.append(session.id)
+            registry.setActiveTab(paneID: pane.id, tabIndex: pane.tabs.count - 1)
+        }
+        // Claude 起動完了を待ってからプロンプトを送信
+        if let claudeState = session.state as? ClaudeSessionState {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 6.0) {
+                claudeState.sendMessage(prompt)
+            }
         }
     }
 

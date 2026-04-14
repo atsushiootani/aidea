@@ -11,14 +11,26 @@ struct CompanionView: View {
     @Environment(CompanionStore.self) private var store
     @Environment(SessionRegistry.self) private var registry
     @Environment(LayoutConfig.self) private var layout
+    @Environment(RecommendState.self) private var recommend
 
     @State private var editingCompanion: CompanionConfig?
 
     var body: some View {
-        HStack(spacing: 6) {
-            ForEach(Array(CompanionIconPresets.imageIcons.enumerated()), id: \.offset) { index, icon in
-                let companion = store.companion(forIndex: index)
-                companionIcon(companion: companion, icon: icon, index: index)
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 6) {
+                ForEach(Array(CompanionIconPresets.imageIcons.enumerated()), id: \.offset) { index, icon in
+                    let companion = store.companion(forIndex: index)
+                    companionIcon(companion: companion, icon: icon, index: index)
+                }
+            }
+
+            // レコメンドモード: 選択中コンパニオンの下に吹き出しを表示
+            if recommend.isActive {
+                HStack(spacing: 0) {
+                    // 選択中コンパニオンの位置にオフセット (各アイコン幅60 + spacing6)
+                    Spacer().frame(width: CGFloat(recommend.selectedCompanionIndex) * 66)
+                    RecommendBubbleView()
+                }
             }
         }
         .sheet(item: $editingCompanion) { companion in

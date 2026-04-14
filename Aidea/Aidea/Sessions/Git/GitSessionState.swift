@@ -96,6 +96,11 @@ final class GitSessionState: SessionState {
         return result
     }
 
+    /// レコメンドプロンプトを返す
+    func recommendedPrompts() -> [String] {
+        ["コミットして", "プッシュして", "PRを作って"]
+    }
+
     /// Git がアクティブになったら outlineView にフォーカス
     func didBecomeActive(session: Session) {
         if let view = session.focusableView {
