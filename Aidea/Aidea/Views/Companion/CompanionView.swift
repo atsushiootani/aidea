@@ -54,7 +54,7 @@ struct CompanionView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 6))
                     .overlay(
                         RoundedRectangle(cornerRadius: 6)
-                            .stroke(isActiveTab ? Color.accentColor : (isActive ? Color.green : Color.clear), lineWidth: 2)
+                            .stroke(isActiveTab ? Color.accentColor : Color.clear, lineWidth: 2)
                     )
                     .saturation(isActive ? 1.0 : 0.3)
                     .opacity(isActive ? 1.0 : 0.5)
@@ -65,7 +65,7 @@ struct CompanionView: View {
             // 名前ラベル: タップで編集
             Text(name)
                 .font(.system(size: 9))
-                .foregroundStyle(isActiveTab ? Color.primary : (isActive ? Color.accentColor : Color.secondary))
+                .foregroundStyle(isActiveTab ? Color.accentColor : (isActive ? Color.primary : Color.secondary))
                 .lineLimit(1)
                 .frame(width: 60)
                 .onTapGesture {
