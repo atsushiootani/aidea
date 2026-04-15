@@ -2,18 +2,21 @@
 
 > AI + IDE + Idea — 個人用の macOS ネイティブ AI 連携ワークスペース
 
-このドキュメントは Aidea の**動的な仕様書**です。目的・スコープ・MVP 範囲・概念モデル・
-Phase ロードマップなど、実装の進行に伴って更新されるものを記述します。
+このドキュメントは Aidea の**動的な仕様書**です。目的・スコープ・MVP 範囲・概念モデルなど、
+実装の進行に伴って更新されるものを記述します。
+
+実装フェーズ / 機能要望は GitHub で管理しています:
+**Milestones** (Phase ごと) + **Issues** (`enhancement` ラベル)。
 
 静的なルール類は別ファイルに分離されています:
 
 - [architecture.md](./architecture.md) — 技術スタックとコード構造
-- [coding-style.md](./coding-style.md) — Swift 規約・並び順・コメント方針
-- [testing.md](./testing.md) — テスト戦略と手動チェック
+- [../conventions/coding-style.md](../conventions/coding-style.md) — Swift 規約・並び順・コメント方針
+- [../conventions/testing.md](../conventions/testing.md) — テスト戦略と手動チェック
 - [boundaries.md](./boundaries.md) — Always / Confirm First / Never
 - [glossary.md](./glossary.md) — 用語集
 
-背景と判断理由は [`../vision.md`](../vision.md) / [`../features.md`](../features.md) /
+背景と判断理由は [`../foundation/vision.md`](../foundation/vision.md) / [`./tools/`](./tools/) /
 [`../decisions/`](../decisions/README.md) を参照。
 
 ---
@@ -117,15 +120,14 @@ Window
 
 ---
 
-## 4. Phase ロードマップ
+## 4. 実装フェーズ / アイデア
 
-| Phase | 内容 | 状態 |
-|---|---|---|
-| 1 | Tool / Session / Tab 概念導入。マルチタブ、シングルトン Filer、Preview ダブルクリック。レイアウトは 4 ペイン固定。 | **完了** |
-| 2 | 動的レイアウト (LayoutNode によるツリー構造、ペイン分割/統合 API) | 未着手 |
-| 3 | Tab のドラッグ&ドロップ (端ドロップで分割、中央ドロップで Tab 追加) | 未着手 |
-| 4 | レイアウトと SessionState の永続化 (`workspace.json`) | 未着手 |
-| 5 | Git ビュー / AI チャット / Obsidian 連携 等の追加 Tool | 未着手 |
+仕様ではなく前段階情報のため、本ドキュメントでは扱わず GitHub 側で管理:
+
+- **Phase ロードマップ** → GitHub Milestones (`gh api repos/:owner/:repo/milestones` または リポジトリの Milestones タブ)
+- **個別アイデア・機能要望** → GitHub Issues (`enhancement` ラベル) — `gh issue list --label enhancement`
+
+**永続的にやらないこと**は [boundaries.md](./boundaries.md#never-決して行わないこと) の Never セクションを参照。
 
 ---
 

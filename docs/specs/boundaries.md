@@ -8,7 +8,7 @@ Aidea の境界と設計原則。CLAUDE.md やコードレビュー時に参照�
 
 設計・実装のあらゆる場面で常に意識する原則。個別の判断に迷ったときはここに立ち返る。
 
-設計原則の詳細は **[principles.md](./principles.md)** を参照。
+設計原則の詳細は **[../conventions/design-principles.md](../conventions/design-principles.md)** を参照。
 以下はその中で特に重要なものの要約:
 
 - **Tell, Don't Ask**: 子の型を調べて分岐するのではなく、子に「やって」と伝える
@@ -28,7 +28,7 @@ Aidea の境界と設計原則。CLAUDE.md やコードレビュー時に参照�
 
 - 新しいファイルは `Views` / `Services` / `Models` / `Utilities` / `Sessions` / `Tools` の責務分類に従って配置する
 - **1 ファイル = 1 型** (struct/class/enum) の原則を守る
-- View プロパティラッパは [coding-style.md](./coding-style.md) の固定順で並べる
+- View プロパティラッパは [../conventions/coding-style.md](../conventions/coding-style.md) の固定順で並べる
 - 新しい設計判断は `docs/decisions/` に ADR として追記する
 - SessionState はペイン移動で失われないよう、状態オブジェクトとして切り出す
 

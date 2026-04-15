@@ -8,7 +8,7 @@
 ```
 docs/specs/SPEC.md       → 仕様書 (Single Source of Truth)
 Aidea/             → macOS アプリ本体 (Xcode プロジェクト)
-docs/              → 設計ドキュメント (vision / architecture / features / ADR)
+docs/              → 設計ドキュメント (specs / conventions / decisions)
 skills/            → agent-skills 由来の参照リソース
 .claude/           → このプロジェクト固有のスキル/コマンド
 ```
@@ -30,15 +30,16 @@ skills/            → agent-skills 由来の参照リソース
 | 仕様 / MVP 範囲 / 境界 | [docs/specs/SPEC.md](./docs/specs/SPEC.md) |
 | ビルド & 起動方法 | [Aidea/README.md](./Aidea/README.md) |
 | なぜこの技術選定？ | [docs/decisions/](./docs/decisions/README.md) |
-| 全体像 / 経緯 | [docs/vision.md](./docs/vision.md) |
+| 全体像 / 経緯 | [docs/foundation/vision.md](./docs/foundation/vision.md) |
 | アーキテクチャ詳細 | [docs/specs/architecture.md](./docs/specs/architecture.md) |
-| 機能の実装メモ | [docs/specs/features.md](./docs/specs/features.md) |
+| 各ツールの実装仕様 | [docs/specs/tools/](./docs/specs/tools/) |
+| コーディング規約 | [docs/conventions/](./docs/conventions/README.md) |
 | docs 配下の配置ルール | [docs/LAYOUT.md](./docs/LAYOUT.md) |
 
 ## 開発時の注意
 
 - 新しい設計判断は [`docs/decisions/`](./docs/decisions/README.md) に ADR として追記する
 - `docs/` 以下にファイル追加・移動・リネームを行うときは [docs/LAYOUT.md](./docs/LAYOUT.md) の配置ルールと命名規約に従う
-- View プロパティラッパの並び順は docs/specs/SPEC.md のルールに従う
+- View プロパティラッパの並び順は [docs/conventions/coding-style.md](./docs/conventions/coding-style.md) のルールに従う
 - 1 ファイル 1 型 (struct/class/enum) を原則とする
 - ターミナルから `claude` を自動起動してはならない (理由: [ADR 0008](./docs/decisions/0008-no-claude-autostart.md))

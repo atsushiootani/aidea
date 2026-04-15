@@ -9,34 +9,38 @@
 docs/
 ├── LAYOUT.md          # 本ファイル。docs配下の配置ルールと命名規約
 ├── README.md          # docs 全体のインデックス
-├── vision.md          # なぜ作るか・原則・成功基準
 │
-├── agent-skills/      # agent-skills の入門・スキル構造解説ドキュメント置き場
-│   ├── getting-started.md
-│   └── skill-anatomy.md
+├── foundation/        # プロジェクトの土台 (動機・原則)
+│   ├── README.md
+│   └── vision.md      # 作る動機とプロジェクトの原則
 │
 ├── decisions/         # 設計判断を残す ADR (Architecture Decision Records) の保管場所
 │   ├── README.md      # ADR 一覧・追加手順
 │   └── NNNN-kebab-title.md
 │
+├── specs/             # プロダクト仕様 (何を作るか・どう動くか)
+│   ├── README.md      # specs 内のインデックス・読む順
+│   ├── SPEC.md        # 目的 / MVP / 概念モデル / Phase ロードマップ
+│   ├── architecture.md
+│   ├── boundaries.md
+│   ├── glossary.md
+│   ├── backchannels/  # 裏側処理 (読み上げ・VOICEVOX 連携など) の仕様
+│   ├── diagrams/      # アーキテクチャ図などの draw.io / SVG 図表素材
+│   ├── frontchannel/  # 会話 UI (Scene / Recommend モード等) の仕様
+│   └── tools/         # claude / git / filer / terminal など各ツール連携の仕様
+│
 ├── plans/             # タイムスタンプ付きの実装計画書アーカイブ (git 管理外)
 │   └── plan_YYYYMMDDHHmmss.md
 │
-└── specs/             # Aidea の仕様書本体 (SSOT) を構成する設計資料群
-    ├── README.md      # specs 内のインデックス・読む順
-    ├── SPEC.md        # 目的 / MVP / 概念モデル / Phase ロードマップ
-    ├── architecture.md
-    ├── boundaries.md
-    ├── coding-style.md
-    ├── features.md    # 機能の実装メモ
-    ├── glossary.md
-    ├── principles.md
-    ├── roadmap.md     # マイルストーン単位の実装スケジュール
-    ├── testing.md
-    ├── backchannels/  # 裏側処理 (読み上げ・VOICEVOX 連携など) の仕様
-    ├── diagrams/      # アーキテクチャ図などの draw.io / SVG 図表素材
-    ├── frontchannel/  # 会話 UI (Scene / Recommend モード等) の仕様
-    └── tools/         # claude / git / filer / terminal など各ツール連携の仕様
+├── conventions/       # コードを書くときの規約 (コーディングガイドライン)
+│   ├── README.md      # conventions 内のインデックス
+│   ├── coding-style.md # Swift 規約 / プロパティラッパ並び順 / コメント方針
+│   ├── design-principles.md # 設計原則 (Tell Don't Ask / SOLID / GRASP 等)
+│   └── testing.md     # テスト戦略 / 手動確認チェックリスト
+│
+└── agent-skills/      # agent-skills の入門・スキル構造解説ドキュメント置き場
+    ├── getting-started.md
+    └── skill-anatomy.md
 ```
 
 ## 配置ルール
@@ -52,11 +56,18 @@ docs/
 - 1 トピック 1 ファイル。肥大化したらサブディレクトリを切って分割する
 - 新しいサブディレクトリを作ったら本ファイルのツリーと配置ルールを同時に更新する
 
-### `docs/` 直下 — 背景・経緯・メタ文書
+### `docs/` 直下 — メタ文書のみ
 
-- **用途**: プロジェクト全体に関わる背景・原則・案内などのトップレベル文書 (`vision.md` など) と、メタ文書 (`README.md` / `LAYOUT.md`)
-- **命名**: メタ文書は英大文字 `.md` (`README.md` `LAYOUT.md`)、それ以外は kebab-case 全小文字 (`vision.md`)
-- **判断基準**: 下位カテゴリ (decisions / plans / specs / agent-skills) に収まらない全体的トピックのみここに置く
+- **用途**: `README.md` (docs インデックス) と `LAYOUT.md` (本ファイル) のメタ文書だけを置く
+- **命名**: 英大文字 `.md` (`README.md` `LAYOUT.md`)
+- **判断基準**: カテゴリ化できるコンテンツは直下ではなくサブディレクトリへ。新規トップレベル文書を追加する場合は、まず適切なサブディレクトリを検討する
+
+### `docs/foundation/` — プロジェクトの土台 (動機・原則)
+
+- **用途**: 長寿命で、判断に迷ったときに立ち返る動機・原則・思想を置く
+- **現在のファイル**: `vision.md` (作る動機とプロジェクトの原則)
+- **判断基準**: 個別設計判断は `docs/decisions/` へ、確定仕様は `docs/specs/` へ、規約は `docs/conventions/` へ。それらより一段上の「プロジェクトの土台」に相当するものを置く
+- **命名**: kebab-case 全小文字
 
 ### `docs/decisions/` — 設計判断 (ADR)
 
@@ -71,15 +82,33 @@ docs/
 - **例**: `plan_20260414130000.md`
 - **永続化**: 計画から出た重要な設計判断は `docs/decisions/` に ADR として昇格させる (plans 単独では残さない)
 
-### `docs/specs/` — 仕様 (あるべき姿)
+### GitHub で管理するもの (docs/ には置かない)
 
-- **用途**: Aidea の仕様書本体 (SSOT)。性格ごとにサブディレクトリで仕分ける
-  - トップレベル概念: `specs/` 直下 (`SPEC.md` / `architecture.md` / `coding-style.md` など)
+以下は `docs/` 配下で Markdown 管理せず、GitHub 側で扱う。Markdown での二重管理は避ける。
+
+- **Phase ロードマップ / 実装フェーズ** → GitHub **Milestones** (例: `Phase 2: 動的レイアウト`)
+- **個別アイデア・機能要望** → GitHub **Issues** (`enhancement` ラベル)
+- **バグ** → GitHub Issues (`bug` ラベル)
+
+昇格フロー: `Issue (enhancement)` → Milestone に割当 (次フェーズ入り) → 実装完了で close → 確定仕様は `docs/specs/` へ。
+永続的にやらないと決めたものは Issue close + `wontfix`、必要なら [specs/boundaries.md](./specs/boundaries.md) の Never セクションに追記する (プロジェクト全体の原則に関わる場合は [foundation/vision.md](./foundation/vision.md) も検討)。
+
+### `docs/specs/` — プロダクト仕様 (何を作るか・どう動くか)
+
+- **用途**: Aidea が「何をするアプリか」「どう振る舞うか」を記述する仕様本体 (SSOT)
+  - トップレベル概念: `specs/` 直下 (`SPEC.md` / `architecture.md` / `boundaries.md` / `glossary.md`)
   - 裏側処理 (読み上げ・音声・非同期処理): `specs/backchannels/`
   - 会話 UI (Scene / Recommend / 発話フロー): `specs/frontchannel/`
   - ツール連携 (claude / git / filer / terminal 等): `specs/tools/`
   - 図表素材: `specs/diagrams/`
-- **命名**: kebab-case 全小文字 (`coding-style.md` `recommend-mode.md`)。図表は `<topic>.drawio` と必要に応じて `.svg` を併置 (`simple.drawio` / `simple.drawio.svg`)
+- **命名**: kebab-case 全小文字 (`recommend-mode.md` `scene.md`)。図表は `<topic>.drawio` と必要に応じて `.svg` を併置 (`simple.drawio` / `simple.drawio.svg`)
+
+### `docs/conventions/` — コードを書くときの規約
+
+- **用途**: 実装者が従うコーディング規約・テスト戦略・設計原則。「何を作るか」ではなく「どう書くか」を扱う
+- **現在のファイル**: `coding-style.md` (Swift 規約) / `design-principles.md` (設計思想) / `testing.md` (テスト戦略)
+- **判断基準**: プロダクト動作 (spec) ではなくコードの書き方に関する規約は全てここに置く
+- **命名**: kebab-case 全小文字
 
 ### `docs/agent-skills/` — agent-skills 関連の参照資料
 
@@ -94,8 +123,9 @@ docs/
 | 対象 | 更新する README | 更新内容 |
 |---|---|---|
 | 本ファイルのツリーに出てくるディレクトリ/代表ファイルを変更 | `docs/LAYOUT.md` (本ファイル) | ツリーとルールを修正 |
-| `docs/` 直下にトップレベル文書を追加/削除 | `docs/README.md` | 「そのほかのドキュメント」の行を増減 |
+| `docs/foundation/` のファイル追加/削除 | `docs/foundation/README.md` | 一覧表に行を増減 |
 | `docs/specs/` 直下のファイル追加/削除 | `docs/specs/README.md` | 変化頻度表に行を増減 |
+| `docs/conventions/` のファイル追加/削除 | `docs/conventions/README.md` | 一覧表に行を増減 |
 | `docs/decisions/` に ADR 追加 / 状態変更 / 廃止 | `docs/decisions/README.md` | 一覧表に行追加、状態列を正しく反映 |
 | `docs/plans/` / `specs/` サブディレクトリ / `docs/agent-skills/` | — | インデックス不要 (ディレクトリ単位で参照している) |
 

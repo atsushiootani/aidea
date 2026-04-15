@@ -169,7 +169,7 @@ Views → Sessions → Services → Models
 | projectRoot | `UserDefaults` (`aidea.projectRoot`) | 起動時復元 |
 | (将来) API キー | macOS Keychain | Claude API セキュア保管 |
 | (将来) アプリ設定 | `~/Library/Application Support/Aidea/config.json` | 編集しやすさ |
-| (将来) ワークスペース状態 | `~/Library/Application Support/Aidea/workspace.json` | レイアウト + SessionState 復元 (Phase 4) |
+| (将来) ワークスペース状態 | `~/Library/Application Support/Aidea/workspace.json` | レイアウト + SessionState 復元 (Phase 4)。保存対象: 現在開いているプロジェクト / 各ペインの Session 状態 (表示ファイル / WebView URL / ターミナル cwd 等) / ウィンドウサイズ / スプリット比率 |
 
 ## 配布
 
@@ -184,8 +184,8 @@ Views → Sessions → Services → Models
 ## 関連ドキュメント
 
 - [SPEC.md](./SPEC.md) — 仕様本体
-- [coding-style.md](./coding-style.md) — コーディング規約
-- [testing.md](./testing.md) — テスト戦略
+- [../conventions/coding-style.md](../conventions/coding-style.md) — コーディング規約
+- [../conventions/testing.md](../conventions/testing.md) — テスト戦略
 - [boundaries.md](./boundaries.md) — 境界ルール
 - [glossary.md](./glossary.md) — 用語集
 - [../decisions/](../decisions/README.md) — 設計判断記録
