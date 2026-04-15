@@ -1,7 +1,7 @@
 # Coding Style
 
 Aidea のコーディング規約。静的なルールのみを集約。アーキテクチャは
-[architecture.md](./architecture.md) を参照。
+[../specs/architecture.md](../specs/architecture.md) を参照。
 
 ## Swift 規約
 

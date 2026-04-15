@@ -25,7 +25,6 @@ docs/
 │   ├── boundaries.md
 │   ├── glossary.md
 │   ├── backchannels/  # 裏側処理 (読み上げ・VOICEVOX 連携など) の仕様
-│   ├── diagrams/      # アーキテクチャ図などの draw.io / SVG 図表素材
 │   ├── frontchannel/  # 会話 UI (Scene / Recommend モード等) の仕様
 │   └── tools/         # claude / git / filer / terminal など各ツール連携の仕様
 │
@@ -100,8 +99,7 @@ docs/
   - 裏側処理 (読み上げ・音声・非同期処理): `specs/backchannels/`
   - 会話 UI (Scene / Recommend / 発話フロー): `specs/frontchannel/`
   - ツール連携 (claude / git / filer / terminal 等): `specs/tools/`
-  - 図表素材: `specs/diagrams/`
-- **命名**: kebab-case 全小文字 (`recommend-mode.md` `scene.md`)。図表は `<topic>.drawio` と必要に応じて `.svg` を併置 (`simple.drawio` / `simple.drawio.svg`)
+- **命名**: kebab-case 全小文字 (`recommend-mode.md` `scene.md`)
 
 ### `docs/conventions/` — コードを書くときの規約
 
