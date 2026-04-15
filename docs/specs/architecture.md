@@ -34,6 +34,53 @@ Swift + SwiftUI + WKWebView を採用。決め手は「WKWebView が本物の Sa
 
 ---
 
+## 機能群の関係
+
+`specs/` のサブディレクトリは機能群を表す。関係性は以下のとおり。
+
+```
+┌─────────────────────────────────────────────────────┐
+│  window/      アプリ全体 (1 ウィンドウ)             │
+│  └─ ダイアログ / グローバルショートカット           │
+│                                                     │
+│  ┌─────────────────────────────────────────────┐    │
+│  │  sessions/   状態を持つ実体 (複数)          │    │
+│  │  └─ 概念モデル (Window/Pane/Tab/Session/Tool)│    │
+│  │  └─ アクティブ切替・履歴                    │    │
+│  │  └─ Session 単位の UI ルール                │    │
+│  │                                             │    │
+│  │  ┌───────────────────────────────────────┐  │    │
+│  │  │  tools/    Session の機能種別          │  │    │
+│  │  │  filer / kit / terminal / web /        │  │    │
+│  │  │  preview / git / gitDiff / claude 等   │  │    │
+│  │  └───────────────────────────────────────┘  │    │
+│  └─────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────┐
+│  frontchannels/  Aidea → Claude の通信              │
+│    (PTY への送信・recommend モード・scene など)     │
+│                                                     │
+│  backchannels/   Claude → Aidea の通信              │
+│    (ファイル経由・VOICEVOX 読み上げなど)            │
+│                                                     │
+│  ※ 主に claude tool が双方向で使用                 │
+└─────────────────────────────────────────────────────┘
+```
+
+**軸の整理**:
+
+- **構造軸** (含有関係): `window/` ⊃ `sessions/` ⊃ `tools/`
+  - Window が Session を束ね、Session は Tool 種別を持つ
+- **通信軸** (横断的関心): `frontchannels/` / `backchannels/`
+  - Aidea と Claude の間の双方向通信チャネル
+  - 主に claude tool が利用するが、構造軸とは独立した横断軸
+
+各機能群の個別仕様は [README.md](./README.md) の一覧、
+Session 概念の詳細は [sessions/concept-model.md](./sessions/concept-model.md) を参照。
+
+---
+
 ## コード配置ルール
 
 `Aidea/Aidea/` 配下は責務別のトップレベルディレクトリで構成する。各ディレクトリの役割:
@@ -80,12 +127,7 @@ Views → Sessions → Services → Models
 
 ## データ保存
 
-| データ | 場所 | 用途 |
-|---|---|---|
-| projectRoot | `UserDefaults` (`aidea.projectRoot`) | 起動時復元 |
-| (将来) API キー | macOS Keychain | Claude API セキュア保管 |
-| (将来) アプリ設定 | `~/Library/Application Support/Aidea/config.json` | 編集しやすさ |
-| (将来) ワークスペース状態 | `~/Library/Application Support/Aidea/workspace.json` | レイアウト + SessionState 復元。保存対象: プロジェクトルート / 各ペインの Session 状態 (表示ファイル / WebView URL / ターミナル cwd 等) / ウィンドウサイズ / スプリット比率 |
+UserDefaults / Keychain / `<projectRoot>/.aidea/` の 3 つに保存される。詳細は [persistence.md](./persistence.md) を参照。
 
 ---
 

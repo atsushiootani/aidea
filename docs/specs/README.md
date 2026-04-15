@@ -8,6 +8,7 @@ Aidea の**プロダクト仕様 (設計ストック)**。コードベースと 
 | ファイル | 変化頻度 | 内容 |
 |---|---|---|
 | [architecture.md](./architecture.md) | **中** | 技術スタック / プロジェクト構造 / レイヤー・主要コンポーネント |
+| [persistence.md](./persistence.md) | **中** | データ永続化仕様 (UserDefaults / Keychain / `.aidea/`) |
 | [tools/](./tools/) | **中** | 各ツールの実装仕様 (Terminal / Git / Kit / Preview / Obsidian など) |
 | [frontchannels/](./frontchannels/) | **中** | 会話 UI (Scene / Recommend / 発話フロー) |
 | [backchannels/](./backchannels/) | **中** | 裏側処理 (読み上げ / VOICEVOX 連携など) |

@@ -21,6 +21,7 @@ docs/
 ├── specs/             # プロダクト仕様 (設計ストック・コードと 1:1 対応)
 │   ├── README.md      # 内のインデックス・機能群ごとのサブディレクトリ一覧
 │   ├── architecture.md
+│   ├── persistence.md
 │   ├── glossary.md
 │   └── <機能群>/       # backchannels / frontchannels / sessions / tools / window など (→ README.md 参照)
 │
