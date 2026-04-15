@@ -8,6 +8,8 @@ Aidea プロジェクトの仕様書群。変化頻度ごとにファイルを�
 |---|---|---|
 | [SPEC.md](./SPEC.md) | **高** | 目的 / スコープ / MVP / 概念モデル / Phase ロードマップ / 改訂履歴 |
 | [architecture.md](./architecture.md) | **中** | 技術スタック / プロジェクト構造 / レイヤー・主要コンポーネント |
+| [features.md](./features.md) | **中** | 機能の実装メモ |
+| [roadmap.md](./roadmap.md) | **中** | マイルストーン単位の実装スケジュール |
 | [coding-style.md](./coding-style.md) | **低** | Swift 規約 / プロパティラッパ並び順 / コメント方針 / 並行性 |
 | [testing.md](./testing.md) | **低** | テスト戦略 / 手動確認チェックリスト |
 | [principles.md](./principles.md) | **低** | 設計原則 (Tell Don't Ask / SOLID / GRASP 等) |

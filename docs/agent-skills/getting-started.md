@@ -86,7 +86,7 @@ YAML frontmatter (name, description)
 └── Verification（検証） — 終了条件のチェックリスト
 ```
 
-完全な仕様は [skill-anatomy.ja.md](skill-anatomy.ja.md) を参照してください。
+完全な仕様は [skill-anatomy.md](skill-anatomy.md) を参照してください。
 
 ## エージェントを使う
 

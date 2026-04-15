@@ -19,9 +19,13 @@ Aidea の設計判断を 1 件ずつ記録する。フォーマットは [Michae
 | [0011](./0011-cmd-w-via-nsevent-monitor.md) | Cmd+W のタブクローズは NSEvent local monitor で実装する | 採用 |
 | [0012](./0012-keyboard-focus-dual-path.md) | キーボードフォーカスは AppKit と SwiftUI の 2 経路で管理する | 採用 |
 | [0013](./0013-session-as-first-class-object.md) | Session を first-class object にして Window レベルで管理する | 提案 |
+| [0014](./0014-no-ctrl-number-shortcuts.md) | Ctrl+数字キーのショートカットを使わない | 採用 |
+| [0015](./0015-wkwebview-scope-and-chrome-coexistence.md) | WKWebView の制約を許容し Chrome 併用を前提とする | 採用 |
 
-## 新規追加方法
+## 状態の値
 
-1. 既存の最大番号 + 1 でファイル作成 (`NNNN-kebab-title.md`)
-2. 状態欄: `提案 / 採用 / 暫定 / 廃止 / 置換 (→ NNNN)`
-3. この README の表に行を追加
+`提案` / `採用` / `暫定` / `確定` / `廃止` / `置換 (→ NNNN)`
+
+## 新規追加
+
+ファイル命名 (`NNNN-kebab-title.md`)・インデックス更新の義務は [../LAYOUT.md](../LAYOUT.md) を参照。

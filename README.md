@@ -28,10 +28,11 @@ Xcode で `⌘R`。ビルド・実行手順の詳細は [`Aidea/README.md`](./Ai
 | [docs/specs/SPEC.md](./docs/specs/SPEC.md) | 仕様書 (Single Source of Truth) |
 | [Aidea/README.md](./Aidea/README.md) | macOS アプリのビルド/起動手順 |
 | [docs/vision.md](./docs/vision.md) | なぜ作るか、要件、非要件 |
-| [docs/architecture.md](./docs/architecture.md) | 技術スタック、レイヤー構成 |
-| [docs/features.md](./docs/features.md) | 実装する機能の詳細 |
+| [docs/specs/architecture.md](./docs/specs/architecture.md) | 技術スタック、レイヤー構成 |
+| [docs/specs/features.md](./docs/specs/features.md) | 実装する機能の詳細 |
 | [docs/decisions/](./docs/decisions/README.md) | 設計判断記録 (ADR) |
-| [docs/roadmap.md](./docs/roadmap.md) | 実装スケジュール |
+| [docs/specs/roadmap.md](./docs/specs/roadmap.md) | 実装スケジュール |
+| [docs/LAYOUT.md](./docs/LAYOUT.md) | docs 配下の配置ルールと命名規約 |
 | [CLAUDE.md](./CLAUDE.md) | AI エージェント向けのプロジェクト概要 |
 
 ## なぜ作るか (要約)
