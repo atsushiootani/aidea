@@ -97,7 +97,7 @@ gemini skills install ./agent-skills/skills/
 <details>
 <summary><b>Codex / その他のエージェント</b></summary>
 
-スキルは単なる Markdown なので、システムプロンプトや指示ファイルを受け付けるエージェントであれば何でも動作します。詳細は [docs/getting-started.md](docs/getting-started.ja.md) を参照。
+スキルは単なる Markdown なので、システムプロンプトや指示ファイルを受け付けるエージェントであれば何でも動作します。詳細は [docs/agent-skills/getting-started.md](docs/agent-skills/getting-started.md) を参照。
 
 </details>
 
@@ -262,7 +262,7 @@ AIコーディングエージェントは既定で最短経路を取ります �
 
 スキルは **具体的** (曖昧な助言ではなく実行可能なステップ)、**検証可能** (証拠要件付きの明確な終了条件)、**実戦で鍛えられた** (実際のワークフローに基づく)、**最小** (エージェントを導くのに必要なものだけ)、であるべきです。
 
-形式仕様は [docs/skill-anatomy.md](docs/skill-anatomy.ja.md) を、ガイドラインは [CONTRIBUTING.md](CONTRIBUTING.ja.md) を参照してください。
+形式仕様は [docs/agent-skills/skill-anatomy.md](docs/agent-skills/skill-anatomy.md) を、ガイドラインは [CONTRIBUTING.md](CONTRIBUTING.ja.md) を参照してください。
 
 ---
 
