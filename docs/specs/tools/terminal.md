@@ -2,7 +2,7 @@
 
 ターミナル (PTY) を提供する Tool。純粋なシェル環境のみを起動する。
 
-概念モデルは [SPEC.md](../SPEC.md#2-概念モデル-concept-model) / [glossary.md](../glossary.md) を参照。
+概念モデルは [session/concept-model.md](../session/concept-model.md) / [glossary.md](../glossary.md) を参照。
 共通 UI 規約は [boundaries.md](../boundaries.md#ui-conventions-ui-共通ルール) を参照。
 
 ---

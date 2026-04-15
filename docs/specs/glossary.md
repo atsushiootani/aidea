@@ -7,7 +7,7 @@ Aidea プロジェクトで使われる用語の定義。
 | 用語 | 意味 |
 |---|---|
 | **Aidea** | 本プロジェクト名。**AI + IDE + Idea** のトリプルミーニング |
-| **MVP** | [SPEC.md 3 章](./SPEC.md#3-スコープ-scope) の「MVP に含むもの」8 機能 |
+| **MVP** | Minimum Viable Product。最低限動く機能セット。MVP スコープの管理は GitHub Milestones / Issues で行う |
 | **Vibeyard 問題** | `<webview>` / iframe 制約により本物のブラウザ挙動が得られない現象。Aidea が自作される動機 |
 
 ## UI 階層 (5 階層モデル)
@@ -62,6 +62,6 @@ Aidea プロジェクトで使われる用語の定義。
 
 ## 関連
 
-- [SPEC.md](./SPEC.md) — 仕様本体
 - [architecture.md](./architecture.md) — 技術スタックとコード構造
+- [session/concept-model.md](./session/concept-model.md) — 5 概念の構造
 - [decisions/](../decisions/README.md) — 設計判断の記録

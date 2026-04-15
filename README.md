@@ -25,7 +25,7 @@ Xcode で `⌘R`。ビルド・実行手順の詳細は [`Aidea/README.md`](./Ai
 
 | ファイル | 内容 |
 |---|---|
-| [docs/specs/SPEC.md](./docs/specs/SPEC.md) | 仕様書 (Single Source of Truth) |
+| [docs/specs/](./docs/specs/README.md) | プロダクト仕様 (設計ストック) |
 | [Aidea/README.md](./Aidea/README.md) | macOS アプリのビルド/起動手順 |
 | [docs/foundation/vision.md](./docs/foundation/vision.md) | 作る動機とプロジェクトの原則 |
 | [docs/specs/architecture.md](./docs/specs/architecture.md) | 技術スタック、レイヤー構成 |

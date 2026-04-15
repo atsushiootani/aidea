@@ -18,14 +18,14 @@ docs/
 │   ├── README.md      # ADR 一覧・追加手順
 │   └── NNNN-kebab-title.md
 │
-├── specs/             # プロダクト仕様 (何を作るか・どう動くか)
+├── specs/             # プロダクト仕様 (設計ストック・コードと 1:1 対応)
 │   ├── README.md      # specs 内のインデックス・読む順
-│   ├── SPEC.md        # 目的 / MVP / 概念モデル / Phase ロードマップ
 │   ├── architecture.md
 │   ├── boundaries.md
 │   ├── glossary.md
 │   ├── backchannels/  # 裏側処理 (読み上げ・VOICEVOX 連携など) の仕様
 │   ├── frontchannel/  # 会話 UI (Scene / Recommend モード等) の仕様
+│   ├── session/       # Session 概念の詳細 (概念モデル・アクティブ切替など)
 │   └── tools/         # claude / git / filer / terminal など各ツール連携の仕様
 │
 ├── plans/             # タイムスタンプ付きの実装計画書アーカイブ (git 管理外)
@@ -85,19 +85,21 @@ docs/
 
 以下は `docs/` 配下で Markdown 管理せず、GitHub 側で扱う。Markdown での二重管理は避ける。
 
-- **Phase ロードマップ / 実装フェーズ** → GitHub **Milestones** (例: `Phase 2: 動的レイアウト`)
 - **個別アイデア・機能要望** → GitHub **Issues** (`enhancement` ラベル)
 - **バグ** → GitHub Issues (`bug` ラベル)
 
-昇格フロー: `Issue (enhancement)` → Milestone に割当 (次フェーズ入り) → 実装完了で close → 確定仕様は `docs/specs/` へ。
+昇格フロー: `Issue (enhancement)` → `docs/specs/` に仕様追記 → 実装 → close。
 永続的にやらないと決めたものは Issue close + `wontfix`、必要なら [specs/boundaries.md](./specs/boundaries.md) の Never セクションに追記する (プロジェクト全体の原則に関わる場合は [foundation/vision.md](./foundation/vision.md) も検討)。
 
-### `docs/specs/` — プロダクト仕様 (何を作るか・どう動くか)
+### `docs/specs/` — プロダクト仕様 (設計ストック)
 
-- **用途**: Aidea が「何をするアプリか」「どう振る舞うか」を記述する仕様本体 (SSOT)
-  - トップレベル概念: `specs/` 直下 (`SPEC.md` / `architecture.md` / `boundaries.md` / `glossary.md`)
+- **用途**: Aidea の**現時点の設計仕様**を記述する。`specs/` + `conventions/` を読めば同等のコードベースが再現できる厳密さを目指す
+- **ストック情報のみ**: scope / MVP / 実装スケジュール / 未実装アイデアなどの**フロー情報は含めない** (それらは GitHub Issues / Milestones で管理)
+- **構成**:
+  - トップレベル: `specs/` 直下 (`architecture.md` / `boundaries.md` / `glossary.md`)
   - 裏側処理 (読み上げ・音声・非同期処理): `specs/backchannels/`
   - 会話 UI (Scene / Recommend / 発話フロー): `specs/frontchannel/`
+  - Session 概念の詳細 (概念モデル・アクティブ切替など): `specs/session/`
   - ツール連携 (claude / git / filer / terminal 等): `specs/tools/`
 - **命名**: kebab-case 全小文字 (`recommend-mode.md` `scene.md`)
 
@@ -124,6 +126,7 @@ docs/
 | `docs/foundation/` のファイル追加/削除 | `docs/foundation/README.md` | 一覧表に行を増減 |
 | `docs/specs/` 直下のファイル追加/削除 | `docs/specs/README.md` | 変化頻度表に行を増減 |
 | `docs/conventions/` のファイル追加/削除 | `docs/conventions/README.md` | 一覧表に行を増減 |
+| `docs/specs/session/` のファイル追加/削除 | `docs/specs/session/README.md` | 一覧表に行を増減 |
 | `docs/decisions/` に ADR 追加 / 状態変更 / 廃止 | `docs/decisions/README.md` | 一覧表に行追加、状態列を正しく反映 |
 | `docs/plans/` / `specs/` サブディレクトリ / `docs/agent-skills/` | — | インデックス不要 (ディレクトリ単位で参照している) |
 

@@ -1,6 +1,6 @@
 # Architecture
 
-Aidea の技術スタックとコード構造。動的な仕様は [SPEC.md](./SPEC.md) を参照。
+Aidea の技術スタックとコード構造。動機と原則は [../foundation/vision.md](../foundation/vision.md) を参照。
 
 ## 技術スタック
 
@@ -183,7 +183,7 @@ Views → Sessions → Services → Models
 
 ## 関連ドキュメント
 
-- [SPEC.md](./SPEC.md) — 仕様本体
+- [../foundation/vision.md](../foundation/vision.md) — 動機・原則
 - [../conventions/coding-style.md](../conventions/coding-style.md) — コーディング規約
 - [../conventions/testing.md](../conventions/testing.md) — テスト戦略
 - [boundaries.md](./boundaries.md) — 境界ルール

@@ -36,7 +36,7 @@ Aidea の境界と設計原則。CLAUDE.md やコードレビュー時に参照�
 
 - **外部依存パッケージを追加する前に必要性を再検討する**
   (SwiftTerm 以外は当面追加しない方針 — ADR 0006)
-- 非要件 ([SPEC.md 3 章](./SPEC.md#3-スコープ-scope)) に該当する機能を作りそうになったら立ち止まる
+- 下の **Never** セクションまたは GitHub Issues `wontfix` で「やらない」と決めた領域に該当する機能を作りそうになったら立ち止まる
 - macOS 15 (Sequoia) 未満の分岐が必要になったら、本当に必要か再考する
 
 ## Never (決して行わないこと)
@@ -163,5 +163,5 @@ SwiftUI 主体の Session も同等のショートカットを提供する (将�
 - Filer はシングルトン制約があるため、⌘T の Tool 選択肢からは既存時に除外する
 
 ## 参考
-- [SPEC.md](./SPEC.md) — 仕様本体
+- [../foundation/vision.md](../foundation/vision.md) — 動機・原則
 - [decisions/](../decisions/README.md) — 設計判断の記録

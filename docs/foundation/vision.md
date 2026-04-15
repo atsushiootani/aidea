@@ -1,7 +1,20 @@
 # Vision
 
-Aidea を作る動機と、開発中つねに立ち返るべき **原則** だけを置く。
-具体的な仕様 (MVP / 非要件 / 成功基準) は [../specs/SPEC.md](../specs/SPEC.md) を参照。
+Aidea を作る動機・ターゲット・原則・成功基準を置く。
+**ストック情報** (コードに直接紐づく設計) は [../specs/](../specs/README.md) を参照。
+**フロー情報** (MVP 範囲・実装スケジュール・未実装アイデア) は GitHub **Issues** (`enhancement` ラベル) で管理。
+
+---
+
+## 何を作るか
+
+macOS ネイティブの個人用 AI コーディングワークスペース。
+コードエディタは含まず、ターミナル・WebView・AI エージェント連携・ローカルファイル参照を 1 つのアプリに統合する。
+
+## 誰のためか
+
+- **ターゲット: 開発者本人 1 名のみ**
+- 他人への配布、App Store 公開、複数ユーザー対応はしない
 
 ---
 
@@ -37,3 +50,13 @@ Vibeyard の Inspect / Flow Recording 機能自体は面白いが、
 
 この原則が技術選定 ([ADR 0001](../decisions/0001-swift-swiftui.md)) と
 スコープ判断 ([ADR 0015](../decisions/0015-wkwebview-scope-and-chrome-coexistence.md)) の根拠。
+
+---
+
+## 成功基準
+
+- **1 年後 (2027-04 目安)、JetBrains を開く時間より Aidea を開く時間の方が長くなっている**
+- 具体的には、その時点で以下ができていること:
+  - ターミナルで Claude Code を起動して普通に開発できる
+  - `~/.claude/skills` などの Claude リソースを GUI で一覧できる
+  - WKWebView で localhost プレビューが Safari と同等に動く

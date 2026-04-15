@@ -3,7 +3,7 @@
 Claude の "装備品一式" (Skills / Commands / Agents / MCPs) を 1 つの Tool にまとめたもの。
 実装予定: `Aidea/Sessions/Kit/` と `Aidea/Views/Sessions/Kit/`。
 
-概念モデルは [SPEC.md](../SPEC.md#2-概念モデル-concept-model) / [glossary.md](../glossary.md) を参照。
+概念モデルは [session/concept-model.md](../session/concept-model.md) / [glossary.md](../glossary.md) を参照。
 全ツール共通の UI 規約は [boundaries.md](../boundaries.md#ui-conventions-ui-共通ルール) を参照。
 
 ---
@@ -56,7 +56,7 @@ Claude の "装備品一式" (Skills / Commands / Agents / MCPs) を 1 つの To
 - Skills / Commands の場合: `SKILL.md` / `<name>.md` ファイルをプレビュー
 - Agents の場合: エージェント定義ファイル (`~/.claude/agents/<name>.md`) をプレビュー
 - MCPs の場合: `~/.claude.json` のプレビュー (MVP では簡易表示でも可)
-- Preview の配置ルールは Filer と同じく [`SessionRegistry.openPreview`](../SPEC.md) を使う
+- Preview の配置ルールは Filer と同じく `SessionRegistry.openPreview` を使う
 
 ### searchInKit — セクション横断インクリメンタル検索 (将来)
 - Cmd+F でヘッダー上部に検索バー、全セクション横断で名前をフィルタ

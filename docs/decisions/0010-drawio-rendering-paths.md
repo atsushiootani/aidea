@@ -67,5 +67,4 @@ Aidea の Preview Tool で drawio ファイルを表示する際、対象とな�
 
 ## 関連
 - [Tool 仕様: Preview](../specs/tools/preview.md)
-- [SPEC.md](../specs/SPEC.md)
 - 関連 ADR: [0001 (Swift+SwiftUI 採用)](./0001-swift-swiftui.md), [0006 (外部依存最小化)](./0006-only-swiftterm-dependency.md)

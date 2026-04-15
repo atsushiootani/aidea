@@ -1,14 +1,13 @@
 # Aidea
 
 個人用の macOS ネイティブ AI 連携ワークスペース。Swift + SwiftUI 製。
-詳細は [docs/specs/SPEC.md](./docs/specs/SPEC.md) と [docs/decisions/](./docs/decisions/README.md) を参照。
+詳細は [docs/specs/](./docs/specs/README.md) と [docs/decisions/](./docs/decisions/README.md) を参照。
 
 ## トップレベル構成
 
 ```
-docs/specs/SPEC.md       → 仕様書 (Single Source of Truth)
 Aidea/             → macOS アプリ本体 (Xcode プロジェクト)
-docs/              → 設計ドキュメント (specs / conventions / decisions)
+docs/              → 設計ドキュメント (specs / conventions / foundation / decisions)
 skills/            → agent-skills 由来の参照リソース
 .claude/           → このプロジェクト固有のスキル/コマンド
 ```
@@ -27,7 +26,8 @@ skills/            → agent-skills 由来の参照リソース
 
 | 知りたいこと | 参照先 |
 |---|---|
-| 仕様 / MVP 範囲 / 境界 | [docs/specs/SPEC.md](./docs/specs/SPEC.md) |
+| プロダクト仕様 (設計ストック) | [docs/specs/](./docs/specs/README.md) |
+| 動機・原則・成功基準 | [docs/foundation/vision.md](./docs/foundation/vision.md) |
 | ビルド & 起動方法 | [Aidea/README.md](./Aidea/README.md) |
 | なぜこの技術選定？ | [docs/decisions/](./docs/decisions/README.md) |
 | 全体像 / 経緯 | [docs/foundation/vision.md](./docs/foundation/vision.md) |

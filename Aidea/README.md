@@ -2,7 +2,7 @@
 
 > AI + IDE + Idea — 個人用の macOS ネイティブ AI 連携ワークスペース
 
-仕様は [`../docs/specs/SPEC.md`](../docs/specs/SPEC.md)、設計判断は [`../docs/decisions/`](../docs/decisions/) を参照。
+仕様は [`../docs/specs/`](../docs/specs/README.md)、設計判断は [`../docs/decisions/`](../docs/decisions/) を参照。
 
 ## 必要環境
 
@@ -64,4 +64,4 @@ Aidea/Aidea/
 - ファイラの編集系操作 (作成・リネーム・削除・D&D) は未実装
 - Git ビュー / AI チャット / Obsidian 連携は未実装
 - 1 ウィンドウ = 1 プロジェクト固定 (複数同時オープン不可)
-- 詳細は [`../docs/specs/SPEC.md`](../docs/specs/SPEC.md) の「MVP に含まないもの」セクション
+- 未実装機能は GitHub Issues (`enhancement` ラベル) を参照

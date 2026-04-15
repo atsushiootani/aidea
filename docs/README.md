@@ -21,7 +21,7 @@
 - [decisions/README.md](./decisions/README.md) — 設計判断の記録 (ADR)
 - [plans/](./plans/) — 過去・現在の実装計画書 (git 管理外、ローカルのみ)
 
-実装フェーズ / 機能要望は GitHub で管理: **Milestones** (Phase ごと) + **Issues** (`enhancement` ラベル)
+機能要望は GitHub **Issues** (`enhancement` ラベル) で管理
 
 そのほかのドキュメント:
 
