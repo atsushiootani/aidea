@@ -63,5 +63,5 @@ Aidea プロジェクトで使われる用語の定義。
 ## 関連
 
 - [architecture.md](./architecture.md) — 技術スタックとコード構造
-- [session/concept-model.md](./session/concept-model.md) — 5 概念の構造
+- [sessions/concept-model.md](./sessions/concept-model.md) — 5 概念の構造
 - [decisions/](../decisions/README.md) — 設計判断の記録

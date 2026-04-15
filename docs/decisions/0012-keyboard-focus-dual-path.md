@@ -92,4 +92,4 @@ activeSessionID 変更
 
 ## 関連
 - [0011](./0011-cmd-w-via-nsevent-monitor.md) — Cmd+W は NSEvent monitor で横取り (メニュー経路の問題)
-- [boundaries.md](../specs/boundaries.md#タブ--ペイン--ツール操作-グローバルショートカット) — グローバルショートカット一覧
+- [window/shortcuts.md](../specs/window/shortcuts.md) — グローバルショートカット一覧

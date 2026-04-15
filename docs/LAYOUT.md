@@ -19,14 +19,10 @@ docs/
 │   └── NNNN-kebab-title.md
 │
 ├── specs/             # プロダクト仕様 (設計ストック・コードと 1:1 対応)
-│   ├── README.md      # specs 内のインデックス・読む順
+│   ├── README.md      # 内のインデックス・機能群ごとのサブディレクトリ一覧
 │   ├── architecture.md
-│   ├── boundaries.md
 │   ├── glossary.md
-│   ├── backchannels/  # 裏側処理 (読み上げ・VOICEVOX 連携など) の仕様
-│   ├── frontchannel/  # 会話 UI (Scene / Recommend モード等) の仕様
-│   ├── session/       # Session 概念の詳細 (概念モデル・アクティブ切替など)
-│   └── tools/         # claude / git / filer / terminal など各ツール連携の仕様
+│   └── <機能群>/       # backchannels / frontchannels / sessions / tools / window など (→ README.md 参照)
 │
 ├── plans/             # タイムスタンプ付きの実装計画書アーカイブ (git 管理外)
 │   └── plan_YYYYMMDDHHmmss.md
@@ -52,6 +48,7 @@ docs/
 - 拡張子は `.md` (図表のみ `.drawio` / `.svg`)
 - ファイル名・ディレクトリ名は全小文字の kebab-case (例外: ルート直下のメタ文書 `README.md` / `LAYOUT.md`)
 - 日本語ファイル名は使わない (リンク切れ・ツール非対応回避)
+- **ディレクトリ名の単複**: インスタンスが複数あり得るものは複数形 (`tools/` `sessions/` `frontchannels/` `backchannels/` `decisions/` `plans/` `conventions/`)。1 つしか存在しないものは単数形 (`window/` `foundation/`)
 - 1 トピック 1 ファイル。肥大化したらサブディレクトリを切って分割する
 - 新しいサブディレクトリを作ったら本ファイルのツリーと配置ルールを同時に更新する
 
@@ -74,34 +71,20 @@ docs/
 - **命名**: `NNNN-kebab-title.md` (4桁連番)
 - **例**: `0013-session-as-first-class-object.md`
 
+### `docs/specs/` — プロダクト仕様 (設計ストック)
+
+- **用途**: Aidea の**現時点の設計仕様**を記述する。`specs/` + `conventions/` を読めば同等のコードベースが再現できる厳密さを目指す
+- **ストック情報のみ**: scope / MVP / 実装スケジュール / 未実装アイデアなどの**フロー情報は含めない** (それらは GitHub Issues / Milestones で管理)
+- **構成**: トップレベル (`architecture.md` / `glossary.md`) と **機能群ごとのサブディレクトリ**で構成される。現在のサブディレクトリ一覧は [specs/README.md](./specs/README.md) を参照。
+- **新しい機能群を追加するとき**: `specs/<新機能群>/` を切って `README.md` を置き、`specs/README.md` の一覧表に1行追加する (本ファイルの更新は不要)
+- **命名**: kebab-case 全小文字 (`recommend-mode.md` `scene.md`)
+
 ### `docs/plans/` — 実装計画 (git 管理外)
 
 - **用途**: ある時点の実装計画スナップショット。セッション固有の作業メモで、陳腐化しやすいため **`.gitignore` で git 管理から外している**
 - **命名**: `plan_YYYYMMDDHHmmss.md`
 - **例**: `plan_20260414130000.md`
 - **永続化**: 計画から出た重要な設計判断は `docs/decisions/` に ADR として昇格させる (plans 単独では残さない)
-
-### GitHub で管理するもの (docs/ には置かない)
-
-以下は `docs/` 配下で Markdown 管理せず、GitHub 側で扱う。Markdown での二重管理は避ける。
-
-- **個別アイデア・機能要望** → GitHub **Issues** (`enhancement` ラベル)
-- **バグ** → GitHub Issues (`bug` ラベル)
-
-昇格フロー: `Issue (enhancement)` → `docs/specs/` に仕様追記 → 実装 → close。
-永続的にやらないと決めたものは Issue close + `wontfix`、必要なら [specs/boundaries.md](./specs/boundaries.md) の Never セクションに追記する (プロジェクト全体の原則に関わる場合は [foundation/vision.md](./foundation/vision.md) も検討)。
-
-### `docs/specs/` — プロダクト仕様 (設計ストック)
-
-- **用途**: Aidea の**現時点の設計仕様**を記述する。`specs/` + `conventions/` を読めば同等のコードベースが再現できる厳密さを目指す
-- **ストック情報のみ**: scope / MVP / 実装スケジュール / 未実装アイデアなどの**フロー情報は含めない** (それらは GitHub Issues / Milestones で管理)
-- **構成**:
-  - トップレベル: `specs/` 直下 (`architecture.md` / `boundaries.md` / `glossary.md`)
-  - 裏側処理 (読み上げ・音声・非同期処理): `specs/backchannels/`
-  - 会話 UI (Scene / Recommend / 発話フロー): `specs/frontchannel/`
-  - Session 概念の詳細 (概念モデル・アクティブ切替など): `specs/session/`
-  - ツール連携 (claude / git / filer / terminal 等): `specs/tools/`
-- **命名**: kebab-case 全小文字 (`recommend-mode.md` `scene.md`)
 
 ### `docs/conventions/` — コードを書くときの規約
 
@@ -115,6 +98,16 @@ docs/
 - **用途**: プロジェクトルートの `skills/` に配置した agent-skills の入門・解説資料
 - **命名**: kebab-case 全小文字 (`getting-started.md` `skill-anatomy.md`)
 
+### GitHub で管理するもの (docs/ には置かない)
+
+以下は `docs/` 配下で Markdown 管理せず、GitHub 側で扱う。Markdown での二重管理は避ける。
+
+- **個別アイデア・機能要望** → GitHub **Issues** (`enhancement` ラベル)
+- **バグ** → GitHub Issues (`bug` ラベル)
+
+昇格フロー: `Issue (enhancement)` → `docs/specs/` に仕様追記 → 実装 → close。
+永続的にやらないと決めたものは Issue close + `wontfix`、プロダクトとして永続的にやらないなら [foundation/vision.md](./foundation/vision.md) の「やらないこと」、コード実装の禁止パターンなら [conventions/rules.md](./conventions/rules.md) の Never に追記する。
+
 ## インデックス更新の義務
 
 **ファイルを追加・削除・リネームしたら、以下の該当 README を必ず同じコミットで更新する**。
@@ -124,9 +117,10 @@ docs/
 |---|---|---|
 | 本ファイルのツリーに出てくるディレクトリ/代表ファイルを変更 | `docs/LAYOUT.md` (本ファイル) | ツリーとルールを修正 |
 | `docs/foundation/` のファイル追加/削除 | `docs/foundation/README.md` | 一覧表に行を増減 |
-| `docs/specs/` 直下のファイル追加/削除 | `docs/specs/README.md` | 変化頻度表に行を増減 |
+| `docs/specs/` 直下のファイル追加/削除 | `docs/specs/README.md` | 一覧表に行を増減 |
+| `docs/specs/<機能群>/` にサブディレクトリ新設 | `docs/specs/README.md` + 新設したサブディレクトリの `README.md` | 両方に一覧を書く |
+| `docs/specs/<機能群>/` 内のファイル追加/削除 | 該当サブディレクトリの `README.md` | 一覧表に行を増減 |
 | `docs/conventions/` のファイル追加/削除 | `docs/conventions/README.md` | 一覧表に行を増減 |
-| `docs/specs/session/` のファイル追加/削除 | `docs/specs/session/README.md` | 一覧表に行を増減 |
 | `docs/decisions/` に ADR 追加 / 状態変更 / 廃止 | `docs/decisions/README.md` | 一覧表に行追加、状態列を正しく反映 |
 | `docs/plans/` / `specs/` サブディレクトリ / `docs/agent-skills/` | — | インデックス不要 (ディレクトリ単位で参照している) |
 

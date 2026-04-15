@@ -3,8 +3,8 @@
 ファイルを読み取り専用で表示する Tool。Kit や Filer から `SessionRegistry.openPreview(for:title:)` 経由で呼ばれる。
 実装: `Aidea/Sessions/Preview/` と `Aidea/Views/Sessions/Preview/` 配下。
 
-概念モデルは [session/concept-model.md](../session/concept-model.md) / [glossary.md](../glossary.md) を参照。
-共通 UI 規約は [boundaries.md](../boundaries.md#ui-conventions-ui-共通ルール) を参照。
+概念モデルは [sessions/concept-model.md](../sessions/concept-model.md) / [glossary.md](../glossary.md) を参照。
+共通 UI 規約は [sessions/ui-rules.md](../sessions/ui-rules.md) と [window/](../window/README.md) を参照。
 
 ---
 
@@ -34,7 +34,7 @@
 - `SessionRegistry.openPreview(for:title:)` 経由で呼ばれる
 - state.url を更新 → ハンドラが自動判定
 - 既存 Preview に同じ URL がある場合は新規作成せずアクティブ化 (openPreview が dedupe)
-- 詳細は [boundaries.md Preview を開くときの規約](../boundaries.md#preview-を開くときの規約) を参照
+- 詳細は [sessions/active-session.md#preview-を開くときの呼び出し規約](../sessions/active-session.md#preview-を開くときの呼び出し規約) を参照
 
 ### renderMarkdown — Markdown を見やすく表示
 - `.md` / `.markdown` を `MarkdownPreview` で表示

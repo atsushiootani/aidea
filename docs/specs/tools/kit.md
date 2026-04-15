@@ -3,8 +3,8 @@
 Claude の "装備品一式" (Skills / Commands / Agents / MCPs) を 1 つの Tool にまとめたもの。
 実装予定: `Aidea/Sessions/Kit/` と `Aidea/Views/Sessions/Kit/`。
 
-概念モデルは [session/concept-model.md](../session/concept-model.md) / [glossary.md](../glossary.md) を参照。
-全ツール共通の UI 規約は [boundaries.md](../boundaries.md#ui-conventions-ui-共通ルール) を参照。
+概念モデルは [sessions/concept-model.md](../sessions/concept-model.md) / [glossary.md](../glossary.md) を参照。
+全ツール共通の UI 規約は [sessions/ui-rules.md](../sessions/ui-rules.md) と [window/](../window/README.md) を参照。
 
 ---
 
@@ -123,7 +123,7 @@ code-reviewer              inherit      USER
 | **↑ / ↓** | 行選択の上下移動 (セクションまたぎ可) |
 | **Enter** | [openDetail](#opendetail--項目の詳細を開く) |
 | **← / →** | 現在行が属するセクションを折りたたみ/展開 |
-| **Ctrl + P / N / F / B** | [Emacs ライクナビゲーション](../boundaries.md#キーボードナビゲーション-emacs-ライク) (F/B はセクションの展開/折りたたみにマップ) |
+| **Ctrl + P / N / F / B** | [Emacs ライクナビゲーション](../sessions/ui-rules.md#キーボードナビゲーション-emacs-ライク) (F/B はセクションの展開/折りたたみにマップ) |
 | **Ctrl + V / Z** | ページ送り |
 | **Cmd + F** | searchInKit (将来) |
 
@@ -137,7 +137,7 @@ code-reviewer              inherit      USER
 | ダブルクリック | [openDetail](#opendetail--項目の詳細を開く) |
 | セクションヘッダークリック | [toggleSection](#togglesection--セクションの折りたたみ展開) |
 | ヘッダー `+` ボタンクリック | [addResource](#addresource--セクション別の新規追加-ヘッダーの--ボタン) |
-| 右クリック | コンテキストメニュー ([共通ルール](../boundaries.md#右クリックコンテキストメニュー)) |
+| 右クリック | コンテキストメニュー ([共通ルール](../sessions/ui-rules.md#右クリック-コンテキストメニュー)) |
 
 ### コンテキストメニュー項目
 - **プレビューで開く** (Enter)

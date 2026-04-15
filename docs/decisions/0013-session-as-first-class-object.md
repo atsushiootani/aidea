@@ -144,7 +144,7 @@ activeSessionID が変わった
 | `Views/Sessions/Preview/*` | `state.setFocusableView()` → `session.focusableView = ` に変更 |
 | `Services/Workspace/WorkspaceSnapshotManager.swift` | `registry.sessions` を走査して永続化 |
 | `docs/specs/glossary.md` | Session / Tab / focusableView の定義を更新 |
-| `docs/specs/session/concept-model.md` | 概念モデルの図を更新 (旧 `docs/specs/SPEC.md`) |
+| `docs/specs/sessions/concept-model.md` | 概念モデルの図を更新 (旧 `docs/specs/SPEC.md`) |
 
 ### 概念的な変更
 

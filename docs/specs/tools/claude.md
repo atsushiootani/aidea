@@ -2,8 +2,8 @@
 
 Claude Code を自動起動し、Backchannel で Aidea と連携するターミナル Tool。
 
-概念モデルは [session/concept-model.md](../session/concept-model.md) / [glossary.md](../glossary.md) を参照。
-共通 UI 規約は [boundaries.md](../boundaries.md#ui-conventions-ui-共通ルール) を参照。
+概念モデルは [sessions/concept-model.md](../sessions/concept-model.md) / [glossary.md](../glossary.md) を参照。
+共通 UI 規約は [sessions/ui-rules.md](../sessions/ui-rules.md) と [window/](../window/README.md) を参照。
 Backchannel の詳細は [backchannels/backchannel.md](../backchannels/backchannel.md) を参照。
 
 ---

@@ -60,3 +60,15 @@ Vibeyard の Inspect / Flow Recording 機能自体は面白いが、
   - ターミナルで Claude Code を起動して普通に開発できる
   - `~/.claude/skills` などの Claude リソースを GUI で一覧できる
   - WKWebView で localhost プレビューが Safari と同等に動く
+
+---
+
+## やらないこと
+
+プロダクトとして **永続的にやらない** と決めている領域。
+コード実装上のアンチパターンは [../conventions/rules.md#never-決して書かないコードパターン](../conventions/rules.md) を参照。
+
+- ❌ **コードエディタ機能を追加しない** (JetBrains / Neovim 等と併用する前提 — ADR 0002)
+- ❌ **macOS 以外への対応コードを書かない** (macOS 専用と割り切る)
+- ❌ **他人配布を前提とした設定** (公証、Developer ID 署名) を組み込まない
+- ❌ **設定 UI を作り込まない** (JSON / plist 直接編集で済ませる)

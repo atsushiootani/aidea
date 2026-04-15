@@ -3,8 +3,8 @@
 Filer Tool の機能仕様。実装は [`Aidea/Sessions/Filer/`](../../../Aidea/Aidea/Sessions/Filer/) と
 [`Aidea/Views/Sessions/Filer/`](../../../Aidea/Aidea/Views/Sessions/Filer/) 配下。
 
-概念モデルは [session/concept-model.md](../session/concept-model.md) / [glossary.md](../glossary.md) を参照。
-全ツール共通のコンテキストメニュー・ダイアログ規約は [boundaries.md](../boundaries.md#ui-conventions-ui-共通ルール) を参照。
+概念モデルは [sessions/concept-model.md](../sessions/concept-model.md) / [glossary.md](../glossary.md) を参照。
+全ツール共通のコンテキストメニュー・ダイアログ規約は [sessions/ui-rules.md](../sessions/ui-rules.md) と [window/](../window/README.md) を参照。
 
 ---
 
@@ -116,7 +116,7 @@ Filer Tool の機能仕様。実装は [`Aidea/Sessions/Filer/`](../../../Aidea/
 | **Cmd + F** | [searchByName](#searchbyname--ファイル名ディレクトリ名のインクリメンタル検索) |
 | **Esc** | 検索バーが開いていれば閉じる (`searchByName` のキャンセル) |
 | **Shift + ↑ / ↓** | 選択範囲の拡張 (NSOutlineView 標準) |
-| **Ctrl + P / N / F / B** | Emacs ライクナビゲーション ([共通ルール](../boundaries.md#キーボードナビゲーション-emacs-ライク) を参照)。Ctrl+V/Z (ページ送り) は Filer では無効 |
+| **Ctrl + P / N / F / B** | Emacs ライクナビゲーション ([共通ルール](../sessions/ui-rules.md#キーボードナビゲーション-emacs-ライク) を参照)。Ctrl+V/Z (ページ送り) は Filer では無効 |
 
 ---
 

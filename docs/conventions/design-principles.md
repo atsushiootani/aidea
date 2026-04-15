@@ -3,7 +3,7 @@
 Aidea のコードベース全体で常に意識する設計原則。
 個別の判断に迷ったときはここに立ち返る。
 
-[../specs/boundaries.md](../specs/boundaries.md) の Always / Never は「具体的なルール」、
+[rules.md](./rules.md) の Always / Confirm First / Never は「具体的なルール」、
 ここに書かれているのは「ルールの背景にある思想」。
 
 ---
