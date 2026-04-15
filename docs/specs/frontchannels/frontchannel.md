@@ -39,3 +39,11 @@ claudeSessionState.terminalView.send(txt: message + "\r")
 
 ### Never
 - メッセージ内容をアプリ側で加工・変換しない（ユーザーの意図をそのまま Claude に伝える）
+
+---
+
+## 関連ドキュメント
+
+- [../companions/companion.md](../companions/companion.md) — 送信の起点となるコンパニオン UI とストア
+- [../companions/recommend-mode.md](../companions/recommend-mode.md) — Cmd+Enter によるレコメンド選択 UI
+- [scene.md](./scene.md) — レコメンドを解決する Scene キー

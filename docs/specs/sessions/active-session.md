@@ -1,7 +1,7 @@
 # アクティブ Session の仕組み
 
 Window 内で「現在どの Session にフォーカスしているか」を追跡・切替する仕組み。
-Session 概念自体の位置づけは [concept-model.md](./concept-model.md) と [../glossary.md](../glossary.md) を参照。
+Session 概念自体の位置づけは [ui-rules.md#概念モデル](./ui-rules.md#概念モデル) と [../glossary.md](../glossary.md) を参照。
 
 ---
 

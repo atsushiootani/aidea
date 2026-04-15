@@ -3,7 +3,8 @@
 Filer Tool の機能仕様。実装は [`Aidea/Sessions/Filer/`](../../../Aidea/Aidea/Sessions/Filer/) と
 [`Aidea/Views/Sessions/Filer/`](../../../Aidea/Aidea/Views/Sessions/Filer/) 配下。
 
-概念モデルは [sessions/concept-model.md](../sessions/concept-model.md) / [glossary.md](../glossary.md) を参照。
+概念モデルは [sessions/ui-rules.md#概念モデル](../sessions/ui-rules.md#概念モデル) / [glossary.md](../glossary.md) を参照。
+Session 内部状態は [sessions/filer.md](../sessions/filer.md) を参照。
 全ツール共通のコンテキストメニュー・ダイアログ規約は [sessions/ui-rules.md](../sessions/ui-rules.md) と [window/](../window/README.md) を参照。
 
 ---

@@ -3,7 +3,8 @@
 Git の変更差分を閲覧・操作する Tool。変更があるファイルだけをツリー表示し、
 ダブルクリックで GitDiff ツール (左右分割の差分表示) を開く。
 
-概念モデルは [sessions/concept-model.md](../sessions/concept-model.md) / [glossary.md](../glossary.md) を参照。
+概念モデルは [sessions/ui-rules.md#概念モデル](../sessions/ui-rules.md#概念モデル) / [glossary.md](../glossary.md) を参照。
+Session 内部状態は [sessions/git.md](../sessions/git.md) / [sessions/git-diff.md](../sessions/git-diff.md) を参照。
 共通 UI 規約は [sessions/ui-rules.md](../sessions/ui-rules.md) と [window/](../window/README.md) を参照。
 
 ---

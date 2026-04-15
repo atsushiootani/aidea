@@ -160,4 +160,4 @@ Claude → Aidea 方向の通信は**ファイル経由**で行う。
 - [architecture.md](./architecture.md) — 全体のアーキテクチャ
 - [backchannels/](./backchannels/README.md) — 通信チャネル (Claude → Aidea) の詳細
 - [frontchannels/](./frontchannels/README.md) — 通信チャネル (Aidea → Claude) の詳細
-- [sessions/concept-model.md](./sessions/concept-model.md) — Session 概念
+- [sessions/ui-rules.md#概念モデル](./sessions/ui-rules.md#概念モデル) — Session 概念

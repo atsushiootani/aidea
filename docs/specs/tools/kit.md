@@ -3,7 +3,8 @@
 Claude の "装備品一式" (Skills / Commands / Agents / MCPs) を 1 つの Tool にまとめたもの。
 実装予定: `Aidea/Sessions/Kit/` と `Aidea/Views/Sessions/Kit/`。
 
-概念モデルは [sessions/concept-model.md](../sessions/concept-model.md) / [glossary.md](../glossary.md) を参照。
+概念モデルは [sessions/ui-rules.md#概念モデル](../sessions/ui-rules.md#概念モデル) / [glossary.md](../glossary.md) を参照。
+Session 内部状態は [sessions/kit.md](../sessions/kit.md) を参照。
 全ツール共通の UI 規約は [sessions/ui-rules.md](../sessions/ui-rules.md) と [window/](../window/README.md) を参照。
 
 ---

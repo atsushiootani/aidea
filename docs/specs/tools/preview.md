@@ -3,7 +3,8 @@
 ファイルを読み取り専用で表示する Tool。Kit や Filer から `SessionRegistry.openPreview(for:title:)` 経由で呼ばれる。
 実装: `Aidea/Sessions/Preview/` と `Aidea/Views/Sessions/Preview/` 配下。
 
-概念モデルは [sessions/concept-model.md](../sessions/concept-model.md) / [glossary.md](../glossary.md) を参照。
+概念モデルは [sessions/ui-rules.md#概念モデル](../sessions/ui-rules.md#概念モデル) / [glossary.md](../glossary.md) を参照。
+Session 内部状態は [sessions/preview.md](../sessions/preview.md) を参照。
 共通 UI 規約は [sessions/ui-rules.md](../sessions/ui-rules.md) と [window/](../window/README.md) を参照。
 
 ---

@@ -1,8 +1,9 @@
-# Frontchannel: レコメンドモード
+# レコメンドモード
 
 > Cmd+Enter でコンパニオンにレコメンドプロンプトを提示し、選択・送信する UI
 
-[frontchannel.md](./frontchannel.md) の UI 仕様。
+コンパニオンに [../frontchannels/frontchannel.md](../frontchannels/frontchannel.md) 経由でプロンプトを送る上位 UI。
+コンパニオン本体は [companion.md](./companion.md) を参照。
 
 ---
 
@@ -98,14 +99,29 @@ protocol RecommendProvider {
 
 ## 状態管理
 
-CompanionStore に以下を追加:
+レコメンドモードの状態は `RecommendState` が持つ (@Observable)。
 
 ```swift
-var isRecommendMode: Bool = false
-var selectedCompanionIndex: Int = 0
-var selectedPromptIndex: Int = 0
-var recommendedPrompts: [String] = []
+@Observable
+final class RecommendState {
+    var isActive: Bool              // レコメンドモード中か
+    var selectedCompanionIndex: Int // 選択中のコンパニオン
+    var selectedPromptIndex: Int    // 選択中のプロンプト
+    var prompts: [String]           // 現在表示中のプロンプト一覧
+}
 ```
+
+### 実装コンポーネント
+
+| 型 | ファイル | 責務 |
+|---|---|---|
+| `RecommendState` | `Services/Frontchannel/RecommendState.swift` | レコメンドモードのランタイム状態。`activate / deactivate` と `moveUp/Down/Left/Right` でプロンプト・コンパニオン選択をループ移動させる |
+| `RecommendStore` | `Services/Frontchannel/RecommendStore.swift` | `.aidea/recommends.json` への永続化 (`enum` の static API)。Scene キーから `SceneConfig` を解決 |
+| `SceneConfig` | `Services/Frontchannel/RecommendStore.swift` | Scene ごとの `prompts: [String]` と `defaultCompanionIndex: Int` を保持する Codable |
+| `RecommendProvider` | 各 `SessionState` で準拠 | 現在の状態に応じた最大 3 つのプロンプトを返すプロトコル |
+
+Scene キー (`"git:prPreview"` `"git:workingChanges"` 等) は各 SessionState が文脈に応じて生成し、
+`RecommendStore.resolve(scene:defaults:)` で「永続化 > デフォルト > 空」の順で解決される。
 
 ---
 

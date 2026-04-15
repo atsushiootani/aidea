@@ -19,7 +19,7 @@ Aidea プロジェクトで使われる用語の定義。
 | **Tab** | ペイン内の表示切替単位。1 つの Session を参照する。タブヘッダに表示される |
 | **TabSlot** | タブバー上の挿入位置。タブとタブの間、および両端に配置される。タブが N 個あるとき TabSlot は N+1 個存在し、ドラッグ&ドロップで Session を移動/並び替えするときの drop destination になる。ホバー時にアクセントカラーの縦線で可視化 |
 | **Session** | 1 つの実体。Window 全体で一意の `SessionID` を持ち、独立した状態 (`SessionState`) を保持する。ペイン移動で状態は失われない |
-| **Tool** | 機能の種別を表す enum (`filer` / `skills` / `commands` / `mcps` / `terminal` / `web` / `preview`)。Tool そのものは状態を持たない |
+| **Tool** | 機能の種別を表す enum (`filer` / `kit` / `terminal` / `claude` / `web` / `preview` / `git` / `gitDiff`)。Tool そのものは状態を持たない。複数の Session が同じ Tool を共有しうる |
 
 ## Session 関連
 
@@ -33,15 +33,16 @@ Aidea プロジェクトで使われる用語の定義。
 
 ## Tool 種別
 
-| ID | 内容 |
-|---|---|
-| `filer` | ファイラ (NSOutlineView ベース)。**Window 全体で 1 つだけ**のシングルトン |
-| `skills` | `~/.claude/skills/` と `<project>/.claude/skills/` の Skill 一覧 |
-| `commands` | 同上 commands |
-| `mcps` | `~/.claude.json` の mcpServers 一覧 |
-| `terminal` | SwiftTerm ベースの PTY ターミナル |
-| `web` | WKWebView ベースの Web ブラウザ |
-| `preview` | ファイルプレビュー。テキストは NSTextView、画像は NSImage |
+| ID | 内容 | 制約 |
+|---|---|---|
+| `filer` | ファイラ (NSOutlineView ベース) | **シングルトン** (Window 全体で 1 つだけ) |
+| `kit` | Claude Code エコシステムの装備品一式 (Agents / Skills / Commands / MCPs) を 1 つのペインに束ねた Tool | — |
+| `terminal` | SwiftTerm ベースの PTY ターミナル | — |
+| `claude` | Claude CLI を自動起動するターミナル + Backchannel 連携 (コンパニオンが紐付く) | — |
+| `web` | WKWebView ベースの Web ブラウザ | — |
+| `preview` | ファイルプレビュー。テキストは NSTextView、画像は NSImage、drawio は WebView | — |
+| `git` | ステージ/コミット/ブランチ UI | **シングルトン** (Window 全体で 1 つだけ) |
+| `gitDiff` | Git ツールから開く差分ビュー (diff2html) | `+` メニューからは追加不可、Git ツール経由で開く |
 
 ## アーキテクチャ用語
 
@@ -63,5 +64,5 @@ Aidea プロジェクトで使われる用語の定義。
 ## 関連
 
 - [architecture.md](./architecture.md) — 技術スタックとコード構造
-- [sessions/concept-model.md](./sessions/concept-model.md) — 5 概念の構造
+- [sessions/ui-rules.md#概念モデル](./sessions/ui-rules.md#概念モデル) — 5 概念の構造
 - [decisions/](../decisions/README.md) — 設計判断の記録

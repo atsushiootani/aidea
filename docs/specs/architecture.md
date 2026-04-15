@@ -77,7 +77,7 @@ Swift + SwiftUI + WKWebView を採用。決め手は「WKWebView が本物の Sa
   - 主に claude tool が利用するが、構造軸とは独立した横断軸
 
 各機能群の個別仕様は [README.md](./README.md) の一覧、
-Session 概念の詳細は [sessions/concept-model.md](./sessions/concept-model.md) を参照。
+Session 概念の詳細は [sessions/ui-rules.md#概念モデル](./sessions/ui-rules.md#概念モデル) を参照。
 
 ---
 
@@ -121,6 +121,18 @@ Views → Sessions → Services → Models
 - 非アクティブ Tab は `opacity(0)` + `allowsHitTesting(false)` で隠す
   → NSView が superview から外れないので **Terminal の PTY バッファ / WKWebView の状態が失われない**
 
+### 主要コンポーネント
+
+| 型 | 種別 | 責務 |
+|---|---|---|
+| `SplitLayoutView` | `NSViewControllerRepresentable` | `LayoutConfig` のツリーを再帰的に `NSSplitViewController` に展開し、ツリー構造が変わるたびに root controller を差し替える |
+| `LayoutContainerViewController` | `NSViewController` | SwiftUI 側から子 `NSViewController` を丸ごと差し替えられるコンテナ (`childController` の set で旧 controller を外して新 view を貼る) |
+| `PaneView` | SwiftUI View | 1 つの物理ペインを表し、タブバー + ZStack で Session View を束ねる。分割ボタン・追加メニュー・ドラッグによるタブ移動もここ |
+| `TabSlotView` | SwiftUI View | タブ間の挿入位置を表す 8px 幅のドロップターゲット。`SessionID` をドロップすると `SessionRegistry.moveSession` を呼ぶ |
+
+- レイアウトツリー (`LayoutNode`) の構造変化は `SplitLayoutView.signature(of:)` の文字列比較で検知し、差分があるときだけ再構築する
+- 分割ディバイダ位置は `NSSplitView.autosaveName` に `Aidea.split.<node.id>` を設定して AppKit が自動保存する
+
 具体的なウィンドウレイアウト・グローバルショートカットは [window/](./window/README.md) を参照。
 
 ---
@@ -148,5 +160,5 @@ UserDefaults / Keychain / `<projectRoot>/.aidea/` の 3 つに保存される。
 - [../foundation/vision.md](../foundation/vision.md) — 動機・原則
 - [../conventions/](../conventions/README.md) — コーディング規約
 - [glossary.md](./glossary.md) — 用語集
-- [sessions/concept-model.md](./sessions/concept-model.md) — UI 5 階層 (Window/Pane/Tab/Session/Tool)
+- [sessions/ui-rules.md#概念モデル](./sessions/ui-rules.md#概念モデル) — UI 5 階層 (Window/Pane/Tab/Session/Tool)
 - [../decisions/](../decisions/README.md) — 設計判断記録

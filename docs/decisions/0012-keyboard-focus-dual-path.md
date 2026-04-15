@@ -3,6 +3,11 @@
 **日付**: 2026-04-10
 **状態**: 採用
 
+> **Note**: [ADR 0013](./0013-session-as-first-class-object.md) で進化する予定。
+> `focusableView` の保持先を `SessionState` から `Session` (first-class object) に移し、
+> 判断基準も「Tool 種別」から「`focusableView` の有無」に変更する。
+> 0013 が「提案」段階の間は本 ADR が現行方針。
+
 ## 背景
 Aidea の Session は 2 種類の UI 基盤で実装されている:
 

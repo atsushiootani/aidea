@@ -7,6 +7,34 @@ Window 全体のルールは [../window/](../window/README.md) を参照。
 
 ---
 
+## 概念モデル
+
+Aidea の UI は **Window / Pane / Tab / Session / Tool** という 5 つの概念で構成される。
+
+```
+Window
+ └─ Pane (リサイズ可能な物理区画。HSplitView/VSplitView でツリー状)
+     └─ Tab (ペイン内の表示切替単位。1 つの Session を参照する)
+         └─ Session (1 つの実体。Window 全体で一意。状態を持つ)
+              └─ Tool (機能種別。複数の Session が同じ Tool を共有しうる)
+```
+
+用語の定義は [../glossary.md](../glossary.md) を参照。
+アクティブ Session の切替・履歴・Filer ダブルクリック時の挙動は [active-session.md](./active-session.md) を参照。
+各 Tool の `SessionState` 実装は本ディレクトリの per-tool ファイル ([filer.md](./filer.md) / [kit.md](./kit.md) / [terminal.md](./terminal.md) / [claude.md](./claude.md) / [web.md](./web.md) / [preview.md](./preview.md) / [git.md](./git.md) / [git-diff.md](./git-diff.md)) を参照。
+
+### シングルトン制約
+
+以下の Tool は Window 全体で **1 つだけ** に制限される (`PaneView` の `+` メニューで条件付き非表示)。
+
+- **`filer`** — ファイラは Window につき 1 つ
+- **`git`** — Git ツールも Window につき 1 つ
+
+`gitDiff` は `+` メニューに載らず、Git ツール経由で開く。
+その他の Tool (`kit` / `terminal` / `claude` / `web` / `preview`) は同一 Window 内に複数インスタンス可。
+
+---
+
 ## 右クリック・コンテキストメニュー
 
 - **各 Session は、そのツールの主要機能を右クリックで呼び出せるようにする**

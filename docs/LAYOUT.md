@@ -23,7 +23,7 @@ docs/
 │   ├── architecture.md
 │   ├── persistence.md
 │   ├── glossary.md
-│   └── <機能群>/       # backchannels / frontchannels / sessions / tools / window など (→ README.md 参照)
+│   └── <機能群>/       # backchannels / frontchannels / companions / sessions / tools / window など (→ README.md 参照)
 │
 ├── plans/             # タイムスタンプ付きの実装計画書アーカイブ (git 管理外)
 │   └── plan_YYYYMMDDHHmmss.md
@@ -49,7 +49,7 @@ docs/
 - 拡張子は `.md` (図表のみ `.drawio` / `.svg`)
 - ファイル名・ディレクトリ名は全小文字の kebab-case (例外: ルート直下のメタ文書 `README.md` / `LAYOUT.md`)
 - 日本語ファイル名は使わない (リンク切れ・ツール非対応回避)
-- **ディレクトリ名の単複**: インスタンスが複数あり得るものは複数形 (`tools/` `sessions/` `frontchannels/` `backchannels/` `decisions/` `plans/` `conventions/`)。1 つしか存在しないものは単数形 (`window/` `foundation/`)
+- **ディレクトリ名の単複**: インスタンスが複数あり得るものは複数形 (`tools/` `sessions/` `frontchannels/` `backchannels/` `companions/` `decisions/` `plans/` `conventions/`)。1 つしか存在しないものは単数形 (`window/` `foundation/`)
 - 1 トピック 1 ファイル。肥大化したらサブディレクトリを切って分割する
 - 新しいサブディレクトリを作ったら本ファイルのツリーと配置ルールを同時に更新する
 
