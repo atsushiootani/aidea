@@ -57,3 +57,15 @@ Filer でファイルをダブルクリックすると Preview Session を新規
 4. Preview タブが配置されるペインは以下のルールで決まる:
    - アクティブ履歴を新しい順にたどり、呼び出し元ペイン **以外** に属していた最新 Session のペインに配置
    - 該当がなければ呼び出し元ペイン以外の最初のペインにフォールバック
+
+### Preview 内から Preview を開く場合 (sibling 配置)
+
+Preview 内のリンククリックや翻訳ボタンから別のファイルを開く場合は `SessionRegistry.openPreviewAsSibling(for:title:)` を使う。`openPreview` とは配置ルールが異なる:
+
+- **同じペインの呼び出し元タブの右隣**に新しい Preview タブを挿入する
+- 同じ URL の Preview が既に存在する場合は dedupe (新規作成せずアクティブ化)
+- 呼び出し元ペインが特定できない場合は `openPreview` にフォールバック
+
+利用箇所:
+- `MarkdownContainer` — Markdown 内のリンククリック / 翻訳版の表示
+- `PreviewSessionView` — テキストファイルの翻訳版の表示

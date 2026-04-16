@@ -19,11 +19,12 @@ Backchannel の詳細は [../backchannels/backchannel.md](../backchannels/backch
 ```
 1. zsh -c "cd '{projectRoot}' && exec zsh -l" で対話シェルを起動
 2. +1.0s: send("claude\n") で Claude CLI を起動
-3. +5.0s: send("{Backchannel 指示}\r") で .aidea/claude/aidea.md 読み込みを指示
-4. companionPrompt があれば続けて送信
+3. +5.0s: send("{companionPrompt}\r") でコンパニオンの initialPrompt を送信
 ```
 
-ADR 0008 により、非対話シェルから直接 `claude` を exec せず、**対話シェル内で `send()`** する。
+- companionPrompt が空の場合はステップ 3 をスキップ
+- デフォルトの initialPrompt は `".aidea/claude/aidea.md と .aidea/claude/speech.md を読んで従ってね"`
+- ADR 0008 により、非対話シェルから直接 `claude` を exec せず、**対話シェル内で `send()`** する。
 
 ## コンパニオンとの紐付け
 

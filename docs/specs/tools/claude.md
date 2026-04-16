@@ -54,19 +54,20 @@ Backchannel の詳細は [backchannels/backchannel.md](../backchannels/backchann
 |---------|------|------|
 | zsh 起動 | 0s | PTY プロセス開始 |
 | claude 送信 | +1.0s | `claude\n` を PTY に送信 |
-| Backchannel 指示 | +5.0s | `.aidea/claude/aidea.md を読んで...` を送信 |
+| companionPrompt 送信 | +5.0s | コンパニオンの `initialPrompt` を PTY に送信 |
 
 - `send()` は PTY にキー入力を送るため、対話シェル内での手入力と同等
 - ADR 0008 の非対話シェル問題を回避
+- companionPrompt が空の場合はステップ 3 をスキップ
 
 ---
 
 ## Backchannel 連携
 
-Claude ツールは起動時に以下を自動で行う:
+コンパニオンの `initialPrompt` が `.aidea/claude/` 配下のファイルを読むよう指示することで Backchannel 機能を有効化する。デフォルトの `initialPrompt` は `".aidea/claude/aidea.md と .aidea/claude/speech.md を読んで従ってね"`。
 
-1. `.aidea/claude/aidea.md` が存在することを確認（BackchannelSetup が生成済み）
-2. Claude に aidea.md の読み込みを指示
+1. BackchannelSetup が `.aidea/claude/aidea.md` と `speech.md` を Bundle からコピー済み
+2. companionPrompt 送信により Claude がこれらのファイルを読む
 3. 以降 Claude が `.aidea/backchannels/speech-{timestamp}.txt` にレスポンス要約を書き出す
 4. Aidea の SpeechWatcher が検知して VOICEVOX で読み上げ
 
@@ -78,7 +79,7 @@ Claude ツールは起動時に以下を自動で行う:
 
 | キー | アクション |
 |------|-----------|
-| `Cmd+8` | Claude ツールにフォーカス（複数あれば循環） |
+| `Cmd+Option+8` | Claude ツールにフォーカス（複数あれば循環） |
 
 ---
 
@@ -86,7 +87,7 @@ Claude ツールは起動時に以下を自動で行う:
 
 ### Always
 - 対話シェル内で `send()` により claude を起動する（非対話シェルからの exec ではない）
-- Backchannel 指示は `.aidea/claude/aidea.md` を読むよう Claude に伝える形で行う
+- Backchannel 指示はコンパニオンの `initialPrompt` 経由で `.aidea/claude/*.md` を読むよう Claude に伝える形で行う
 - PersistentTerminalView は Terminal ツールと共用する
 
 ### Never

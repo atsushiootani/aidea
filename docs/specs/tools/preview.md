@@ -22,7 +22,7 @@ Session 内部状態は [sessions/preview.md](../sessions/preview.md) を参照�
 |---|---|---|
 | `.md` / `.markdown` | `MarkdownPreview` (軽量 SwiftUI パーサ) | 実装済 |
 | `.png` `.jpg` `.jpeg` `.gif` `.heic` `.webp` `.bmp` | `NSImage` + `Image(nsImage:)` | 実装済 |
-| `.drawio.svg` / `.drawio` | `DrawioPreview` (後述) | 未実装 |
+| `.drawio.svg` / `.drawio` | `DrawioPreview` (後述) | 実装済 |
 | テキスト全般 (バイナリ判定で NUL を含まない) | `NSTextPreview` (NSTextView ラッパ) | 実装済 |
 | サイズ > 1MB | "ファイルが大きすぎます" メッセージ | 実装済 |
 | バイナリ (NUL を含む) | "プレビュー非対応のバイナリ" メッセージ | 実装済 |
@@ -42,10 +42,42 @@ Session 内部状態は [sessions/preview.md](../sessions/preview.md) を参照�
 - 見出し (`# ~ ####`) / コードブロック / 箇条書き / 水平線 / frontmatter / インライン (bold・italic・リンク・`code`) をサポート
 - 外部依存なし (SwiftUI `Text(.init(String))` のネイティブ Markdown に委譲)
 
+### translateToJapanese — 英語ドキュメントの日本語翻訳
+
+英語の Markdown / テキストファイルを Claude API で日本語に翻訳し、`.aidea/ja/` にキャッシュする。
+
+#### フロー
+
+1. `LanguageDetector` が先頭 1000 文字をサンプルし英語と判定 → 右上に「日本語」ボタンを表示
+2. ボタン押下 → `TranslationService` が `TranslationCache` でキャッシュの有無と鮮度 (mtime 比較) を確認
+3. キャッシュが新鮮ならそのまま表示。古い or 無ければ Claude API で翻訳
+4. `ClaudeTranslator` が `claude-haiku-4-5-20251001` に翻訳リクエスト (Markdown 構造・コード識別子は保持)
+5. 翻訳結果を `.aidea/ja/<相対パス>/<filename>` に保存
+6. 翻訳版を sibling タブで開く (タイトルに「(日本語)」付与)
+
+#### API キー設定
+
+- Anthropic API キーを **macOS Keychain** に保存 (サービス: `com.aidea.anthropic-api-key`)
+- 初回翻訳時またはメニュー「Aidea → API キー設定...」で NSSecureTextField ダイアログを表示
+
+#### 実装ファイル
+
+| ファイル | 役割 |
+|---|---|
+| `Services/Translation/TranslationService.swift` | キャッシュ確認 → API 呼び出し → 保存のオーケストレーション |
+| `Services/Translation/ClaudeTranslator.swift` | Claude API (URLSession) との通信、API キー管理 |
+| `Services/Translation/TranslationCache.swift` | `.aidea/ja/` のキャッシュ管理、mtime 鮮度判定 |
+| `Services/Translation/LanguageDetector.swift` | NLLanguageRecognizer による英語判定 |
+
+#### UI 表示箇所
+
+- `MarkdownContainer` — Markdown 表示時の右上フローティングボタン
+- `PreviewSessionView` — テキストファイル表示時の翻訳ボタン
+
 ### renderImage — 画像表示
 - 対応拡張子を `NSImage` でロードして `ScrollView` + `Image(nsImage:)` で表示
 
-### renderDrawio — drawio 図の表示・編集 (新規・将来実装)
+### renderDrawio — drawio 図の表示・編集
 
 drawio ファイル (`.drawio.svg` / `.drawio`) を **プレビューと編集の 2 モード**で扱う。
 Obsidian の drawio プラグインと同等の UX を目指す。
@@ -81,8 +113,8 @@ Obsidian の drawio プラグインと同等の UX を目指す。
 | キー | 機能 |
 |---|---|
 | **Ctrl + P / N / F / B / V / Z** | テキスト/Markdown 表示時はスクロール、drawio は drawio 側に任せる |
-| **Cmd + E** | drawio ファイル表示時に編集モードへトグル (将来) |
-| **Esc** | drawio 編集モードをキャンセルしてプレビューへ戻る (将来) |
+| **Cmd + E** | drawio ファイル表示時に編集モードへトグル |
+| **Esc** | drawio 編集モードをキャンセルしてプレビューへ戻る |
 
 ---
 
@@ -94,16 +126,15 @@ Obsidian の drawio プラグインと同等の UX を目指す。
 - [x] 画像ファイルを NSImage で表示
 - [x] `.md` ファイルを Markdown としてレンダリング
 
-### 新規 (drawio)
-- [ ] `.drawio.svg` ファイルを Preview Session で開くと静的な図が表示される
-- [ ] 右上に `✎ Edit` ボタンが表示される
-- [ ] Edit ボタン押下で drawio エディタ (embed.diagrams.net) が同じペイン内に表示される
-- [ ] 既存の XML がエディタにロードされる
-- [ ] エディタ上で編集できる
-- [ ] 保存ボタンで元ファイルに書き戻し、プレビューモードに戻る
-- [ ] FSEvents でファイラが更新を検知する (filer のツリーで確認可)
-- [ ] キャンセルボタンで編集内容を破棄
-- [ ] `.drawio` (純 XML) もサポート (Phase 2 で対応でも可)
+### drawio (実装済)
+- [x] `.drawio.svg` ファイルを Preview Session で開くと静的な図が表示される
+- [x] 右上に `✎ Edit` ボタンが表示される
+- [x] Edit ボタン押下で drawio エディタ (embed.diagrams.net) が同じペイン内に表示される
+- [x] 既存の XML がエディタにロードされる
+- [x] エディタ上で編集できる
+- [x] 保存ボタンで元ファイルに書き戻し、プレビューモードに戻る
+- [x] キャンセルボタンで編集内容を破棄
+- [x] `.drawio` (純 XML) もサポート (`DrawioStaticView` が `embed.diagrams.net` chrome=0 でレンダリング)
 
 ---
 
@@ -113,18 +144,10 @@ Obsidian の drawio プラグインと同等の UX を目指す。
 - `PreviewSessionState.url: URL?` `title: String?` を保持
 - `PreviewSessionView` が state.url の拡張子を見て SwiftUI 分岐
 
-### drawio 実装予定
-- `Views/Sessions/Preview/DrawioPreview.swift` を新規追加
-  - `mode: .view | .edit` をローカル `@State` で持つ
-  - `.view` のとき: `Image(nsImage: NSImage(contentsOf: url))` + Edit ボタン
-  - `.edit` のとき: `DrawioEditor` (WKWebView ラッパ) + 保存/キャンセルボタン
-- `Views/Sessions/Preview/DrawioEditor.swift` を新規追加
-  - `WKWebView` を `NSViewRepresentable` でラップ
-  - `WKScriptMessageHandler` で drawio からの postMessage を受信
-  - `evaluateJavaScript` で drawio に JSON コマンドを送信
-  - drawio の init イベント受信後に load コマンドで XML を注入
-  - save イベント受信で `FileManager.default.write` or `String.write(to:atomically:encoding:)` でファイル書き戻し
-- `PreviewSessionView` の switch に `.drawio.svg` / `.drawio` 分岐を追加
+### drawio 実装ファイル
+- `Views/Sessions/Preview/DrawioPreview.swift` — View/Edit モード切替、保存/キャンセル UI
+- `Views/Sessions/Preview/DrawioStaticView.swift` — `.drawio.svg` の静的表示 / `.drawio` の chrome=0 レンダリング
+- `Views/Sessions/Preview/DrawioEditor.swift` — `embed.diagrams.net` embed mode の WKWebView ラッパ、postMessage プロトコル仲介
 
 ### 依存追加の有無
 - **外部依存追加なし** (embed.diagrams.net をオンラインで使用、WebKit は既に使用中)

@@ -219,11 +219,10 @@ issue #26 では 2 つの Tool が必要:
 ```
 Models/Git/
   GitChangedFile.swift       // ステータス (M/A/D/R) + パス + ツリーノード
-  GitDiffContent.swift       // diff 出力テキスト + メタデータ
+  GitFileTreeNode.swift      // ディレクトリ/ファイルのツリー構造ノード
 
 Services/Git/
   GitService.swift           // Process で git コマンド実行
-  GitChangesLoader.swift     // diff --name-status → [GitChangedFile]
 
 Sessions/Git/
   GitSessionState.swift      // モード + 変更ファイル一覧

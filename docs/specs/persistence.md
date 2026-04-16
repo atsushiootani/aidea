@@ -49,7 +49,7 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 ```
 
 - `projectRoot` が変わるたびに `ensureAideaDirectory()` が `.aidea/` と `.aidea/ja/` を生成し、**プロジェクトの `.gitignore` に `.aidea/` を自動追記** する
-- `.aidea/claude/*.md` は初回のみ Bundle リソースから `BackchannelSetup.setup()` が複製する
+- `.aidea/claude/*.md` と `.aidea/backchannels/` は初回のみ `BackchannelSetup.setup()` が作成・複製する
 
 ---
 
@@ -104,7 +104,7 @@ Claude → Aidea 方向の通信は**ファイル経由**で行う。
 
 ```
 1. Claude 起動時
-   └─ コンパニオンの initialPrompt が .aidea/claude/speech.md を読ませる
+   └─ コンパニオンの initialPrompt が .aidea/claude/aidea.md と speech.md を読ませる
 
 2. Claude がレスポンス末尾で以下を実行:
    └─ .aidea/backchannels/speech-{timestamp}.txt に要約テキストを書き出す
