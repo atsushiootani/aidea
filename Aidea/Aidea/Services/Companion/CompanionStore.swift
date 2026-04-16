@@ -132,7 +132,7 @@ final class CompanionStore {
         return CompanionConfig(
             name: "Companion \(index + 1)",
             icon: icon,
-            initialPrompt: ".aidea/claude/speech.md を読んで読み上げを有効にしてね"
+            initialPrompt: ".aidea/claude/aidea.md と .aidea/claude/speech.md を読んで従ってね"
         )
     }
 
