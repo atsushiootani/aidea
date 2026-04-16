@@ -1,40 +1,20 @@
 # Architecture
 
-Aidea の技術スタックとコード構造。動的な仕様は [SPEC.md](./SPEC.md) を参照。
+Aidea の技術スタックとコード構造。動機と原則は [../foundation/vision.md](../foundation/vision.md) を参照。
 
-## 技術スタック
-
-```
-┌─────────────────────────────────────────────────┐
-│ UI Layer                                        │
-│   SwiftUI + AppKit (NSViewRepresentable)        │
-├─────────────────────────────────────────────────┤
-│ Sessions (7 Tool kinds)                         │
-│   Filer / Skills / Commands / MCPs              │
-│   Terminal / Web / Preview                      │
-├─────────────────────────────────────────────────┤
-│ Services                                        │
-│   Loaders (Skills/Commands/MCPs)                │
-│   Filer (FileTree + FSEvents watcher)           │
-│   WorkspaceState + LayoutConfig                 │
-├─────────────────────────────────────────────────┤
-│ Platform                                        │
-│   macOS 15+ (Sequoia) / Swift 5.9+ / Xcode 16+  │
-└─────────────────────────────────────────────────┘
-```
+---
 
 ## プラットフォーム
 
 - **macOS 15 (Sequoia) 以上**
 - **Swift 5.9+**
 - **Xcode 16+**
-- `if #available` による 15 未満への分岐は書かない
+- `if #available` による 15 未満への分岐は書かない ([../conventions/rules.md](../conventions/rules.md#never-決して書かないコードパターン))
 
 ## フレームワーク
 
 - **SwiftUI** — UI の主体
-- **AppKit** — `NSViewRepresentable` / `NSViewControllerRepresentable` 経由で
-  `WKWebView` / `SwiftTerm` / `NSOutlineView` / `NSTextView` をラップ
+- **AppKit** — `NSViewRepresentable` / `NSViewControllerRepresentable` 経由で `WKWebView` / `SwiftTerm` / `NSOutlineView` / `NSTextView` をラップ
 - **WebKit** — `WKWebView`、`isInspectable = true`
 - **CoreServices** — `FSEventStream` でファイルシステム監視
 - **Observation** — `@Observable` マクロで State 管理
@@ -46,86 +26,79 @@ Aidea の技術スタックとコード構造。動的な仕様は [SPEC.md](./S
 |---|---|---|
 | [SwiftTerm](https://github.com/migueldeicaza/SwiftTerm) | PTY + 端末 UI | MIT |
 
-**SwiftTerm 1 個のみ**。他はすべて Apple 標準で代用する (ADR 0006)。
+**SwiftTerm 1 個のみ**。他はすべて Apple 標準で代用する ([ADR 0006](../decisions/0006-only-swiftterm-dependency.md))。
 
-## なぜ Swift + SwiftUI
+## 技術選定の根拠
 
-| 方式 | ブラウザ挙動 | 実装コスト | macOS 統合 | 採否 |
-|---|---|---|---|---|
-| Electron + TS + React | ✗ `<webview>` 問題 | 低 | 低 | ✗ |
-| Tauri + Rust | ✗ WebView 埋込弱い | 中 | 中 | ✗ |
-| **Swift + SwiftUI** | **◎ WKWebView=Safari** | **中** | **◎** | **✓** |
-| Flutter Desktop | ✗ PTY/WebView 未成熟 | 中 | 低 | ✗ |
-| Zed 方式 (Rust GPU) | ◎ | 激高 | ◎ | ✗ (個人には重い) |
+Swift + SwiftUI + WKWebView を採用。決め手は「WKWebView が本物の Safari エンジンで Geolocation / OAuth が OS の権限システムで自然に動く」点と、macOS only と割り切れる点。詳細と代替案との比較は [ADR 0001](../decisions/0001-swift-swiftui.md) を参照。
 
-**決め手**: WKWebView が本物の Safari エンジン、macOS only と割り切れる、`Process` / `URLSession` / `FileManager` で外部連携が自然。詳細は [ADR 0001](../decisions/0001-swift-swiftui.md)。
+---
 
-## プロジェクト構造
+## 機能群の関係
+
+`specs/` のサブディレクトリは機能群を表す。関係性は以下のとおり。
 
 ```
-Aidea/Aidea/
-├─ App/
-│   └─ AideaApp.swift              // @main エントリ + メニュー定義
-│
-├─ Tools/
-│   └─ Tool.swift                  // Tool enum, SessionID, SessionState protocol
-│
-├─ Sessions/                       // Session 実体の状態と管理
-│   ├─ SessionRegistry.swift       // activeSessionID / activeHistory の管理
-│   ├─ Filer/FilerSessionState.swift
-│   ├─ Skills/SkillsSessionState.swift
-│   ├─ Commands/CommandsSessionState.swift
-│   ├─ Mcps/McpsSessionState.swift
-│   ├─ Terminal/TerminalSessionState.swift   // LocalProcessTerminalView キャッシュ
-│   ├─ Web/WebSessionState.swift             // WKWebView キャッシュ
-│   └─ Preview/PreviewSessionState.swift
-│
-├─ Services/                       // 副作用層
-│   ├─ Workspace/
-│   │   ├─ WorkspaceState.swift    // projectRoot の管理
-│   │   └─ LayoutConfig.swift      // 4 ペイン Pane 集合
-│   ├─ Filer/
-│   │   ├─ FileTreeLoader.swift    // ディレクトリ走査
-│   │   └─ FileWatcher.swift       // FSEventStream ラッパ
-│   ├─ Skills/SkillsLoader.swift
-│   ├─ Commands/CommandsLoader.swift
-│   └─ Mcps/McpLoader.swift
-│
-├─ Models/                         // データモデル (Tool 別サブディレクトリ)
-│   ├─ Filer/FileTreeNode.swift
-│   ├─ Skills/Skill.swift          // ResourceScope enum も含む
-│   ├─ Commands/Command.swift
-│   └─ Mcps/McpServer.swift
-│
-├─ Views/
-│   ├─ Layout/
-│   │   ├─ ContentView.swift       // ルート (4 ペイン分割)
-│   │   └─ PaneView.swift          // 1 ペインの容器 (タブバー + 中身の ZStack)
-│   ├─ Sessions/                   // Session の SwiftUI ビュー
-│   │   ├─ Filer/FilerSessionView.swift   // NSOutlineView ラッパ含む
-│   │   ├─ Skills/SkillsSessionView.swift
-│   │   ├─ Commands/CommandsSessionView.swift
-│   │   ├─ Mcps/McpsSessionView.swift
-│   │   ├─ Terminal/TerminalSessionView.swift
-│   │   ├─ Web/WebSessionView.swift
-│   │   └─ Preview/PreviewSessionView.swift  // NSTextView ラッパ含む
-│   └─ Common/
-│       ├─ ScopeTagView.swift       // USER/PROJECT バッジ
-│       └─ TriangleDisclosureStyle.swift
-│
-└─ Utilities/
-    └─ FrontmatterParser.swift      // YAML frontmatter を正規表現で抽出
+┌─────────────────────────────────────────────────────┐
+│  window/      アプリ全体 (1 ウィンドウ)             │
+│  └─ ダイアログ / グローバルショートカット           │
+│                                                     │
+│  ┌─────────────────────────────────────────────┐    │
+│  │  sessions/   状態を持つ実体 (複数)          │    │
+│  │  └─ 概念モデル (Window/Pane/Tab/Session/Tool)│    │
+│  │  └─ アクティブ切替・履歴                    │    │
+│  │  └─ Session 単位の UI ルール                │    │
+│  │                                             │    │
+│  │  ┌───────────────────────────────────────┐  │    │
+│  │  │  tools/    Session の機能種別          │  │    │
+│  │  │  filer / kit / terminal / web /        │  │    │
+│  │  │  preview / git / gitDiff / claude 等   │  │    │
+│  │  └───────────────────────────────────────┘  │    │
+│  └─────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────┐
+│  frontchannels/  Aidea → Claude の通信              │
+│    (PTY への送信・recommend モード・scene など)     │
+│                                                     │
+│  backchannels/   Claude → Aidea の通信              │
+│    (ファイル経由・VOICEVOX 読み上げなど)            │
+│                                                     │
+│  ※ 主に claude tool が双方向で使用                 │
+└─────────────────────────────────────────────────────┘
 ```
 
-### 配置ルール
+**軸の整理**:
 
-- **1 ファイル = 1 型** (`struct` / `class` / `enum`)
-- **Tools/** = 種別 (Tool enum, SessionID, SessionState protocol)
-- **Sessions/** = 実体 (各 SessionState、SessionRegistry)
-- **Services/** = 副作用 (ファイル I/O、プロセス起動、監視)
-- **Views/** = SwiftUI / AppKit ラッパ View
-- **Models/** = 純粋データ構造 (@Observable でない)
-- **Utilities/** = 純粋関数、ヘルパー
+- **構造軸** (含有関係): `window/` ⊃ `sessions/` ⊃ `tools/`
+  - Window が Session を束ね、Session は Tool 種別を持つ
+- **通信軸** (横断的関心): `frontchannels/` / `backchannels/`
+  - Aidea と Claude の間の双方向通信チャネル
+  - 主に claude tool が利用するが、構造軸とは独立した横断軸
+
+各機能群の個別仕様は [README.md](./README.md) の一覧、
+Session 概念の詳細は [sessions/ui-rules.md#概念モデル](./sessions/ui-rules.md#概念モデル) を参照。
+
+---
+
+## コード配置ルール
+
+`Aidea/Aidea/` 配下は責務別のトップレベルディレクトリで構成する。各ディレクトリの役割:
+
+| ディレクトリ | 役割 |
+|---|---|
+| `App/` | `@main` エントリ、`AideaApp`、メニュー定義 |
+| `Tools/` | `Tool` enum / `SessionID` / `SessionState` protocol などの **種別定義** |
+| `Sessions/` | 各 Tool の `SessionState` 実装と `SessionRegistry` (実体・状態管理) |
+| `Services/` | 副作用層 (ファイル I/O、プロセス起動、監視、ローダ) |
+| `Models/` | 純粋データ構造 (`@Observable` でない) |
+| `Views/` | SwiftUI / AppKit ラッパ View (`Views/Sessions/` に各 Session ビュー、`Views/Layout/` にペインコンテナ、`Views/Common/` に共通パーツ) |
+| `Utilities/` | 純粋関数・ヘルパー |
+| `Resources/` | アセット / Backchannel リソースなど |
+
+サブディレクトリは Tool 名などの責務で切る (例: `Sessions/Filer/` `Services/Filer/` `Views/Sessions/Filer/`)。
+
+コード記述上の規約 (1 ファイル 1 型、プロパティラッパ並び順など) は [../conventions/](../conventions/README.md) を参照。
 
 ### レイヤー依存方向
 
@@ -138,42 +111,41 @@ Views → Sessions → Services → Models
 - View は Session を参照する
 - Session は Service と State を参照する
 - Service は Models を参照する
-- Tools (Tool enum, SessionID) は全体から参照される
+- Tools (`Tool` enum, `SessionID`) は全体から参照される
 
-## レイアウト (UI)
+---
 
-```
-┌──────────────────────────────────────────────────┐
-│ Window: Aidea (Title = project directory name) │
-├──────────┬────────────────────┬───────────────────┤
-│ TopLeft  │                    │                   │
-│ Pane     │  Center Pane       │  Right Pane       │
-│ (Filer)  │  (Terminal)        │  (Web)            │
-├──────────┤                    │                   │
-│ BottomL  │                    │                   │
-│ (Skills/ │                    │                   │
-│ Commands │                    │                   │
-│ /MCPs)   │                    │                   │
-└──────────┴────────────────────┴───────────────────┘
-```
+## UI レイアウトのアーキ上の注意
 
-- `HSplitView` で 3 カラム、左カラムは `VSplitView` で上下分割
-- 各ペインは `PaneView` 容器で、タブバー + ZStack (全 Tab を常時レンダリング)
+- Pane 容器 (`PaneView`) は **タブバー + ZStack (全 Tab を常時レンダリング)** 構成
 - 非アクティブ Tab は `opacity(0)` + `allowsHitTesting(false)` で隠す
-  → NSView が superview から外れないので Terminal のバッファが失われない
+  → NSView が superview から外れないので **Terminal の PTY バッファ / WKWebView の状態が失われない**
+
+### 主要コンポーネント
+
+| 型 | 種別 | 責務 |
+|---|---|---|
+| `SplitLayoutView` | `NSViewControllerRepresentable` | `LayoutConfig` のツリーを再帰的に `NSSplitViewController` に展開し、ツリー構造が変わるたびに root controller を差し替える |
+| `LayoutContainerViewController` | `NSViewController` | SwiftUI 側から子 `NSViewController` を丸ごと差し替えられるコンテナ (`childController` の set で旧 controller を外して新 view を貼る) |
+| `PaneView` | SwiftUI View | 1 つの物理ペインを表し、タブバー + ZStack で Session View を束ねる。分割ボタン・追加メニュー・ドラッグによるタブ移動もここ |
+| `TabSlotView` | SwiftUI View | タブ間の挿入位置を表す 8px 幅のドロップターゲット。`SessionID` をドロップすると `SessionRegistry.moveSession` を呼ぶ |
+
+- レイアウトツリー (`LayoutNode`) の構造変化は `SplitLayoutView.signature(of:)` の文字列比較で検知し、差分があるときだけ再構築する
+- 分割ディバイダ位置は `NSSplitView.autosaveName` に `Aidea.split.<node.id>` を設定して AppKit が自動保存する
+
+具体的なウィンドウレイアウト・グローバルショートカットは [window/](./window/README.md) を参照。
+
+---
 
 ## データ保存
 
-| データ | 場所 | 用途 |
-|---|---|---|
-| projectRoot | `UserDefaults` (`aidea.projectRoot`) | 起動時復元 |
-| (将来) API キー | macOS Keychain | Claude API セキュア保管 |
-| (将来) アプリ設定 | `~/Library/Application Support/Aidea/config.json` | 編集しやすさ |
-| (将来) ワークスペース状態 | `~/Library/Application Support/Aidea/workspace.json` | レイアウト + SessionState 復元 (Phase 4) |
+UserDefaults / Keychain / `<projectRoot>/.aidea/` の 3 つに保存される。詳細は [persistence.md](./persistence.md) を参照。
+
+---
 
 ## 配布
 
-**個人用のみ**。
+**個人用のみ**。配布ポリシーの前提は [../foundation/vision.md#誰のためか](../foundation/vision.md) を参照。
 
 - Xcode の Personal Team で署名 (無料、Apple ID 登録のみ)
 - ビルド後 `~/Applications/Aidea.app` に配置
@@ -181,11 +153,12 @@ Views → Sessions → Services → Models
 - 公証不要、`xattr -cr` で quarantine を剥がせば OK
 - **App Sandbox は無効** (`~/.claude/` 読み取り、PTY 起動のため)
 
+---
+
 ## 関連ドキュメント
 
-- [SPEC.md](./SPEC.md) — 仕様本体
-- [coding-style.md](./coding-style.md) — コーディング規約
-- [testing.md](./testing.md) — テスト戦略
-- [boundaries.md](./boundaries.md) — 境界ルール
+- [../foundation/vision.md](../foundation/vision.md) — 動機・原則
+- [../conventions/](../conventions/README.md) — コーディング規約
 - [glossary.md](./glossary.md) — 用語集
+- [sessions/ui-rules.md#概念モデル](./sessions/ui-rules.md#概念モデル) — UI 5 階層 (Window/Pane/Tab/Session/Tool)
 - [../decisions/](../decisions/README.md) — 設計判断記録

@@ -25,18 +25,19 @@ Xcode で `⌘R`。ビルド・実行手順の詳細は [`Aidea/README.md`](./Ai
 
 | ファイル | 内容 |
 |---|---|
-| [docs/specs/SPEC.md](./docs/specs/SPEC.md) | 仕様書 (Single Source of Truth) |
+| [docs/specs/](./docs/specs/README.md) | プロダクト仕様 (設計ストック) |
 | [Aidea/README.md](./Aidea/README.md) | macOS アプリのビルド/起動手順 |
-| [docs/vision.md](./docs/vision.md) | なぜ作るか、要件、非要件 |
-| [docs/architecture.md](./docs/architecture.md) | 技術スタック、レイヤー構成 |
-| [docs/features.md](./docs/features.md) | 実装する機能の詳細 |
+| [docs/foundation/vision.md](./docs/foundation/vision.md) | 作る動機とプロジェクトの原則 |
+| [docs/specs/architecture.md](./docs/specs/architecture.md) | 技術スタック、レイヤー構成 |
+| [docs/specs/tools/](./docs/specs/tools/) | 各ツールの実装仕様 (Terminal / Git / Kit / Preview / Obsidian など) |
+| [docs/conventions/](./docs/conventions/README.md) | コーディング規約 (Swift 規約 / 設計原則 / テスト戦略) |
 | [docs/decisions/](./docs/decisions/README.md) | 設計判断記録 (ADR) |
-| [docs/roadmap.md](./docs/roadmap.md) | 実装スケジュール |
+| [docs/LAYOUT.md](./docs/LAYOUT.md) | docs 配下の配置ルールと命名規約 |
 | [CLAUDE.md](./CLAUDE.md) | AI エージェント向けのプロジェクト概要 |
 
 ## なぜ作るか (要約)
 
-Vibeyard (Electron 製 IDE) の `<webview>` 制約 (位置情報不可、OAuth 壊れる、permission API 拒否) に耐えられず、**「本来のブラウザの挙動と差異なく開発できることが最優先」** という原則を満たす自作環境を週末プロジェクトとして育てる。詳細は [docs/vision.md](./docs/vision.md)。
+Vibeyard (Electron 製 IDE) の `<webview>` 制約 (位置情報不可、OAuth 壊れる、permission API 拒否) に耐えられず、**「本来のブラウザの挙動と差異なく開発できることが最優先」** という原則を満たす自作環境を週末プロジェクトとして育てる。詳細は [docs/foundation/vision.md](./docs/foundation/vision.md)。
 
 ## ライセンス
 

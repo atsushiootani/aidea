@@ -6,7 +6,7 @@ description: Break work into small verifiable tasks with acceptance criteria and
 
 agent-skills:planning-and-task-breakdown スキルを起動します。
 
-既存のスペック（SPEC.md など）と関連するコードベースの該当箇所を読みます。その上で:
+既存のスペック（docs/specs/ 配下と docs/foundation/vision.md）と関連するコードベースの該当箇所を読みます。その上で:
 
 1. プランモードに入る — 読み取り専用、コード変更なし
 2. コンポーネント間の依存グラフを特定する

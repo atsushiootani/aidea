@@ -47,5 +47,5 @@ keyDown イベントをアプリケーション内で受け取った直後、メ
   → 将来メニュー項目の削除方法が安定して確立されたらこの ADR を更新する
 
 ## 関連
-- [boundaries.md](../specs/boundaries.md#タブ--ペイン--ツール操作-グローバルショートカット) — ショートカット一覧
+- [window/shortcuts.md](../specs/window/shortcuts.md) — グローバルショートカット一覧
 - GitHub issue #21

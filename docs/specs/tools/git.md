@@ -3,8 +3,9 @@
 Git の変更差分を閲覧・操作する Tool。変更があるファイルだけをツリー表示し、
 ダブルクリックで GitDiff ツール (左右分割の差分表示) を開く。
 
-概念モデルは [SPEC.md](../SPEC.md#2-概念モデル-concept-model) / [glossary.md](../glossary.md) を参照。
-共通 UI 規約は [boundaries.md](../boundaries.md#ui-conventions-ui-共通ルール) を参照。
+概念モデルは [sessions/ui-rules.md#概念モデル](../sessions/ui-rules.md#概念モデル) / [glossary.md](../glossary.md) を参照。
+Session 内部状態は [sessions/git.md](../sessions/git.md) / [sessions/git-diff.md](../sessions/git-diff.md) を参照。
+共通 UI 規約は [sessions/ui-rules.md](../sessions/ui-rules.md) と [window/](../window/README.md) を参照。
 
 ---
 
@@ -218,11 +219,10 @@ issue #26 では 2 つの Tool が必要:
 ```
 Models/Git/
   GitChangedFile.swift       // ステータス (M/A/D/R) + パス + ツリーノード
-  GitDiffContent.swift       // diff 出力テキスト + メタデータ
+  GitFileTreeNode.swift      // ディレクトリ/ファイルのツリー構造ノード
 
 Services/Git/
   GitService.swift           // Process で git コマンド実行
-  GitChangesLoader.swift     // diff --name-status → [GitChangedFile]
 
 Sessions/Git/
   GitSessionState.swift      // モード + 変更ファイル一覧

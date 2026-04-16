@@ -1,0 +1,23 @@
+# Session 内部状態: Filer
+
+`filer` Tool の Session は `FilerSessionState` (`@Observable`) として状態を保持する。
+**ペイン移動で状態が失われない** ことを保証する。
+
+用語と UI ルールの前提は [ui-rules.md](./ui-rules.md) を、Tool 仕様は [../tools/filer.md](../tools/filer.md) を参照。
+
+## 状態
+
+| プロパティ | 型 | 用途 | ペイン移動で保持 |
+|---|---|---|---|
+| `selectedFile` | `URL?` | 現在選択中のファイル/ディレクトリ | ✅ |
+| `expandedURLs` | `Set<URL>` | アウトライン上で展開されているノード | ✅ |
+| `registry` | `weak var SessionRegistry?` | Filer ダブルクリック時に Preview を開くための参照 | ✅ |
+
+## 永続化
+
+`expandedURLs` は `<projectRoot>/.aidea/workspace.json` (v2) に含めて保存される。
+詳細は [../persistence.md](../persistence.md) を参照。
+
+## シングルトン制約
+
+`filer` は Window 全体で 1 つだけ。詳細は [ui-rules.md#シングルトン制約](./ui-rules.md#シングルトン制約) を参照。

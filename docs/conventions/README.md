@@ -1,0 +1,20 @@
+# Aidea Conventions
+
+Aidea のコードを書く際に従うべき規約とガイドライン。
+プロダクト仕様 (何を作るか) は [../specs/](../specs/README.md) を参照。
+
+## ファイル一覧
+
+| ファイル | 内容 |
+|---|---|
+| [coding-style.md](./coding-style.md) | Swift 規約 / プロパティラッパ並び順 / コメント方針 / 並行性 |
+| [design-principles.md](./design-principles.md) | 設計原則 (Tell Don't Ask / SOLID / GRASP 等) |
+| [rules.md](./rules.md) | Always / Confirm First / Never — コードレビュー時のチェックリスト |
+| [testing.md](./testing.md) | テスト戦略 / 手動確認チェックリスト |
+
+## 読む順番 (初見)
+
+1. [design-principles.md](./design-principles.md) — まず思想を掴む
+2. [coding-style.md](./coding-style.md) — 表面的な規約
+3. [testing.md](./testing.md) — テストの方針
+4. [rules.md](./rules.md) — Always / Confirm First / Never の具体ルール

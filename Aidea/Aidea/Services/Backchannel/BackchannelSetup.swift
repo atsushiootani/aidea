@@ -11,7 +11,7 @@ import Foundation
 enum BackchannelSetup {
 
     /// 既知の Backchannel 機能ファイル名（拡張子なし）
-    private static let knownFeatures = ["speech"]
+    private static let knownFeatures = ["speech", "aidea"]
 
     /// Backchannel のセットアップを実行する（初回のみ）
     static func setup(projectRoot: URL) {

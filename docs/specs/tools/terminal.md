@@ -2,8 +2,9 @@
 
 ターミナル (PTY) を提供する Tool。純粋なシェル環境のみを起動する。
 
-概念モデルは [SPEC.md](../SPEC.md#2-概念モデル-concept-model) / [glossary.md](../glossary.md) を参照。
-共通 UI 規約は [boundaries.md](../boundaries.md#ui-conventions-ui-共通ルール) を参照。
+概念モデルは [sessions/ui-rules.md#概念モデル](../sessions/ui-rules.md#概念モデル) / [glossary.md](../glossary.md) を参照。
+Session 内部状態は [sessions/terminal.md](../sessions/terminal.md) を参照。
+共通 UI 規約は [sessions/ui-rules.md](../sessions/ui-rules.md) と [window/](../window/README.md) を参照。
 
 ---
 
@@ -51,7 +52,7 @@ SwiftTerm がバッファをクリアしてしまう問題を回避するサブ�
 
 | キー | アクション |
 |------|-----------|
-| `Cmd+7` | Terminal ツールにフォーカス（複数あれば循環） |
+| `Cmd+Option+7` | Terminal ツールにフォーカス（複数あれば循環） |
 
 ---
 
