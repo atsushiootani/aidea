@@ -69,6 +69,7 @@ final class TerminalSessionState: SessionState {
             args: ["-c", command],
             environment: env
         )
+        terminal.installLinkGuard()
         cached = terminal
         return terminal
     }
