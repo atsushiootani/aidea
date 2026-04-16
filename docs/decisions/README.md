@@ -34,7 +34,7 @@ Aidea の設計判断を 1 件ずつ記録する。フォーマットは [Michae
 
 ## ヘルスチェック (PR 時に実施)
 
-ADR が増えるにつれて矛盾や参照漏れが溜まりやすい。PR レビューのタイミングで以下を走らせる。Claude Code で「decisions のヘルスチェックして」と依頼すれば実行可能。
+ADR が増えるにつれて矛盾や参照漏れが溜まりやすい。PR レビューのタイミングで以下を走らせる。Claude Code で `/aidea.docs-healthcheck` コマンド (specs / decisions 両方まとめて実行) または「decisions のヘルスチェックして」と自然言語で実行可能。
 
 ### チェック項目
 
@@ -61,7 +61,7 @@ ADR が増えるにつれて矛盾や参照漏れが溜まりやすい。PR レ�
 
 ### 運用
 
-- **PR のたび**に Claude Code で「decisions のヘルスチェックして」と実行
+- **PR のたび**に Claude Code で `/aidea.docs-healthcheck` を実行 (specs と同時にチェックされる)
 - フラグが立ったら PR 内で解消する (別 PR に持ち越さない)
 - 問題なしなら特に何もしない (サイレント pass)
 
