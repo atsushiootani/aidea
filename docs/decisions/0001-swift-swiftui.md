@@ -1,7 +1,21 @@
+---
+title: "0001: Electron ではなく Swift/SwiftUI を採用"
+description: Vibeyard の webview 制約を避けるため Swift + SwiftUI + WKWebView を採用する技術選定判断
+status: 採用
+derived_from:
+  - docs/foundation/vision.md
+syncs_with: []
+impacts: []
+replaces: []
+replaced_by: []
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-08
+---
+
 # 0001: Electron ではなく Swift/SwiftUI を採用
 
 **日付**: 2026-04-08
-**状態**: 採用
 
 ## 背景
 Vibeyard（Electron 製）を試用したが、`<webview>` タグの制約で位置情報・OAuth・permission API 等が壊れる問題を確認。

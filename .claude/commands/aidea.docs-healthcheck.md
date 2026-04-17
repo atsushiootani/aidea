@@ -38,7 +38,7 @@ Aidea の設計ドキュメント (`docs/specs/` と `docs/decisions/`) の健�
 - ADR 同士の矛盾 (旧 ADR への「廃止」「置換 (→ NNNN)」「進化予定」注記の有無もチェック)
 - 未定義参照 (ADR 本文が言及する概念・ファイルが定義されていない / 削除済みファイル参照)
   - ADR 同士の参照 / `docs/specs/*` の実在ファイル / 外部パッケージ / その ADR 内完結の概念は除外
-- 状態 (status) 整合性 (README 一覧表と各 ADR の `**状態**` フィールドの一致)
+- 状態 (status) 整合性 (README 一覧表と各 ADR frontmatter の `status` フィールドの一致。本文冒頭の `**状態**` 行が残っていればフラグ)
 
 ### 3. frontmatter 整合性チェック
 

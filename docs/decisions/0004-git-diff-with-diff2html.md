@@ -1,7 +1,20 @@
+---
+title: "0004: Git diff は WebView + diff2html で表示"
+description: WKWebView に diff2html (CDN) を読み込んで git diff を side-by-side 表示する暫定方針
+status: 暫定
+derived_from: []
+syncs_with: []
+impacts: []
+replaces: []
+replaced_by: []
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-08
+---
+
 # 0004: Git diff は WebView + diff2html で表示
 
 **日付**: 2026-04-08
-**状態**: 暫定
 
 ## 背景
 `git diff` の出力を見やすく表示する必要がある。

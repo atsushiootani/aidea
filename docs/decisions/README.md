@@ -1,3 +1,16 @@
+---
+title: Architecture Decision Records
+description: Aidea の設計判断 (ADR) を 1 件 1 ファイルで記録する Michael Nygard 形式の ADR 集とそのヘルスチェック基準
+derived_from:
+  - docs/LAYOUT.md
+syncs_with: []
+impacts:
+  - docs/decisions/*
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-17
+---
+
 # Architecture Decision Records
 
 Aidea の設計判断を 1 件ずつ記録する。フォーマットは [Michael Nygard 形式](https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions) を踏襲。
@@ -51,7 +64,8 @@ ADR が増えるにつれて矛盾や参照漏れが溜まりやすい。PR レ�
    - ADR 同士の参照 / `docs/specs/*` の実在ファイル / 外部パッケージ / その ADR 内で完結する概念は **未定義扱いしない**
 
 3. **状態 (status) 整合性**
-   - 本 README の一覧表と各 ADR ファイルの `**状態**` フィールドが一致しているか
+   - 本 README の一覧表と各 ADR ファイル frontmatter の `status` フィールドが一致しているか
+   - (本文冒頭の `**状態**` 行は 2026-04-17 に frontmatter に移行済み。古い記述が残っていればフラグ)
 
 ### フラグへの対応
 

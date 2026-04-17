@@ -1,7 +1,20 @@
+---
+title: "0006: 外部依存は SwiftTerm のみに絞る"
+description: Swift パッケージ依存は SwiftTerm 1 個のみとし、他は Apple 標準フレームワークで賄う方針
+status: 採用
+derived_from: []
+syncs_with: []
+impacts: []
+replaces: []
+replaced_by: []
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-08
+---
+
 # 0006: 外部依存は SwiftTerm のみに絞る
 
 **日付**: 2026-04-08
-**状態**: 採用
 
 ## 判断
 外部依存は SwiftTerm 1 つのみ。それ以外は Apple 標準フレームワーク（Foundation, SwiftUI, AppKit, WebKit, Security）で賄う。

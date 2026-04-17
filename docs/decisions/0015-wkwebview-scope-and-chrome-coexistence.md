@@ -1,7 +1,21 @@
+---
+title: "0015: WKWebView の制約を許容し Chrome 併用を前提とする"
+description: Aidea 内蔵ブラウザは WKWebView (Safari 相当) に限定し、Chrome 固有機能は外部 Chrome を併用する方針
+status: 採用
+derived_from:
+  - docs/decisions/0001-swift-swiftui.md
+syncs_with: []
+impacts: []
+replaces: []
+replaced_by: []
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-15
+---
+
 # 0015: WKWebView の制約を許容し Chrome 併用を前提とする
 
 **日付**: 2026-04-15
-**状態**: 採用
 
 ## 背景
 

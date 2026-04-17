@@ -1,7 +1,20 @@
+---
+title: "0007: プロジェクト名は Aidea"
+description: AI + IDE + Idea のトリプルミーニングを持ち発音しやすい "Aidea" をプロジェクト名に採用
+status: 確定
+derived_from: []
+syncs_with: []
+impacts: []
+replaces: []
+replaced_by: []
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-08
+---
+
 # 0007: プロジェクト名は Aidea
 
 **日付**: 2026-04-08
-**状態**: 確定
 
 ## 候補
 - Aide, Aidea, Aigen, Ideai, Agide

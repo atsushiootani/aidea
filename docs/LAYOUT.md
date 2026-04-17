@@ -176,6 +176,14 @@ docs/
 
 `specs/` は**ストック情報**として常に確定扱いで、置換されたドキュメントは必ず削除するため、これらのフィールドは付けない。
 
+#### ADR の impacts / syncs_with は常に空
+
+ADR は「過去に下した判断」であり、**作成後に文書内容を変更しない** (ステータス遷移と置換関係だけ更新する)。そのため:
+
+- **`impacts: []` / `syncs_with: []` で固定**
+- 「この ADR は何に影響するか」は下流 (specs 等) 側の `derived_from` で表現する
+- これにより ADR 側はメンテ不要になり、新しい仕様が古い ADR を参照してもADR ファイルを編集する必要がない
+
 ### 依存関係の書き分け
 
 3 つの関係フィールドを混同しないための判断基準。
@@ -295,7 +303,7 @@ last_updated: 2026-MM-DD
 | `docs/specs/window/` | ✅ 完了 (2026-04-17) |
 | `docs/foundation/` | ✅ 完了 (2026-04-17) |
 | `docs/agent-skills/` | ✅ 完了 (2026-04-17) |
-| `docs/decisions/` | 未適用 (ADR は Michael Nygard 形式・本文ステータス欄があるため別途検討) |
+| `docs/decisions/` | ✅ 完了 (2026-04-17) — status フィールドを本文から frontmatter に移行 |
 | `docs/conventions/` | 未適用 |
 
 段階的に対象を広げる。`/aidea.docs-healthcheck` で未適用ファイルをフラグする拡張は別途検討。

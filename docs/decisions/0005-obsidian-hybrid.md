@@ -1,7 +1,20 @@
+---
+title: "0005: Obsidian 連携は URL スキーム + 直接ファイル操作のハイブリッド"
+description: Obsidian vault を URL スキームで開き、作成/更新はファイル直書きで行う連携方針
+status: 採用
+derived_from: []
+syncs_with: []
+impacts: []
+replaces: []
+replaced_by: []
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-08
+---
+
 # 0005: Obsidian 連携は URL スキーム + 直接ファイル操作のハイブリッド
 
 **日付**: 2026-04-08
-**状態**: 採用
 
 ## 検討案
 1. URL スキーム（`obsidian://`）のみ

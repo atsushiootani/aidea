@@ -1,7 +1,20 @@
+---
+title: "0008: ターミナルでは claude を自動起動しない (対話シェルで起動する)"
+description: Anthropic のサードパーティアプリ誤判定を避けるため非対話シェルから claude を exec せず、対話シェル内で手動起動または send() する判断
+status: 採用
+derived_from: []
+syncs_with: []
+impacts: []
+replaces: []
+replaced_by: []
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-08
+---
+
 # 0008: ターミナルでは claude を自動起動しない（対話シェルで起動する）
 
 **日付**: 2026-04-08
-**状態**: 採用
 
 ## 背景
 TerminalView 起動時に「プロジェクトルートに cd → そのまま `claude` を実行」を狙って、

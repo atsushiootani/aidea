@@ -1,7 +1,21 @@
+---
+title: "0009: ファイラは NSOutlineView + FSEvents で実装する"
+description: Finder 基盤の NSOutlineView と CoreServices の FSEventStream でファイラのツリー UI とファイル変更検知を実装する判断
+status: 採用
+derived_from:
+  - docs/decisions/0006-only-swiftterm-dependency.md
+syncs_with: []
+impacts: []
+replaces: []
+replaced_by: []
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-08
+---
+
 # 0009: ファイラは NSOutlineView + FSEvents で実装する
 
 **日付**: 2026-04-08
-**状態**: 採用
 
 ## 背景
 左上ペインに置くファイラ機能を実装するにあたり、ツリー UI とファイル変更検知の

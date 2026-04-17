@@ -1,7 +1,20 @@
+---
+title: "0014: Ctrl+数字キーのショートカットを使わない"
+description: macOS Mission Control が Ctrl+数字を横取りするため、Aidea のショートカットには単一キーや他の修飾を使う方針
+status: 採用
+derived_from: []
+syncs_with: []
+impacts: []
+replaces: []
+replaced_by: []
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-14
+---
+
 # 0014: Ctrl+数字キーのショートカットを使わない
 
 **日付**: 2026-04-14
-**状態**: 採用
 
 ## 背景
 Git ツールのモード切替（Working Changes / PR Preview）に Ctrl+1 / Ctrl+2 を

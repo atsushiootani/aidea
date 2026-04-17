@@ -1,7 +1,22 @@
+---
+title: "0017: Alternate Screen 使用中のスクロールを入力変換で対処する"
+description: Claude CLI のトランスクリプトモード時にホイールスクロールを Ctrl+U/D に、ホイールクリックを Ctrl+O に NSEvent モニターで変換する判断
+status: 採用
+derived_from:
+  - docs/decisions/0008-no-claude-autostart.md
+  - docs/decisions/0016-terminal-mouse-event-suppression.md
+syncs_with: []
+impacts: []
+replaces: []
+replaced_by: []
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-17
+---
+
 # 0017: Alternate Screen 使用中のスクロールを入力変換で対処する
 
 **日付**: 2026-04-17
-**状態**: 採用
 
 ## 背景
 
