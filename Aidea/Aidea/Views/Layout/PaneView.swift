@@ -149,39 +149,18 @@ struct PaneView: View {
     @ViewBuilder
     private func tabIcon(sessionID: SessionID, isGlobalActive: Bool) -> some View {
         if sessionID.tool == .claude {
-            let companionIcon = companionIconName(for: sessionID)
-            if let smallIcon = CompanionIconPresets.smallIcons[companionIcon] {
-                // companion-0 等: コンパニオン画像をそのまま表示
-                Image(smallIcon)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: 16, height: 16)
-                    .clipShape(RoundedRectangle(cornerRadius: 3))
-            } else {
-                // その他: cat-ear にコンパニオンカラーで着色
-                let tintColor = companionTintColor(for: sessionID)
-                Image("cat-ear")
-                    .renderingMode(.template)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 14, height: 14)
-                    .foregroundStyle(isGlobalActive ? Color.white : tintColor)
-            }
+            let tintColor = companionTintColor(for: sessionID)
+            Image("cat-ear-tab")
+                .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 14, height: 14)
+                .foregroundStyle(isGlobalActive ? Color.white : tintColor)
         } else {
             Image(systemName: sessionID.tool.systemImageName)
                 .font(.system(size: 11, weight: isGlobalActive ? .bold : .regular))
                 .foregroundStyle(isGlobalActive ? Color.white : Color.secondary)
         }
-    }
-
-    /// Claude セッションに紐付くコンパニオンのアイコン名を返す
-    private func companionIconName(for sessionID: SessionID) -> String {
-        for (companionID, sid) in companionStore.activeSessionMap where sid == sessionID {
-            if let companion = companionStore.companions.first(where: { $0.id == companionID }) {
-                return companion.icon
-            }
-        }
-        return ""
     }
 
     /// Claude セッションに紐付くコンパニオンのテーマカラーを返す
