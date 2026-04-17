@@ -107,7 +107,7 @@
 2. CompanionStore.createDefault(forIndex:) でデフォルト設定を生成
    - name: "Companion N+1"
    - icon: プリセット画像
-   - initialPrompt: ".aidea/claude/speech.md を読んで読み上げを有効にしてね"
+   - initialPrompt: ".aidea/claude/aidea.md と .aidea/claude/speech.md を読んで従ってね"
 3. store に未登録なら add して永続化
 4. layout.nextSessionInstance(of: .claude) で新 instance 番号を採番
 5. registry.createSession(tool: .claude, instance:) で Claude セッション生成
