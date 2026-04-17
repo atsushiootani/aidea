@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "companion-3-small.png",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

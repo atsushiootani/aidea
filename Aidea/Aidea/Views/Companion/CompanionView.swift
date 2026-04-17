@@ -59,8 +59,10 @@ struct CompanionView: View {
                     launchCompanion(config)
                 }
             } label: {
-                Image(icon)
+                Image(CompanionIconPresets.thumbnailIcon(for: icon))
                     .resizable()
+                    .interpolation(.high)
+                    .antialiased(true)
                     .scaledToFill()
                     .frame(width: 60, height: 60)
                     .clipShape(RoundedRectangle(cornerRadius: 6))
