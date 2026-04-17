@@ -21,6 +21,7 @@ Aidea の設計判断を 1 件ずつ記録する。フォーマットは [Michae
 | [0013](./0013-session-as-first-class-object.md) | Session を first-class object にして Window レベルで管理する | 提案 |
 | [0014](./0014-no-ctrl-number-shortcuts.md) | Ctrl+数字キーのショートカットを使わない | 採用 |
 | [0015](./0015-wkwebview-scope-and-chrome-coexistence.md) | WKWebView の制約を許容し Chrome 併用を前提とする | 採用 |
+| [0016](./0016-terminal-mouse-event-suppression.md) | ターミナルの mouseMoved を NSEvent モニターで抑制する | 採用 |
 
 ## 状態の値
 

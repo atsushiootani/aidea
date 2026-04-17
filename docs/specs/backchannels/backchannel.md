@@ -27,6 +27,7 @@ Aidea は `.aidea/` ディレクトリを共有バスとして使用し、FSEven
 ```
 .aidea/
 ├── claude/
+│   ├── aidea.md              # Aidea 環境の共通指示 (コンパニオン起動時に読み込ませる土台)
 │   ├── speech.md             # 読み上げ機能の定義
 │   └── {feature}.md          # 将来の機能ごとに 1 ファイル
 ├── backchannels/
@@ -54,6 +55,12 @@ Backchannel 機能を有効化する。
 
 ### initialPrompt の例
 
+デフォルト (Aidea 環境の土台 + 読み上げ):
+
+```
+.aidea/claude/aidea.md と .aidea/claude/speech.md を読んで従ってね
+```
+
 読み上げのみ有効にする場合:
 
 ```
@@ -67,7 +74,9 @@ Backchannel 機能を有効化する。
 
 各 Backchannel 機能は `.aidea/claude/{feature}.md` として独立した 1 ファイルを持ち、
 ファイル内容は該当機能の単独の指示書として完結している。
-Aidea は起動時に既知の機能ファイルを自動生成・上書きする。
+Aidea は初回セットアップ時 (`.aidea/claude/` ディレクトリが存在しないとき) のみ、
+Bundle 内の既知の機能ファイルを `.aidea/claude/` にコピーする。既存ファイルは上書きしない
+(ユーザ編集の保護)。
 
 ---
 
@@ -101,12 +110,12 @@ Aidea は `.aidea/backchannels/` ディレクトリを FSEvents で監視する�
 - `.aidea/` 配下のファイル監視は FSEvents を使う
 - 処理済みファイルは削除してクリーンアップする
 - 全ターミナルから `.aidea/backchannels/` に書き出す
-- `.aidea/claude/{feature}.md` は Aidea が自動生成・管理する
+- `.aidea/claude/{feature}.md` は初回セットアップ時に Bundle からコピーする
 - Claude セッション起動時に送信するのはコンパニオンの `initialPrompt` のみ
 
 ### Never
 - ターミナル出力の直接パースに依存しない
 - Claude のプロンプトパターンマッチに依存しない
-- `.aidea/claude/{feature}.md` をユーザーに手動編集させない
+- `.aidea/claude/{feature}.md` の既存ファイルを上書きしない (ユーザ編集を保護)
 - Aidea 側から共通プロンプトをハードコードで送信しない
 - `CLAUDE.md` を Aidea が自動改変しない

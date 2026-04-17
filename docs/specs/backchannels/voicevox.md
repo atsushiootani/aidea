@@ -27,7 +27,7 @@
 
 ## Claude への指示 (.aidea/claude/speech.md)
 
-Aidea が起動時に生成・上書きするファイル。全文:
+Aidea が初回セットアップ時に Bundle からコピーするファイル (既存なら上書きしない)。全文:
 
 ```markdown
 # 読み上げ機能
