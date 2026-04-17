@@ -74,7 +74,7 @@ final class ClaudeSessionState: SessionState {
             args: ["-c", command],
             environment: env
         )
-        terminal.installLinkGuard()
+        terminal.installLinkGuard(isClaudeSession: true)
         cached = terminal
         autoStartClaude(terminal: terminal)
         return terminal

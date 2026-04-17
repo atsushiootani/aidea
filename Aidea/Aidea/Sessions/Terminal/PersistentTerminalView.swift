@@ -68,8 +68,8 @@ final class PersistentTerminalView: LocalProcessTerminalView {
     }
 
     /// terminalDelegate をプロキシに差し替え、mouseMoved を抑制して URL 誤発火を防ぐ。
-    /// alternate screen 使用中はスクロールを上下キーに変換する。
-    func installLinkGuard() {
+    /// isClaudeSession = true の場合、スクロール変換とホイールクリックも有効にする。
+    func installLinkGuard(isClaudeSession: Bool = false) {
         // delegate プロキシ: requestOpenLink を Cmd+Click のみに制限
         let guard_ = TerminalLinkGuard(original: self)
         linkGuard = guard_
@@ -85,9 +85,9 @@ final class PersistentTerminalView: LocalProcessTerminalView {
             return event
         }
 
-        // スクロールモニター: alternate screen 使用中はスクロールを上下キーに変換
-        // Claude CLI 等の TUI アプリが alternate screen を使うとスクロールバッファがないため、
-        // ホイールスクロールを上下矢印キー入力に変換してアプリ側にスクロールさせる
+        // Claude セッション専用: スクロール変換とホイールクリック
+        guard isClaudeSession else { return }
+
         scrollMonitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { [weak self] event in
             guard let self,
                   self.terminal.isCurrentBufferAlternate,
