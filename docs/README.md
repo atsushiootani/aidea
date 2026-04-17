@@ -1,3 +1,15 @@
+---
+title: Aidea Documentation
+description: Aidea プロジェクト全体のドキュメント (foundation / specs / conventions / decisions / agent-skills) のトップインデックス
+derived_from:
+  - docs/LAYOUT.md
+syncs_with: []
+impacts: []
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-17
+---
+
 # Aidea Documentation
 
 > AI + IDE + Idea — 個人用の Mac ネイティブ AI コーディング環境

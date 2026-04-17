@@ -1,3 +1,21 @@
+---
+title: Tool 仕様: Claude
+description: Claude Code を自動起動し Backchannel で Aidea と連携するターミナル Tool の仕様
+derived_from:
+  - docs/decisions/0008-no-claude-autostart.md
+  - docs/decisions/0017-alternate-screen-scroll-handling.md
+  - docs/specs/sessions/ui-rules.md
+  - docs/specs/window/
+  - docs/specs/backchannels/backchannel.md
+syncs_with:
+  - docs/specs/sessions/claude.md
+  - docs/specs/aspects/keybindings.md
+impacts: []
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-17
+---
+
 # Tool 仕様: Claude
 
 Claude Code を自動起動し、Backchannel で Aidea と連携するターミナル Tool。

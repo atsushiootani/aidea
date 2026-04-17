@@ -1,3 +1,20 @@
+---
+title: Tool 仕様: Terminal
+description: SwiftTerm ベースの PTY ターミナル Tool 仕様。対話シェル起動・claude 自動起動はしない純粋なシェル環境
+derived_from:
+  - docs/decisions/0006-only-swiftterm-dependency.md
+  - docs/decisions/0008-no-claude-autostart.md
+  - docs/specs/sessions/ui-rules.md
+  - docs/specs/window/
+syncs_with:
+  - docs/specs/sessions/terminal.md
+  - docs/specs/aspects/keybindings.md
+impacts: []
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-17
+---
+
 # Tool 仕様: Terminal
 
 ターミナル (PTY) を提供する Tool。純粋なシェル環境のみを起動する。

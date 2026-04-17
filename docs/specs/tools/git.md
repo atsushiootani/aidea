@@ -1,3 +1,21 @@
+---
+title: Tool 仕様: Git
+description: Working Changes / PR Preview の 2 モードで差分ファイルをツリー表示し GitDiff を別ペインに開く Git Tool 仕様
+derived_from:
+  - docs/decisions/0004-git-diff-with-diff2html.md
+  - docs/decisions/0006-only-swiftterm-dependency.md
+  - docs/specs/sessions/ui-rules.md
+  - docs/specs/window/
+syncs_with:
+  - docs/specs/sessions/git.md
+  - docs/specs/sessions/git-diff.md
+  - docs/specs/aspects/keybindings.md
+impacts: []
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-17
+---
+
 # Tool 仕様: Git
 
 Git の変更差分を閲覧・操作する Tool。変更があるファイルだけをツリー表示し、

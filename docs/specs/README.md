@@ -1,3 +1,16 @@
+---
+title: Aidea Specs
+description: Aidea のプロダクト仕様 (設計ストック) インデックス。コードベースと 1:1 対応するストック情報のみを扱う
+derived_from:
+  - docs/LAYOUT.md
+syncs_with: []
+impacts:
+  - docs/specs/*
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-17
+---
+
 # Aidea Specs
 
 Aidea の**プロダクト仕様 (設計ストック)**。コードベースと 1:1 対応する現時点の設計を記述する。

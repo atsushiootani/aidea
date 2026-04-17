@@ -1,3 +1,19 @@
+---
+title: コンパニオン
+description: ヘッダの 8 体アイコン・CompanionConfig/CompanionStore の仕様・companions.json 永続化・起動フロー
+derived_from:
+  - docs/specs/frontchannels/frontchannel.md
+  - docs/specs/sessions/ui-rules.md
+syncs_with:
+  - docs/specs/companions/recommend-mode.md
+  - docs/specs/tools/claude.md
+  - docs/specs/aspects/persistence.md
+impacts: []
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-17
+---
+
 # コンパニオン
 
 > ヘッダに常時並ぶ 8 体のアイコン。1 体が 1 つの Claude セッションに紐付き、

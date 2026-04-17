@@ -1,3 +1,15 @@
+---
+title: docs ディレクトリ構成とファイル配置ルール
+description: docs 配下の配置ルール・命名規約・インデックス更新義務・frontmatter 規約を定める SSoT
+derived_from: []
+syncs_with: []
+impacts:
+  - docs/README.md
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-17
+---
+
 # docs ディレクトリ構成とファイル配置ルール
 
 新しいドキュメントを追加する際に「どこに、どんな名前で置くか」で迷わないための単一参照先。
@@ -204,6 +216,7 @@ docs/
 - **ワイルドカード `<dir>/*`** でディレクトリ直下の全 Markdown ファイルを指せる
   - 例: `docs/specs/aspects/*` は `keybindings.md` と `persistence.md` を含む
   - インデックスファイル (README.md) が配下を束ねる場合に使う
+  - ワイルドカードが**自分自身を含む場合は自動的に除外**される (例: `docs/specs/sessions/ui-rules.md` の `impacts` が `docs/specs/sessions/*` でも自分自身は指さない)
   - 個別ファイルを特別扱いしたい場合はワイルドカードではなく個別に列挙する
 - 他のドキュメントから参照されやすいので、ファイルを**リネーム/削除したら参照元を全て更新**する
 
@@ -271,10 +284,18 @@ last_updated: 2026-MM-DD
 
 | ディレクトリ | 適用状況 |
 |---|---|
+| `docs/` 直下 (README / LAYOUT) | ✅ 完了 (2026-04-17) |
+| `docs/specs/` 直下 (README / architecture / glossary) | ✅ 完了 (2026-04-17) |
 | `docs/specs/aspects/` | ✅ 完了 (2026-04-17) |
-| `docs/specs/` その他 | 未適用 (段階的導入予定) |
-| `docs/decisions/` | 未適用 |
-| `docs/foundation/` | 未適用 |
+| `docs/specs/tools/` | ✅ 完了 (2026-04-17) |
+| `docs/specs/sessions/` | ✅ 完了 (2026-04-17) |
+| `docs/specs/backchannels/` | ✅ 完了 (2026-04-17) |
+| `docs/specs/frontchannels/` | ✅ 完了 (2026-04-17) |
+| `docs/specs/companions/` | ✅ 完了 (2026-04-17) |
+| `docs/specs/window/` | ✅ 完了 (2026-04-17) |
+| `docs/foundation/` | ✅ 完了 (2026-04-17) |
+| `docs/agent-skills/` | ✅ 完了 (2026-04-17) |
+| `docs/decisions/` | 未適用 (ADR は Michael Nygard 形式・本文ステータス欄があるため別途検討) |
 | `docs/conventions/` | 未適用 |
 
 段階的に対象を広げる。`/aidea.docs-healthcheck` で未適用ファイルをフラグする拡張は別途検討。

@@ -1,3 +1,17 @@
+---
+title: Backchannel 仕様
+description: Aidea と Claude のファイルベース IPC 機構。設計原則・.aidea/ ディレクトリ構造・機能宣言チェーン・ファイル監視 (FSEvents)
+derived_from: []
+syncs_with:
+  - docs/specs/backchannels/voicevox.md
+  - docs/specs/tools/claude.md
+  - docs/specs/aspects/persistence.md
+impacts: []
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-17
+---
+
 # Backchannel 仕様
 
 > Aidea と Claude のファイルベース IPC 機構

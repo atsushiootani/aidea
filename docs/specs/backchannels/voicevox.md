@@ -1,3 +1,17 @@
+---
+title: "Backchannel: VOICEVOX 読み上げ"
+description: Speech メッセージを VOICEVOX (localhost:50021 / Speaker 20) で音声合成し AVAudioPlayer で再生する実装仕様
+derived_from: []
+syncs_with:
+  - docs/specs/backchannels/backchannel.md
+  - docs/specs/tools/claude.md
+  - docs/specs/aspects/persistence.md
+impacts: []
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-17
+---
+
 # Backchannel: VOICEVOX 読み上げ
 
 > Backchannel の Speech メッセージを VOICEVOX で音声読み上げする機能

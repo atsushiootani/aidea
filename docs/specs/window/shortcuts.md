@@ -1,3 +1,17 @@
+---
+title: グローバルショートカット
+description: Window 全体で有効なキーボードショートカット (タブ/ペイン操作・ツール切替・コンパニオン)
+derived_from:
+  - docs/decisions/0011-cmd-w-via-nsevent-monitor.md
+  - docs/decisions/0014-no-ctrl-number-shortcuts.md
+syncs_with:
+  - docs/specs/aspects/keybindings.md
+impacts: []
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-17
+---
+
 # グローバルショートカット
 
 Window 全体で有効なキーボードショートカット。

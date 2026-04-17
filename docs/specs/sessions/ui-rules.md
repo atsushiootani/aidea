@@ -1,3 +1,19 @@
+---
+title: Session UI ルール
+description: 5 概念モデル (Window/Pane/Tab/Session/Tool)・シングルトン制約・右クリック・選択フォーカス・Emacs ナビなど Session 共通 UI 仕様
+derived_from:
+  - docs/decisions/0013-session-as-first-class-object.md
+  - docs/decisions/0014-no-ctrl-number-shortcuts.md
+syncs_with: []
+impacts:
+  - docs/specs/tools/*
+  - docs/specs/sessions/*
+  - docs/specs/companions/*
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-17
+---
+
 # Session UI ルール
 
 各 Session が守るべき UI 振る舞い仕様。

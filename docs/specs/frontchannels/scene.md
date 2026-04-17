@@ -1,3 +1,17 @@
+---
+title: "Frontchannel: Scene"
+description: レコメンドプロンプトのコンテキストを表す Scene 識別子 ({tool}:{section}:{mode}) の仕様と解決順序・SessionState プロトコル
+derived_from:
+  - docs/specs/frontchannels/frontchannel.md
+syncs_with:
+  - docs/specs/companions/recommend-mode.md
+  - docs/specs/aspects/persistence.md
+impacts: []
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-17
+---
+
 # Frontchannel: Scene
 
 > レコメンドプロンプトのコンテキストを表す概念

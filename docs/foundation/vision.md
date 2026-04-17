@@ -1,3 +1,14 @@
+---
+title: Vision
+description: Aidea を作る動機 (Vibeyard 問題)・ターゲット (本人 1 名)・原則・成功基準・永続的にやらないこと
+derived_from: []
+syncs_with: []
+impacts: []
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-17
+---
+
 # Vision
 
 Aidea を作る動機・ターゲット・原則・成功基準を置く。

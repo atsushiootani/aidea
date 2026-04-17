@@ -4,9 +4,16 @@ description: UserDefaults / Keychain / .aidea/ のデータ永続化仕様を機
 derived_from:
   - docs/specs/architecture.md
 syncs_with:
-  - docs/specs/backchannels/README.md
-  - docs/specs/frontchannels/README.md
-  - docs/specs/sessions/ui-rules.md
+  - docs/specs/backchannels/backchannel.md
+  - docs/specs/backchannels/voicevox.md
+  - docs/specs/frontchannels/scene.md
+  - docs/specs/companions/companion.md
+  - docs/specs/companions/recommend-mode.md
+  - docs/specs/sessions/filer.md
+  - docs/specs/sessions/kit.md
+  - docs/specs/sessions/preview.md
+  - docs/specs/sessions/web.md
+  - docs/specs/tools/preview.md
 impacts: []
 conventions:
   - docs/LAYOUT.md

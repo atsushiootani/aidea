@@ -1,3 +1,16 @@
+---
+title: Session (sessions/) インデックス
+description: Session 概念と各 Tool ごとの SessionState 仕様ファイルのインデックス
+derived_from:
+  - docs/LAYOUT.md
+syncs_with: []
+impacts:
+  - docs/specs/sessions/*
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-17
+---
+
 # Session
 
 Aidea の **Session 概念** に関する仕様を集約。

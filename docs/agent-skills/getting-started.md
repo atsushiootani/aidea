@@ -1,3 +1,15 @@
+---
+title: agent-skills 入門
+description: agent-skills のセットアップ・スキル発見・推奨構成 (最小/フルライフサイクル)・コマンド/References 利用方法
+derived_from: []
+syncs_with:
+  - docs/agent-skills/skill-anatomy.md
+impacts: []
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-17
+---
+
 # agent-skills 入門
 
 agent-skills は、Markdown 形式の指示を受け付ける任意の AI コーディングエージェントで動作します。このガイドは普遍的なアプローチを扱います。ツール固有のセットアップは、専用ガイドを参照してください。

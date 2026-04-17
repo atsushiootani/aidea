@@ -1,3 +1,17 @@
+---
+title: Session 内部状態: Kit
+description: KitSessionState の状態 (expandedSections / expandedGroups / selection) と 4 種ローダ・workspace.json 永続化
+derived_from:
+  - docs/specs/sessions/ui-rules.md
+syncs_with:
+  - docs/specs/tools/kit.md
+  - docs/specs/aspects/persistence.md
+impacts: []
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-17
+---
+
 # Session 内部状態: Kit
 
 `kit` Tool の Session は `KitSessionState` (`@Observable`) として状態を保持する。

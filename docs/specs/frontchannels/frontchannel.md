@@ -1,3 +1,17 @@
+---
+title: Frontchannel 仕様
+description: Aidea がコンパニオン (Claude セッション) にプロンプトを送信する PTY send(txt:) メカニズム
+derived_from: []
+syncs_with: []
+impacts:
+  - docs/specs/frontchannels/scene.md
+  - docs/specs/companions/companion.md
+  - docs/specs/companions/recommend-mode.md
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-17
+---
+
 # Frontchannel 仕様
 
 > Aidea からコンパニオン（Claude セッション）にプロンプトを送信する仕組み

@@ -1,3 +1,21 @@
+---
+title: Tool 仕様: Preview
+description: Markdown / 画像 / drawio / テキストを読み取り専用で表示し、英語ドキュメントの日本語翻訳キャッシュも担う Preview Tool 仕様
+derived_from:
+  - docs/decisions/0010-drawio-rendering-paths.md
+  - docs/specs/sessions/ui-rules.md
+  - docs/specs/sessions/active-session.md
+  - docs/specs/window/
+syncs_with:
+  - docs/specs/sessions/preview.md
+  - docs/specs/aspects/keybindings.md
+  - docs/specs/aspects/persistence.md
+impacts: []
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-17
+---
+
 # Tool 仕様: Preview
 
 ファイルを読み取り専用で表示する Tool。Kit や Filer から `SessionRegistry.openPreview(for:title:)` 経由で呼ばれる。

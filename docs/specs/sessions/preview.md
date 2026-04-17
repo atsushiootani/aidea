@@ -1,3 +1,18 @@
+---
+title: Session 内部状態: Preview
+description: PreviewSessionState の状態 (url / title)・openPreview 呼び出し規約・workspace.json 永続化
+derived_from:
+  - docs/specs/sessions/ui-rules.md
+  - docs/specs/sessions/active-session.md
+syncs_with:
+  - docs/specs/tools/preview.md
+  - docs/specs/aspects/persistence.md
+impacts: []
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-17
+---
+
 # Session 内部状態: Preview
 
 `preview` Tool の Session は `PreviewSessionState` (`@Observable`) として状態を保持する。

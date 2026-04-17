@@ -1,3 +1,20 @@
+---
+title: Architecture
+description: Aidea の技術スタック (Swift/SwiftUI/WKWebView/SwiftTerm)・コード配置・レイヤー依存方向・UI レイアウトのアーキ上の注意
+derived_from:
+  - docs/foundation/vision.md
+  - docs/decisions/0001-swift-swiftui.md
+  - docs/decisions/0006-only-swiftterm-dependency.md
+syncs_with: []
+impacts:
+  - docs/specs/sessions/terminal.md
+  - docs/specs/sessions/web.md
+  - docs/specs/aspects/persistence.md
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-17
+---
+
 # Architecture
 
 Aidea の技術スタックとコード構造。動機と原則は [../foundation/vision.md](../foundation/vision.md) を参照。

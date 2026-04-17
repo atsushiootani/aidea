@@ -1,3 +1,17 @@
+---
+title: Session 内部状態: Terminal
+description: TerminalSessionState の PTY + SwiftTerm キャッシュ方式と PaneView ZStack による状態維持
+derived_from:
+  - docs/specs/sessions/ui-rules.md
+  - docs/specs/architecture.md
+syncs_with:
+  - docs/specs/tools/terminal.md
+impacts: []
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-17
+---
+
 # Session 内部状態: Terminal
 
 `terminal` Tool の Session は `TerminalSessionState` (`@Observable`) として状態を保持する。

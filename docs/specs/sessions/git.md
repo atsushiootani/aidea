@@ -1,3 +1,17 @@
+---
+title: Session 内部状態: Git
+description: GitSessionState の状態 (mode / treeNodes / selectedPath / fileStats 等)・シングルトン制約・GitDiff との連携
+derived_from:
+  - docs/specs/sessions/ui-rules.md
+syncs_with:
+  - docs/specs/tools/git.md
+  - docs/specs/sessions/git-diff.md
+impacts: []
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-17
+---
+
 # Session 内部状態: Git
 
 `git` Tool の Session は `GitSessionState` (`@Observable`) として状態を保持する。

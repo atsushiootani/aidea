@@ -1,3 +1,17 @@
+---
+title: Session 内部状態: Claude
+description: ClaudeSessionState の状態 (companionPrompt / cached)・自動起動シーケンス・コンパニオン紐付け
+derived_from:
+  - docs/specs/sessions/ui-rules.md
+  - docs/decisions/0008-no-claude-autostart.md
+syncs_with:
+  - docs/specs/tools/claude.md
+impacts: []
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-17
+---
+
 # Session 内部状態: Claude
 
 `claude` Tool の Session は `ClaudeSessionState` (`@Observable`) として状態を保持する。

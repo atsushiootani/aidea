@@ -1,3 +1,16 @@
+---
+title: Foundation (動機・原則) インデックス
+description: プロジェクトの土台となる動機・原則・思想を置く foundation ディレクトリのインデックス
+derived_from:
+  - docs/LAYOUT.md
+syncs_with: []
+impacts:
+  - docs/foundation/*
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-17
+---
+
 # Foundation
 
 プロジェクトの**土台**となる動機・原則・思想を置く場所。
