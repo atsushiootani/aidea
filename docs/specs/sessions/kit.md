@@ -29,4 +29,4 @@ Tool 仕様 (UI / 操作 / 受け入れ基準) は [../tools/kit.md](../tools/ki
 ## 永続化
 
 `expandedSections` と `expandedGroups` は `<projectRoot>/.aidea/workspace.json` に保存される。
-詳細は [../persistence.md](../persistence.md) を参照。
+詳細は [../aspects/persistence.md](../aspects/persistence.md) を参照。

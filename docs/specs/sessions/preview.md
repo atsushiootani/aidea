@@ -21,4 +21,4 @@ Preview は `SessionRegistry.openPreview(for:title:)` 経由で開く。
 
 ## 永続化
 
-`url` と `title` は `<projectRoot>/.aidea/workspace.json` に保存される。詳細は [../persistence.md](../persistence.md) を参照。
+`url` と `title` は `<projectRoot>/.aidea/workspace.json` に保存される。詳細は [../aspects/persistence.md](../aspects/persistence.md) を参照。

@@ -124,5 +124,5 @@
 - [../frontchannels/frontchannel.md](../frontchannels/frontchannel.md) — 送信メカニズム (PTY `send(txt:)`)
 - [recommend-mode.md](./recommend-mode.md) — Cmd+Enter によるレコメンド選択 UI
 - [../tools/claude.md](../tools/claude.md) — Claude セッション側の挙動
-- [../persistence.md](../persistence.md) — `.aidea/companions.json` のタイミング
+- [../aspects/persistence.md](../aspects/persistence.md) — `.aidea/companions.json` のタイミング
 - [../sessions/ui-rules.md#概念モデル](../sessions/ui-rules.md#概念モデル) — SessionID / 5 概念

@@ -139,7 +139,7 @@ Views → Sessions → Services → Models
 
 ## データ保存
 
-UserDefaults / Keychain / `<projectRoot>/.aidea/` の 3 つに保存される。詳細は [persistence.md](./persistence.md) を参照。
+UserDefaults / Keychain / `<projectRoot>/.aidea/` の 3 つに保存される。詳細は [persistence.md](./aspects/persistence.md) を参照。
 
 ---
 

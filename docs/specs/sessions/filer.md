@@ -16,7 +16,7 @@
 ## 永続化
 
 `expandedURLs` は `<projectRoot>/.aidea/workspace.json` (v2) に含めて保存される。
-詳細は [../persistence.md](../persistence.md) を参照。
+詳細は [../aspects/persistence.md](../aspects/persistence.md) を参照。
 
 ## シングルトン制約
 

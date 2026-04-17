@@ -15,4 +15,4 @@ Aidea のヘッダに並ぶ **コンパニオン** (8 体のアイコン) とそ
 
 - [../frontchannels/frontchannel.md](../frontchannels/frontchannel.md) — Aidea → Claude の送信メカニズム
 - [../tools/claude.md](../tools/claude.md) — Claude セッション側の挙動
-- [../persistence.md](../persistence.md) — `.aidea/companions.json` / `.aidea/recommends.json`
+- [../aspects/persistence.md](../aspects/persistence.md) — `.aidea/companions.json` / `.aidea/recommends.json`

@@ -22,4 +22,4 @@ Terminal と同様に `PaneView` の ZStack + `opacity(0)` 方式。NSView が�
 
 ## 永続化
 
-現在 URL は `<projectRoot>/.aidea/workspace.json` に保存される。詳細は [../persistence.md](../persistence.md) を参照。
+現在 URL は `<projectRoot>/.aidea/workspace.json` に保存される。詳細は [../aspects/persistence.md](../aspects/persistence.md) を参照。

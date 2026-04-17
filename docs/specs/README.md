@@ -8,7 +8,7 @@ Aidea の**プロダクト仕様 (設計ストック)**。コードベースと 
 | ファイル | 変化頻度 | 内容 |
 |---|---|---|
 | [architecture.md](./architecture.md) | **中** | 技術スタック / プロジェクト構造 / レイヤー・主要コンポーネント |
-| [persistence.md](./persistence.md) | **中** | データ永続化仕様 (UserDefaults / Keychain / `.aidea/`) |
+| [persistence.md](./aspects/persistence.md) | **中** | データ永続化仕様 (UserDefaults / Keychain / `.aidea/`) |
 | [tools/](./tools/) | **中** | 各ツールの実装仕様 (Terminal / Git / Kit / Preview / Obsidian など) |
 | [frontchannels/](./frontchannels/) | **中** | 会話 UI (Scene / 発話フロー) |
 | [companions/](./companions/) | **中** | コンパニオン (8 体のアイコン) とレコメンドモード |
@@ -60,7 +60,7 @@ specs は「コードベースと 1:1 対応するストック情報」が原則
    - **対象外**: 1 つのファイルにしか登場しない変数・private メソッド・ローカル実装詳細 / テストコード / ユーティリティ的な小さなヘルパー
 
 5. **永続化データの抜け**
-   - コードベースで `UserDefaults` / Keychain / `.aidea/*.json` 等に読み書きしているが [persistence.md](./persistence.md) に記載がないものをフラグ
+   - コードベースで `UserDefaults` / Keychain / `.aidea/*.json` 等に読み書きしているが [persistence.md](./aspects/persistence.md) に記載がないものをフラグ
 
 ### フラグへの対応
 
@@ -70,7 +70,7 @@ specs は「コードベースと 1:1 対応するストック情報」が原則
 | **decisions との矛盾** | 基本は ADR が優先 (ユーザ確認) | specs 側を修正。ADR の方を見直すなら ADR 0012→0013 の要領で「進化予定」注記を追加 |
 | **コードベースとの矛盾** | **現コードを正とする** (ユーザ確認) | 古い specs を最新実装に合わせて書き換える |
 | **未記載の機能・概念** | ユーザに問い合わせ | 仕様を書く ([該当サブディレクトリ](./) に追加) か、無視してよいかを選択 |
-| **永続化データの抜け** | ユーザに問い合わせ | [persistence.md](./persistence.md) に追記するか、テンポラリなら無視かを選択 |
+| **永続化データの抜け** | ユーザに問い合わせ | [persistence.md](./aspects/persistence.md) に追記するか、テンポラリなら無視かを選択 |
 
 ### 運用
 
