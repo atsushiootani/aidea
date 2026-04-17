@@ -88,9 +88,9 @@ struct AideaApp: App {
                 .keyboardShortcut("w", modifiers: [.command])
             Divider()
             Button("左のタブ") { moveTab(offset: -1) }
-                .keyboardShortcut("[", modifiers: [.command, .option])
+                .keyboardShortcut("[", modifiers: [.command, .shift])
             Button("右のタブ") { moveTab(offset: 1) }
-                .keyboardShortcut("]", modifiers: [.command, .option])
+                .keyboardShortcut("]", modifiers: [.command, .shift])
             Divider()
             Button("前のペイン") { movePane(offset: -1) }
                 .keyboardShortcut("[", modifiers: [.command])
