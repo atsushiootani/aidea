@@ -149,15 +149,30 @@ struct PaneView: View {
     @ViewBuilder
     private func tabIcon(sessionID: SessionID, isGlobalActive: Bool) -> some View {
         if sessionID.tool == .claude {
-            Image("cat-ear")
+            let tintColor = companionTintColor(for: sessionID)
+            Image("cat-ear-tab")
+                .renderingMode(.template)
                 .resizable()
                 .scaledToFit()
                 .frame(width: 14, height: 14)
+                .foregroundStyle(isGlobalActive ? Color.white : tintColor)
         } else {
             Image(systemName: sessionID.tool.systemImageName)
                 .font(.system(size: 11, weight: isGlobalActive ? .bold : .regular))
                 .foregroundStyle(isGlobalActive ? Color.white : Color.secondary)
         }
+    }
+
+    /// Claude セッションに紐付くコンパニオンのテーマカラーを返す
+    private func companionTintColor(for sessionID: SessionID) -> Color {
+        // CompanionStore からコンパニオンのアイコン名を取得
+        for (companionID, sid) in companionStore.activeSessionMap where sid == sessionID {
+            if let companion = companionStore.companions.first(where: { $0.id == companionID }),
+               let rgb = CompanionIconPresets.themeColors[companion.icon] {
+                return Color(red: rgb.red, green: rgb.green, blue: rgb.blue)
+            }
+        }
+        return Color.secondary
     }
 
     /// タブヘッダの表示名。
