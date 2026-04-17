@@ -13,13 +13,14 @@ Aidea の設計ドキュメント (`docs/specs/` と `docs/decisions/`) の健�
 
 ### 1. specs ヘルスチェック
 
-[docs/specs/README.md](../../docs/specs/README.md) の「## ヘルスチェック」節のチェック項目 (1〜5) を順に適用する:
+[docs/specs/README.md](../../docs/specs/README.md) の「## ヘルスチェック」節のチェック項目 (1〜6) を順に適用する:
 
 - specs ドキュメント同士の矛盾
 - [docs/decisions/](../../docs/decisions/) の ADR との矛盾 (ADR 優先。暫定/提案状態は指摘レベル下げる)
 - `Aidea/Aidea/` 配下の実装との矛盾 (stale specs)
 - コードにあるのに specs に書かれていない機能・概念
-- 永続化データの抜け ([docs/specs/persistence.md](../../docs/specs/persistence.md) との突き合わせ)
+- 永続化データの抜け ([docs/specs/aspects/persistence.md](../../docs/specs/aspects/persistence.md) との突き合わせ)
+- aspects（横断的関心事）との整合性 — 機能群の変更が [docs/specs/aspects/](../../docs/specs/aspects/README.md) に反映されているか（詳細は aspects/README.md の更新ルールを参照）
 
 ### 2. decisions ヘルスチェック
 

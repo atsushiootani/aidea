@@ -8,7 +8,7 @@ Aidea の**プロダクト仕様 (設計ストック)**。コードベースと 
 | ファイル | 変化頻度 | 内容 |
 |---|---|---|
 | [architecture.md](./architecture.md) | **中** | 技術スタック / プロジェクト構造 / レイヤー・主要コンポーネント |
-| [persistence.md](./aspects/persistence.md) | **中** | データ永続化仕様 (UserDefaults / Keychain / `.aidea/`) |
+| [aspects/](./aspects/) | **中** | 横断的関心事 (キー操作一覧 / 永続化仕様) |
 | [tools/](./tools/) | **中** | 各ツールの実装仕様 (Terminal / Git / Kit / Preview / Obsidian など) |
 | [frontchannels/](./frontchannels/) | **中** | 会話 UI (Scene / 発話フロー) |
 | [companions/](./companions/) | **中** | コンパニオン (8 体のアイコン) とレコメンドモード |
@@ -62,6 +62,9 @@ specs は「コードベースと 1:1 対応するストック情報」が原則
 5. **永続化データの抜け**
    - コードベースで `UserDefaults` / Keychain / `.aidea/*.json` 等に読み書きしているが [persistence.md](./aspects/persistence.md) に記載がないものをフラグ
 
+6. **aspects（横断的関心事）との整合性**
+   - 機能群の変更が [aspects/](./aspects/README.md) に反映されていないものをフラグ（詳細は [aspects/README.md](./aspects/README.md) の更新ルールを参照）
+
 ### フラグへの対応
 
 | フラグ | 基本方針 | 追加アクション |
@@ -71,6 +74,7 @@ specs は「コードベースと 1:1 対応するストック情報」が原則
 | **コードベースとの矛盾** | **現コードを正とする** (ユーザ確認) | 古い specs を最新実装に合わせて書き換える |
 | **未記載の機能・概念** | ユーザに問い合わせ | 仕様を書く ([該当サブディレクトリ](./) に追加) か、無視してよいかを選択 |
 | **永続化データの抜け** | ユーザに問い合わせ | [persistence.md](./aspects/persistence.md) に追記するか、テンポラリなら無視かを選択 |
+| **aspects との不整合** | **specs 側を正とする** | 機能群の変更を [aspects/](./aspects/) に反映する |
 
 ### 運用
 
