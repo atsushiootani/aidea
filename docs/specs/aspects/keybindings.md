@@ -1,3 +1,21 @@
+---
+title: キー操作・マウス操作一覧
+description: 全キーボードショートカットとマウス操作を機能群横断で集約したリファレンス
+derived_from:
+  - docs/decisions/0014-no-ctrl-number-shortcuts.md
+  - docs/decisions/0016-terminal-mouse-event-suppression.md
+  - docs/decisions/0017-alternate-screen-scroll-handling.md
+syncs_with:
+  - docs/specs/tools/
+  - docs/specs/window/shortcuts.md
+  - docs/specs/companions/recommend-mode.md
+impacts: []
+conventions:
+  - docs/LAYOUT.md
+  - docs/specs/aspects/README.md
+last_updated: 2026-04-17
+---
+
 # キー操作・マウス操作一覧
 
 Aidea の全キーボードショートカットとマウス操作のリファレンス。

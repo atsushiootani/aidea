@@ -1,3 +1,16 @@
+---
+title: Aspects (横断的関心事) インデックス
+description: 複数機能群にまたがる仕様文書のディレクトリインデックスと更新ルール
+derived_from:
+  - docs/LAYOUT.md
+syncs_with: []
+impacts:
+  - docs/specs/aspects/*
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-17
+---
+
 # Aspects（横断的関心事）
 
 複数の機能群（tools / sessions / companions 等）にまたがる仕様を集約する。

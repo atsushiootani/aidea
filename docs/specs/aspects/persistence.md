@@ -1,3 +1,19 @@
+---
+title: Persistence (データ永続化)
+description: UserDefaults / Keychain / .aidea/ のデータ永続化仕様を機能群横断で集約
+derived_from:
+  - docs/specs/architecture.md
+syncs_with:
+  - docs/specs/backchannels/README.md
+  - docs/specs/frontchannels/README.md
+  - docs/specs/sessions/ui-rules.md
+impacts: []
+conventions:
+  - docs/LAYOUT.md
+  - docs/specs/aspects/README.md
+last_updated: 2026-04-17
+---
+
 # Persistence (データ永続化)
 
 Aidea が **どのデータをどこに、どのタイミングで保存するか** の仕様。
