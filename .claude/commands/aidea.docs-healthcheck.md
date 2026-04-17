@@ -1,13 +1,13 @@
 ---
-description: docs/specs と docs/decisions のヘルスチェックを実施する (矛盾 / 未定義参照 / stale / 抜け漏れの確認)
+description: docs/decisions と docs/specs のヘルスチェックを実施する (矛盾 / 未定義参照 / stale / 抜け漏れの確認)
 ---
 
 # docs ヘルスチェック
 
-Aidea の設計ドキュメント (`docs/specs/` と `docs/decisions/`) の健全性を一括で確認する。各領域の詳細基準は以下の SSoT に従う。
+Aidea の設計ドキュメント (`docs/decisions/` と `docs/specs/`) の健全性を一括で確認する。各領域の詳細基準は以下の SSoT に従う。
 
-- [docs/specs/README.md](../../docs/specs/README.md) の「## ヘルスチェック」節
 - [docs/decisions/README.md](../../docs/decisions/README.md) の「## ヘルスチェック」節
+- [docs/specs/README.md](../../docs/specs/README.md) の「## ヘルスチェック」節
 
 ## やること
 
@@ -20,7 +20,16 @@ Aidea の設計ドキュメント (`docs/specs/` と `docs/decisions/`) の健�
 
 これらを読むことで、後続のチェックで「参照切れ」「配置違反」「frontmatter の整合性」を正しく判定できる。
 
-### 1. specs ヘルスチェック
+### 1. decisions ヘルスチェック
+
+[docs/decisions/README.md](../../docs/decisions/README.md) の「## ヘルスチェック」節のチェック項目 (1〜3) を順に適用する:
+
+- ADR 同士の矛盾 (旧 ADR への「廃止」「置換 (→ NNNN)」「進化予定」注記の有無もチェック)
+- 未定義参照 (ADR 本文が言及する概念・ファイルが定義されていない / 削除済みファイル参照)
+  - ADR 同士の参照 / `docs/specs/*` の実在ファイル / 外部パッケージ / その ADR 内完結の概念は除外
+- 状態 (status) 整合性 (README 一覧表と各 ADR frontmatter の `status` フィールドの一致。本文冒頭の `**状態**` 行が残っていればフラグ)
+
+### 2. specs ヘルスチェック
 
 [docs/specs/README.md](../../docs/specs/README.md) の「## ヘルスチェック」節のチェック項目 (1〜6) を順に適用する:
 
@@ -30,15 +39,6 @@ Aidea の設計ドキュメント (`docs/specs/` と `docs/decisions/`) の健�
 - コードにあるのに specs に書かれていない機能・概念
 - 永続化データの抜け ([docs/specs/aspects/persistence.md](../../docs/specs/aspects/persistence.md) との突き合わせ)
 - aspects（横断的関心事）との整合性 — 機能群の変更が [docs/specs/aspects/](../../docs/specs/aspects/README.md) に反映されているか（詳細は aspects/README.md の更新ルールを参照）
-
-### 2. decisions ヘルスチェック
-
-[docs/decisions/README.md](../../docs/decisions/README.md) の「## ヘルスチェック」節のチェック項目 (1〜3) を順に適用する:
-
-- ADR 同士の矛盾 (旧 ADR への「廃止」「置換 (→ NNNN)」「進化予定」注記の有無もチェック)
-- 未定義参照 (ADR 本文が言及する概念・ファイルが定義されていない / 削除済みファイル参照)
-  - ADR 同士の参照 / `docs/specs/*` の実在ファイル / 外部パッケージ / その ADR 内完結の概念は除外
-- 状態 (status) 整合性 (README 一覧表と各 ADR frontmatter の `status` フィールドの一致。本文冒頭の `**状態**` 行が残っていればフラグ)
 
 ### 3. frontmatter 整合性チェック
 
@@ -53,11 +53,11 @@ Aidea の設計ドキュメント (`docs/specs/` と `docs/decisions/`) の健�
 - **規約違反** — `title` が本文 `#` 見出しと一致するか / `last_updated` が `YYYY-MM-DD` 形式か / ADR 専用フィールド (`status` / `replaces` / `replaced_by`) が specs/ に紛れ込んでいないか
 - **conventions の必須参照** — `docs/LAYOUT.md` を必ず含んでいるか
 
-詳細ルールは [docs/LAYOUT.md](../../docs/LAYOUT.md) の「frontmatter 規約」節を SSoT とする。
+詳細ルール (ADR の `impacts` / `syncs_with` 空固定など個別制約も含む) は [docs/LAYOUT.md](../../docs/LAYOUT.md) の「frontmatter 規約」節を SSoT とする。LAYOUT.md に書かれている制約はすべてチェック対象。
 
 ### 4. 結果の報告
 
-- **specs セクション** / **decisions セクション** / **frontmatter セクション** に分けて、フラグが立った項目を列挙する
+- **decisions セクション** / **specs セクション** / **frontmatter セクション** に分けて、フラグが立った項目を列挙する
   - 各項目: **ファイル (file:line)** / **フラグ種別** / **問題の要点** / **README の対応方針に沿った提案**
 - 各 README の「フラグへの対応」表に従い、ユーザ確認が必要なものは問い合わせ、明確なものは修正提案を出す
 - frontmatter の違反は LAYOUT.md の規約に沿って修正提案を出す

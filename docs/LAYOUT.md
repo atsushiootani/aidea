@@ -180,9 +180,14 @@ docs/
 
 ADR は「過去に下した判断」であり、**作成後に文書内容を変更しない** (ステータス遷移と置換関係だけ更新する)。そのため:
 
-- **`impacts: []` / `syncs_with: []` で固定**
-- 「この ADR は何に影響するか」は下流 (specs 等) 側の `derived_from` で表現する
-- これにより ADR 側はメンテ不要になり、新しい仕様が古い ADR を参照してもADR ファイルを編集する必要がない
+- **ADR 側**: `impacts: []` / `syncs_with: []` で固定
+- **他ファイル側**: `impacts` / `syncs_with` に ADR (`docs/decisions/*.md`) を**入れない**
+  - 「自分を変えたら ADR を見直す」という関係は ADR が変更されない前提で成立しない
+  - ADR は `derived_from` 側にのみ現れる
+- 「この ADR は何に影響するか」は**下流 (specs 等) 側の `derived_from` で表現する**
+- これにより ADR 側はメンテ不要になり、新しい仕様が古い ADR を参照しても ADR ファイルを編集する必要がない
+
+このルールは [`/aidea.docs-healthcheck`](../../.claude/commands/aidea.docs-healthcheck.md) の frontmatter 整合性チェックで機械的に検証される。
 
 ### 依存関係の書き分け
 
