@@ -10,6 +10,7 @@ import SwiftUI
 struct ScenePromptsEditorView: View {
     let scene: String
     let defaults: [String]
+    @Environment(CompanionStore.self) private var companionStore
     @State private var revision: Int = 0  // 変更検知用
 
     private var prompts: [String] {
@@ -47,24 +48,12 @@ struct ScenePromptsEditorView: View {
         .padding(.vertical, 4)
     }
 
-    /// デフォルトコンパニオン選択メニュー
+    @State private var showingCompanionPicker = false
+
+    /// デフォルトコンパニオン選択 Popover
     private var companionMenu: some View {
-        Menu {
-            ForEach(Array(CompanionIconPresets.imageIcons.enumerated()), id: \.offset) { i, icon in
-                Button {
-                    RecommendStore.saveDefaultCompanion(scene: scene, index: i)
-                    revision += 1
-                } label: {
-                    HStack {
-                        Image(CompanionIconPresets.thumbnailIcon(for: icon))
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 16, height: 16)
-                        Text("Companion \(i + 1)")
-                        if i == defaultCompanionIndex { Image(systemName: "checkmark") }
-                    }
-                }
-            }
+        Button {
+            showingCompanionPicker.toggle()
         } label: {
             let icons = CompanionIconPresets.imageIcons
             if defaultCompanionIndex < icons.count {
@@ -72,12 +61,43 @@ struct ScenePromptsEditorView: View {
                     .resizable()
                     .interpolation(.high)
                     .scaledToFit()
-                    .frame(width: 20, height: 20)
+                    .frame(width: 40, height: 40)
                     .clipShape(RoundedRectangle(cornerRadius: 3))
             }
         }
-        .menuStyle(.borderlessButton)
-        .fixedSize()
+        .buttonStyle(.plain)
+        .popover(isPresented: $showingCompanionPicker) {
+            VStack(alignment: .leading, spacing: 2) {
+                ForEach(Array(CompanionIconPresets.imageIcons.enumerated()), id: \.offset) { i, icon in
+                    Button {
+                        RecommendStore.saveDefaultCompanion(scene: scene, index: i)
+                        revision += 1
+                        showingCompanionPicker = false
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(CompanionIconPresets.thumbnailIcon(for: icon))
+                                .resizable()
+                                .interpolation(.high)
+                                .scaledToFit()
+                                .frame(width: 32, height: 32)
+                                .clipShape(RoundedRectangle(cornerRadius: 2))
+                            Text(companionStore.companion(forIndex: i)?.name ?? "Companion \(i + 1)")
+                                .font(.system(size: 11))
+                            Spacer()
+                            if i == defaultCompanionIndex {
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(Color.accentColor)
+                            }
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(4)
+        }
     }
 
     /// プロンプトタグ
