@@ -1,3 +1,17 @@
+---
+title: Session 内部状態: Filer
+description: FilerSessionState の状態 (selectedFile / expandedURLs)・シングルトン制約・workspace.json 永続化
+derived_from:
+  - docs/specs/sessions/ui-rules.md
+syncs_with:
+  - docs/specs/tools/filer.md
+  - docs/specs/aspects/persistence.md
+impacts: []
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-17
+---
+
 # Session 内部状態: Filer
 
 `filer` Tool の Session は `FilerSessionState` (`@Observable`) として状態を保持する。
@@ -16,7 +30,7 @@
 ## 永続化
 
 `expandedURLs` は `<projectRoot>/.aidea/workspace.json` (v2) に含めて保存される。
-詳細は [../persistence.md](../persistence.md) を参照。
+詳細は [../aspects/persistence.md](../aspects/persistence.md) を参照。
 
 ## シングルトン制約
 

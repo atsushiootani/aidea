@@ -12,6 +12,8 @@ Aidea のコードを書く際に従うべき規約とガイドライン。
 | [rules.md](./rules.md) | Always / Confirm First / Never — コードレビュー時のチェックリスト |
 | [testing.md](./testing.md) | テスト戦略 / 手動確認チェックリスト |
 
+※ docs/ 配下の YAML frontmatter 規約は [../LAYOUT.md](../LAYOUT.md#frontmatter-規約) を参照。
+
 ## 読む順番 (初見)
 
 1. [design-principles.md](./design-principles.md) — まず思想を掴む

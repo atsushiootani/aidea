@@ -1,3 +1,26 @@
+---
+title: Persistence (データ永続化)
+description: UserDefaults / Keychain / .aidea/ のデータ永続化仕様を機能群横断で集約
+derived_from:
+  - docs/specs/architecture.md
+syncs_with:
+  - docs/specs/backchannels/backchannel.md
+  - docs/specs/backchannels/voicevox.md
+  - docs/specs/frontchannels/scene.md
+  - docs/specs/companions/companion.md
+  - docs/specs/companions/recommend-mode.md
+  - docs/specs/sessions/filer.md
+  - docs/specs/sessions/kit.md
+  - docs/specs/sessions/preview.md
+  - docs/specs/sessions/web.md
+  - docs/specs/tools/preview.md
+impacts: []
+conventions:
+  - docs/LAYOUT.md
+  - docs/specs/aspects/README.md
+last_updated: 2026-04-17
+---
+
 # Persistence (データ永続化)
 
 Aidea が **どのデータをどこに、どのタイミングで保存するか** の仕様。
@@ -126,7 +149,7 @@ Claude → Aidea 方向の通信は**ファイル経由**で行う。
 | `Services/Backchannel/Speech/SpeechWatcher.swift` | `.aidea/backchannels/` の FSEvents 監視 |
 | `Services/Backchannel/Speech/SpeechState.swift` | Speech 状態管理と VOICEVOX 連携 |
 
-詳細は [backchannels/](./backchannels/README.md) を参照。
+詳細は [../backchannels/](../backchannels/README.md) を参照。
 
 ---
 
@@ -157,7 +180,7 @@ Claude → Aidea 方向の通信は**ファイル経由**で行う。
 
 ## 関連ドキュメント
 
-- [architecture.md](./architecture.md) — 全体のアーキテクチャ
-- [backchannels/](./backchannels/README.md) — 通信チャネル (Claude → Aidea) の詳細
-- [frontchannels/](./frontchannels/README.md) — 通信チャネル (Aidea → Claude) の詳細
-- [sessions/ui-rules.md#概念モデル](./sessions/ui-rules.md#概念モデル) — Session 概念
+- [../architecture.md](../architecture.md) — 全体のアーキテクチャ
+- [../backchannels/](../backchannels/README.md) — 通信チャネル (Claude → Aidea) の詳細
+- [../frontchannels/](../frontchannels/README.md) — 通信チャネル (Aidea → Claude) の詳細
+- [../sessions/ui-rules.md#概念モデル](../sessions/ui-rules.md#概念モデル) — Session 概念

@@ -1,3 +1,19 @@
+---
+title: Tool 仕様: Filer
+description: NSOutlineView ベースのディレクトリツリー・FSEvents 連動・複数選択対応の Filer Tool 仕様
+derived_from:
+  - docs/decisions/0009-nsoutlineview-and-fsevents.md
+  - docs/specs/sessions/ui-rules.md
+  - docs/specs/window/
+syncs_with:
+  - docs/specs/sessions/filer.md
+  - docs/specs/aspects/keybindings.md
+impacts: []
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-17
+---
+
 # Tool 仕様: Filer
 
 Filer Tool の機能仕様。実装は [`Aidea/Sessions/Filer/`](../../../Aidea/Aidea/Sessions/Filer/) と

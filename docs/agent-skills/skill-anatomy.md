@@ -1,3 +1,15 @@
+---
+title: スキルの構造（Skill Anatomy）
+description: agent-skills スキルファイルの配置・SKILL.md フォーマット・各セクションの目的・書き方原則・命名規約
+derived_from: []
+syncs_with:
+  - docs/agent-skills/getting-started.md
+impacts: []
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-17
+---
+
 # スキルの構造（Skill Anatomy）
 
 このドキュメントは agent-skills のスキルファイルの構造とフォーマットを説明します。新しいスキルを寄稿するとき、または既存のスキルを理解するときのガイドとして使ってください。

@@ -1,3 +1,14 @@
+---
+title: Glossary
+description: Aidea プロジェクトで使われる用語 (Window/Pane/Tab/Session/Tool/SessionID/Companion 等) の定義
+derived_from: []
+syncs_with: []
+impacts: []
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-17
+---
+
 # Glossary
 
 Aidea プロジェクトで使われる用語の定義。

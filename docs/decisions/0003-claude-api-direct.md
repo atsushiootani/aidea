@@ -1,7 +1,20 @@
+---
+title: "0003: Claude API を直接叩く（Claude Code CLI は別途使う）"
+description: メインは Claude Code CLI で、補助的なチャットペインでのみ Claude API を直叩きする両用方針
+status: 採用
+derived_from: []
+syncs_with: []
+impacts: []
+replaces: []
+replaced_by: []
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-08
+---
+
 # 0003: Claude API を直接叩く（Claude Code CLI は別途使う）
 
 **日付**: 2026-04-08
-**状態**: 採用
 
 ## 背景
 Claude と対話する手段は 2 つある：

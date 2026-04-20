@@ -1,3 +1,19 @@
+---
+title: レコメンドモード
+description: Cmd+Enter で起動するコンパニオンプロンプト選択 UI・RecommendState/RecommendStore・Scene 解決とキー操作
+derived_from:
+  - docs/specs/frontchannels/frontchannel.md
+  - docs/specs/frontchannels/scene.md
+syncs_with:
+  - docs/specs/companions/companion.md
+  - docs/specs/aspects/keybindings.md
+  - docs/specs/aspects/persistence.md
+impacts: []
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-20
+---
+
 # レコメンドモード
 
 > Cmd+Enter でコンパニオンにレコメンドプロンプトを提示し、選択・送信する UI

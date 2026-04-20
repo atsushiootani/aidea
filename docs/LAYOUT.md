@@ -1,3 +1,15 @@
+---
+title: docs ディレクトリ構成とファイル配置ルール
+description: docs 配下の配置ルール・命名規約・インデックス更新義務・frontmatter 規約を定める SSoT
+derived_from: []
+syncs_with: []
+impacts:
+  - docs/README.md
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-17
+---
+
 # docs ディレクトリ構成とファイル配置ルール
 
 新しいドキュメントを追加する際に「どこに、どんな名前で置くか」で迷わないための単一参照先。
@@ -21,7 +33,7 @@ docs/
 ├── specs/             # プロダクト仕様 (設計ストック・コードと 1:1 対応)
 │   ├── README.md      # 内のインデックス・機能群ごとのサブディレクトリ一覧
 │   ├── architecture.md
-│   ├── persistence.md
+│   ├── aspects/
 │   ├── glossary.md
 │   └── <機能群>/       # backchannels / frontchannels / companions / sessions / tools / window など (→ README.md 参照)
 │
@@ -93,6 +105,7 @@ docs/
 - **現在のファイル**: `coding-style.md` (Swift 規約) / `design-principles.md` (設計思想) / `testing.md` (テスト戦略)
 - **判断基準**: プロダクト動作 (spec) ではなくコードの書き方に関する規約は全てここに置く
 - **命名**: kebab-case 全小文字
+- **docs の書き方規約**は本ファイル内「frontmatter 規約」節に置く (docs メタ文書なので conventions ではなく LAYOUT.md に集約)
 
 ### `docs/agent-skills/` — agent-skills 関連の参照資料
 
@@ -126,3 +139,176 @@ docs/
 | `docs/plans/` / `specs/` サブディレクトリ / `docs/agent-skills/` | — | インデックス不要 (ディレクトリ単位で参照している) |
 
 ※ ファイルごとの詳細な一行説明は各サブディレクトリの `README.md` または本 `LAYOUT.md` のツリー内コメントを単一情報源とする。`docs/README.md` には重複して書かない。
+
+---
+
+## frontmatter 規約
+
+`docs/` 配下の Markdown ドキュメントに YAML frontmatter を付け、ドキュメント間の依存関係を機械可読にする。目的は**ドキュメント A を変更したときに関連する B/C の更新漏れを防ぐこと**。
+
+### なぜ frontmatter を付けるのか
+
+- **agent が関連文書を追跡できる**: あるドキュメントを読んだ agent が、どの上流・下流・兄弟ドキュメントを一緒に見るべきかを機械的に判断できる
+- **`/aidea.docs-healthcheck` の精度向上**: 双方向リンクの整合性・参照切れを自動検出できる
+- **変更の影響範囲を即座に把握できる**: PR レビュー時に「この変更で他のどこを更新すべきか」が一目でわかる
+
+### フィールド定義
+
+#### 全ドキュメント共通
+
+| フィールド | 必須 | 型 | 意味 |
+|---|---|---|---|
+| `title` | ✅ | string | ドキュメントのタイトル (本文 `#` 見出しと一致させる) |
+| `description` | ✅ | string | 1 行の説明。agent が関連性を判断する材料 |
+| `derived_from` | ✅ | string[] | **上流** (強): ここを変えたら本文を書き直す必要がある文書 |
+| `syncs_with` | ✅ | string[] | **双方向同期**: どちらを変えても相手を更新する必要がある文書 |
+| `impacts` | ✅ | string[] | **下流** (強): 自分を変えたら相手も更新すべき文書 |
+| `conventions` | ✅ | string[] | 書き方・更新ルールの参照先 (本ファイルと、該当ディレクトリの README.md に更新ルールがあればそれも) |
+| `last_updated` | ✅ | string | 最終更新日 (`YYYY-MM-DD`) |
+
+#### ADR (`docs/decisions/`) のみ
+
+| フィールド | 必須 | 型 | 意味 |
+|---|---|---|---|
+| `status` | ✅ | enum | `提案` / `採用` / `暫定` / `確定` / `廃止` / `置換` |
+| `replaces` | 任意 | string[] | この ADR が置き換える過去の ADR |
+| `replaced_by` | 任意 | string[] | この ADR を置き換えた新しい ADR |
+
+`specs/` は**ストック情報**として常に確定扱いで、置換されたドキュメントは必ず削除するため、これらのフィールドは付けない。
+
+#### ADR の impacts / syncs_with は常に空
+
+ADR は「過去に下した判断」であり、**作成後に文書内容を変更しない** (ステータス遷移と置換関係だけ更新する)。そのため:
+
+- **ADR 側**: `impacts: []` / `syncs_with: []` で固定
+- **他ファイル側**: `impacts` / `syncs_with` に ADR (`docs/decisions/*.md`) を**入れない**
+  - 「自分を変えたら ADR を見直す」という関係は ADR が変更されない前提で成立しない
+  - ADR は `derived_from` 側にのみ現れる
+- 「この ADR は何に影響するか」は**下流 (specs 等) 側の `derived_from` で表現する**
+- これにより ADR 側はメンテ不要になり、新しい仕様が古い ADR を参照しても ADR ファイルを編集する必要がない
+
+このルールは [`/aidea.docs-healthcheck`](../../.claude/commands/aidea.docs-healthcheck.md) の frontmatter 整合性チェックで機械的に検証される。
+
+### 依存関係の書き分け
+
+3 つの関係フィールドを混同しないための判断基準。
+
+#### `derived_from` (上流 → 自分 / 強)
+
+**判定**: 「相手を変更したら、自分の本文も書き直す必要があるか?」
+
+- ✅ ADR の判断内容が自分の仕様を規定している
+- ✅ architecture.md の設計方針が自分の詳細仕様を規定している
+- ❌ 本文中で軽く参照しているだけ (→ 参照先リンクで十分)
+
+#### `syncs_with` (双方向 / 強)
+
+**判定**: 「どちらを変更しても、相手も同時に更新が必要か?」
+
+- ✅ aspects の集約ビューと個別機能群の spec (keybindings ↔ tools/*)
+- ✅ インデックスファイルと配下の個別ファイル (aspects/README ↔ aspects/*.md)
+- ❌ 片方向の派生関係 (→ `derived_from` または `impacts`)
+
+#### `impacts` (自分 → 下流 / 強)
+
+**判定**: 「自分を変更したら、相手も更新すべきか? (逆は不要)」
+
+- ✅ 自分が規範で、下流ドキュメントが実装詳細を書く関係
+- ❌ 下流を変更しても自分は変わらない弱い関係
+
+#### どれにも当てはまらないリンク
+
+本文中で参照しているだけのリンク (用語集・関連仕様への軽い言及) は frontmatter に書かず、Markdown リンクのみで扱う。リンク切れは healthcheck で別途チェックする。
+
+### 記述ルール
+
+#### パスの書き方
+
+- **リポジトリルートからの相対パス**で記述する (`docs/specs/architecture.md`)
+- ディレクトリ全体を指す場合は末尾にスラッシュ (`docs/specs/tools/`)
+- **ワイルドカード `<dir>/*`** でディレクトリ直下の全 Markdown ファイルを指せる
+  - 例: `docs/specs/aspects/*` は `keybindings.md` と `persistence.md` を含む
+  - インデックスファイル (README.md) が配下を束ねる場合に使う
+  - ワイルドカードが**自分自身を含む場合は自動的に除外**される (例: `docs/specs/sessions/ui-rules.md` の `impacts` が `docs/specs/sessions/*` でも自分自身は指さない)
+  - 個別ファイルを特別扱いしたい場合はワイルドカードではなく個別に列挙する
+- 他のドキュメントから参照されやすいので、ファイルを**リネーム/削除したら参照元を全て更新**する
+
+#### 空配列の扱い
+
+関係がないフィールドは `[]` で明示する。省略しない。
+
+```yaml
+syncs_with: []
+impacts: []
+```
+
+理由: 「考慮した上で関係なし」と「書き忘れ」を区別するため。
+
+#### `last_updated`
+
+- 本文を意味的に変更したタイミングで更新する
+- typo 修正・リンク切れ修正など**内容に影響しない編集では更新しない**
+- 形式は `YYYY-MM-DD` (ISO 8601)
+
+#### `title` と `description`
+
+- `title`: 本文の `#` 見出しと完全一致させる
+- `description`: 50〜120 文字程度。**agent が関連性判断に使う**ので具体的に書く
+  - ❌ 「仕様書」「ドキュメント」
+  - ✅ 「UserDefaults / Keychain / .aidea/ のデータ永続化仕様を機能群横断で集約」
+
+### テンプレート
+
+#### specs/ 用
+
+```yaml
+---
+title: <タイトル>
+description: <50-120 文字の具体的な説明>
+derived_from:
+  - docs/decisions/NNNN-*.md
+syncs_with: []
+impacts: []
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-MM-DD
+---
+```
+
+#### decisions/ (ADR) 用
+
+```yaml
+---
+title: <タイトル>
+description: <50-120 文字の具体的な説明>
+status: 提案
+derived_from: []
+syncs_with: []
+impacts: []
+replaces: []
+replaced_by: []
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-MM-DD
+---
+```
+
+### 適用範囲と導入状況
+
+| ディレクトリ | 適用状況 |
+|---|---|
+| `docs/` 直下 (README / LAYOUT) | ✅ 完了 (2026-04-17) |
+| `docs/specs/` 直下 (README / architecture / glossary) | ✅ 完了 (2026-04-17) |
+| `docs/specs/aspects/` | ✅ 完了 (2026-04-17) |
+| `docs/specs/tools/` | ✅ 完了 (2026-04-17) |
+| `docs/specs/sessions/` | ✅ 完了 (2026-04-17) |
+| `docs/specs/backchannels/` | ✅ 完了 (2026-04-17) |
+| `docs/specs/frontchannels/` | ✅ 完了 (2026-04-17) |
+| `docs/specs/companions/` | ✅ 完了 (2026-04-17) |
+| `docs/specs/window/` | ✅ 完了 (2026-04-17) |
+| `docs/foundation/` | ✅ 完了 (2026-04-17) |
+| `docs/agent-skills/` | ✅ 完了 (2026-04-17) |
+| `docs/decisions/` | ✅ 完了 (2026-04-17) — status フィールドを本文から frontmatter に移行 |
+| `docs/conventions/` | 未適用 |
+
+段階的に対象を広げる。`/aidea.docs-healthcheck` で未適用ファイルをフラグする拡張は別途検討。

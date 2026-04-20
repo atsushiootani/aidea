@@ -1,7 +1,22 @@
+---
+title: "0010: drawio ファイルの描画は形式ごとに異なる経路を使う"
+description: .drawio.svg の view は inline SVG + WKWebView、.drawio の view は drawio embed (chrome=0)、編集はいずれも drawio embed (chrome=1) を使う形式別経路
+status: 採用
+derived_from:
+  - docs/decisions/0001-swift-swiftui.md
+  - docs/decisions/0006-only-swiftterm-dependency.md
+syncs_with: []
+impacts: []
+replaces: []
+replaced_by: []
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-09
+---
+
 # 0010: drawio ファイルの描画は形式ごとに異なる経路を使う
 
 **日付**: 2026-04-09
-**状態**: 採用
 
 ## 背景
 Aidea の Preview Tool で drawio ファイルを表示する際、対象となる形式は 2 種類ある:

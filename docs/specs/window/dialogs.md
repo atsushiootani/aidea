@@ -1,3 +1,15 @@
+---
+title: ダイアログ
+description: Window 共通のモーダルダイアログ (NSAlert / 独自モーダル) のキー割当・破壊操作確認・リアルタイムバリデーション規約
+derived_from: []
+syncs_with: []
+impacts:
+  - docs/specs/tools/filer.md
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-17
+---
+
 # ダイアログ
 
 Window 全体で共通のモーダルダイアログ振る舞い仕様。

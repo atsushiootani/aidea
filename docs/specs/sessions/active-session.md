@@ -1,3 +1,19 @@
+---
+title: アクティブ Session の仕組み
+description: SessionRegistry.activeSessionID の切替・履歴 (50 件)・Filer ダブルクリック挙動・Preview 開き規約 (openPreview / openPreviewAsSibling)
+derived_from:
+  - docs/specs/sessions/ui-rules.md
+  - docs/decisions/0013-session-as-first-class-object.md
+syncs_with: []
+impacts:
+  - docs/specs/tools/filer.md
+  - docs/specs/tools/preview.md
+  - docs/specs/sessions/preview.md
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-17
+---
+
 # アクティブ Session の仕組み
 
 Window 内で「現在どの Session にフォーカスしているか」を追跡・切替する仕組み。

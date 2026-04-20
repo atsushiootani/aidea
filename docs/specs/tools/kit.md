@@ -1,3 +1,18 @@
+---
+title: Tool 仕様: Kit
+description: Skills / Commands / Agents / MCPs の 4 セクションを 1 ペインで閲覧する Kit Tool 仕様
+derived_from:
+  - docs/specs/sessions/ui-rules.md
+  - docs/specs/window/
+syncs_with:
+  - docs/specs/sessions/kit.md
+  - docs/specs/aspects/keybindings.md
+impacts: []
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-17
+---
+
 # Tool 仕様: Kit
 
 Claude の "装備品一式" (Skills / Commands / Agents / MCPs) を 1 つの Tool にまとめたもの。

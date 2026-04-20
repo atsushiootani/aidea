@@ -1,3 +1,15 @@
+---
+title: Tool 仕様: Obsidian 連携
+description: Obsidian vault を URL スキーム + 直接ファイル操作で読み書きする連携 Tool 仕様 (MVP 未実装)
+derived_from:
+  - docs/decisions/0005-obsidian-hybrid.md
+syncs_with: []
+impacts: []
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-17
+---
+
 # Tool 仕様: Obsidian 連携
 
 Obsidian vault を読み書きして、デイリーノートや AI との対話ログを外部に残すための連携 Tool。

@@ -56,9 +56,20 @@ final class PersistentTerminalView: LocalProcessTerminalView {
 
     private var linkGuard: TerminalLinkGuard?
     private var mouseMoveMonitor: Any?
+    private var scrollMonitor: Any?
+    private var middleClickMonitor: Any?
+    /// Claude CLI のトランスクリプトモードかどうかを最下行のテキストから判定する
+    private var isTranscriptMode: Bool {
+        guard terminal.isCurrentBufferAlternate else { return false }
+        let lastRow = terminal.rows - 1
+        guard let line = terminal.getLine(row: lastRow) else { return false }
+        let text = line.translateToString(trimRight: true)
+        return text.contains("transcript")
+    }
 
     /// terminalDelegate をプロキシに差し替え、mouseMoved を抑制して URL 誤発火を防ぐ。
-    func installLinkGuard() {
+    /// isClaudeSession = true の場合、スクロール変換とホイールクリックも有効にする。
+    func installLinkGuard(isClaudeSession: Bool = false) {
         // delegate プロキシ: requestOpenLink を Cmd+Click のみに制限
         let guard_ = TerminalLinkGuard(original: self)
         linkGuard = guard_
@@ -67,17 +78,51 @@ final class PersistentTerminalView: LocalProcessTerminalView {
         // mouseMoved モニター: この TerminalView 宛の mouseMoved を握りつぶす
         mouseMoveMonitor = NSEvent.addLocalMonitorForEvents(matching: [.mouseMoved, .mouseEntered, .mouseExited]) { [weak self] event in
             guard let self else { return event }
-            // このビューまたはその子ビューが対象かチェック
             if let hitView = event.window?.contentView?.hitTest(event.locationInWindow),
                hitView === self || hitView.isDescendant(of: self) {
-                return nil // 握りつぶす
+                return nil
             }
             return event
+        }
+
+        // Claude セッション専用: スクロール変換とホイールクリック
+        guard isClaudeSession else { return }
+
+        scrollMonitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { [weak self] event in
+            guard let self,
+                  self.terminal.isCurrentBufferAlternate,
+                  event.deltaY != 0,
+                  let hitView = event.window?.contentView?.hitTest(event.locationInWindow),
+                  hitView === self || hitView.isDescendant(of: self) else {
+                return event
+            }
+            // トランスクリプトモードの時だけ Ctrl+U/D を送信
+            guard self.isTranscriptMode else { return event }
+            self.send([event.deltaY > 0 ? 0x15 : 0x04])
+            return nil
+        }
+
+        // ホイールクリック（ミドルクリック）→ Ctrl+O を送信
+        middleClickMonitor = NSEvent.addLocalMonitorForEvents(matching: .otherMouseDown) { [weak self] event in
+            guard let self,
+                  event.buttonNumber == 2,
+                  let hitView = event.window?.contentView?.hitTest(event.locationInWindow),
+                  hitView === self || hitView.isDescendant(of: self) else {
+                return event
+            }
+            self.send([0x0f]) // Ctrl+O
+            return nil
         }
     }
 
     deinit {
         if let monitor = mouseMoveMonitor {
+            NSEvent.removeMonitor(monitor)
+        }
+        if let monitor = scrollMonitor {
+            NSEvent.removeMonitor(monitor)
+        }
+        if let monitor = middleClickMonitor {
             NSEvent.removeMonitor(monitor)
         }
     }

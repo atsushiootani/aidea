@@ -1,3 +1,17 @@
+---
+title: Session 内部状態: Kit
+description: KitSessionState の状態 (expandedSections / expandedGroups / selection) と 4 種ローダ・workspace.json 永続化
+derived_from:
+  - docs/specs/sessions/ui-rules.md
+syncs_with:
+  - docs/specs/tools/kit.md
+  - docs/specs/aspects/persistence.md
+impacts: []
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-17
+---
+
 # Session 内部状態: Kit
 
 `kit` Tool の Session は `KitSessionState` (`@Observable`) として状態を保持する。
@@ -29,4 +43,4 @@ Tool 仕様 (UI / 操作 / 受け入れ基準) は [../tools/kit.md](../tools/ki
 ## 永続化
 
 `expandedSections` と `expandedGroups` は `<projectRoot>/.aidea/workspace.json` に保存される。
-詳細は [../persistence.md](../persistence.md) を参照。
+詳細は [../aspects/persistence.md](../aspects/persistence.md) を参照。

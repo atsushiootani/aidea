@@ -1,7 +1,20 @@
+---
+title: "0011: Cmd+W による「タブを閉じる」は NSEvent local monitor で実装する"
+description: SwiftUI デフォルトの Close Window メニュー割当を回避するため、NSEvent.addLocalMonitorForEvents で Cmd+W を横取りしてタブクローズに置き換える判断
+status: 採用
+derived_from: []
+syncs_with: []
+impacts: []
+replaces: []
+replaced_by: []
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-09
+---
+
 # 0011: Cmd+W による「タブを閉じる」は NSEvent local monitor で実装する
 
 **日付**: 2026-04-09
-**状態**: 採用
 
 ## 背景
 Issue #21 で、どの Tool にフォーカスがあっても共通で効くグローバルショートカットを導入した。

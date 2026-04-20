@@ -1,7 +1,21 @@
+---
+title: "0016: ターミナルの mouseMoved を NSEvent モニターで抑制する"
+description: SwiftTerm の URL ホバー自動オープン誤発火を防ぐため NSEvent.addLocalMonitorForEvents で mouseMoved/Entered/Exited を握りつぶす判断
+status: 採用
+derived_from:
+  - docs/decisions/0008-no-claude-autostart.md
+syncs_with: []
+impacts: []
+replaces: []
+replaced_by: []
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-16
+---
+
 # 0016: ターミナルの mouseMoved を NSEvent モニターで抑制する
 
 **日付**: 2026-04-16
-**状態**: 採用
 
 ## 背景
 SwiftTerm (`LocalProcessTerminalView`) は `NSTrackingArea(.activeAlways)` を登録し、

@@ -1,3 +1,18 @@
+---
+title: Session 内部状態: GitDiff
+description: GitDiffSessionState の状態 (mode / diffOutput / viewedFiles / focusedFile 等) と Git ツール経由でのみ開く制約
+derived_from:
+  - docs/specs/sessions/ui-rules.md
+  - docs/decisions/0004-git-diff-with-diff2html.md
+syncs_with:
+  - docs/specs/tools/git.md
+  - docs/specs/sessions/git.md
+impacts: []
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-17
+---
+
 # Session 内部状態: GitDiff
 
 `gitDiff` Tool の Session は `GitDiffSessionState` (`@Observable`) として状態を保持する。

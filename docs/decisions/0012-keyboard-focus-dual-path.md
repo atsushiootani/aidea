@@ -1,7 +1,20 @@
+---
+title: "0012: キーボードフォーカスは AppKit と SwiftUI の 2 経路で管理する"
+description: AppKit 系 Session は makeFirstResponder、SwiftUI 系は @FocusState で分岐するフォーカス方式 (ADR 0013 で進化予定)
+status: 採用
+derived_from: []
+syncs_with: []
+impacts: []
+replaces: []
+replaced_by: []
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-10
+---
+
 # 0012: キーボードフォーカスは AppKit と SwiftUI の 2 経路で管理する
 
 **日付**: 2026-04-10
-**状態**: 採用
 
 > **Note**: [ADR 0013](./0013-session-as-first-class-object.md) で進化する予定。
 > `focusableView` の保持先を `SessionState` から `Session` (first-class object) に移し、

@@ -1,3 +1,16 @@
+---
+title: Architecture Decision Records
+description: Aidea の設計判断 (ADR) を 1 件 1 ファイルで記録する Michael Nygard 形式の ADR 集とそのヘルスチェック基準
+derived_from:
+  - docs/LAYOUT.md
+syncs_with: []
+impacts:
+  - docs/decisions/*
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-17
+---
+
 # Architecture Decision Records
 
 Aidea の設計判断を 1 件ずつ記録する。フォーマットは [Michael Nygard 形式](https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions) を踏襲。
@@ -22,6 +35,7 @@ Aidea の設計判断を 1 件ずつ記録する。フォーマットは [Michae
 | [0014](./0014-no-ctrl-number-shortcuts.md) | Ctrl+数字キーのショートカットを使わない | 採用 |
 | [0015](./0015-wkwebview-scope-and-chrome-coexistence.md) | WKWebView の制約を許容し Chrome 併用を前提とする | 採用 |
 | [0016](./0016-terminal-mouse-event-suppression.md) | ターミナルの mouseMoved を NSEvent モニターで抑制する | 採用 |
+| [0017](./0017-alternate-screen-scroll-handling.md) | Alternate Screen 使用中のスクロールを入力変換で対処する | 採用 |
 
 ## 状態の値
 
@@ -50,7 +64,8 @@ ADR が増えるにつれて矛盾や参照漏れが溜まりやすい。PR レ�
    - ADR 同士の参照 / `docs/specs/*` の実在ファイル / 外部パッケージ / その ADR 内で完結する概念は **未定義扱いしない**
 
 3. **状態 (status) 整合性**
-   - 本 README の一覧表と各 ADR ファイルの `**状態**` フィールドが一致しているか
+   - 本 README の一覧表と各 ADR ファイル frontmatter の `status` フィールドが一致しているか
+   - (本文冒頭の `**状態**` 行は 2026-04-17 に frontmatter に移行済み。古い記述が残っていればフラグ)
 
 ### フラグへの対応
 
