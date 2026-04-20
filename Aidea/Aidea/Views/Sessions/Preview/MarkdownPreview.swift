@@ -301,7 +301,7 @@ struct MarkdownPreview: View {
             // 展開時は幅 200、折りたたみ時は内容に合わせて縮める
             .frame(width: showTOC ? 200 : nil)
             .fixedSize(horizontal: !showTOC, vertical: false)
-            .background(.regularMaterial)
+            .background(Color(nsColor: .controlBackgroundColor))
             .overlay(
                 RoundedRectangle(cornerRadius: 6)
                     .stroke(Color.secondary.opacity(0.3), lineWidth: 0.5)

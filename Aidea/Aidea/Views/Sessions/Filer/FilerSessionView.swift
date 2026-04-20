@@ -65,7 +65,7 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
         outlineView.headerView = nil
         outlineView.dataSource = self
         outlineView.delegate = self
-        outlineView.style = .sourceList
+        outlineView.style = .plain
         outlineView.allowsMultipleSelection = true
         outlineView.indentationPerLevel = 14
         // キーボードイベントをこのコントローラに委譲
@@ -80,7 +80,8 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
 
         scrollView.documentView = outlineView
         scrollView.hasVerticalScroller = true
-        scrollView.drawsBackground = false
+        scrollView.drawsBackground = true
+        scrollView.backgroundColor = .controlBackgroundColor
 
         // 検索フィールド (非表示で開始)
         searchField.placeholderString = "ファイル名を検索"

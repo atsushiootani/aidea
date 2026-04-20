@@ -11,7 +11,7 @@ impacts:
   - docs/specs/companions/*
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-17
+last_updated: 2026-04-20
 ---
 
 # Session UI ルール
@@ -92,3 +92,38 @@ if EmacsNavigation.handle(event: event, responder: self) { return }
 ```
 
 SwiftUI 主体の Session も同等のショートカットを提供する (将来 `onKeyPress` で実装)。
+
+---
+
+## 背景色
+
+**Session / Window / 補助 UI の背景は、明示的な指定がない限りガラス効果 (半透明) を使わない。**
+不透明な固定色を既定とする。リスト / ツリー / エディタ / ヘッダなど、種別を問わず同じ原則を適用する。
+
+### 理由
+
+半透明背景は下のレイヤ (ウィンドウ背景 / デスクトップ画像 / 隣接ペイン) の色に応じて印象が変わり、
+テキスト色 (ファイル名の青、Git ステータスの緑 / 赤など) とのコントラストが崩れて読みにくくなる。
+背景色を固定すれば、配色の見通しが保てて、アクセシビリティも確保しやすい。
+
+### 実装ルール (AppKit / NSOutlineView 系)
+
+- `NSScrollView.drawsBackground = true` で不透明背景を描画する
+- `NSOutlineView.style` は `.plain` を使う (`.sourceList` は半透明サイドバー背景を強制するため、明示的な例外指定がない限り使わない)
+- `NSVisualEffectView` を追加しない
+- 背景色は `NSColor.controlBackgroundColor` を基本とする
+
+### 実装ルール (SwiftUI)
+
+- 必要に応じて `.background(Color(nsColor: .windowBackgroundColor))` 等で不透明色を明示する
+- `.background(.ultraThinMaterial)` / `.regularMaterial` / `.thickMaterial` などのガラス系マテリアルは、
+  この spec に例外として明記された箇所でのみ使用する
+
+### ガラスを使う明示的な例外
+
+明示的な意図がある場合に限り、ガラス効果を許容する。例外はこの spec または個別の Tool spec に
+理由と場所を記載すること。
+
+| 箇所 | 理由 | 参照 |
+|---|---|---|
+| (現時点で規約化された例外はない) | — | — |

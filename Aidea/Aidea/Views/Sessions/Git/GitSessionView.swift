@@ -74,7 +74,7 @@ final class GitFileListViewController: NSViewController, NSOutlineViewDataSource
         outlineView.headerView = nil
         outlineView.dataSource = self
         outlineView.delegate = self
-        outlineView.style = .sourceList
+        outlineView.style = .plain
         outlineView.allowsMultipleSelection = false
         outlineView.indentationPerLevel = 14
         outlineView.target = self
@@ -82,7 +82,8 @@ final class GitFileListViewController: NSViewController, NSOutlineViewDataSource
 
         scrollView.documentView = outlineView
         scrollView.hasVerticalScroller = true
-        scrollView.drawsBackground = false
+        scrollView.drawsBackground = true
+        scrollView.backgroundColor = .controlBackgroundColor
 
         // モード切替ピッカー
         let picker = NSSegmentedControl(labels: GitMode.allCases.map(\.rawValue),
