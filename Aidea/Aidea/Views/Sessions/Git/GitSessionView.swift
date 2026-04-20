@@ -59,7 +59,6 @@ final class GitFileListViewController: NSViewController, NSOutlineViewDataSource
     private let scrollView = NSScrollView()
     private let branchBadge = BranchBadgeView()
     private var picker: NSSegmentedControl?
-    private var promptsEditor: ScenePromptsEditor?
     private let watcher = FileWatcher()
     private var reloadWorkItem: DispatchWorkItem?
     /// Diff 追従による選択変更中は true（無限ループ防止）
@@ -97,17 +96,10 @@ final class GitFileListViewController: NSViewController, NSOutlineViewDataSource
 
         branchBadge.translatesAutoresizingMaskIntoConstraints = false
 
-        let scene = state?.currentScene() ?? "git"
-        let defaults = state?.recommendedPrompts() ?? []
-        let editor = ScenePromptsEditor(scene: scene, defaults: defaults)
-        editor.translatesAutoresizingMaskIntoConstraints = false
-        self.promptsEditor = editor
-
         let container = NSView()
         container.addSubview(picker)
         container.addSubview(branchBadge)
         container.addSubview(scrollView)
-        container.addSubview(editor)
         picker.translatesAutoresizingMaskIntoConstraints = false
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
@@ -121,10 +113,7 @@ final class GitFileListViewController: NSViewController, NSOutlineViewDataSource
             scrollView.topAnchor.constraint(equalTo: branchBadge.bottomAnchor, constant: 4),
             scrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: editor.topAnchor),
-            editor.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            editor.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            editor.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
         ])
         self.view = container
 
@@ -139,7 +128,6 @@ final class GitFileListViewController: NSViewController, NSOutlineViewDataSource
             self.state?.mode = mode
             self.picker?.selectedSegment = GitMode.allCases.firstIndex(of: mode) ?? 0
             self.reload()
-            self.updatePromptsEditor()
             // GitDiff も連動
             self.switchDiffMode(mode)
         }
@@ -198,7 +186,6 @@ final class GitFileListViewController: NSViewController, NSOutlineViewDataSource
     @objc private func modeChanged(_ sender: NSSegmentedControl) {
         state?.mode = GitMode.allCases[sender.selectedSegment]
         reload()
-        updatePromptsEditor()
     }
 
     @objc private func handleDoubleClick() {
@@ -287,29 +274,6 @@ final class GitFileListViewController: NSViewController, NSOutlineViewDataSource
         isUpdatingFromDiff = false
     }
 
-    /// モード変更時にプロンプトエディタを差し替える
-    private func updatePromptsEditor() {
-        guard let state, let oldEditor = promptsEditor else { return }
-        let scene = state.currentScene() ?? "git"
-        let defaults = state.recommendedPrompts()
-        let newEditor = ScenePromptsEditor(scene: scene, defaults: defaults)
-        newEditor.translatesAutoresizingMaskIntoConstraints = false
-
-        let container = oldEditor.superview!
-        oldEditor.removeFromSuperview()
-        container.addSubview(newEditor)
-        NSLayoutConstraint.activate([
-            newEditor.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            newEditor.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            newEditor.bottomAnchor.constraint(equalTo: container.bottomAnchor),
-        ])
-        // scrollView の bottom を再接続
-        for constraint in container.constraints where constraint.secondItem === oldEditor {
-            container.removeConstraint(constraint)
-        }
-        scrollView.bottomAnchor.constraint(equalTo: newEditor.topAnchor).isActive = true
-        self.promptsEditor = newEditor
-    }
 
     /// GitDiff のモードを切り替える
     private func switchDiffMode(_ mode: GitMode) {

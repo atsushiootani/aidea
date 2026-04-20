@@ -1,8 +1,9 @@
 ---
 title: Session 内部状態: GitDiff
-description: GitDiffSessionState の状態 (mode / diffOutput / viewedFiles / focusedFile 等) と Git ツール経由でのみ開く制約
+description: GitDiffSessionState の状態 (mode / diffOutput / viewedFiles / focusedFile 等)・Scene とレコメンドプロンプト・Git ツール経由でのみ開く制約
 derived_from:
   - docs/specs/sessions/ui-rules.md
+  - docs/specs/frontchannels/scene.md
   - docs/decisions/0004-git-diff-with-diff2html.md
 syncs_with:
   - docs/specs/tools/git.md
@@ -10,7 +11,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-17
+last_updated: 2026-04-20
 ---
 
 # Session 内部状態: GitDiff
@@ -31,6 +32,17 @@ diff2html の採用理由は [ADR 0004](../../decisions/0004-git-diff-with-diff2
 | `viewedFiles` | `Set<String>` | 既読ファイル集合 (変更時 `onViewedChanged` 発火) | ✅ |
 | `focusedFile` | `String?` | フォーカス中のファイル | ✅ |
 | `registry` | `weak var SessionRegistry?` | Git セッションへの逆参照 | — |
+
+## Scene とレコメンドプロンプト
+
+`SessionState` プロトコル ([../frontchannels/scene.md](../frontchannels/scene.md)) を実装し、Cmd+Enter でのレコメンド送信に対応する。
+
+| `mode` | `currentScene()` | `recommendedPrompts()` (デフォルト) |
+|---|---|---|
+| `.workingChanges` | `"gitDiff:workingChanges"` | `["コミットして", "プッシュして", "PRを作って"]` |
+| `.prPreview` | `"gitDiff:prPreview"` | `["PRをマージして", "レビューして"]` |
+
+デフォルトプロンプトは [git.md](./git.md) と同じだが、Scene キー (`gitDiff:*`) が Git ツール (`git:*`) と別のため、`workspace.json` v3 の `recommends` では**独立した 2 エントリ**として永続化される。ユーザは Git / GitDiff それぞれでプロンプトをカスタマイズする必要がある (Issue #74 の方針)。
 
 ## 追加制約
 

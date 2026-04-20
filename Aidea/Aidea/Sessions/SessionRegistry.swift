@@ -335,8 +335,18 @@ final class SessionRegistry {
         case .claude:   return AnyView(ClaudeSessionView(state: session.state as! ClaudeSessionState))
         case .web:      return AnyView(WebSessionView(state: session.state as! WebSessionState))
         case .preview:  return AnyView(PreviewSessionView(session: session, state: session.state as! PreviewSessionState, sessionID: id))
-        case .git:      return AnyView(GitSessionView(session: session, state: session.state as! GitSessionState))
-        case .gitDiff:  return AnyView(GitDiffSessionView(session: session, state: session.state as! GitDiffSessionState))
+        case .git:
+            let gitState = session.state as! GitSessionState
+            return AnyView(VStack(spacing: 0) {
+                GitSessionView(session: session, state: gitState)
+                ScenePromptsEditorView(scene: gitState.currentScene() ?? "git", defaults: gitState.recommendedPrompts())
+            })
+        case .gitDiff:
+            let diffState = session.state as! GitDiffSessionState
+            return AnyView(VStack(spacing: 0) {
+                GitDiffSessionView(session: session, state: diffState)
+                ScenePromptsEditorView(scene: diffState.currentScene() ?? "gitDiff", defaults: diffState.recommendedPrompts())
+            })
         }
     }
 

@@ -1,15 +1,16 @@
 ---
 title: Session 内部状態: Git
-description: GitSessionState の状態 (mode / treeNodes / selectedPath / fileStats 等)・シングルトン制約・GitDiff との連携
+description: GitSessionState の状態 (mode / treeNodes / selectedPath / fileStats 等)・Scene とレコメンドプロンプト・シングルトン制約・GitDiff との連携
 derived_from:
   - docs/specs/sessions/ui-rules.md
+  - docs/specs/frontchannels/scene.md
 syncs_with:
   - docs/specs/tools/git.md
   - docs/specs/sessions/git-diff.md
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-17
+last_updated: 2026-04-20
 ---
 
 # Session 内部状態: Git
@@ -31,6 +32,17 @@ Tool 仕様は [../tools/git.md](../tools/git.md) を、共通 UI ルールは [
 | `registry` | `weak var SessionRegistry?` | Diff ビュー連携用 | — |
 | `onSelectedPathChanged` | `((String?) -> Void)?` (ObservationIgnored) | 選択変更コールバック | — |
 | `onViewedChanged` | `(() -> Void)?` (ObservationIgnored) | 既読状態変更コールバック | — |
+
+## Scene とレコメンドプロンプト
+
+`SessionState` プロトコル ([../frontchannels/scene.md](../frontchannels/scene.md)) を実装し、Cmd+Enter でのレコメンド送信に対応する。
+
+| `mode` | `currentScene()` | `recommendedPrompts()` (デフォルト) |
+|---|---|---|
+| `.workingChanges` | `"git:workingChanges"` | `["コミットして", "プッシュして", "PRを作って"]` |
+| `.prPreview` | `"git:prPreview"` | `["PRをマージして", "レビューして"]` |
+
+永続化は `workspace.json` v3 の `recommends` フィールド経由。GitDiff ツール ([git-diff.md](./git-diff.md)) とは Scene キーが独立しているため、両方を個別にカスタマイズできる。
 
 ## シングルトン制約
 
