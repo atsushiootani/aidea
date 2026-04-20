@@ -89,8 +89,15 @@ final class ClaudeSessionState: SessionState {
             terminal.send(txt: "claude\n")
         }
         guard let prompt, !prompt.isEmpty else { return }
+        // 本文と Enter を分離して送る。
+        // Claude Code (Ink 製 TUI) は bracketed paste を有効にしており、
+        // 本文と \r を一度に送ると \r も paste の一部とみなされ submit されないため、
+        // 本文の入力処理が終わる間 (≈0.3s) を挟んでから \r を送って submit させる。
         DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
-            terminal.send(txt: prompt + "\r")
+            terminal.send(txt: prompt)
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5.3) {
+            terminal.send(txt: "\r")
         }
     }
 }
