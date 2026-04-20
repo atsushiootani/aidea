@@ -46,10 +46,12 @@ Backchannel の詳細は [../backchannels/backchannel.md](../backchannels/backch
 ```
 1. zsh -c "cd '{projectRoot}' && exec zsh -l" で対話シェルを起動
 2. +1.0s: send("claude\n") で Claude CLI を起動
-3. +5.0s: send("{companionPrompt}\r") でコンパニオンの initialPrompt を送信
+3. +5.0s: send("{companionPrompt}") でコンパニオンの initialPrompt 本文を送信
+4. +5.3s: send("\r") で submit させる
 ```
 
-- companionPrompt が空の場合はステップ 3 をスキップ
+- ステップ 3-4 は分離して送る。Claude Code (Ink 製 TUI) は bracketed paste を有効にしており、本文と `\r` を一度に送ると `\r` も paste の一部とみなされ submit されないため、本文の入力処理が終わる間 (≈0.3s) を挟んでから `\r` を送る
+- companionPrompt が空の場合はステップ 3-4 をスキップ
 - デフォルトの initialPrompt は `".aidea/claude/aidea.md と .aidea/claude/speech.md を読んで従ってね"`
 - ADR 0008 により、非対話シェルから直接 `claude` を exec せず、**対話シェル内で `send()`** する。
 
