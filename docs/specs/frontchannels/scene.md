@@ -50,13 +50,13 @@ Scene に応じたレコメンドプロンプトがコンパニオンの吹き�
 
 ## 永続化
 
-`.aidea/recommends.json` に Scene 識別子 → プロンプト配列のマッピングを保存する。
+`workspace.json` v3 の `recommends` フィールドに Scene 識別子 → `SceneConfig` のマッピングを保存する。詳細は [../aspects/persistence.md](../aspects/persistence.md) を参照。
 
 ```json
 {
-  "git:workingChanges": ["コミットして", "プッシュして", "PRを作って"],
-  "git:prPreview": ["PRをマージして", "レビューして"],
-  "filer": ["このファイルをレビューして"]
+  "git:workingChanges": { "prompts": ["コミットして", "プッシュして", "PRを作って"], "defaultCompanionIndex": 0 },
+  "git:prPreview":      { "prompts": ["PRをマージして", "レビューして"], "defaultCompanionIndex": 0 },
+  "filer":              { "prompts": ["このファイルをレビューして"], "defaultCompanionIndex": 0 }
 }
 ```
 
@@ -64,7 +64,7 @@ Scene に応じたレコメンドプロンプトがコンパニオンの吹き�
 
 ## プロンプトの解決順序
 
-1. `.aidea/recommends.json` にその Scene のエントリがあればそれを使う
+1. `workspace.json` の `recommends` にその Scene のエントリがあればそれを使う
 2. なければ SessionState のデフォルト値（ハードコード）を使う
 3. デフォルト値もなければレコメンドなし（Cmd+Enter 無反応）
 

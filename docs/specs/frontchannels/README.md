@@ -8,7 +8,7 @@ impacts:
   - docs/specs/frontchannels/*
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-17
+last_updated: 2026-04-20
 ---
 
 # Frontchannels (Aidea → Claude 通信) インデックス
@@ -26,4 +26,4 @@ Aidea が PTY の `send(txt:)` 経由で Claude にプロンプトを送る通�
 
 - [../backchannels/](../backchannels/README.md) — 逆方向 (Claude → Aidea) の通信
 - [../companions/recommend-mode.md](../companions/recommend-mode.md) — Cmd+Enter レコメンド選択 UI
-- [../aspects/persistence.md](../aspects/persistence.md) — `.aidea/recommends.json` の永続化
+- [../aspects/persistence.md](../aspects/persistence.md) — `workspace.json` v3 に統合された Scene 永続化

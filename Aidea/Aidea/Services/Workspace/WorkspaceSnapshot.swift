@@ -10,6 +10,7 @@ import Foundation
 struct WorkspaceSnapshot: Codable {
     /// スナップショットフォーマットのバージョン (将来のマイグレーション用)
     /// v2: レイアウトを LayoutNode ツリーで保存する形式
+    /// v3: companions / bindings / recommends を統合
     let version: Int
     /// レイアウトツリーのルートノード
     let layoutRoot: LayoutNodeSnapshot
@@ -23,6 +24,21 @@ struct WorkspaceSnapshot: Codable {
     let kits: [KitSnapshot]
     /// アクティブなペインの ID
     let activePaneID: UUID?
+
+    // --- v3 で追加 ---
+
+    /// コンパニオン設定一覧
+    let companions: [CompanionConfig]?
+    /// コンパニオン ↔ Claude セッションの紐付け
+    let companionBindings: [CompanionBinding]?
+    /// Scene ごとのレコメンド設定
+    let recommends: [String: SceneConfig]?
+}
+
+/// コンパニオン ↔ セッションの紐付け (永続化用)
+struct CompanionBinding: Codable {
+    let companionID: UUID
+    let sessionID: SessionID
 }
 
 /// LayoutNode ツリーの永続化用表現 (再帰 enum)

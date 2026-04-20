@@ -132,7 +132,7 @@ final class RecommendState {
 | 型 | ファイル | 責務 |
 |---|---|---|
 | `RecommendState` | `Services/Frontchannel/RecommendState.swift` | レコメンドモードのランタイム状態。`activate / deactivate` と `moveUp/Down/Left/Right` でプロンプト・コンパニオン選択をループ移動させる |
-| `RecommendStore` | `Services/Frontchannel/RecommendStore.swift` | `.aidea/recommends.json` への永続化 (`enum` の static API)。Scene キーから `SceneConfig` を解決 |
+| `RecommendStore` | `Services/Frontchannel/RecommendStore.swift` | Scene ごとの `SceneConfig` をインメモリで保持する `enum` の static API。永続化は `WorkspaceSnapshotManager` 経由で `workspace.json` v3 に統合される |
 | `SceneConfig` | `Services/Frontchannel/RecommendStore.swift` | Scene ごとの `prompts: [String]` と `defaultCompanionIndex: Int` を保持する Codable |
 | `RecommendProvider` | 各 `SessionState` で準拠 | 現在の状態に応じた最大 3 つのプロンプトを返すプロトコル |
 

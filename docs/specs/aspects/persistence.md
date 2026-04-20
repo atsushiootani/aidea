@@ -18,7 +18,7 @@ impacts: []
 conventions:
   - docs/LAYOUT.md
   - docs/specs/aspects/README.md
-last_updated: 2026-04-17
+last_updated: 2026-04-20
 ---
 
 # Persistence (データ永続化)
@@ -59,9 +59,7 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 
 ```
 <projectRoot>/.aidea/
-├── workspace.json        # レイアウト・Session 状態のスナップショット
-├── companions.json       # コンパニオン設定 + Claude セッション紐付け
-├── recommends.json       # Scene ごとのレコメンドプロンプト
+├── workspace.json        # レイアウト・Session 状態・コンパニオン・レコメンドの統合スナップショット (v3)
 ├── backchannels/         # Claude からのメッセージ受信ディレクトリ
 │   └── speech-*.txt      # 読み上げ対象テキスト (消費後に削除)
 ├── claude/               # Claude 起動時に読ませるリソース
@@ -73,15 +71,16 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 
 - `projectRoot` が変わるたびに `ensureAideaDirectory()` が `.aidea/` と `.aidea/ja/` を生成し、**プロジェクトの `.gitignore` に `.aidea/` を自動追記** する
 - `.aidea/claude/*.md` と `.aidea/backchannels/` は初回のみ `BackchannelSetup.setup()` が作成・複製する
+- v2 以前の旧ファイル `.aidea/companions.json` / `.aidea/recommends.json` は起動時に `WorkspaceSnapshotManager` が `workspace.json` v3 に統合して自動削除する
 
 ---
 
 ## ファイル詳細
 
-### `workspace.json` (レイアウト・Session 状態)
+### `workspace.json` (レイアウト・Session 状態・コンパニオン・レコメンド統合)
 
 - **管理**: `Services/Workspace/WorkspaceSnapshotManager.swift`
-- **フォーマット**: JSON (`version: 2`)
+- **フォーマット**: JSON (`version: 3`)
 - **保存内容**:
   - レイアウトツリー (ノード ID / 分割軸 / ペイン構造)
   - 各 Tab の状態:
@@ -90,26 +89,12 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
     - Filer: `expandedURLs`
     - Kit: `expandedSections` + `expandedGroups`
   - アクティブペイン ID
-- **読込**: `AideaApp.init()` で呼び出し、起動時にレイアウトを復元
-- **保存**: アプリ終了時 / バックグラウンド化時に自動 (`AideaApp.registerTerminationObserver()`)
-
-### `companions.json` (コンパニオン設定)
-
-- **管理**: `Services/Companion/CompanionStore.swift`
-- **フォーマット**: JSON (`StoreData` 型)
-- **保存内容**:
-  - `companions`: `[{id, name, initialPrompt, autoLaunch, icon}]`
-  - `bindings`: `[{companionID, sessionID}]` (N:1 マッピング)
-- **読込**: 起動時 `AideaApp.autoLaunchCompanions()`
-- **保存**: コンパニオン追加/編集/削除のたびに即座保存 (`CompanionStore.save()`)
-
-### `recommends.json` (レコメンドプロンプト)
-
-- **管理**: `Services/Frontchannel/RecommendStore.swift`
-- **フォーマット**: JSON
-- **保存内容**: `SceneConfig: {scene: {prompts: [String], defaultCompanionIndex: Int}}`
-  - Scene 例: `"git:prPreview"` / `"git:workingChanges"` など
-- **保存タイミング**: 変更のたびに即座 (`RecommendStore.saveAll()`)
+  - `companions`: `[{id, name, icon, initialPrompt}]` (CompanionStore から収集)
+  - `companionBindings`: `[{companionID, sessionID}]` (activeSessionMap から収集)
+  - `recommends`: `{scene: {prompts: [String], defaultCompanionIndex: Int}}` (RecommendStore から収集)
+- **読込**: `AideaApp.init()` で `WorkspaceSnapshotManager.load()` → `apply()` を呼び出し、レイアウト/コンパニオン/レコメンドをまとめて復元
+- **保存**: アプリ終了時 / バックグラウンド化時に一括保存 (`AideaApp.registerTerminationObserver()`)
+- **v2 → v3 マイグレーション**: 読込時に `companions == nil` なら旧 `.aidea/companions.json` / `.aidea/recommends.json` を読み取って統合し、旧ファイルを削除する
 
 ### `.aidea/ja/<path>` (翻訳キャッシュ)
 
@@ -158,13 +143,11 @@ Claude → Aidea 方向の通信は**ファイル経由**で行う。
 | タイミング | 対象 | 呼び出し元 |
 |---|---|---|
 | 起動時 | UserDefaults → `projectRoot` 復元 | `WorkspaceState.init()` |
-| 起動時 | `workspace.json` 読込・レイアウト適用 | `AideaApp.init()` |
-| 起動時 | `companions.json` 読込・Auto launch | `AideaApp.autoLaunchCompanions()` |
-| projectRoot 変更時 | `.aidea/` 生成 + `.gitignore` 追記 + Backchannel/Recommend 再初期化 | `WorkspaceState.setProjectRoot()` |
-| Companion 変更時 | `companions.json` 即座保存 | `CompanionStore.save()` |
-| Recommend 変更時 | `recommends.json` 即座保存 | `RecommendStore.saveAll()` |
+| 起動時 | `workspace.json` 読込・レイアウト / コンパニオン / レコメンド一括復元 → bind 済みセッションへの `companionPrompt` 再注入 | `AideaApp.init()` → `WorkspaceSnapshotManager.apply()` |
+| projectRoot 変更時 | `.aidea/` 生成 + `.gitignore` 追記 + Backchannel 再初期化 | `WorkspaceState.setProjectRoot()` |
+| Companion / Recommend 変更時 | インメモリのみ更新 (即座保存しない) | `CompanionStore` / `RecommendStore` |
 | Claude からメッセージ受信時 | `speech-*.txt` → 読み上げ → ファイル削除 | `SpeechWatcher` |
-| 終了時 / バックグラウンド化時 | `workspace.json` 保存 | `AideaApp.registerTerminationObserver()` |
+| 終了時 / バックグラウンド化時 | `workspace.json` (レイアウト + コンパニオン + レコメンド統合) 保存 | `AideaApp.registerTerminationObserver()` |
 
 ---
 
