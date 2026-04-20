@@ -92,18 +92,3 @@ enum ExcludeRulesDialog {
     }
 }
 
-/// 「デフォルトに戻す」ボタンの target/action を引き受ける薄いハンドラ。
-/// クロージャを target/action にできないため小クラスで包む。
-final class ResetButtonHandler: NSObject {
-    private let textView: NSTextView
-    private let defaults: [String]
-
-    init(textView: NSTextView, defaults: [String]) {
-        self.textView = textView
-        self.defaults = defaults
-    }
-
-    @objc func reset() {
-        textView.string = defaults.joined(separator: "\n")
-    }
-}
