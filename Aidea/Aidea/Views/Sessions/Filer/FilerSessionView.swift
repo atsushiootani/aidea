@@ -799,6 +799,17 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
         deleteItem.isEnabled = hasSelection && nodes.contains { $0.url != currentRoot }
         menu.addItem(deleteItem)
 
+        menu.addItem(NSMenuItem.separator())
+
+        let excludeItem = NSMenuItem(
+            title: "除外ルール設定...",
+            action: #selector(contextEditExcludeRules),
+            keyEquivalent: ""
+        )
+        excludeItem.target = self
+        excludeItem.isEnabled = true
+        menu.addItem(excludeItem)
+
         return menu
     }
 
@@ -807,6 +818,22 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
     @objc private func contextNewFile() { createFileAction() }
     @objc private func contextNewDir() { createDirectoryAction() }
     @objc private func contextDelete() { deleteSelectedAction() }
+    @objc private func contextEditExcludeRules() { editExcludeRulesAction() }
+
+    /// 除外ルール編集ダイアログを表示し、OK で owner.excludeRules を更新して再描画する
+    func editExcludeRulesAction() {
+        let current = owner?.excludeRules ?? FilerSessionState.defaultExcludeRules
+        guard let updated = ExcludeRulesDialog.show(
+            initial: current,
+            defaults: FilerSessionState.defaultExcludeRules
+        ) else { return }
+        owner?.excludeRules = updated
+        // 表示と検索を即座に再評価
+        handleFileSystemChange()
+        if isSearching {
+            applySearch(searchQuery)
+        }
+    }
 
     /// 指定 URL のノードにフォーカスする (明示的に再取得してから選択する)。
     /// 親ディレクトリを順に展開してターゲットを可視化する。
