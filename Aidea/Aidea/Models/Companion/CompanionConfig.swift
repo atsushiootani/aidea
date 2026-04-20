@@ -13,21 +13,17 @@ struct CompanionConfig: Identifiable, Codable, Hashable {
     var icon: String
     /// Claude 起動後に送信する初期プロンプト
     var initialPrompt: String
-    /// Aidea 起動時に自動で Claude セッションを開始するか
-    var autoLaunch: Bool
 
     init(
         id: UUID = UUID(),
         name: String = "Companion",
         icon: String = "Companions/companion-1",
-        initialPrompt: String = "",
-        autoLaunch: Bool = false
+        initialPrompt: String = ""
     ) {
         self.id = id
         self.name = name
         self.icon = icon
         self.initialPrompt = initialPrompt
-        self.autoLaunch = autoLaunch
     }
 }
 

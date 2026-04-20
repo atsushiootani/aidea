@@ -9,7 +9,7 @@ import Foundation
 /// `<projectRoot>/.aidea/workspace.json` にプロジェクトごとに JSON で書き出す。
 final class WorkspaceSnapshotManager {
     /// 現在のスナップショットフォーマットバージョン
-    private static let currentVersion: Int = 2
+    private static let currentVersion: Int = 3
 
     /// projectRoot から保存先 URL を導出する
     static func fileURL(for projectRoot: URL) -> URL {
@@ -21,9 +21,11 @@ final class WorkspaceSnapshotManager {
     // MARK: - Save
 
     /// 現在の layout / registry の状態からスナップショットを作ってファイルに書き出す
-    func save(layout: LayoutConfig, registry: SessionRegistry, projectRoot: URL?) {
+    func save(layout: LayoutConfig, registry: SessionRegistry, projectRoot: URL?,
+              companionStore: CompanionStore? = nil, recommendStore: (() -> [String: SceneConfig])? = nil) {
         guard let projectRoot = projectRoot else { return }
-        let snapshot = buildSnapshot(layout: layout, registry: registry)
+        let snapshot = buildSnapshot(layout: layout, registry: registry,
+                                     companionStore: companionStore, recommendStore: recommendStore)
         let url = Self.fileURL(for: projectRoot)
         do {
             let encoder = JSONEncoder()
@@ -36,7 +38,9 @@ final class WorkspaceSnapshotManager {
     }
 
     /// layout / registry からスナップショット構造体を組み立てる
-    private func buildSnapshot(layout: LayoutConfig, registry: SessionRegistry) -> WorkspaceSnapshot {
+    private func buildSnapshot(layout: LayoutConfig, registry: SessionRegistry,
+                                companionStore: CompanionStore? = nil,
+                                recommendStore: (() -> [String: SceneConfig])? = nil) -> WorkspaceSnapshot {
         var previews: [PreviewSnapshot] = []
         var webs: [WebSnapshot] = []
         var filers: [FilerSnapshot] = []
@@ -77,6 +81,11 @@ final class WorkspaceSnapshotManager {
             }
         }
 
+        // Companion bindings
+        let bindings = companionStore?.activeSessionMap.map {
+            CompanionBinding(companionID: $0.key, sessionID: $0.value)
+        }
+
         return WorkspaceSnapshot(
             version: Self.currentVersion,
             layoutRoot: buildLayoutNodeSnapshot(from: layout.root),
@@ -84,7 +93,10 @@ final class WorkspaceSnapshotManager {
             webs: webs,
             filers: filers,
             kits: kits,
-            activePaneID: registry.activePaneID
+            activePaneID: registry.activePaneID,
+            companions: companionStore?.companions,
+            companionBindings: bindings,
+            recommends: recommendStore?()
         )
     }
 
@@ -112,20 +124,104 @@ final class WorkspaceSnapshotManager {
         guard let projectRoot = projectRoot else { return nil }
         let url = Self.fileURL(for: projectRoot)
         guard let data = try? Data(contentsOf: url) else { return nil }
-        guard let snapshot = try? JSONDecoder().decode(WorkspaceSnapshot.self, from: data) else {
+        guard var snapshot = try? JSONDecoder().decode(WorkspaceSnapshot.self, from: data) else {
             return nil
         }
-        // version が古い場合は互換性がないので破棄 (既定レイアウトにフォールバック)
-        if snapshot.version != Self.currentVersion {
+        // v2 以上なら互換あり（v3 で companions/recommends が Optional 追加されただけ）
+        if snapshot.version < 2 {
             return nil
         }
+
+        // v2 → v3 マイグレーション: 旧 companions.json / recommends.json を統合
+        if snapshot.companions == nil {
+            snapshot = migrateToV3(snapshot: snapshot, projectRoot: projectRoot)
+        }
+
         return snapshot
     }
 
+    /// 旧 companions.json / recommends.json を読み込んで snapshot に統合し、旧ファイルを削除する
+    private func migrateToV3(snapshot: WorkspaceSnapshot, projectRoot: URL) -> WorkspaceSnapshot {
+        var companions: [CompanionConfig]?
+        var bindings: [CompanionBinding]?
+        var recommends: [String: SceneConfig]?
+
+        // 旧 companions.json
+        let companionsURL = projectRoot.appending(path: ".aidea/companions.json")
+        if let data = try? Data(contentsOf: companionsURL) {
+            // StoreData 形式を試す
+            struct LegacyStoreData: Codable {
+                var companions: [CompanionConfig]
+                var bindings: [LegacyBinding]
+                struct LegacyBinding: Codable {
+                    var companionID: UUID
+                    var sessionID: SessionID
+                }
+            }
+            if let storeData = try? JSONDecoder().decode(LegacyStoreData.self, from: data) {
+                companions = storeData.companions
+                bindings = storeData.bindings.map { CompanionBinding(companionID: $0.companionID, sessionID: $0.sessionID) }
+            } else if let configs = try? JSONDecoder().decode([CompanionConfig].self, from: data) {
+                companions = configs
+            }
+            try? FileManager.default.removeItem(at: companionsURL)
+        }
+
+        // 旧 recommends.json
+        let recommendsURL = projectRoot.appending(path: ".aidea/recommends.json")
+        if let data = try? Data(contentsOf: recommendsURL) {
+            if let dict = try? JSONDecoder().decode([String: SceneConfig].self, from: data) {
+                recommends = dict
+            } else if let old = try? JSONDecoder().decode([String: [String]].self, from: data) {
+                recommends = old.mapValues { SceneConfig(prompts: $0) }
+            }
+            try? FileManager.default.removeItem(at: recommendsURL)
+        }
+
+        return WorkspaceSnapshot(
+            version: snapshot.version,
+            layoutRoot: snapshot.layoutRoot,
+            previews: snapshot.previews,
+            webs: snapshot.webs,
+            filers: snapshot.filers,
+            kits: snapshot.kits,
+            activePaneID: snapshot.activePaneID,
+            companions: companions,
+            companionBindings: bindings,
+            recommends: recommends
+        )
+    }
+
     /// スナップショットを layout / registry に適用する
-    func apply(_ snapshot: WorkspaceSnapshot, to layout: LayoutConfig, registry: SessionRegistry) {
+    func apply(_ snapshot: WorkspaceSnapshot, to layout: LayoutConfig, registry: SessionRegistry,
+                companionStore: CompanionStore? = nil) {
         // レイアウトツリーを復元
         layout.root = buildLayoutNode(from: snapshot.layoutRoot)
+
+        // Companions / Bindings / Recommends を復元（apply 内で同期的にセット）
+        if let companions = snapshot.companions {
+            companionStore?.companions = companions
+        }
+        if let bindings = snapshot.companionBindings {
+            companionStore?.activeSessionMap = [:]
+            for binding in bindings {
+                companionStore?.activeSessionMap[binding.companionID] = binding.sessionID
+            }
+        }
+        if let recommends = snapshot.recommends {
+            RecommendStore.setAll(recommends)
+        }
+
+        // Claude セッションの ensureSession + companionPrompt セット
+        if let companionStore {
+            for (companionID, sessionID) in companionStore.activeSessionMap {
+                guard let companion = companionStore.companions.first(where: { $0.id == companionID }) else { continue }
+                let session = registry.ensureSession(for: sessionID)
+                if let state = session.state as? ClaudeSessionState {
+                    state.companionPrompt = companion.initialPrompt
+                }
+            }
+        }
 
         // Preview/Web/Filer/Kit の状態を事前にセット
         for preview in snapshot.previews {

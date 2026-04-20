@@ -30,7 +30,7 @@ struct AideaApp: App {
 
         // 起動時にスナップショットがあれば適用、無ければ既定のアクティブ Pane を設定
         if let snapshot = manager.load(projectRoot: ws.projectRoot) {
-            manager.apply(snapshot, to: lay, registry: reg)
+            manager.apply(snapshot, to: lay, registry: reg, companionStore: companions)
         } else if let firstPane = lay.allPanes.first {
             reg.setActiveTab(paneID: firstPane.id, tabIndex: firstPane.activeIndex)
         }
@@ -56,7 +56,6 @@ struct AideaApp: App {
                 .onAppear {
                     registerTerminationObserver()
                     registerKeyEventMonitor()
-                    autoLaunchCompanions()
                 }
         }
         .commands {
@@ -143,28 +142,6 @@ struct AideaApp: App {
         panel.message = "プロジェクトルートを選択してください"
         if panel.runModal() == .OK, let url = panel.url {
             workspace.setProjectRoot(url)
-        }
-    }
-
-    /// autoLaunch = true のコンパニオンの Claude セッションを自動起動する
-    private func autoLaunchCompanions() {
-        guard let root = workspace.projectRoot else { return }
-        companionStore.load(projectRoot: root)
-        // 少し遅延してスナップショット復元完了後に実行
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            for companion in companionStore.autoLaunchCompanions {
-                guard !companionStore.isActive(companion.id) else { continue }
-                let instance = layout.nextSessionInstance(of: .claude)
-                let session = registry.createSession(tool: .claude, instance: instance)
-                if let state = session.state as? ClaudeSessionState {
-                    state.companionPrompt = companion.initialPrompt
-                }
-                companionStore.bind(companionID: companion.id, sessionID: session.id)
-                if let pane = registry.activePane ?? layout.allPanes.first {
-                    pane.tabs.append(session.id)
-                    registry.setActiveTab(paneID: pane.id, tabIndex: pane.tabs.count - 1)
-                }
-            }
         }
     }
 
@@ -454,8 +431,10 @@ struct AideaApp: App {
         let layout = self.layout
         let registry = self.registry
         let workspace = self.workspace
+        let companions = self.companionStore
         let saveAction = {
-            manager.save(layout: layout, registry: registry, projectRoot: workspace.projectRoot)
+            manager.save(layout: layout, registry: registry, projectRoot: workspace.projectRoot,
+                         companionStore: companions, recommendStore: { RecommendStore.getAll() })
         }
         NotificationCenter.default.addObserver(
             forName: NSApplication.willTerminateNotification,

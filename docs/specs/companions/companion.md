@@ -135,6 +135,30 @@ last_updated: 2026-04-20
 
 ---
 
+## 起動フロー (スナップショット復元時)
+
+Aidea 起動時、`workspace.json` から Claude タブが復元されるケースの挙動:
+
+```
+1. AideaApp.init() が workspace.json を適用
+   (タブ構成のみ復元、Claude セッション実体は未生成)
+2. AideaApp.autoLaunchCompanions() が CompanionStore.load() で
+   .aidea/companions.json を読み込み、activeSessionMap (bind) を復元
+3. bind 済みセッションへの companionPrompt 再注入:
+   - activeSessionMap を走査し、各 sessionID について
+   - registry.ensureSession(for: sessionID) で ClaudeSessionState を生成
+     (PTY/terminalView は引き続き lazy)
+   - 対応する CompanionConfig.initialPrompt を state.companionPrompt にセット
+4. autoLaunch ループは bind 済みコンパニオンを isActive == true でスキップ
+5. ユーザがタブをアクティブ化 → terminalView 生成 → 自動起動シーケンス
+   → initialPrompt が送信される
+```
+
+この再注入がないと、復元された Claude セッションは `companionPrompt == nil` のままで
+`claude` CLI は起動するが initialPrompt が送られない (Issue #69 の挙動)。
+
+---
+
 ## 関連ドキュメント
 
 - [../frontchannels/frontchannel.md](../frontchannels/frontchannel.md) — 送信メカニズム (PTY `send(txt:)`)

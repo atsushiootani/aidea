@@ -18,7 +18,7 @@ impacts: []
 conventions:
   - docs/LAYOUT.md
   - docs/specs/aspects/README.md
-last_updated: 2026-04-17
+last_updated: 2026-04-20
 ---
 
 # Persistence (データ永続化)
@@ -159,7 +159,7 @@ Claude → Aidea 方向の通信は**ファイル経由**で行う。
 |---|---|---|
 | 起動時 | UserDefaults → `projectRoot` 復元 | `WorkspaceState.init()` |
 | 起動時 | `workspace.json` 読込・レイアウト適用 | `AideaApp.init()` |
-| 起動時 | `companions.json` 読込・Auto launch | `AideaApp.autoLaunchCompanions()` |
+| 起動時 | `companions.json` 読込・bind 復元 → bind 済みセッションへの `companionPrompt` 再注入 → Auto Launch | `AideaApp.autoLaunchCompanions()` |
 | projectRoot 変更時 | `.aidea/` 生成 + `.gitignore` 追記 + Backchannel/Recommend 再初期化 | `WorkspaceState.setProjectRoot()` |
 | Companion 変更時 | `companions.json` 即座保存 | `CompanionStore.save()` |
 | Recommend 変更時 | `recommends.json` 即座保存 | `RecommendStore.saveAll()` |

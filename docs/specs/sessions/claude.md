@@ -1,6 +1,6 @@
 ---
 title: Session 内部状態: Claude
-description: ClaudeSessionState の状態 (companionPrompt / cached)・自動起動シーケンス・コンパニオン紐付け
+description: ClaudeSessionState の状態 (companionPrompt / cached)・companionPrompt のセット経路・自動起動シーケンス・コンパニオン紐付け
 derived_from:
   - docs/specs/sessions/ui-rules.md
   - docs/decisions/0008-no-claude-autostart.md
@@ -9,7 +9,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-17
+last_updated: 2026-04-20
 ---
 
 # Session 内部状態: Claude
@@ -27,6 +27,20 @@ Backchannel の詳細は [../backchannels/backchannel.md](../backchannels/backch
 | `companionPrompt` | `String?` | コンパニオンの `initialPrompt`。起動後 `send()` される | ✅ |
 | `cached` | `PersistentTerminalView?` (ObservationIgnored) | PTY + SwiftTerm 端末 View。Terminal と共用 | ✅ |
 | `terminalView` | `PersistentTerminalView` (computed) | `cached` の lazy アクセサ | — |
+
+## `companionPrompt` のセット経路
+
+`companionPrompt` は `autoStartClaude` が参照するため、**`terminalView` 生成前**に
+セットされている必要がある。以下 2 経路のいずれかで設定される:
+
+1. **新規起動**: `createSession` 直後に `state.companionPrompt = config.initialPrompt`
+   (`CompanionView` / `AideaApp.activateCompanion` / `sendRecommendedPrompt` /
+   `autoLaunchCompanions` の Auto Launch 分岐)
+2. **スナップショット復元**: `autoLaunchCompanions` が `CompanionStore.activeSessionMap`
+   を走査し、bind 済みセッションに対して `ensureSession` で state を生成した上で再注入
+   (詳細は [../companions/companion.md#起動フロー-スナップショット復元時](../companions/companion.md))
+
+どちらの経路でも、`terminalView` の lazy 生成時に `autoStartClaude` が参照する。
 
 ## 自動起動シーケンス
 
