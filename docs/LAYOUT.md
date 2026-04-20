@@ -7,7 +7,7 @@ impacts:
   - docs/README.md
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-17
+last_updated: 2026-04-20
 ---
 
 # docs ディレクトリ構成とファイル配置ルール
@@ -43,7 +43,9 @@ docs/
 ├── conventions/       # コードを書くときの規約 (コーディングガイドライン)
 │   ├── README.md      # conventions 内のインデックス
 │   ├── coding-style.md # Swift 規約 / プロパティラッパ並び順 / コメント方針
+│   ├── swift.md       # SwiftUI / AppKit (NSView) の使い分けと閉じ込めルール
 │   ├── design-principles.md # 設計原則 (Tell Don't Ask / SOLID / GRASP 等)
+│   ├── rules.md       # Always / Confirm First / Never
 │   └── testing.md     # テスト戦略 / 手動確認チェックリスト
 │
 └── agent-skills/      # agent-skills の入門・スキル構造解説ドキュメント置き場
@@ -102,7 +104,7 @@ docs/
 ### `docs/conventions/` — コードを書くときの規約
 
 - **用途**: 実装者が従うコーディング規約・テスト戦略・設計原則。「何を作るか」ではなく「どう書くか」を扱う
-- **現在のファイル**: `coding-style.md` (Swift 規約) / `design-principles.md` (設計思想) / `testing.md` (テスト戦略)
+- **現在のファイル**: `coding-style.md` (Swift 規約) / `swift.md` (SwiftUI/NSView 使い分け) / `design-principles.md` (設計思想) / `rules.md` (Always/Never) / `testing.md` (テスト戦略)
 - **判断基準**: プロダクト動作 (spec) ではなくコードの書き方に関する規約は全てここに置く
 - **命名**: kebab-case 全小文字
 - **docs の書き方規約**は本ファイル内「frontmatter 規約」節に置く (docs メタ文書なので conventions ではなく LAYOUT.md に集約)
