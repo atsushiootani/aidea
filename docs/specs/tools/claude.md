@@ -13,7 +13,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-17
+last_updated: 2026-04-20
 ---
 
 # Tool 仕様: Claude
@@ -63,7 +63,8 @@ Backchannel の詳細は [backchannels/backchannel.md](../backchannels/backchann
 ```
 1. zsh -c "cd '{projectRoot}' && exec zsh -l" で対話シェルを起動
 2. 1 秒後: send("claude\n") で claude を起動
-3. 5 秒後: send("{Backchannel 指示}\r") で aidea.md 読み込みを指示
+3. 5 秒後: send("{Backchannel 指示}") で本文を送信
+4. 5.3 秒後: send("\r") で submit
 ```
 
 ### 自動送信のタイミング
@@ -72,11 +73,13 @@ Backchannel の詳細は [backchannels/backchannel.md](../backchannels/backchann
 |---------|------|------|
 | zsh 起動 | 0s | PTY プロセス開始 |
 | claude 送信 | +1.0s | `claude\n` を PTY に送信 |
-| companionPrompt 送信 | +5.0s | コンパニオンの `initialPrompt` を PTY に送信 |
+| companionPrompt 本文送信 | +5.0s | コンパニオンの `initialPrompt` 本文を PTY に送信 |
+| Enter 送信 | +5.3s | `\r` を送って submit させる |
 
 - `send()` は PTY にキー入力を送るため、対話シェル内での手入力と同等
 - ADR 0008 の非対話シェル問題を回避
-- companionPrompt が空の場合はステップ 3 をスキップ
+- companionPrompt が空の場合はステップ 3-4 をスキップ
+- 本文と `\r` を分離するのは、Claude Code (Ink 製 TUI) が bracketed paste を有効にしており、両者を一度に送ると `\r` も paste の一部とみなされ submit されないため。本文の入力処理が終わる間 (≈0.3s) を挟む
 
 ---
 
