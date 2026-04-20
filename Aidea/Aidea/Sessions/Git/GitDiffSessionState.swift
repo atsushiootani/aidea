@@ -83,4 +83,20 @@ final class GitDiffSessionState: SessionState {
             }
         }
     }
+
+    /// 現在の Scene 識別子 (Git ツールとは別キーで永続化するため `gitDiff:*` を返す)
+    func currentScene() -> String? {
+        switch mode {
+        case .workingChanges: return "gitDiff:workingChanges"
+        case .prPreview: return "gitDiff:prPreview"
+        }
+    }
+
+    /// デフォルトのレコメンドプロンプト (Git ツールと同じ内容)
+    func recommendedPrompts() -> [String] {
+        switch mode {
+        case .workingChanges: return ["コミットして", "プッシュして", "PRを作って"]
+        case .prPreview: return ["PRをマージして", "レビューして"]
+        }
+    }
 }
