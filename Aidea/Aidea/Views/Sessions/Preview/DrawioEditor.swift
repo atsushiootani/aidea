@@ -9,6 +9,9 @@ import WebKit
 /// drawio エディタを WKWebView で埋め込む View。
 /// `embed.diagrams.net` を iframe でロードしたラッパ HTML を表示し、
 /// postMessage プロトコル経由で XML のロードと保存を行う。
+///
+/// NSViewRepresentable 採用理由: C (外部依存が AppKit ベース) — WKWebView を
+/// 使うため Representable でラップする。参考: [docs/conventions/swift.md](../../../../docs/conventions/swift.md)
 struct DrawioEditor: NSViewRepresentable {
     /// drawio エクスポート形式。`xmlsvg` は SVG (.drawio.svg)、`xml` は純 XML (.drawio)。
     enum ExportFormat: String {

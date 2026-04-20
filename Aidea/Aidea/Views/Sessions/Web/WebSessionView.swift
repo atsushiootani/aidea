@@ -7,6 +7,10 @@ import SwiftUI
 import WebKit
 
 /// Web Session の SwiftUI View。SessionState がキャッシュする WKWebView を返す。
+///
+/// NSViewRepresentable 採用理由: C (外部依存が AppKit ベース) — WKWebView は
+/// SwiftUI に等価 API が存在しないため、Representable で閉じ込める。
+/// 参考: [docs/conventions/swift.md](../../../../docs/conventions/swift.md)
 struct WebSessionView: NSViewRepresentable {
     let state: WebSessionState
 

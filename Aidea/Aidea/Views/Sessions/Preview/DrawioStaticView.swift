@@ -10,6 +10,9 @@ import WebKit
 ///
 /// - `.drawio.svg`: SVG を inline で HTML に埋め込んで WebKit に描画させる
 /// - `.drawio` (純 XML): drawio embed を `chrome=0` でロードし、postMessage 経由で XML をロード
+///
+/// NSViewRepresentable 採用理由: C (外部依存が AppKit ベース) — WKWebView を
+/// 使うため Representable でラップする。参考: [docs/conventions/swift.md](../../../../docs/conventions/swift.md)
 struct DrawioStaticView: NSViewRepresentable {
     let url: URL
     /// 親から reload を促すためのトリガ値 (保存後に変化させる)
