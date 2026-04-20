@@ -9,7 +9,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-17
+last_updated: 2026-04-20
 ---
 
 # Session 内部状態: Filer
@@ -25,11 +25,14 @@ last_updated: 2026-04-17
 |---|---|---|---|
 | `selectedFile` | `URL?` | 現在選択中のファイル/ディレクトリ | ✅ |
 | `expandedURLs` | `Set<URL>` | アウトライン上で展開されているノード | ✅ |
+| `excludeRules` | `[String]` | 表示・検索の除外パターン (デフォルト + ユーザ追加) | ✅ |
 | `registry` | `weak var SessionRegistry?` | Filer ダブルクリック時に Preview を開くための参照 | ✅ |
+
+`excludeRules` のパターン形式・適用範囲・デフォルトは [../tools/filer.md#除外ルール](../tools/filer.md#除外ルール) を参照。
 
 ## 永続化
 
-`expandedURLs` は `<projectRoot>/.aidea/workspace.json` (v2) に含めて保存される。
+`expandedURLs` と `excludeRules` は `<projectRoot>/.aidea/workspace.json` (v4) に含めて保存される。
 詳細は [../aspects/persistence.md](../aspects/persistence.md) を参照。
 
 ## シングルトン制約

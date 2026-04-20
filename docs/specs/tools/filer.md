@@ -11,7 +11,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-17
+last_updated: 2026-04-20
 ---
 
 # Tool 仕様: Filer
@@ -32,7 +32,7 @@ Session 内部状態は [sessions/filer.md](../sessions/filer.md) を参照。
 - `WorkspaceState.projectRoot` をルートとして走査
 - FSEvents による外部変更の自動反映 (デバウンス 200ms)
 - SF Symbols で種類別アイコン
-- 隠しファイル表示 (`.git` `node_modules` `DerivedData` `.build` `.DS_Store` のみ除外)
+- **除外ルール**: デフォルト + ユーザ定義のパターンでファイル/ディレクトリを表示から除外 (詳細は [除外ルール](#除外ルール) 節)
 - **複数選択対応** (Shift+クリック / Shift+↑↓) — `allowsMultipleSelection = true`
 
 ---
@@ -107,6 +107,13 @@ Session 内部状態は [sessions/filer.md](../sessions/filer.md) を参照。
 - 検索中に Enter → [openSelectedInPreview](#openselectedinpreview--プレビューで開く) 相当
 - 再度 Cmd+F で検索バーの表示トグル
 
+### editExcludeRules — 除外ルールを編集
+- ペイン上部の歯車ボタン (または検索バー横の設定アイコン) から「除外ルール設定...」ダイアログを開く
+- 改行区切りで複数のパターンを編集できる `NSScrollView` 内の `NSTextView`
+- ダイアログ下部に「デフォルトに戻す」ボタン (デフォルトリストで上書き)
+- OK / Cancel ボタン。OK で `FilerSessionState.excludeRules` を更新し、即座に Filer 表示と検索を再評価する
+- 適用後の状態は `workspace.json` に保存される (詳細は [除外ルール](#除外ルール) 節)
+
 ### showContextMenu — 右クリックコンテキストメニュー
 - 右クリック位置の行が選択されていなければ、その行を選択してからメニュー表示
 - 表示項目 (選択状態に応じて有効/無効を切替):
@@ -115,7 +122,9 @@ Session 内部状態は [sessions/filer.md](../sessions/filer.md) を参照。
   - **新規ファイル** (`⌘N`)
   - **新規ディレクトリ** (`⌘⇧N`)
   - **削除** (`⌫`) — 選択ありかつ非 root が含まれるとき有効
-- 各項目はキーボード操作と 1:1 対応
+  - --- (区切り線) ---
+  - **除外ルール設定...** — `editExcludeRules` を開く
+- 各項目はキーボード操作と 1:1 対応 (除外ルール設定は KB ショートカット無し)
 
 ---
 
@@ -149,6 +158,57 @@ Session 内部状態は [sessions/filer.md](../sessions/filer.md) を参照。
 | ディスクロージャ三角形クリック | 展開/折りたたみトグル |
 | ドラッグ&ドロップ | [moveByDragAndDrop](#movebydraganddrop--ドラッグドロップでファイルディレクトリを移動-複数対応) |
 | 右クリック | [showContextMenu](#showcontextmenu--右クリックコンテキストメニュー) |
+
+---
+
+## 除外ルール
+
+Filer の表示・検索からファイル/ディレクトリを除外するパターンの集合。
+
+### 適用範囲
+
+- **表示**: ルート展開時・ディレクトリ展開時に各エントリをマッチ判定し、ヒットしたエントリは出力しない
+- **検索** (`searchByName`): 全 tree 走査時にも同じ判定を適用する。除外されたエントリは検索結果に出ない
+- **表示と検索は完全に同じルールを参照する** (検索だけ・表示だけのバイパスは無い)
+
+### パターン形式
+
+`.gitignore` 風の glob パターンを採用:
+
+| パターン | 意味 | 例 |
+|---|---|---|
+| `<basename>` | パスセパレータを含まない → 各エントリの **basename (lastPathComponent)** に対して glob match | `node_modules` `.DS_Store` |
+| `<basename glob>` | 同上 + ワイルドカード `*` `?` 対応 | `*.swp` `tmp.*` `?ackup` |
+| `<path>/<...>` | パスセパレータを含む → projectRoot からの **相対パスのプレフィックス** に対して glob match | `.claude/worktrees` `build/intermediates` |
+
+- ワイルドカードは `*` (任意文字列) と `?` (任意 1 文字) のみ。`**` や `[...]` 等の高度な構文はサポートしない (将来拡張)
+- 大文字小文字を区別する
+- マッチ判定はエントリの種類 (ファイル/ディレクトリ) を区別しない (両方に同じパターンを適用)
+
+### デフォルト除外ルール
+
+```
+.git
+node_modules
+DerivedData
+.build
+.DS_Store
+.claude/worktrees
+```
+
+- 管理場所 (当面): `FilerSessionState.defaultExcludeRules` — Swift 側の定数
+- 管理場所 (将来): #80 完了時に Bundle 内 `default-workspace.json` へ移管予定
+- `.gitignore` に書かれた内容は**尊重しない** (除外ルールは Filer 専用設定で、git とは独立)
+
+### 永続化
+
+- 各 Filer Session が `excludeRules: [String]` を保持し、`workspace.json` (v4) に Filer Tab の状態として保存される
+- 詳細は [../sessions/filer.md](../sessions/filer.md) と [../aspects/persistence.md](../aspects/persistence.md) を参照
+- 新規 Filer Session 作成時 / v3→v4 マイグレーション時 / 「デフォルトに戻す」ボタン押下時には、`FilerSessionState.defaultExcludeRules` を参照する
+
+### 編集
+
+[editExcludeRules](#editexcluderules--除外ルールを編集) を参照。
 
 ---
 
@@ -207,6 +267,16 @@ Session 内部状態は [sessions/filer.md](../sessions/filer.md) を参照。
 - [x] 右クリックでメニューが出る
 - [x] クリック位置の行が未選択なら選択してから表示
 - [x] 選択状態に応じて項目の有効/無効が切り替わる
+- [ ] メニュー末尾に「除外ルール設定...」が表示される
+
+### editExcludeRules / 除外ルール
+- [ ] 設定ダイアログが現在の除外ルール (改行区切り) で開く
+- [ ] OK で `excludeRules` が更新され、Filer 表示と検索の両方が即座に再評価される
+- [ ] Cancel で何も変更されない
+- [ ] 「デフォルトに戻す」ボタンで除外リストがデフォルトに戻る
+- [ ] 除外ルールは `workspace.json` (v4) に保存され、再起動後も復元される
+- [ ] basename パターン (`node_modules`) と path パターン (`.claude/worktrees`) と glob (`*.swp`) がそれぞれ意図通り動く
+- [ ] 表示で除外されたエントリは検索でもヒットしない (完全一致)
 
 ---
 
@@ -231,7 +301,8 @@ Session 内部状態は [sessions/filer.md](../sessions/filer.md) を参照。
 ## 未検討事項 (将来)
 
 - **インライン編集への格上げ**: 現状は NSAlert ダイアログだが、本来の仕様 "セル内インライン編集" は未実装
-- `.gitignore` を尊重する除外オプション
+- `.gitignore` を尊重する除外オプション (現状は除外ルール独自管理。`.gitignore` 連動はオプトインで将来検討)
+- 除外ルールでの `**` (再帰グロブ) や `[abc]` (文字クラス) サポート
 - fuzzy search (現状は substring マッチ)
 - 検索結果の並び順 (マッチ度順?)
 - 削除時に完全削除オプション (Shift+Backspace?)
