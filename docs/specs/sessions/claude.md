@@ -34,9 +34,8 @@ Backchannel の詳細は [../backchannels/backchannel.md](../backchannels/backch
 セットされている必要がある。以下 2 経路のいずれかで設定される:
 
 1. **新規起動**: `createSession` 直後に `state.companionPrompt = config.initialPrompt`
-   (`CompanionView` / `AideaApp.activateCompanion` / `sendRecommendedPrompt` /
-   `autoLaunchCompanions` の Auto Launch 分岐)
-2. **スナップショット復元**: `autoLaunchCompanions` が `CompanionStore.activeSessionMap`
+   (`CompanionView` / `AideaApp.activateCompanion` / `sendRecommendedPrompt`)
+2. **スナップショット復元**: `WorkspaceSnapshotManager.apply()` が `CompanionStore.activeSessionMap`
    を走査し、bind 済みセッションに対して `ensureSession` で state を生成した上で再注入
    (詳細は [../companions/companion.md#起動フロー-スナップショット復元時](../companions/companion.md))
 
