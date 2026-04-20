@@ -96,6 +96,45 @@ SwiftUI View が AppKit から**値型・ユーティリティだけを使う**�
 
 ---
 
+## SwiftUI View の AppKit ブリッジ制約
+
+一部の SwiftUI View は内部的に AppKit (NSView) にブリッジされており、
+SwiftUI のレイアウト修飾子が期待通りに動かないケースがある。
+
+### ブリッジ一覧と制約
+
+| SwiftUI View | AppKit ブリッジ先 | 制約 |
+|---|---|---|
+| `Menu` | NSPopUpButton / NSMenuItem | `.resizable().frame()` による Image リサイズが効かない。アイコンサイズが NSMenuItem に固定される |
+| `contextMenu` | NSMenu | Menu と同じ。アイコンサイズ固定 |
+| `Picker` (.menu スタイル) | NSPopUpButton | Menu と同じ |
+| `Toggle` (.switch スタイル) | NSSwitch | サイズが固定され、`.frame()` で変更不可 |
+| `DatePicker` | NSDatePicker | スタイルのカスタマイズが制限される |
+| `ColorPicker` | NSColorWell | サイズが固定される |
+| `TextEditor` | NSTextView | 一部のテキストスタイル制御が効かない |
+| `ShareLink` | NSSharingServicePicker | レイアウトが制約される |
+| `MenuBarExtra` | NSStatusBarButton | サイズ・レイアウトが制約される |
+
+### 推奨する代替案
+
+| 問題 | 代替案 |
+|------|--------|
+| Menu 内で画像をリサイズしたい | **Popover** に置き換える。Popover は SwiftUI ネイティブなので `.resizable().frame()` が正しく動く |
+| Menu 内で複雑なレイアウトを組みたい | **Popover** または **Sheet** に置き換える |
+| contextMenu でカスタム View を使いたい | **.overlay + タップ検知** で独自メニューを実装する |
+| Toggle のサイズを変えたい | カスタム Toggle スタイルを実装する |
+
+### 判断基準
+
+- ポップアップ系 UI で**テキストのみ**表示する場合 → `Menu` / `contextMenu` で問題なし
+- ポップアップ系 UI で**カスタム画像・複雑なレイアウト**が必要な場合 → `Popover` を使う
+- 迷ったら **Popover を選ぶ**（SwiftUI の修飾子がすべて正しく動く）
+
+> 実例: `ScenePromptsEditorView` のコンパニオン選択を `Menu` から `Popover` に変更した際、
+> `.resizable().frame()` による Image リサイズが正しく動作するようになった。
+
+---
+
 ## 参考
 
 - [coding-style.md](./coding-style.md) — Swift 規約全般
