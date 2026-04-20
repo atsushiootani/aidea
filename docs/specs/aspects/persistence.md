@@ -149,7 +149,7 @@ Claude → Aidea 方向の通信は**ファイル経由**で行う。
 | `Services/Backchannel/Speech/SpeechWatcher.swift` | `.aidea/backchannels/` の FSEvents 監視 |
 | `Services/Backchannel/Speech/SpeechState.swift` | Speech 状態管理と VOICEVOX 連携 |
 
-詳細は [backchannels/](./backchannels/README.md) を参照。
+詳細は [../backchannels/](../backchannels/README.md) を参照。
 
 ---
 
@@ -180,7 +180,7 @@ Claude → Aidea 方向の通信は**ファイル経由**で行う。
 
 ## 関連ドキュメント
 
-- [architecture.md](./architecture.md) — 全体のアーキテクチャ
-- [backchannels/](./backchannels/README.md) — 通信チャネル (Claude → Aidea) の詳細
-- [frontchannels/](./frontchannels/README.md) — 通信チャネル (Aidea → Claude) の詳細
-- [sessions/ui-rules.md#概念モデル](./sessions/ui-rules.md#概念モデル) — Session 概念
+- [../architecture.md](../architecture.md) — 全体のアーキテクチャ
+- [../backchannels/](../backchannels/README.md) — 通信チャネル (Claude → Aidea) の詳細
+- [../frontchannels/](../frontchannels/README.md) — 通信チャネル (Aidea → Claude) の詳細
+- [../sessions/ui-rules.md#概念モデル](../sessions/ui-rules.md#概念モデル) — Session 概念

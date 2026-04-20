@@ -11,7 +11,7 @@ conventions:
 last_updated: 2026-04-17
 ---
 
-# Session
+# Session (sessions/) インデックス
 
 Aidea の **Session 概念** に関する仕様を集約。
 Session とは何かの用語定義は [../glossary.md](../glossary.md) を参照。

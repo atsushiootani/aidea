@@ -1,5 +1,5 @@
 ---
-title: "0003: Claude API を直接叩く (Claude Code CLI は別途使う)"
+title: "0003: Claude API を直接叩く（Claude Code CLI は別途使う）"
 description: メインは Claude Code CLI で、補助的なチャットペインでのみ Claude API を直叩きする両用方針
 status: 採用
 derived_from: []

@@ -8,7 +8,7 @@ impacts:
   - docs/specs/*
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-17
+last_updated: 2026-04-20
 ---
 
 # Aidea Specs
@@ -24,7 +24,7 @@ Aidea の**プロダクト仕様 (設計ストック)**。コードベースと 
 | [aspects/](./aspects/) | **中** | 横断的関心事 (キー操作一覧 / 永続化仕様) |
 | [tools/](./tools/) | **中** | 各ツールの実装仕様 (Terminal / Git / Kit / Preview / Obsidian など) |
 | [frontchannels/](./frontchannels/) | **中** | 会話 UI (Scene / 発話フロー) |
-| [companions/](./companions/) | **中** | コンパニオン (8 体のアイコン) とレコメンドモード |
+| [companions/](./companions/) | **中** | コンパニオン (9 体のアイコン) とレコメンドモード |
 | [backchannels/](./backchannels/) | **中** | 裏側処理 (読み上げ / VOICEVOX 連携など) |
 | [sessions/](./sessions/) | **中** | Session 概念の詳細 (概念モデル・アクティブ切替・UI ルール) |
 | [window/](./window/) | **中低** | Window 全体の振る舞い (ダイアログ・グローバルショートカット) |

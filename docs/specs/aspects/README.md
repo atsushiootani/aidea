@@ -11,7 +11,7 @@ conventions:
 last_updated: 2026-04-17
 ---
 
-# Aspects（横断的関心事）
+# Aspects (横断的関心事) インデックス
 
 複数の機能群（tools / sessions / companions 等）にまたがる仕様を集約する。
 

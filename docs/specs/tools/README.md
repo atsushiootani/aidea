@@ -11,7 +11,7 @@ conventions:
 last_updated: 2026-04-17
 ---
 
-# Tools (各ツール仕様)
+# Tools (各ツール仕様) インデックス
 
 Aidea の Tool (Pane に表示される機能単位) ごとの仕様ファイルを集約する。
 Tool / Pane / Tab / Session / Window の概念モデルは [sessions/ui-rules.md#概念モデル](../sessions/ui-rules.md#概念モデル) / [glossary.md](../glossary.md) を参照。

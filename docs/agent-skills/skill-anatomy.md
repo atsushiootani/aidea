@@ -1,5 +1,5 @@
 ---
-title: スキルの構造 (Skill Anatomy)
+title: スキルの構造（Skill Anatomy）
 description: agent-skills スキルファイルの配置・SKILL.md フォーマット・各セクションの目的・書き方原則・命名規約
 derived_from: []
 syncs_with:

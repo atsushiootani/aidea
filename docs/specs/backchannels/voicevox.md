@@ -4,12 +4,12 @@ description: Speech メッセージを VOICEVOX (localhost:50021 / Speaker 20) �
 derived_from: []
 syncs_with:
   - docs/specs/backchannels/backchannel.md
-  - docs/specs/tools/claude.md
   - docs/specs/aspects/persistence.md
-impacts: []
+impacts:
+  - docs/specs/tools/claude.md
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-17
+last_updated: 2026-04-20
 ---
 
 # Backchannel: VOICEVOX 読み上げ

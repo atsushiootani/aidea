@@ -1,6 +1,6 @@
 ---
 title: Companions インデックス
-description: ヘッダに並ぶ 8 体のコンパニオンアイコンとレコメンドモードなど Claude セッション連携 UI のインデックス
+description: ヘッダに並ぶ 9 体のコンパニオンアイコンとレコメンドモードなど Claude セッション連携 UI のインデックス
 derived_from:
   - docs/LAYOUT.md
 syncs_with: []
@@ -8,12 +8,12 @@ impacts:
   - docs/specs/companions/*
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-17
+last_updated: 2026-04-20
 ---
 
-# Companions
+# Companions インデックス
 
-Aidea のヘッダに並ぶ **コンパニオン** (8 体のアイコン) とその関連 UI の仕様。
+Aidea のヘッダに並ぶ **コンパニオン** (9 体のアイコン) とその関連 UI の仕様。
 1 体のコンパニオンが 1 つの Claude セッションに紐付き、起動・フォーカス・
 レコメンド送信の入口になる。
 

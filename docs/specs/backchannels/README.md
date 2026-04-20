@@ -11,7 +11,7 @@ conventions:
 last_updated: 2026-04-17
 ---
 
-# Backchannels (Claude → Aidea 通信)
+# Backchannels (Claude → Aidea 通信) インデックス
 
 Claude が `.aidea/backchannels/` にファイルを書き出して Aidea に通知する、ファイルベースの通信チャネル。
 

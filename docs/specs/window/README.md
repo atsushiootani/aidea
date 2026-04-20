@@ -11,7 +11,7 @@ conventions:
 last_updated: 2026-04-17
 ---
 
-# Window
+# Window インデックス
 
 Window 全体 (アプリ全域) に適用される UI 振る舞い仕様。
 Session 単位のルールは [../sessions/](../sessions/README.md) を参照。

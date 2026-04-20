@@ -4,12 +4,12 @@ description: Aidea と Claude のファイルベース IPC 機構。設計原則
 derived_from: []
 syncs_with:
   - docs/specs/backchannels/voicevox.md
-  - docs/specs/tools/claude.md
   - docs/specs/aspects/persistence.md
-impacts: []
+impacts:
+  - docs/specs/tools/claude.md
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-17
+last_updated: 2026-04-20
 ---
 
 # Backchannel 仕様

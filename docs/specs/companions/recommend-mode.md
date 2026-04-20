@@ -6,11 +6,12 @@ derived_from:
   - docs/specs/frontchannels/scene.md
 syncs_with:
   - docs/specs/companions/companion.md
+  - docs/specs/aspects/keybindings.md
   - docs/specs/aspects/persistence.md
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-17
+last_updated: 2026-04-20
 ---
 
 # レコメンドモード

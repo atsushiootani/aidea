@@ -11,7 +11,7 @@ conventions:
 last_updated: 2026-04-17
 ---
 
-# Frontchannels (Aidea → Claude 通信)
+# Frontchannels (Aidea → Claude 通信) インデックス
 
 Aidea が PTY の `send(txt:)` 経由で Claude にプロンプトを送る通信チャネル。Backchannel の逆方向。
 

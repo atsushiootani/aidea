@@ -4,12 +4,12 @@ description: レコメンドプロンプトのコンテキストを表す Scene 
 derived_from:
   - docs/specs/frontchannels/frontchannel.md
 syncs_with:
-  - docs/specs/companions/recommend-mode.md
   - docs/specs/aspects/persistence.md
-impacts: []
+impacts:
+  - docs/specs/companions/recommend-mode.md
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-17
+last_updated: 2026-04-20
 ---
 
 # Frontchannel: Scene

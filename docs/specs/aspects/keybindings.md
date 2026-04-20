@@ -6,14 +6,20 @@ derived_from:
   - docs/decisions/0016-terminal-mouse-event-suppression.md
   - docs/decisions/0017-alternate-screen-scroll-handling.md
 syncs_with:
-  - docs/specs/tools/
+  - docs/specs/tools/claude.md
+  - docs/specs/tools/filer.md
+  - docs/specs/tools/git.md
+  - docs/specs/tools/kit.md
+  - docs/specs/tools/preview.md
+  - docs/specs/tools/terminal.md
+  - docs/specs/tools/web.md
   - docs/specs/window/shortcuts.md
   - docs/specs/companions/recommend-mode.md
 impacts: []
 conventions:
   - docs/LAYOUT.md
   - docs/specs/aspects/README.md
-last_updated: 2026-04-17
+last_updated: 2026-04-20
 ---
 
 # キー操作・マウス操作一覧
@@ -201,9 +207,9 @@ Aidea の全キーボードショートカットとマウス操作のリファ�
 
 ## 関連ドキュメント
 
-- [window/shortcuts.md](window/shortcuts.md) — グローバルショートカット詳細
-- [tools/](tools/) — 各ツールの仕様
-- [companions/recommend-mode.md](companions/recommend-mode.md) — レコメンドモード詳細
+- [../window/shortcuts.md](../window/shortcuts.md) — グローバルショートカット詳細
+- [../tools/](../tools/) — 各ツールの仕様
+- [../companions/recommend-mode.md](../companions/recommend-mode.md) — レコメンドモード詳細
 - [ADR 0014](../decisions/0014-no-ctrl-number-shortcuts.md) — Ctrl+数字キー不採用の理由
 - [ADR 0016](../decisions/0016-terminal-mouse-event-suppression.md) — mouseMoved 抑制
 - [ADR 0017](../decisions/0017-alternate-screen-scroll-handling.md) — Alternate Screen スクロール変換

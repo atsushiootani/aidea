@@ -1,22 +1,22 @@
 ---
 title: コンパニオン
-description: ヘッダの 8 体アイコン・CompanionConfig/CompanionStore の仕様・companions.json 永続化・起動フロー
+description: ヘッダの 9 体アイコン・CompanionConfig/CompanionStore の仕様・companions.json 永続化・起動フロー
 derived_from:
   - docs/specs/frontchannels/frontchannel.md
   - docs/specs/sessions/ui-rules.md
 syncs_with:
   - docs/specs/companions/recommend-mode.md
-  - docs/specs/tools/claude.md
   - docs/specs/aspects/persistence.md
-impacts: []
+impacts:
+  - docs/specs/tools/claude.md
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-17
+last_updated: 2026-04-20
 ---
 
 # コンパニオン
 
-> ヘッダに常時並ぶ 8 体のアイコン。1 体が 1 つの Claude セッションに紐付き、
+> ヘッダに常時並ぶ 9 体のアイコン。1 体が 1 つの Claude セッションに紐付き、
 > 起動・フォーカス・レコメンド送信の入口になる。
 
 [../frontchannels/frontchannel.md](../frontchannels/frontchannel.md) が規定する「Aidea → Claude」通信の起点にあたる UI 概念。
@@ -26,8 +26,8 @@ last_updated: 2026-04-17
 
 ## 概要
 
-- ヘッダ (`AppHeaderView`) に **常に 8 体のコンパニオンアイコンが並ぶ**
-- 各アイコンは `CompanionIconPresets.imageIcons` (8 枚) に対応
+- ヘッダ (`AppHeaderView`) に **常に 9 体のコンパニオンアイコンが並ぶ**
+- 各アイコンは `CompanionIconPresets.imageIcons` (9 枚) に対応
 - 起動済み (Claude セッションと bind 済み) のアイコンは彩度 1.0、未起動は 0.3 でグレーアウト
 - アクティブタブがそのコンパニオンの Claude セッションならアクセントカラーで枠が付く
 
@@ -57,7 +57,7 @@ last_updated: 2026-04-17
 
 ### `CompanionIconPresets`
 
-アイコン画像の静的プリセット。8 枚のカスタム画像 (`Assets.xcassets/Companions/companion-0..7`) を定義する。
+アイコン画像の静的プリセット。9 枚のカスタム画像 (`Assets.xcassets/Companions/companion-1..9`) を定義する。小サイズ版 (`companion-N-small`) とテーマカラーも併せて保持する。
 
 ---
 
@@ -93,7 +93,7 @@ last_updated: 2026-04-17
 ```json
 {
   "companions": [
-    { "id": "...", "name": "...", "icon": "Companions/companion-0",
+    { "id": "...", "name": "...", "icon": "Companions/companion-1",
       "initialPrompt": "...", "autoLaunch": false }
   ],
   "bindings": [
@@ -110,7 +110,7 @@ last_updated: 2026-04-17
 
 | 型 | ファイル | 責務 |
 |---|---|---|
-| `CompanionView` | `Views/Companion/CompanionView.swift` | ヘッダに 8 体並べる本体。アイコンタップで起動/フォーカス、ラベルタップで編集 sheet を開く。レコメンドモード中は選択コンパニオンの下に `RecommendBubbleView` を表示 |
+| `CompanionView` | `Views/Companion/CompanionView.swift` | ヘッダに 9 体並べる本体。アイコンタップで起動/フォーカス、ラベルタップで編集 sheet を開く。レコメンドモード中は選択コンパニオンの下に `RecommendBubbleView` を表示 |
 | `CompanionEditView` | `Views/Companion/CompanionEditView.swift` | 名前・initialPrompt・autoLaunch を編集する sheet |
 | `RecommendBubbleView` | `Views/Companion/RecommendBubbleView.swift` | `RecommendState.prompts` を縦に並べ、選択中をアクセントカラーでハイライトする吹き出し |
 
