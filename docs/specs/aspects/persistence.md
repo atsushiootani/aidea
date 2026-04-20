@@ -59,7 +59,7 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 
 ```
 <projectRoot>/.aidea/
-├── workspace.json        # レイアウト・Session 状態・コンパニオン・レコメンドの統合スナップショット (v3)
+├── workspace.json        # レイアウト・Session 状態・コンパニオン・レコメンドの統合スナップショット (v4)
 ├── backchannels/         # Claude からのメッセージ受信ディレクトリ
 │   └── speech-*.txt      # 読み上げ対象テキスト (消費後に削除)
 ├── claude/               # Claude 起動時に読ませるリソース
@@ -80,13 +80,13 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 ### `workspace.json` (レイアウト・Session 状態・コンパニオン・レコメンド統合)
 
 - **管理**: `Services/Workspace/WorkspaceSnapshotManager.swift`
-- **フォーマット**: JSON (`version: 3`)
+- **フォーマット**: JSON (`version: 4`)
 - **保存内容**:
   - レイアウトツリー (ノード ID / 分割軸 / ペイン構造)
   - 各 Tab の状態:
     - Preview: `url` + `title`
     - Web: `url`
-    - Filer: `expandedURLs`
+    - Filer: `expandedURLs` + `excludeRules`
     - Kit: `expandedSections` + `expandedGroups`
   - アクティブペイン ID
   - `companions`: `[{id, name, icon, initialPrompt}]` (CompanionStore から収集)
@@ -95,6 +95,7 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 - **読込**: `AideaApp.init()` で `WorkspaceSnapshotManager.load()` → `apply()` を呼び出し、レイアウト/コンパニオン/レコメンドをまとめて復元
 - **保存**: アプリ終了時 / バックグラウンド化時に一括保存 (`AideaApp.registerTerminationObserver()`)
 - **v2 → v3 マイグレーション**: 読込時に `companions == nil` なら旧 `.aidea/companions.json` / `.aidea/recommends.json` を読み取って統合し、旧ファイルを削除する
+- **v3 → v4 マイグレーション**: 読込時に Filer Tab の `excludeRules == nil` ならデフォルト除外ルール ([../tools/filer.md#デフォルト除外ルール](../tools/filer.md#デフォルト除外ルール)) を設定する
 
 ### `.aidea/ja/<path>` (翻訳キャッシュ)
 
