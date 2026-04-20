@@ -11,6 +11,7 @@ struct WorkspaceSnapshot: Codable {
     /// スナップショットフォーマットのバージョン (将来のマイグレーション用)
     /// v2: レイアウトを LayoutNode ツリーで保存する形式
     /// v3: companions / bindings / recommends を統合
+    /// v4: Filer Tab に excludeRules を追加 (issue #68)
     let version: Int
     /// レイアウトツリーのルートノード
     let layoutRoot: LayoutNodeSnapshot
@@ -67,10 +68,12 @@ struct WebSnapshot: Codable {
     let url: URL
 }
 
-/// Filer Session の永続化対象 (展開ディレクトリ一覧)
+/// Filer Session の永続化対象 (展開ディレクトリ一覧 + 除外ルール)
 struct FilerSnapshot: Codable {
     let id: SessionID
     let expandedURLs: [URL]
+    /// v4 で追加。v3 以前は nil → apply 時に `FilerSessionState.defaultExcludeRules` を割り当てる
+    let excludeRules: [String]?
 }
 
 /// Kit Session の永続化対象 (セクション・サブグループの開閉状態)

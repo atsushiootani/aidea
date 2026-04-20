@@ -9,7 +9,7 @@ import Foundation
 /// `<projectRoot>/.aidea/workspace.json` にプロジェクトごとに JSON で書き出す。
 final class WorkspaceSnapshotManager {
     /// 現在のスナップショットフォーマットバージョン
-    private static let currentVersion: Int = 3
+    private static let currentVersion: Int = 4
 
     /// projectRoot から保存先 URL を導出する
     static func fileURL(for projectRoot: URL) -> URL {
@@ -64,7 +64,11 @@ final class WorkspaceSnapshotManager {
                    let state = s.state as? FilerSessionState {
                         let live = state.controller.collectExpandedURLs()
                         state.expandedURLs = live
-                        filers.append(FilerSnapshot(id: id, expandedURLs: Array(live)))
+                        filers.append(FilerSnapshot(
+                            id: id,
+                            expandedURLs: Array(live),
+                            excludeRules: state.excludeRules
+                        ))
                     }
                 case .kit:
                     if let s = registry.session(for: id),
@@ -239,6 +243,8 @@ final class WorkspaceSnapshotManager {
             let session = registry.ensureSession(for: filer.id)
             let state = session.state as! FilerSessionState
             state.expandedURLs = Set(filer.expandedURLs)
+            // v3 → v4 マイグレーション: 旧スナップショットには excludeRules が無いのでデフォルトを設定
+            state.excludeRules = filer.excludeRules ?? FilerSessionState.defaultExcludeRules
         }
         for kit in snapshot.kits {
             let session = registry.ensureSession(for: kit.id)

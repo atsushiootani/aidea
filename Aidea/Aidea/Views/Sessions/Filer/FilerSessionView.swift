@@ -43,7 +43,32 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
     private let watcher = FileWatcher()
     private var rootNodes: [FileTreeNode] = []
     private var reloadWorkItem: DispatchWorkItem?
-    private static let excludedDirs: Set<String> = [".git", "node_modules", ".DS_Store", "DerivedData", ".build"]
+
+    /// owner (FilerSessionState) の除外ルールから ExcludeMatcher を組み立てる。
+    /// owner が未設定なら defaultExcludeRules を使う。
+    private func excludeMatcher() -> ExcludeMatcher {
+        ExcludeMatcher(patterns: owner?.excludeRules ?? FilerSessionState.defaultExcludeRules)
+    }
+
+    /// 指定ディレクトリの直下をロードし、除外ルールに該当するエントリをフィルタする。
+    private func loadAndFilter(directory url: URL, parent: FileTreeNode? = nil) -> [FileTreeNode] {
+        let nodes = FileTreeLoader.load(directory: url, parent: parent)
+        guard let root = currentRoot else { return nodes }
+        let matcher = excludeMatcher()
+        return nodes.filter { node in
+            let relative = Self.relativePath(of: node.url, from: root)
+            return !matcher.matches(relativePath: relative)
+        }
+    }
+
+    /// projectRoot からの相対パスを返す (先頭スラッシュ無し)。root 配下でない場合は basename にフォールバック。
+    private static func relativePath(of url: URL, from root: URL) -> String {
+        let rootPath = root.standardizedFileURL.path
+        let nodePath = url.standardizedFileURL.path
+        guard nodePath.hasPrefix(rootPath) else { return url.lastPathComponent }
+        let suffix = String(nodePath.dropFirst(rootPath.count))
+        return suffix.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+    }
 
     // 検索関連の状態
     private var searchQuery: String = ""
@@ -161,12 +186,13 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
     }
 
     /// 指定ノード以下を走査し、マッチするノードを filteredChildren に蓄積する。
+    /// 除外ルールで弾かれたノードは検索対象外 (表示と検索を完全一致させる)。
     /// - Returns: このノードが結果に含まれるべきか (自身がマッチ or 子孫がマッチ)
     private func walkForSearch(node: FileTreeNode, query: String) -> Bool {
         let isMatch = node.name.lowercased().contains(query)
         if node.isDirectory {
             if node.children == nil {
-                node.children = FileTreeLoader.load(directory: node.url, parent: node)
+                node.children = loadAndFilter(directory: node.url, parent: node)
             }
             var matchedChildren: [FileTreeNode] = []
             for child in node.children ?? [] {
@@ -234,7 +260,7 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
             return
         }
         currentRoot = root
-        rootNodes = FileTreeLoader.load(directory: root).filter { !Self.excludedDirs.contains($0.name) }
+        rootNodes = loadAndFilter(directory: root)
         outlineView.reloadData()
         // owner に保存された展開 URL があればそれを復元する
         if let saved = owner?.expandedURLs, !saved.isEmpty {
@@ -242,8 +268,14 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
         }
         watcher.start(path: root.path) { [weak self] paths in
             guard let self = self else { return }
+            let matcher = self.excludeMatcher()
+            let rootPath = root.standardizedFileURL.path
             let relevant = paths.filter { path in
-                !Self.excludedDirs.contains(where: { path.contains("/\($0)/") || path.hasSuffix("/\($0)") })
+                // 除外ルールにマッチした path 配下の変更は無視する
+                guard path.hasPrefix(rootPath) else { return true }
+                let relative = String(path.dropFirst(rootPath.count))
+                    .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+                return !matcher.matches(relativePath: relative)
             }
             if relevant.isEmpty { return }
             self.reloadWorkItem?.cancel()
@@ -260,7 +292,7 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
         guard let root = currentRoot else { return }
         let expandedURLs = collectExpandedURLs()
         let selectedURLs = selectedNodeURLs()
-        rootNodes = FileTreeLoader.load(directory: root).filter { !Self.excludedDirs.contains($0.name) }
+        rootNodes = loadAndFilter(directory: root)
         outlineView.reloadData()
         restoreExpandedState(in: rootNodes, expandedURLs: expandedURLs)
         restoreSelection(to: selectedURLs)
@@ -310,7 +342,7 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
     private func restoreExpandedState(in nodes: [FileTreeNode], expandedURLs: Set<URL>) {
         for node in nodes where expandedURLs.contains(node.url) {
             if node.children == nil {
-                node.children = FileTreeLoader.load(directory: node.url, parent: node)
+                node.children = loadAndFilter(directory: node.url, parent: node)
             }
             outlineView.expandItem(node)
             if let children = node.children {
@@ -333,7 +365,7 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
         if node == nil { return rootNodes.count }
         guard node!.isDirectory else { return 0 }
         if node!.children == nil {
-            node!.children = FileTreeLoader.load(directory: node!.url, parent: node!)
+            node!.children = loadAndFilter(directory: node!.url, parent: node!)
         }
         return node!.children?.count ?? 0
     }
@@ -800,7 +832,7 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
             // 末端以外のディレクトリは展開する
             if i < components.count - 1 {
                 if node.children == nil {
-                    node.children = FileTreeLoader.load(directory: node.url, parent: node)
+                    node.children = loadAndFilter(directory: node.url, parent: node)
                 }
                 outlineView.expandItem(node)
                 currentList = node.children ?? []
