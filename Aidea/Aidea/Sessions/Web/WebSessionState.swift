@@ -12,7 +12,9 @@ import Observation
 /// ペイン移動やタブ切替で URL と履歴が失われないようにする。
 /// ナビゲーションに追従して `url` を最新の表示 URL に同期する (KVO 経由)。
 @Observable
-final class WebSessionState: SessionState {
+final class WebSessionState: SessionState, FocusBridgeOwner {
+    /// フォーカス契約 C1/C2/C3 を担う非永続ヘルパ (仕様は focus-contract.md)
+    let focusBridge = SessionFocusBridge()
     var url: URL = URL(string: "https://www.apple.com")!
     @ObservationIgnored private var cached: WKWebView?
     @ObservationIgnored private var urlObservation: NSKeyValueObservation?
@@ -22,13 +24,18 @@ final class WebSessionState: SessionState {
     /// この Web セッションの SessionID
     @ObservationIgnored var sessionID: SessionID?
 
-    /// Web がアクティブになったら webView にフォーカスを当てる
+    /// 契約 C1: bridge 経由で webView に firstResponder を移す。
+    /// NSView 参照の登録は View 側 (WebSessionView.makeNSView) で行う。
+    /// cached が lazy 生成のため pending パターンで自動解消される。
     func didBecomeActive(session: Session) {
-        guard let view = cached else { return }
-        session.focusableView = view
-        DispatchQueue.main.async {
-            view.window?.makeFirstResponder(view)
-        }
+        focusBridge.activate()
+    }
+
+    /// 契約 C2: bridge 経由で自分配下の firstResponder を解放する。
+    /// WKWebView の内部 subview が firstResponder になっているケースも
+    /// bridge 側で isDescendant(of:) 判定するため正しく解放される。
+    func didResignActive(session: Session) {
+        focusBridge.deactivate()
     }
 
     /// View 側で参照する WKWebView (初回のみ生成)

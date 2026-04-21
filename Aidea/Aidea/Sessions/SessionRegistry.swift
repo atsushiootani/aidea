@@ -336,7 +336,8 @@ final class SessionRegistry {
                                           .sessionFocusCleanup(session.state))
         case .claude:   return AnyView(ClaudeSessionView(session: session, state: session.state as! ClaudeSessionState)
                                           .sessionFocusCleanup(session.state))
-        case .web:      return AnyView(WebSessionView(state: session.state as! WebSessionState))
+        case .web:      return AnyView(WebSessionView(session: session, state: session.state as! WebSessionState)
+                                          .sessionFocusCleanup(session.state))
         case .preview:  return AnyView(PreviewSessionView(session: session, state: session.state as! PreviewSessionState, sessionID: id))
         case .git:
             let gitState = session.state as! GitSessionState
