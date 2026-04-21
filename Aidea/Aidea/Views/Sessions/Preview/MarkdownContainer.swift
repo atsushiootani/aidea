@@ -62,6 +62,20 @@ struct MarkdownContainer: View {
         .onAppear {
             if state.isActive { isFocused = true }
         }
+        // Picker / E キー / toggleMode() いずれの経由でも mode 変更に伴う副作用を 1 箇所で処理する。
+        // view → edit: draftText を現在の loadedText で初期化。
+        // edit → view: 保留中の自動保存をキャンセルし、差分があれば即座に flush する。
+        .onChange(of: mode) { oldValue, newValue in
+            switch (oldValue, newValue) {
+            case (.view, .edit):
+                draftText = loadedText
+            case (.edit, .view):
+                autoSaveTask?.cancel()
+                flushSave()
+            default:
+                break
+            }
+        }
     }
 
     /// モードに応じたメイン表示
@@ -167,15 +181,16 @@ struct MarkdownContainer: View {
                     .controlSize(.small)
                 }
             } else {
-                Button {
-                    toggleMode()
-                } label: {
-                    Label(mode == .view ? "Edit" : "View",
-                          systemImage: mode == .view ? "pencil" : "eye")
-                        .labelStyle(.titleAndIcon)
+                // view / edit のセグメントコントロール (アイコンのみ)。
+                // mode 変更の副作用 (draft 初期化 / 保存 flush) は .onChange(of: mode) 側で処理する。
+                Picker("", selection: $mode) {
+                    Image(systemName: "eye").tag(Mode.view)
+                    Image(systemName: "chevron.left.forwardslash.chevron.right").tag(Mode.edit)
                 }
-                .buttonStyle(.borderedProminent)
+                .pickerStyle(.segmented)
+                .labelsHidden()
                 .controlSize(.small)
+                .fixedSize()
             }
 
             // 英語ドキュメントの場合に翻訳ボタンを表示 (キャッシュファイルでは非表示)
@@ -207,18 +222,10 @@ struct MarkdownContainer: View {
         modifiers == [.control]
     }
 
-    /// view ⇄ edit のトグル
+    /// view ⇄ edit のトグル。E キーから呼ばれる。
+    /// 副作用 (draft 初期化・保存 flush) は mode の .onChange で処理されるため、ここでは値の反転のみ行う。
     private func toggleMode() {
-        switch mode {
-        case .view:
-            draftText = loadedText
-            mode = .edit
-        case .edit:
-            // 切替前に保留の自動保存があれば即座にフラッシュする
-            autoSaveTask?.cancel()
-            flushSave()
-            mode = .view
-        }
+        mode = (mode == .view) ? .edit : .view
     }
 
     /// ファイルを読み込み、英語判定を行う
