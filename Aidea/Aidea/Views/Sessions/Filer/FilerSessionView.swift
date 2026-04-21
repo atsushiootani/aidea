@@ -16,8 +16,13 @@ struct FilerSessionView: NSViewControllerRepresentable {
         state.controller.workspace = workspace
         state.controller.loadViewIfNeeded()
         state.controller.reload()
-        // 初期 focusableView を session にセット
-        session.focusableView = state.controller.outlineView
+        let outlineView = state.controller.outlineView
+        // SessionRegistry の NSEvent クリックハンドラ用に維持 (Phase 9 で bridge 経由に移行して撤去予定)
+        session.focusableView = outlineView
+        // 契約 C1 用: bridge に NSView 参照を登録 (SwiftUI update cycle と分離)
+        DispatchQueue.main.async {
+            state.focusBridge.setView(outlineView)
+        }
         return state.controller
     }
 

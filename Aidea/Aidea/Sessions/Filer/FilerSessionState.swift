@@ -10,7 +10,7 @@ import Observation
 /// Filer Session の内部状態。
 /// 1 ウィンドウに 1 つだけ存在できる仕様 (PaneView 側で制約)。
 @Observable
-final class FilerSessionState: SessionState {
+final class FilerSessionState: SessionState, FocusBridgeOwner {
     /// 除外ルールのデフォルト値。新規 Filer Session 作成時 / v3→v4 マイグレ時 / 「デフォルトに戻す」操作時に参照する。
     /// 将来 issue #80 完了時に Bundle 内 `default-workspace.json` へ移管予定。
     static let defaultExcludeRules: [String] = [
@@ -25,6 +25,8 @@ final class FilerSessionState: SessionState {
     let workspace: WorkspaceState
     /// View 側で参照する NSViewController (持ち回しで状態を維持する)
     let controller: FileTreeViewController
+    /// フォーカス契約 C1/C2/C3 を担う非永続ヘルパ (仕様は focus-contract.md)
+    let focusBridge = SessionFocusBridge()
     /// 現在この Filer で選択されているファイル
     var selectedFile: URL?
     /// 展開されているディレクトリの URL 集合 (永続化対象、ユーザーの展開操作と同期される)
@@ -34,13 +36,15 @@ final class FilerSessionState: SessionState {
     /// アクティブな Session に転送するためのレジストリ参照
     weak var registry: SessionRegistry?
 
-    /// Filer がアクティブになったら outlineView にフォーカスを当てる
+    /// 契約 C1: bridge 経由で outlineView に firstResponder を移す。
+    /// NSView 参照の登録は View 側 (FilerSessionView.makeNSViewController) で行う。
     func didBecomeActive(session: Session) {
-        let view = controller.outlineView
-        session.focusableView = view
-        DispatchQueue.main.async {
-            view.window?.makeFirstResponder(view)
-        }
+        focusBridge.activate()
+    }
+
+    /// 契約 C2: bridge 経由で自分配下の firstResponder を解放する。
+    func didResignActive(session: Session) {
+        focusBridge.deactivate()
     }
 
     init(workspace: WorkspaceState) {

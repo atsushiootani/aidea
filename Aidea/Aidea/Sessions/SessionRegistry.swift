@@ -329,7 +329,8 @@ final class SessionRegistry {
     func view(for id: SessionID) -> AnyView {
         let session = ensureSession(for: id)
         switch id.tool {
-        case .filer:    return AnyView(FilerSessionView(session: session, state: session.state as! FilerSessionState))
+        case .filer:    return AnyView(FilerSessionView(session: session, state: session.state as! FilerSessionState)
+                                          .sessionFocusCleanup(session.state))
         case .kit:      return AnyView(KitSessionView(state: session.state as! KitSessionState, sessionID: id))
         case .terminal: return AnyView(TerminalSessionView(state: session.state as! TerminalSessionState))
         case .claude:   return AnyView(ClaudeSessionView(state: session.state as! ClaudeSessionState))
