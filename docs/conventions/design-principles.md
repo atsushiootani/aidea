@@ -121,7 +121,7 @@ state.didBecomeActive(session: session)
 ```
 
 **Aidea での適用:**
-- `SessionState` プロトコル — ライフサイクル、focusableView の報告
+- `SessionState` プロトコル — ライフサイクル (`didBecomeActive` / `didResignActive`)。AppKit 系 state は `SessionFocusBridge` を保持してフォーカス契約を履行
 - `FileTreeLoader.iconName(for:)` — 拡張子で分岐するのは「データに基づく分岐」なので OK
   (型の分岐とデータの分岐は区別する)
 
@@ -138,9 +138,9 @@ GRASP パターンの 1 つ。
   → この情報を一番知ってるのは FilerSessionState
   → FilerSessionState.didBecomeActive() に書く
 
-「Preview の focusableView は表示コンテンツで変わる」
+「Preview の firstResponder 候補の NSView は表示コンテンツで変わる」
   → 表示コンテンツを知ってるのは子ビュー (NSTextPreview 等)
-  → 子ビューが session.focusableView を報告する
+  → 子ビューが state.focusBridge.setView(_:) で bridge に報告する
 ```
 
 **違反のサイン:**

@@ -16,10 +16,11 @@ last_updated: 2026-04-21
 
 **日付**: 2026-04-10
 
-> **Note**: [ADR 0013](./0013-session-as-first-class-object.md) で進化する予定。
-> `focusableView` の保持先を `SessionState` から `Session` (first-class object) に移し、
-> 判断基準も「Tool 種別」から「`focusableView` の有無」に変更する。
-> 0013 が「提案」段階の間は本 ADR が現行方針。
+> **Note**: 本 ADR の「2 経路フォーカス」の骨格は現行方針として維持されるが、
+> 具体的な履行方法は [ADR 0013](./0013-session-as-first-class-object.md) を経て
+> [ADR 0020](./0020-session-focus-bridge.md) で進化している。現在は AppKit 系 SessionState
+> が `SessionFocusBridge` を保持して `makeFirstResponder` を担い、SwiftUI 系は `isActive` フラグで
+> `.focused()` に委譲する形。現行の契約は [docs/specs/sessions/focus-contract.md](../specs/sessions/focus-contract.md) を参照。
 
 ## 背景
 Aidea の Session は 2 種類の UI 基盤で実装されている:

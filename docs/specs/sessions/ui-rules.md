@@ -4,14 +4,15 @@ description: 5 概念モデル (Window/Pane/Tab/Session/Tool)・シングルト�
 derived_from:
   - docs/decisions/0013-session-as-first-class-object.md
   - docs/decisions/0014-no-ctrl-number-shortcuts.md
-syncs_with: []
+syncs_with:
+  - docs/specs/sessions/session.md
 impacts:
   - docs/specs/tools/*
   - docs/specs/sessions/*
   - docs/specs/companions/*
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-20
+last_updated: 2026-04-21
 ---
 
 # Session UI ルール

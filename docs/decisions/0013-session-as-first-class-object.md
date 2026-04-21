@@ -18,6 +18,13 @@ last_updated: 2026-04-10
 **日付**: 2026-04-10
 **状態 (補足)**: 実装前の概念設計段階
 
+> **Note**: 本 ADR のうち `focusableView` の Session への配置と FocusCatcherView に関する判断は
+> [ADR 0020](./0020-session-focus-bridge.md) で撤回された。Session を first-class object として
+> Window 全体で管理する核心の判断は維持されるが、フォーカス制御の配置については
+> `SessionFocusBridge` を各 SessionState が保持する方式に進化している。現行仕様は
+> [docs/specs/sessions/focus-contract.md](../specs/sessions/focus-contract.md) および
+> [docs/specs/sessions/session.md](../specs/sessions/session.md) を参照。
+
 ## 背景
 
 ### 既存構造の問題

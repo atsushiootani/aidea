@@ -8,6 +8,7 @@ derived_from:
 syncs_with:
   - docs/specs/glossary.md
   - docs/specs/sessions/ui-rules.md
+  - docs/specs/sessions/focus-contract.md
 impacts:
   - docs/specs/sessions/*
 conventions:
