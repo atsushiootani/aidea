@@ -152,6 +152,8 @@ struct MarkdownContainer: View {
                     translateDocument()
                     return .handled
                 }
+                // Tab: SwiftUI の標準 focus nav を止める (Git/GitDiff 等へのフォーカス漏れ防止)
+                .onKeyPress(.tab) { .handled }
             }
         case .edit:
             // NSTextView ベース: focusBridge 経由で firstResponder を取る (AppKit 経路)

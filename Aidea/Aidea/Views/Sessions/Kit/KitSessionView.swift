@@ -122,6 +122,8 @@ struct KitSessionView: View {
                 toggleFoldCurrent()
                 return .handled
             }
+            // Tab: SwiftUI の標準 focus nav を止める (Git/GitDiff 等へのフォーカス漏れ防止)
+            .onKeyPress(.tab) { .handled }
             .onAppear {
                 reloadAll()
                 if state.isActive { isFocused = true }

@@ -120,14 +120,19 @@ final class GitFileListViewController: NSViewController, NSOutlineViewDataSource
         ])
         self.view = container
 
-        // Tab キーで GitDiff にフォーカス移動
+        // Tab キーで GitDiff にフォーカス移動。
+        // SwiftUI の focus nav で他 Session から漏れて firstResponder が奪われたケースを弾くため、
+        // activeSessionID が Git 自身かを確認してから発火する。
         outlineView.onTabPressed = { [weak self] in
-            self?.focusGitDiff()
+            guard let self,
+                  self.state?.registry?.activeSessionID?.tool == .git else { return }
+            self.focusGitDiff()
         }
 
-        // W / P キーでモード切替
+        // W / P キーでモード切替。同上、activeSessionID チェック付き。
         outlineView.onModeChanged = { [weak self] mode in
-            guard let self else { return }
+            guard let self,
+                  self.state?.registry?.activeSessionID?.tool == .git else { return }
             self.state?.mode = mode
             self.picker?.selectedSegment = GitMode.allCases.firstIndex(of: mode) ?? 0
             self.reload()
