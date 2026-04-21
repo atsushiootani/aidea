@@ -89,10 +89,13 @@ struct GitDiffSessionView: NSViewRepresentable {
         context.coordinator.state = state
         state.reload()
         loadDiff(into: webView)
-        // Tab で Git ツールにフォーカス移動
+        // Tab で Git ツールにフォーカス移動。
+        // SwiftUI の focus nav で他 Session から漏れて firstResponder が奪われたケースを弾くため、
+        // activeSessionID が GitDiff 自身かを確認してから発火する。
         let diffState = state
         webView.onTabPressed = {
-            guard let registry = diffState.registry else { return }
+            guard let registry = diffState.registry,
+                  registry.activeSessionID?.tool == .gitDiff else { return }
             // Git ツールのセッションを探してアクティブ化
             for pane in registry.layout.allPanes {
                 for id in pane.tabs where id.tool == .git {
