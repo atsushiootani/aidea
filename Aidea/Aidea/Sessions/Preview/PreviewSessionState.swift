@@ -22,8 +22,6 @@ final class PreviewSessionState: SessionState, FocusBridgeOwner {
     /// タブに表示するタイトル。nil のときは url の lastPathComponent を使う (既定挙動)。
     /// Kit から開くときに Skill/Command 名などをセットする。
     var title: String?
-    /// Session への弱参照 (focusableView 報告用)。createSession 後にセットされる。
-    @ObservationIgnored weak var session: Session?
 
     /// 契約 C1: bridge 経由で現在の子ビュー NSView に firstResponder を移す。
     /// 子ビューがまだ setView していない場合は bridge が pending を立てて待機する。

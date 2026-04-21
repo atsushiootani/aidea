@@ -14,14 +14,12 @@ import SwiftTerm
 /// `LocalProcessTerminalView` (ADR 0006) を使うため Representable でラップする。
 /// 参考: [docs/conventions/swift.md](../../../../docs/conventions/swift.md)
 struct ClaudeSessionView: NSViewRepresentable {
-    let session: Session
     let state: ClaudeSessionState
 
     func makeNSView(context: Context) -> PersistentTerminalView {
         let view = state.terminalView
-        // SessionRegistry の NSEvent クリックハンドラ用に維持 (Phase 9 で bridge 経由に移行して撤去予定)
-        session.focusableView = view
-        // 契約 C1 用: bridge に NSView 参照を登録 (SwiftUI update cycle と分離)
+        // bridge に NSView 参照を登録 (SwiftUI update cycle と分離)。
+        // 契約 C1 (アクティブ化時フォーカス) と SessionRegistry の click-to-activate 両方の用途。
         DispatchQueue.main.async {
             state.focusBridge.setView(view)
         }

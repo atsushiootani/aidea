@@ -10,7 +10,7 @@ import AppKit
 /// SwiftUI の TextEditor は大きなテキストで重くなるため、NSTextView を直接使う。
 struct EditableTextView: NSViewRepresentable {
     @Binding var text: String
-    /// NSTextView が生成されたときに呼ばれるコールバック (focusableView 報告用)
+    /// NSTextView が生成されたときに呼ばれるコールバック (SessionFocusBridge 報告用)
     var onViewCreated: ((NSView) -> Void)? = nil
 
     func makeNSView(context: Context) -> NSScrollView {

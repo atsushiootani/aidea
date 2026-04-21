@@ -49,7 +49,8 @@ final class KitSessionState: SessionState {
         self.workspace = workspace
     }
 
-    /// Kit は純 SwiftUI なので focusableView ではなく isActive フラグで通知
+    /// Kit は純 SwiftUI 系 Session (FocusBridgeOwner 非準拠) なので isActive フラグで通知。
+    /// SwiftUI .focused($isActive) バインドが内部 NSView の firstResponder 出し入れを自動処理する。
     func didBecomeActive(session: Session) {
         isActive = true
     }

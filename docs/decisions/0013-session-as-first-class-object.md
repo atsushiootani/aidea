@@ -1,7 +1,7 @@
 ---
 title: "0013: Session を first-class object にして Window レベルで管理する"
 description: Session を public な @Observable クラスとして Window 全体で一意管理し focusableView を Session に移す概念設計 (0012 の進化)
-status: 提案
+status: 採用
 derived_from:
   - docs/decisions/0012-keyboard-focus-dual-path.md
 syncs_with: []

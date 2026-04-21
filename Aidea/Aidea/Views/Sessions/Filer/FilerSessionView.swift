@@ -8,7 +8,6 @@ import AppKit
 
 /// Filer Session の SwiftUI ラッパ。FilerSessionState が保持する NSViewController を再利用する。
 struct FilerSessionView: NSViewControllerRepresentable {
-    let session: Session
     let state: FilerSessionState
     @Environment(WorkspaceState.self) private var workspace
 
@@ -17,9 +16,8 @@ struct FilerSessionView: NSViewControllerRepresentable {
         state.controller.loadViewIfNeeded()
         state.controller.reload()
         let outlineView = state.controller.outlineView
-        // SessionRegistry の NSEvent クリックハンドラ用に維持 (Phase 9 で bridge 経由に移行して撤去予定)
-        session.focusableView = outlineView
-        // 契約 C1 用: bridge に NSView 参照を登録 (SwiftUI update cycle と分離)
+        // bridge に NSView 参照を登録 (SwiftUI update cycle と分離)。
+        // 契約 C1 (アクティブ化時フォーカス) と SessionRegistry の click-to-activate 両方の用途。
         DispatchQueue.main.async {
             state.focusBridge.setView(outlineView)
         }

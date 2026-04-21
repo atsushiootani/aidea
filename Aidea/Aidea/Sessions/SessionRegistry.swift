@@ -101,7 +101,10 @@ final class SessionRegistry {
         }
     }
 
-    /// 現在のアクティブ Session を再度 activate する (focusableView 変更後の再フォーカス用)
+    /// 現在のアクティブ Session を再度 activate する。
+    /// Preview のコンテンツロード完了時など、非同期に NSView が用意された後の再フォーカスに使う。
+    /// `Session.activate()` → `state.didBecomeActive` → `focusBridge.activate()` の連鎖で
+    /// bridge が pending 解消または即フォーカスを行う。
     func reactivateCurrentSession() {
         activeSession?.activate()
     }
@@ -121,19 +124,18 @@ final class SessionRegistry {
         let session = Session(id: id, state: state)
         sessions.append(session)
         // Session/State 間の参照をセット
-        if let preview = state as? PreviewSessionState {
-            preview.session = session
-        }
         if let web = state as? WebSessionState {
             web.sessionID = id
         }
-        // Preview / Web / Terminal 以外でも共通: focusableView 配下のクリックでアクティブ化
-        // (AppKit ビューが SwiftUI の simultaneousGesture を握りつぶすケースの対策)
+        // AppKit 系 Session (FocusBridgeOwner 準拠) 共通: bridge が保持する NSView 配下の
+        // クリックで自動アクティブ化する (AppKit ビューが SwiftUI の simultaneousGesture を
+        // 握りつぶすケースの対策)。純 SwiftUI 系 (Kit 等) は SwiftUI が処理するのでスキップ。
         let weakSession = session
         let weakSelf = self
         NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak weakSession, weak weakSelf] event in
             guard let s = weakSession, let reg = weakSelf,
-                  let fv = s.focusableView,
+                  let owner = s.state as? FocusBridgeOwner,
+                  let fv = owner.focusBridge.trackedView,
                   let clicked = event.window?.contentView?.hitTest(event.locationInWindow),
                   clicked.isDescendant(of: fv) else { return event }
             if reg.activeSessionID != s.id {
@@ -329,28 +331,28 @@ final class SessionRegistry {
     func view(for id: SessionID) -> AnyView {
         let session = ensureSession(for: id)
         switch id.tool {
-        case .filer:    return AnyView(FilerSessionView(session: session, state: session.state as! FilerSessionState)
+        case .filer:    return AnyView(FilerSessionView(state: session.state as! FilerSessionState)
                                           .sessionFocusCleanup(session.state))
         case .kit:      return AnyView(KitSessionView(state: session.state as! KitSessionState, sessionID: id)
                                           .sessionFocusCleanup(session.state))
-        case .terminal: return AnyView(TerminalSessionView(session: session, state: session.state as! TerminalSessionState)
+        case .terminal: return AnyView(TerminalSessionView(state: session.state as! TerminalSessionState)
                                           .sessionFocusCleanup(session.state))
-        case .claude:   return AnyView(ClaudeSessionView(session: session, state: session.state as! ClaudeSessionState)
+        case .claude:   return AnyView(ClaudeSessionView(state: session.state as! ClaudeSessionState)
                                           .sessionFocusCleanup(session.state))
-        case .web:      return AnyView(WebSessionView(session: session, state: session.state as! WebSessionState)
+        case .web:      return AnyView(WebSessionView(state: session.state as! WebSessionState)
                                           .sessionFocusCleanup(session.state))
-        case .preview:  return AnyView(PreviewSessionView(session: session, state: session.state as! PreviewSessionState, sessionID: id)
+        case .preview:  return AnyView(PreviewSessionView(state: session.state as! PreviewSessionState, sessionID: id)
                                           .sessionFocusCleanup(session.state))
         case .git:
             let gitState = session.state as! GitSessionState
             return AnyView(VStack(spacing: 0) {
-                GitSessionView(session: session, state: gitState)
+                GitSessionView(state: gitState)
                 ScenePromptsEditorView(scene: gitState.currentScene() ?? "git", defaults: gitState.recommendedPrompts())
             }.sessionFocusCleanup(gitState))
         case .gitDiff:
             let diffState = session.state as! GitDiffSessionState
             return AnyView(VStack(spacing: 0) {
-                GitDiffSessionView(session: session, state: diffState)
+                GitDiffSessionView(state: diffState)
                 ScenePromptsEditorView(scene: diffState.currentScene() ?? "gitDiff", defaults: diffState.recommendedPrompts())
             }.sessionFocusCleanup(diffState))
         }

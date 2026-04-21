@@ -12,14 +12,12 @@ import WebKit
 /// SwiftUI に等価 API が存在しないため、Representable で閉じ込める。
 /// 参考: [docs/conventions/swift.md](../../../../docs/conventions/swift.md)
 struct WebSessionView: NSViewRepresentable {
-    let session: Session
     let state: WebSessionState
 
     func makeNSView(context: Context) -> WKWebView {
         let view = state.webView
-        // SessionRegistry の NSEvent クリックハンドラ用に維持 (Phase 9 で bridge 経由に移行して撤去予定)
-        session.focusableView = view
-        // 契約 C1 用: bridge に NSView 参照を登録 (SwiftUI update cycle と分離)
+        // bridge に NSView 参照を登録 (SwiftUI update cycle と分離)。
+        // 契約 C1 (アクティブ化時フォーカス) と SessionRegistry の click-to-activate 両方の用途。
         DispatchQueue.main.async {
             state.focusBridge.setView(view)
         }

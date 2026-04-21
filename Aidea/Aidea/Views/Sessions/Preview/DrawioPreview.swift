@@ -13,8 +13,6 @@ import AppKit
 /// - **`.drawio`**: 静的プレビューの手段がないため、常にエディタで表示する。
 struct DrawioPreview: View {
     let url: URL
-    /// Session (focusableView 報告用 — Phase 9 で撤去予定)
-    let session: Session
     /// PreviewSessionState (focusBridge 報告用)
     let state: PreviewSessionState
     @State private var mode: Mode
@@ -28,9 +26,8 @@ struct DrawioPreview: View {
         case edit
     }
 
-    init(url: URL, session: Session, state: PreviewSessionState) {
+    init(url: URL, state: PreviewSessionState) {
         self.url = url
-        self.session = session
         self.state = state
         // .drawio / .drawio.svg どちらも初期は view モード
         // (.drawio は DrawioStaticView 内で drawio embed の chrome=0 ビューワを使う)
@@ -70,7 +67,6 @@ struct DrawioPreview: View {
                     convertedSVG(svg)
                 },
                 onViewCreated: { view in
-                    session.focusableView = view
                     state.focusBridge.setView(view)
                 }
             )

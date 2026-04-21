@@ -15,6 +15,11 @@ final class SessionFocusBridge {
     /// フォーカス対象の NSView への弱参照。所有権は SessionState 側 (lazy property 等)。
     private weak var view: NSView?
 
+    /// 外部から読み取るための公開プロパティ。
+    /// SessionRegistry の NSEvent クリックハンドラが「この Session の領域にクリックが入ったか」
+    /// を isDescendant(of:) で判定するために使う。
+    var trackedView: NSView? { view }
+
     /// `activate()` 時に view が nil だった場合のフラグ。
     /// `setView(_:)` で non-nil が入った瞬間に解消する。
     private var pendingActivation = false

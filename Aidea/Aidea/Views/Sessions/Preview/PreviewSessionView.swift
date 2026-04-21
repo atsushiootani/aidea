@@ -8,7 +8,6 @@ import AppKit
 
 /// Preview Session の SwiftUI View。state.url のファイルを表示する。
 struct PreviewSessionView: View {
-    let session: Session
     let state: PreviewSessionState
     let sessionID: SessionID
     @Environment(SessionRegistry.self) private var registry
@@ -25,11 +24,10 @@ struct PreviewSessionView: View {
     var body: some View {
         Group {
             if let url = state.url, isDrawioURL(url) {
-                DrawioPreview(url: url, session: session, state: state)
+                DrawioPreview(url: url, state: state)
             } else if let url = state.url, isMarkdownURL(url) {
                 MarkdownContainer(
                     url: url,
-                    session: session,
                     state: state,
                     onLinkTap: { resolvedURL in
                         registry.openPreviewAsSibling(
@@ -47,7 +45,6 @@ struct PreviewSessionView: View {
                 case .text(let content):
                     ZStack(alignment: .topTrailing) {
                         NSTextPreview(text: content, onViewCreated: { view in
-                            session.focusableView = view
                             state.focusBridge.setView(view)
                         })
                         if isEnglishText {
@@ -70,8 +67,8 @@ struct PreviewSessionView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .task(id: state.url) {
-            // URL 変更時は focusableView と bridge の NSView 参照をクリア (子ビューが再設定する)
-            session.focusableView = nil
+            // URL 変更時は bridge の NSView 参照をクリア (子ビューが再設定する)。
+            // 純 SwiftUI コンテンツ (image) の場合はクリア状態のまま SwiftUI に委譲される。
             state.focusBridge.setView(nil)
             isEnglishText = false
             await loadPreview(for: state.url)
@@ -221,7 +218,7 @@ enum PreviewContent {
 /// NSTextView を NSViewRepresentable でラップして大きなテキストでも高速にスクロールできるようにする。
 struct NSTextPreview: NSViewRepresentable {
     let text: String
-    /// NSTextView が生成されたときに呼ばれるコールバック (focusableView 報告用)
+    /// NSTextView が生成されたときに呼ばれるコールバック (SessionFocusBridge 報告用)
     var onViewCreated: ((NSView) -> Void)? = nil
 
     func makeNSView(context: Context) -> NSScrollView {
