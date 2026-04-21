@@ -8,7 +8,7 @@ impacts:
   - docs/decisions/*
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-17
+last_updated: 2026-04-21
 ---
 
 # Architecture Decision Records
@@ -36,6 +36,9 @@ Aidea の設計判断を 1 件ずつ記録する。フォーマットは [Michae
 | [0015](./0015-wkwebview-scope-and-chrome-coexistence.md) | WKWebView の制約を許容し Chrome 併用を前提とする | 採用 |
 | [0016](./0016-terminal-mouse-event-suppression.md) | ターミナルの mouseMoved を NSEvent モニターで抑制する | 採用 |
 | [0017](./0017-alternate-screen-scroll-handling.md) | Alternate Screen 使用中のスクロールを入力変換で対処する | 採用 |
+| [0018](./0018-session-and-state-separation.md) | Session と SessionState を分離して保持する | 採用 |
+| [0019](./0019-all-tabs-zstack-rendering.md) | 全 Tab の SessionView を ZStack で常駐レンダリングする | 暫定 |
+| [0020](./0020-session-focus-bridge.md) | フォーカス契約を SessionState + SessionFocusBridge に委譲する | 採用 |
 
 ## 状態の値
 
