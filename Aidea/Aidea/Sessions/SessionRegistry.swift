@@ -331,7 +331,8 @@ final class SessionRegistry {
         switch id.tool {
         case .filer:    return AnyView(FilerSessionView(session: session, state: session.state as! FilerSessionState)
                                           .sessionFocusCleanup(session.state))
-        case .kit:      return AnyView(KitSessionView(state: session.state as! KitSessionState, sessionID: id))
+        case .kit:      return AnyView(KitSessionView(state: session.state as! KitSessionState, sessionID: id)
+                                          .sessionFocusCleanup(session.state))
         case .terminal: return AnyView(TerminalSessionView(session: session, state: session.state as! TerminalSessionState)
                                           .sessionFocusCleanup(session.state))
         case .claude:   return AnyView(ClaudeSessionView(session: session, state: session.state as! ClaudeSessionState)
