@@ -11,8 +11,10 @@ import AppKit
 /// edit モードでは入力を 500ms デバウンスして自動保存する。
 struct MarkdownContainer: View {
     let url: URL
-    /// Session (focusableView 報告用)
+    /// Session (focusableView 報告用 — Phase 9 で撤去予定)
     let session: Session
+    /// PreviewSessionState (focusBridge 報告用)
+    let state: PreviewSessionState
     /// Markdown 内のファイルリンクがタップされたときに呼ばれる
     let onLinkTap: ((URL) -> Void)?
 
@@ -62,10 +64,16 @@ struct MarkdownContainer: View {
                     onLinkTap: onLinkTap,
                     tocTopInset: toolbarHeight
                 )
-                .background(FocusCatcherView(onViewCreated: { session.focusableView = $0 }))
+                .background(FocusCatcherView(onViewCreated: { view in
+                    session.focusableView = view
+                    state.focusBridge.setView(view)
+                }))
             }
         case .edit:
-            EditableTextView(text: $draftText, onViewCreated: { self.session.focusableView = $0 })
+            EditableTextView(text: $draftText, onViewCreated: { view in
+                session.focusableView = view
+                state.focusBridge.setView(view)
+            })
                 .onChange(of: draftText) { _, newValue in
                     scheduleAutoSave(newValue)
                 }

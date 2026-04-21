@@ -25,11 +25,12 @@ struct PreviewSessionView: View {
     var body: some View {
         Group {
             if let url = state.url, isDrawioURL(url) {
-                DrawioPreview(url: url, session: session)
+                DrawioPreview(url: url, session: session, state: state)
             } else if let url = state.url, isMarkdownURL(url) {
                 MarkdownContainer(
                     url: url,
                     session: session,
+                    state: state,
                     onLinkTap: { resolvedURL in
                         registry.openPreviewAsSibling(
                             for: resolvedURL,
@@ -45,7 +46,10 @@ struct PreviewSessionView: View {
                     placeholder("読み込み中...")
                 case .text(let content):
                     ZStack(alignment: .topTrailing) {
-                        NSTextPreview(text: content, onViewCreated: { session.focusableView = $0 })
+                        NSTextPreview(text: content, onViewCreated: { view in
+                            session.focusableView = view
+                            state.focusBridge.setView(view)
+                        })
                         if isEnglishText {
                             translateButton
                                 .padding(.top, 10)
@@ -66,8 +70,9 @@ struct PreviewSessionView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .task(id: state.url) {
-            // URL 変更時は focusableView をクリア (子ビューが再設定する)
+            // URL 変更時は focusableView と bridge の NSView 参照をクリア (子ビューが再設定する)
             session.focusableView = nil
+            state.focusBridge.setView(nil)
             isEnglishText = false
             await loadPreview(for: state.url)
             // テキストの場合は英語判定 + キャッシュ確認
@@ -80,7 +85,7 @@ struct PreviewSessionView: View {
                     hasCachedTranslation = false
                 }
             }
-            // コンテンツロード後にリフォーカス
+            // コンテンツロード後にリフォーカス (bridge の pending が解消される)
             if registry.activeSessionID == sessionID {
                 registry.reactivateCurrentSession()
             }

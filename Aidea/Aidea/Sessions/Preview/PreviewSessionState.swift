@@ -9,48 +9,30 @@ import Observation
 
 /// Preview Session の内部状態。表示中のファイル URL と、タブに表示するタイトルを持つ。
 /// アクティブ Session のとき、Filer のクリックで url が更新される。
-/// `focusableView` は表示中のコンテンツに応じて子ビューが動的に更新する。
+/// コンテンツ種別ごとに子ビュー (NSTextPreview / DrawioStaticView / MarkdownContainer 等)
+/// が focusBridge.setView を呼ぶことで、bridge が NSView 参照を追従する。
+/// 純 SwiftUI コンテンツ (image) では setView(nil) を呼び、SwiftUI .focused() パスに委譲する。
 @Observable
-final class PreviewSessionState: SessionState {
+final class PreviewSessionState: SessionState, FocusBridgeOwner {
+    /// フォーカス契約 C1/C2/C3 を担う非永続ヘルパ (仕様は focus-contract.md)。
+    /// pending パターンは bridge 内に集約済のため、本 state は自前の pending フラグを持たない。
+    let focusBridge = SessionFocusBridge()
     /// プレビュー対象のファイル URL
     var url: URL?
     /// タブに表示するタイトル。nil のときは url の lastPathComponent を使う (既定挙動)。
     /// Kit から開くときに Skill/Command 名などをセットする。
     var title: String?
-    /// キー入力を受け取るべき NSView。子ビュー (NSTextPreview / DrawioEditor 等) が
-    /// 自身の NSView を生成した時点でここに書き込む。nil = 純 SwiftUI コンテンツ。
     /// Session への弱参照 (focusableView 報告用)。createSession 後にセットされる。
     @ObservationIgnored weak var session: Session?
 
-    /// activate 時に focusableView が nil だった場合の待ち受けフラグ。
-    /// setFocusableView で view がセットされた時点で自動フォーカスする。
-    @ObservationIgnored private var pendingActivation = false
-
-    /// Preview がアクティブになったら、focusableView があれば即フォーカス、
-    /// なければ pendingActivation をセットして子ビュー生成を待つ。
+    /// 契約 C1: bridge 経由で現在の子ビュー NSView に firstResponder を移す。
+    /// 子ビューがまだ setView していない場合は bridge が pending を立てて待機する。
     func didBecomeActive(session: Session) {
-        pendingActivation = false
-        if let view = session.focusableView {
-            DispatchQueue.main.async {
-                view.window?.makeFirstResponder(view)
-            }
-        } else {
-            pendingActivation = true
-        }
+        focusBridge.activate()
     }
 
+    /// 契約 C2: bridge 経由で自分配下の firstResponder を解放する。
     func didResignActive(session: Session) {
-        pendingActivation = false
-    }
-
-    /// session.focusableView が変更されたときに呼ばれる。
-    /// pendingActivation 中なら自動でフォーカスを取る。
-    func onFocusableViewChanged(session: Session, view: NSView?) {
-        guard pendingActivation, let view = view else { return }
-        pendingActivation = false
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak view] in
-            guard let view = view else { return }
-            view.window?.makeFirstResponder(view)
-        }
+        focusBridge.deactivate()
     }
 }
