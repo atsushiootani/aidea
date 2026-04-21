@@ -11,8 +11,10 @@ import SwiftTerm
 /// Claude Session の内部状態。
 /// Terminal と同じ PTY を起動した上で、claude コマンドと Backchannel 指示を自動送信する。
 @Observable
-final class ClaudeSessionState: SessionState {
+final class ClaudeSessionState: SessionState, FocusBridgeOwner {
     let workspace: WorkspaceState
+    /// フォーカス契約 C1/C2/C3 を担う非永続ヘルパ (仕様は focus-contract.md)
+    let focusBridge = SessionFocusBridge()
     @ObservationIgnored private var cached: PersistentTerminalView?
 
     init(workspace: WorkspaceState) {
@@ -31,13 +33,16 @@ final class ClaudeSessionState: SessionState {
         terminalView.send(txt: message + "\r")
     }
 
-    /// Claude がアクティブになったら terminalView にフォーカスを当てる
+    /// 契約 C1: bridge 経由で terminalView に firstResponder を移す。
+    /// NSView 参照の登録は View 側 (ClaudeSessionView.makeNSView) で行う。
+    /// cached が lazy 生成のため pending パターンで自動解消される。
     func didBecomeActive(session: Session) {
-        guard let view = cached else { return }
-        session.focusableView = view
-        DispatchQueue.main.async {
-            view.window?.makeFirstResponder(view)
-        }
+        focusBridge.activate()
+    }
+
+    /// 契約 C2: bridge 経由で自分配下の firstResponder を解放する。
+    func didResignActive(session: Session) {
+        focusBridge.deactivate()
     }
 
     /// View 側で参照する PersistentTerminalView (初回のみ PTY を起動)

@@ -334,7 +334,8 @@ final class SessionRegistry {
         case .kit:      return AnyView(KitSessionView(state: session.state as! KitSessionState, sessionID: id))
         case .terminal: return AnyView(TerminalSessionView(session: session, state: session.state as! TerminalSessionState)
                                           .sessionFocusCleanup(session.state))
-        case .claude:   return AnyView(ClaudeSessionView(state: session.state as! ClaudeSessionState))
+        case .claude:   return AnyView(ClaudeSessionView(session: session, state: session.state as! ClaudeSessionState)
+                                          .sessionFocusCleanup(session.state))
         case .web:      return AnyView(WebSessionView(state: session.state as! WebSessionState))
         case .preview:  return AnyView(PreviewSessionView(session: session, state: session.state as! PreviewSessionState, sessionID: id))
         case .git:
