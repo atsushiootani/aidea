@@ -13,7 +13,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-17
+last_updated: 2026-04-21
 ---
 
 # Tool 仕様: Preview
@@ -59,6 +59,25 @@ Session 内部状態は [sessions/preview.md](../sessions/preview.md) を参照�
 - `.md` / `.markdown` を `MarkdownPreview` で表示
 - 見出し (`# ~ ####`) / コードブロック / 箇条書き / 水平線 / frontmatter / インライン (bold・italic・リンク・`code`) をサポート
 - 外部依存なし (SwiftUI `Text(.init(String))` のネイティブ Markdown に委譲)
+
+#### view / edit モード切替 UI
+
+Markdown は `MarkdownContainer` で **view / edit の 2 モード**を扱う。右上にフローティングで **アイコンのみのセグメントコントロール** を配置し、ユーザーはワンタップで切り替えられる。
+
+| モード | SF Symbols | 意味 |
+|---|---|---|
+| **view** | `eye` | プレビュー表示 (純 SwiftUI `MarkdownPreview`) |
+| **edit** | `chevron.left.forwardslash.chevron.right` | 編集 (NSTextView の `EditableTextView`) |
+
+- **表示形式**: SwiftUI `Picker` の `.segmented` スタイル。ラベルはアイコンのみ (テキストなし) で `Image(systemName:)` を使う
+- **操作**: セグメントタップで即座にモード切替。edit → view に戻すときは、未保存の draftText を **切替直前に flush 保存** してから view に遷移する (500ms デバウンスの自動保存と同じ経路)
+- **配置**: 既存の右上フローティング位置 (padding top 10 / trailing 22) を維持
+- **キーボード**: view モードで `E` を押すと edit に切替 (セグメントボタンと等価)。既存仕様維持
+- **翻訳「日本語」ボタン**: 従来どおりセグメントコントロールの下に配置される (表示条件は `mode == .view && isEnglish && !isCachedFile`)
+
+#### キャッシュファイル (`.aidea/ja/`) の扱い
+
+`.aidea/ja/` 配下の翻訳キャッシュファイルはユーザーの編集対象外のため、**セグメントコントロールは表示しない**。代わりに「英語」ボタン (SF Symbols `character.book.closed`) のみを表示し、押すと元の英語ファイルを sibling タブで開く。
 
 ### translateToJapanese — 英語ドキュメントの日本語翻訳
 
