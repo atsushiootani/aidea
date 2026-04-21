@@ -9,8 +9,10 @@ import Observation
 
 /// GitDiff Session の内部状態。モードに応じた全ファイルの diff 出力を保持する。
 @Observable
-final class GitDiffSessionState: SessionState {
+final class GitDiffSessionState: SessionState, FocusBridgeOwner {
     let workspace: WorkspaceState
+    /// フォーカス契約 C1/C2/C3 を担う非永続ヘルパ (仕様は focus-contract.md)
+    let focusBridge = SessionFocusBridge()
     weak var registry: SessionRegistry?
     var mode: GitMode = .workingChanges
     var diffOutput: String = ""
@@ -75,13 +77,15 @@ final class GitDiffSessionState: SessionState {
         }
     }
 
-    /// GitDiff がアクティブになったら WKWebView にフォーカス
+    /// 契約 C1: bridge 経由で WKWebView に firstResponder を移す。
+    /// NSView 参照の登録は View 側 (GitDiffSessionView.makeNSView) で行う。
     func didBecomeActive(session: Session) {
-        if let view = session.focusableView {
-            DispatchQueue.main.async {
-                view.window?.makeFirstResponder(view)
-            }
-        }
+        focusBridge.activate()
+    }
+
+    /// 契約 C2: bridge 経由で自分配下の firstResponder を解放する。
+    func didResignActive(session: Session) {
+        focusBridge.deactivate()
     }
 
     /// 現在の Scene 識別子 (Git ツールとは別キーで永続化するため `gitDiff:*` を返す)

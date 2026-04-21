@@ -18,7 +18,13 @@ struct GitSessionView: NSViewControllerRepresentable {
         vc.session = session
         vc.loadViewIfNeeded()
         vc.reload()
+        // SessionRegistry の NSEvent クリックハンドラ用に維持 (Phase 9 で bridge 経由に移行して撤去予定)
         session.focusableView = vc.outlineView
+        // 契約 C1 用: bridge に NSView 参照を登録 (SwiftUI update cycle と分離)
+        let outlineView = vc.outlineView
+        DispatchQueue.main.async { [state] in
+            state.focusBridge.setView(outlineView)
+        }
         return vc
     }
 

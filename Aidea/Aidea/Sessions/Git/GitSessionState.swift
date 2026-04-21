@@ -16,8 +16,10 @@ enum GitMode: String, CaseIterable, Identifiable {
 
 /// Git Session の内部状態。モード (working/pr) + 変更ファイルツリーを保持する。
 @Observable
-final class GitSessionState: SessionState {
+final class GitSessionState: SessionState, FocusBridgeOwner {
     let workspace: WorkspaceState
+    /// フォーカス契約 C1/C2/C3 を担う非永続ヘルパ (仕様は focus-contract.md)
+    let focusBridge = SessionFocusBridge()
     weak var registry: SessionRegistry?
 
     var mode: GitMode = .workingChanges
@@ -112,12 +114,14 @@ final class GitSessionState: SessionState {
         }
     }
 
-    /// Git がアクティブになったら outlineView にフォーカス
+    /// 契約 C1: bridge 経由で outlineView に firstResponder を移す。
+    /// NSView 参照の登録は View 側 (GitSessionView.makeNSViewController) で行う。
     func didBecomeActive(session: Session) {
-        if let view = session.focusableView {
-            DispatchQueue.main.async {
-                view.window?.makeFirstResponder(view)
-            }
-        }
+        focusBridge.activate()
+    }
+
+    /// 契約 C2: bridge 経由で自分配下の firstResponder を解放する。
+    func didResignActive(session: Session) {
+        focusBridge.deactivate()
     }
 }
