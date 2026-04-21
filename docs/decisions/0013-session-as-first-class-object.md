@@ -1,7 +1,7 @@
 ---
 title: "0013: Session を first-class object にして Window レベルで管理する"
 description: Session を public な @Observable クラスとして Window 全体で一意管理し focusableView を Session に移す概念設計 (0012 の進化)
-status: 提案
+status: 採用
 derived_from:
   - docs/decisions/0012-keyboard-focus-dual-path.md
 syncs_with: []
@@ -17,6 +17,13 @@ last_updated: 2026-04-10
 
 **日付**: 2026-04-10
 **状態 (補足)**: 実装前の概念設計段階
+
+> **Note**: 本 ADR のうち `focusableView` の Session への配置と FocusCatcherView に関する判断は
+> [ADR 0020](./0020-session-focus-bridge.md) で撤回された。Session を first-class object として
+> Window 全体で管理する核心の判断は維持されるが、フォーカス制御の配置については
+> `SessionFocusBridge` を各 SessionState が保持する方式に進化している。現行仕様は
+> [docs/specs/sessions/focus-contract.md](../specs/sessions/focus-contract.md) および
+> [docs/specs/sessions/session.md](../specs/sessions/session.md) を参照。
 
 ## 背景
 

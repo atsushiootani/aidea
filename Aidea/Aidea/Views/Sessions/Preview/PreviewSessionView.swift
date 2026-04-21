@@ -8,7 +8,6 @@ import AppKit
 
 /// Preview Session の SwiftUI View。state.url のファイルを表示する。
 struct PreviewSessionView: View {
-    let session: Session
     let state: PreviewSessionState
     let sessionID: SessionID
     @Environment(SessionRegistry.self) private var registry
@@ -25,11 +24,11 @@ struct PreviewSessionView: View {
     var body: some View {
         Group {
             if let url = state.url, isDrawioURL(url) {
-                DrawioPreview(url: url, session: session)
+                DrawioPreview(url: url, state: state)
             } else if let url = state.url, isMarkdownURL(url) {
                 MarkdownContainer(
                     url: url,
-                    session: session,
+                    state: state,
                     onLinkTap: { resolvedURL in
                         registry.openPreviewAsSibling(
                             for: resolvedURL,
@@ -45,7 +44,9 @@ struct PreviewSessionView: View {
                     placeholder("読み込み中...")
                 case .text(let content):
                     ZStack(alignment: .topTrailing) {
-                        NSTextPreview(text: content, onViewCreated: { session.focusableView = $0 })
+                        NSTextPreview(text: content, onViewCreated: { view in
+                            state.focusBridge.setView(view)
+                        })
                         if isEnglishText {
                             translateButton
                                 .padding(.top, 10)
@@ -66,8 +67,12 @@ struct PreviewSessionView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .task(id: state.url) {
-            // URL 変更時は focusableView をクリア (子ビューが再設定する)
-            session.focusableView = nil
+            // URL 変更時は bridge をクリアしない: 子ビュー (NSTextPreview 等) の makeNSView が
+            // body 評価中に既に setView を済ませている可能性があるため、ここで nil 代入すると
+            // 登録直後の値が消える。古いコンテンツの NSView は dismantle 時に bridge の
+            // weak ref が自動で nil になる。
+            // 純 SwiftUI コンテンツ (markdown view / image) は @FocusState + state.isActive で
+            // 独立にフォーカスを取るため、bridge の状態は影響しない。
             isEnglishText = false
             await loadPreview(for: state.url)
             // テキストの場合は英語判定 + キャッシュ確認
@@ -80,7 +85,7 @@ struct PreviewSessionView: View {
                     hasCachedTranslation = false
                 }
             }
-            // コンテンツロード後にリフォーカス
+            // コンテンツロード後にリフォーカス (bridge の pending が解消される)
             if registry.activeSessionID == sessionID {
                 registry.reactivateCurrentSession()
             }
@@ -216,7 +221,7 @@ enum PreviewContent {
 /// NSTextView を NSViewRepresentable でラップして大きなテキストでも高速にスクロールできるようにする。
 struct NSTextPreview: NSViewRepresentable {
     let text: String
-    /// NSTextView が生成されたときに呼ばれるコールバック (focusableView 報告用)
+    /// NSTextView が生成されたときに呼ばれるコールバック (SessionFocusBridge 報告用)
     var onViewCreated: ((NSView) -> Void)? = nil
 
     func makeNSView(context: Context) -> NSScrollView {

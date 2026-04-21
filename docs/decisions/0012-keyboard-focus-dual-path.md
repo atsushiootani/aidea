@@ -9,17 +9,18 @@ replaces: []
 replaced_by: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-10
+last_updated: 2026-04-21
 ---
 
 # 0012: キーボードフォーカスは AppKit と SwiftUI の 2 経路で管理する
 
 **日付**: 2026-04-10
 
-> **Note**: [ADR 0013](./0013-session-as-first-class-object.md) で進化する予定。
-> `focusableView` の保持先を `SessionState` から `Session` (first-class object) に移し、
-> 判断基準も「Tool 種別」から「`focusableView` の有無」に変更する。
-> 0013 が「提案」段階の間は本 ADR が現行方針。
+> **Note**: 本 ADR の「2 経路フォーカス」の骨格は現行方針として維持されるが、
+> 具体的な履行方法は [ADR 0013](./0013-session-as-first-class-object.md) を経て
+> [ADR 0020](./0020-session-focus-bridge.md) で進化している。現在は AppKit 系 SessionState
+> が `SessionFocusBridge` を保持して `makeFirstResponder` を担い、SwiftUI 系は `isActive` フラグで
+> `.focused()` に委譲する形。現行の契約は [docs/specs/sessions/focus-contract.md](../specs/sessions/focus-contract.md) を参照。
 
 ## 背景
 Aidea の Session は 2 種類の UI 基盤で実装されている:
@@ -34,6 +35,38 @@ Aidea の Session は 2 種類の UI 基盤で実装されている:
 
 「アクティブタブが切り替わったら、そのタブの First Responder が即座にキーボード入力を受け取る」
 を実現するために、**2 つのフォーカス経路**が必要になった。
+
+## 前提: フォーカス機構の仕組み
+
+判断の根拠となる、AppKit と SwiftUI それぞれのフォーカス機構の挙動を整理しておく。
+
+### AppKit: NSResponder / firstResponder
+
+- `NSWindow` が 1 つだけ `firstResponder: NSResponder?` を保持する
+- キー入力 (`keyDown(with:)`) はまず firstResponder に届き、処理しなければ `nextResponder` を辿って **Responder Chain** を遡る (View → ViewController → Window → WindowController → NSApplication → AppDelegate)
+- メニューアクション (`NSApp.sendAction(_:to: nil, from:)`) も同じ Chain を辿って、そのセレクタを実装している最初のオブジェクトに到達する
+- firstResponder になれる条件:
+  1. `acceptsFirstResponder` が `true` (NSView デフォルトは `false`、NSControl 系は `true`)
+  2. `becomeFirstResponder()` が `true` を返す (同時に現 firstResponder の `resignFirstResponder()` も成功する必要あり)
+- 切替は `window.makeFirstResponder(view)` 経由で行う (Bool で成否が返る)
+- 処理しないキーは必ず `super.keyDown(with:)` に渡す (止めるとシステムビープが鳴る)
+
+### SwiftUI: @FocusState
+
+- iOS 15 / macOS 12 で導入された Apple 公式の property wrapper
+- View 内の「どの要素がフォーカスを持っているか」を `Bool` または `Hashable enum` で表現
+- `.focusable()` でフォーカス可能化、`.focused($state)` で `@FocusState` とバインド
+- `.onKeyPress` がフォーカス保持中の View にキーを配送
+- **内部的には NSWindow.firstResponder にマッピングされる**: SwiftUI が宣言的にラップしているだけで、最終的な実体は AppKit の firstResponder と同じ 1 つのスロット
+
+### 重要な含意
+
+- どちらの経路も最終的には同じ `NSWindow.firstResponder` を奪い合う
+- 同一 Session に両方の機構を被せると、片方の代入が他方の状態と乖離して **二重管理**になる
+  (「`@FocusState = true` にしたのに firstResponder は別の View のまま」という状態が起きうる)
+- ゆえに **「1 つの Session につき 1 経路だけ」** にしないと、フォーカス位置の真実が二箇所に分かれて破綻する
+
+この性質が、案 A / 案 B が破綻しやすく、案 C (経路を分離) が安定する根本理由となる。
 
 ## 検討した代替案
 

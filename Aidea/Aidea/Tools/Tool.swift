@@ -63,18 +63,18 @@ struct SessionID: Hashable, Codable, Sendable {
 }
 
 /// Session の内部状態を表すプロトコル。Tool 固有のデータとライフサイクルを定義する。
-/// focusableView は Session クラスに移動済み (SessionState からは分離)。
+/// フォーカス契約 (C1 / C2 / C3) は AppKit 系 SessionState が FocusBridgeOwner 準拠で
+/// SessionFocusBridge に委譲する。純 SwiftUI 系は isActive フラグ + SwiftUI .focused()
+/// バインドで履行する。詳細は docs/specs/sessions/focus-contract.md を参照。
 protocol SessionState: AnyObject {
     /// このセッションがアクティブになったとき呼ばれる。
-    /// フォーカス制御やデータリロード等、Tool 固有の活性化処理を実装する。
+    /// AppKit 系は focusBridge.activate() を、純 SwiftUI 系は isActive = true を行う。
+    /// Tool 固有の追加処理もここで実装する。
     func didBecomeActive(session: Session)
 
     /// このセッションが非アクティブになったとき呼ばれる。
+    /// AppKit 系は focusBridge.deactivate() を、純 SwiftUI 系は isActive = false を行う。
     func didResignActive(session: Session)
-
-    /// session.focusableView が変更されたとき呼ばれる。
-    /// pendingActivation 等、focusableView の遅延セットに対応する処理を実装する。
-    func onFocusableViewChanged(session: Session, view: NSView?)
 
     /// 現在の Scene 識別子を返す
     func currentScene() -> String?
@@ -86,7 +86,6 @@ protocol SessionState: AnyObject {
 extension SessionState {
     func didBecomeActive(session: Session) {}
     func didResignActive(session: Session) {}
-    func onFocusableViewChanged(session: Session, view: NSView?) {}
     func currentScene() -> String? { nil }
     func recommendedPrompts() -> [String] { [] }
 }

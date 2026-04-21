@@ -11,8 +11,8 @@ import AppKit
 /// edit モードでは入力を 500ms デバウンスして自動保存する。
 struct MarkdownContainer: View {
     let url: URL
-    /// Session (focusableView 報告用)
-    let session: Session
+    /// PreviewSessionState (focusBridge 報告用)
+    let state: PreviewSessionState
     /// Markdown 内のファイルリンクがタップされたときに呼ばれる
     let onLinkTap: ((URL) -> Void)?
 
@@ -26,6 +26,12 @@ struct MarkdownContainer: View {
     @State private var isTranslating: Bool = false
     @State private var isEnglish: Bool = false
     @State private var hasCachedTranslation: Bool = false
+    /// view モード (純 SwiftUI MarkdownPreview) がアクティブなときに SwiftUI から firstResponder を取るためのフラグ。
+    /// state.isActive と onChange で同期する。
+    @FocusState private var isFocused: Bool
+    /// 上下キー / PageUp / PageDown でのスクロール制御用ブリッジ。
+    /// MarkdownPreview に渡すと、内部の NSScrollView を直接操作してスクロールできる。
+    @State private var scrollController = ScrollController()
 
     /// このファイルが .aidea/ja/ 配下の翻訳キャッシュかどうか
     private var isCachedFile: Bool { TranslationCache.isCachedFile(url) }
@@ -46,6 +52,16 @@ struct MarkdownContainer: View {
         .task(id: url) {
             await reload()
         }
+        // Session アクティブ状態を SwiftUI の @FocusState に同期する (view モード用)。
+        // Kit と同じく「active のときだけ true を立てる」片方向同期にする (false 代入は SwiftUI に任せる)。
+        // edit モードでは EditableTextView が NSViewRepresentable として focusBridge 経由で firstResponder を取るため、
+        // 本フラグは no-op になる。
+        .onChange(of: state.isActive) { _, active in
+            if active { isFocused = true }
+        }
+        .onAppear {
+            if state.isActive { isFocused = true }
+        }
     }
 
     /// モードに応じたメイン表示
@@ -56,16 +72,78 @@ struct MarkdownContainer: View {
             if let error = loadError {
                 placeholder(error)
             } else {
+                // 純 SwiftUI の MarkdownPreview。@FocusState で firstResponder を取り、
+                // テキスト選択 (Cmd+C 等) は SwiftUI の標準機構に委譲する。
+                // .focusable() で明示的にフォーカス対象化、.focusEffectDisabled() で青枠抑制。
+                // scrollController を渡すことで上下 / PageUp / PageDown キーからスクロール可能に。
                 MarkdownPreview(
                     text: loadedText,
                     baseURL: url.deletingLastPathComponent(),
                     onLinkTap: onLinkTap,
-                    tocTopInset: toolbarHeight
+                    tocTopInset: toolbarHeight,
+                    scrollController: scrollController
                 )
-                .background(FocusCatcherView(onViewCreated: { session.focusableView = $0 }))
+                .focusable()
+                .focused($isFocused)
+                .focusEffectDisabled()
+                // 上下キー: 行単位スクロール (40pt)
+                .onKeyPress(.upArrow) {
+                    scrollController.scrollBy(-40)
+                    return .handled
+                }
+                .onKeyPress(.downArrow) {
+                    scrollController.scrollBy(40)
+                    return .handled
+                }
+                // PageUp / PageDown: ページ単位スクロール (viewport 高さの 90%)
+                .onKeyPress(.pageUp) {
+                    scrollController.pageUp()
+                    return .handled
+                }
+                .onKeyPress(.pageDown) {
+                    scrollController.pageDown()
+                    return .handled
+                }
+                // Emacs 風 + コマンド系キー。keys: Set<KeyEquivalent> の overload を使うと
+                // クロージャに KeyPress が渡され modifiers を判定できる。
+                .onKeyPress(keys: ["p"]) { press in
+                    guard isCtrlOnly(press.modifiers) else { return .ignored }
+                    scrollController.scrollBy(-40)
+                    return .handled
+                }
+                .onKeyPress(keys: ["n"]) { press in
+                    guard isCtrlOnly(press.modifiers) else { return .ignored }
+                    scrollController.scrollBy(40)
+                    return .handled
+                }
+                .onKeyPress(keys: ["v"]) { press in
+                    guard isCtrlOnly(press.modifiers) else { return .ignored }
+                    scrollController.pageDown()
+                    return .handled
+                }
+                .onKeyPress(keys: ["z"]) { press in
+                    guard isCtrlOnly(press.modifiers) else { return .ignored }
+                    scrollController.pageUp()
+                    return .handled
+                }
+                // E: Edit モードへ切替 (キャッシュファイル = 翻訳済は edit 対象外なので弾く)
+                .onKeyPress(keys: ["e"]) { press in
+                    guard press.modifiers.isEmpty, !isCachedFile else { return .ignored }
+                    toggleMode()
+                    return .handled
+                }
+                // J: 日本語翻訳 (フローティング翻訳ボタンの表示条件と同じ: isEnglish && !isCachedFile)
+                .onKeyPress(keys: ["j"]) { press in
+                    guard press.modifiers.isEmpty, isEnglish, !isCachedFile else { return .ignored }
+                    translateDocument()
+                    return .handled
+                }
             }
         case .edit:
-            EditableTextView(text: $draftText, onViewCreated: { self.session.focusableView = $0 })
+            // NSTextView ベース: focusBridge 経由で firstResponder を取る (AppKit 経路)
+            EditableTextView(text: $draftText, onViewCreated: { view in
+                state.focusBridge.setView(view)
+            })
                 .onChange(of: draftText) { _, newValue in
                     scheduleAutoSave(newValue)
                 }
@@ -121,6 +199,12 @@ struct MarkdownContainer: View {
         }
         .padding(.top, 10)
         .padding(.trailing, 22)
+    }
+
+    /// Control キーだけが押されている状態か (他の modifier は含まない) を判定する。
+    /// Emacs 風 Ctrl+N/P/V/Z のキー処理で使う。
+    private func isCtrlOnly(_ modifiers: EventModifiers) -> Bool {
+        modifiers == [.control]
     }
 
     /// view ⇄ edit のトグル

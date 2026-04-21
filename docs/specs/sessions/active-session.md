@@ -4,14 +4,15 @@ description: SessionRegistry.activeSessionID の切替・履歴 (50 件)・Filer
 derived_from:
   - docs/specs/sessions/ui-rules.md
   - docs/decisions/0013-session-as-first-class-object.md
-syncs_with: []
+syncs_with:
+  - docs/specs/sessions/focus-contract.md
 impacts:
   - docs/specs/tools/filer.md
   - docs/specs/tools/preview.md
   - docs/specs/sessions/preview.md
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-17
+last_updated: 2026-04-21
 ---
 
 # アクティブ Session の仕組み
@@ -31,20 +32,21 @@ Session 概念自体の位置づけは [ui-rules.md#概念モデル](./ui-rules.
 
 ## クリックによる自動アクティブ化
 
-すべての Session は、ビュー上をクリックしたときに **自動的にアクティブセッションになる**。
-仕組みは `SessionRegistry.createSession` 内で全 Session に共通登録される NSEvent local monitor により実現され、**新しい Tool を追加する際に個別の実装は不要**。
+すべての AppKit 系 Session は、ビュー上をクリックしたときに **自動的にアクティブセッションになる**。
+仕組みは `SessionRegistry.createSession` 内で AppKit 系 Session (`FocusBridgeOwner` 準拠の SessionState) に共通登録される NSEvent local monitor により実現され、**新しい Tool を追加する際に個別の実装は不要**。
 
 ### 仕組み
 
 1. `createSession` 時に各 Session に対して `NSEvent.addLocalMonitorForEvents(.leftMouseDown)` を登録
-2. クリック位置 (`hitTest`) が `session.focusableView` の子孫 (`isDescendant(of:)`) かチェック
+2. クリック位置 (`hitTest`) が `state.focusBridge.trackedView` の子孫 (`isDescendant(of:)`) かチェック
 3. マッチし、かつ現在の `activeSessionID` と異なれば `activateSession(session.id)` を呼ぶ
 4. `activateSession` がペイン + タブを逆引きして `setActiveTab` → ライフサイクル (activate/deactivate) が発火
 
 ### 新しい Tool を追加するときの注意
 
-- 共通モニタは `session.focusableView` に依存する。新しい Tool の子ビューが AppKit の NSView を持つ場合、**`session.focusableView` に必ずそのビューをセットする** (セットしないとクリック検知が効かない)
-- 純 SwiftUI コンテンツの場合は `FocusCatcherView` を `.background()` に配置して `session.focusableView` に報告する
+- 共通モニタは `state.focusBridge.trackedView` に依存する。AppKit 系の SessionState を新規に追加する場合は、`FocusBridgeOwner` に準拠させ、NSViewRepresentable の `makeNSView` 内で `state.focusBridge.setView(_:)` を呼ぶこと (セットしないとクリック検知が効かない)
+- 純 SwiftUI 系 SessionState (Kit 等) は本モニタの対象外。SwiftUI の gesture 機構 (`.onTapGesture` 等) でアクティブ化する経路を各 View が自前で用意する
+- フォーカス契約 (C1 / C2 / C3) と `SessionFocusBridge` の責務は [focus-contract.md](./focus-contract.md) を参照
 
 ---
 

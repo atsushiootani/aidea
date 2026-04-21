@@ -8,17 +8,20 @@ import AppKit
 
 /// Git Session の SwiftUI ラッパ。変更ファイル一覧を NSOutlineView で表示する。
 struct GitSessionView: NSViewControllerRepresentable {
-    let session: Session
     let state: GitSessionState
     @Environment(WorkspaceState.self) private var workspace
 
     func makeNSViewController(context: Context) -> GitFileListViewController {
         let vc = GitFileListViewController()
         vc.state = state
-        vc.session = session
         vc.loadViewIfNeeded()
         vc.reload()
-        session.focusableView = vc.outlineView
+        // bridge に NSView 参照を登録 (SwiftUI update cycle と分離)。
+        // 契約 C1 (アクティブ化時フォーカス) と SessionRegistry の click-to-activate 両方の用途。
+        let outlineView = vc.outlineView
+        DispatchQueue.main.async { [state] in
+            state.focusBridge.setView(outlineView)
+        }
         return vc
     }
 
@@ -54,7 +57,6 @@ final class GitOutlineView: NSOutlineView {
 /// Git 変更ファイル一覧の NSViewController
 final class GitFileListViewController: NSViewController, NSOutlineViewDataSource, NSOutlineViewDelegate {
     var state: GitSessionState?
-    var session: Session?
     let outlineView = GitOutlineView()
     private let scrollView = NSScrollView()
     private let branchBadge = BranchBadgeView()

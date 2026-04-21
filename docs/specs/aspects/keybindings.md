@@ -19,7 +19,7 @@ impacts: []
 conventions:
   - docs/LAYOUT.md
   - docs/specs/aspects/README.md
-last_updated: 2026-04-20
+last_updated: 2026-04-21
 ---
 
 # キー操作・マウス操作一覧
@@ -117,7 +117,10 @@ Aidea の全キーボードショートカットとマウス操作のリファ�
 
 | キー | アクション |
 |------|-----------|
-| ↑ / ↓ | セクション横断の選択移動 |
+| ↑ / ↓ | セクション横断の選択移動 (自動スクロール付き) |
+| ← | 展開中の section/group を閉じる / 折りたたみ中の group・行は親に移動 (VSCode 風) |
+| → | 折りたたみ中の section/group を開く / 展開中は最初の子に移動 (VSCode 風) |
+| Space | 選択中の section/group の展開トグル |
 | Enter | 選択アイテムを Preview で開く |
 
 ### マウス
@@ -192,16 +195,20 @@ Aidea の全キーボードショートカットとマウス操作のリファ�
 
 ### キーボード
 
-| キー | アクション |
-|------|-----------|
-| Ctrl+P | 上スクロール |
-| Ctrl+N | 下スクロール |
-| Ctrl+F | 右スクロール |
-| Ctrl+B | 左スクロール |
-| Ctrl+V | ページ下スクロール |
-| Ctrl+Z | ページ上スクロール |
-| ⌘ E | drawio 編集モードトグル |
-| Esc | drawio 編集キャンセル |
+| キー | アクション | 対象コンテンツ |
+|------|-----------|---|
+| ↑ / ↓ | 行単位スクロール (40pt) | Markdown (view モード) |
+| PageUp / PageDown | ページ単位スクロール (viewport 高さの 90%) | Markdown (view モード) |
+| Ctrl+P | 上スクロール | Markdown (view モード) / その他 |
+| Ctrl+N | 下スクロール | Markdown (view モード) / その他 |
+| Ctrl+F | 右スクロール | その他 |
+| Ctrl+B | 左スクロール | その他 |
+| Ctrl+V | ページ下スクロール | Markdown (view モード) / その他 |
+| Ctrl+Z | ページ上スクロール | Markdown (view モード) / その他 |
+| E | view ⇄ edit モードトグル (翻訳キャッシュファイルでは無効) | Markdown |
+| J | 日本語翻訳 (英語表示中かつ非キャッシュファイル時のみ) | Markdown |
+| ⌘ E | drawio 編集モードトグル | drawio |
+| Esc | drawio 編集キャンセル | drawio |
 
 ---
 

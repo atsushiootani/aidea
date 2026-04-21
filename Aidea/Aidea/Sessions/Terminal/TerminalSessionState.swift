@@ -12,8 +12,10 @@ import SwiftTerm
 /// PersistentTerminalView を初回アクセス時に生成してキャッシュし、
 /// ペイン移動やタブ切替で再生成されないようにする。
 @Observable
-final class TerminalSessionState: SessionState {
+final class TerminalSessionState: SessionState, FocusBridgeOwner {
     let workspace: WorkspaceState
+    /// フォーカス契約 C1/C2/C3 を担う非永続ヘルパ (仕様は focus-contract.md)
+    let focusBridge = SessionFocusBridge()
     @ObservationIgnored private var cached: PersistentTerminalView?
 
     init(workspace: WorkspaceState) {
@@ -23,13 +25,17 @@ final class TerminalSessionState: SessionState {
     /// SessionRegistry への弱参照 (クリック時のアクティブ化用)
     weak var registry: SessionRegistry?
 
-    /// Terminal がアクティブになったら terminalView にフォーカスを当てる
+    /// 契約 C1: bridge 経由で terminalView に firstResponder を移す。
+    /// NSView 参照の登録は View 側 (TerminalSessionView.makeNSView) で行う。
+    /// cached がまだ生成されていない (PTY 未起動) 場合は bridge が pending を立てて、
+    /// View の makeNSView で setView される瞬間に自動フォーカスする。
     func didBecomeActive(session: Session) {
-        guard let view = cached else { return }
-        session.focusableView = view
-        DispatchQueue.main.async {
-            view.window?.makeFirstResponder(view)
-        }
+        focusBridge.activate()
+    }
+
+    /// 契約 C2: bridge 経由で自分配下の firstResponder を解放する。
+    func didResignActive(session: Session) {
+        focusBridge.deactivate()
     }
 
     /// View 側で参照する PersistentTerminalView (初回のみ PTY を起動)

@@ -15,7 +15,13 @@ struct WebSessionView: NSViewRepresentable {
     let state: WebSessionState
 
     func makeNSView(context: Context) -> WKWebView {
-        state.webView
+        let view = state.webView
+        // bridge に NSView 参照を登録 (SwiftUI update cycle と分離)。
+        // 契約 C1 (アクティブ化時フォーカス) と SessionRegistry の click-to-activate 両方の用途。
+        DispatchQueue.main.async {
+            state.focusBridge.setView(view)
+        }
+        return view
     }
 
     func updateNSView(_ nsView: WKWebView, context: Context) {

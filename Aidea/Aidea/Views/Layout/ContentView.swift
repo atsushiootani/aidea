@@ -32,6 +32,8 @@ struct ContentView: View {
                     .navigationTitle("Aidea")
             }
         }
+        // デバッグ用: NSWindow.firstResponder の変化をコンソールにログ出力する
+        .background(FirstResponderLoggerAttachment(registry: registry))
     }
 
     /// projectRoot が未設定のときに表示するプレースホルダー

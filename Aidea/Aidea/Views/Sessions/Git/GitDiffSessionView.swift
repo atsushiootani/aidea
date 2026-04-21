@@ -72,7 +72,6 @@ final class GitDiffWebView: WKWebView {
 }
 
 struct GitDiffSessionView: NSViewRepresentable {
-    let session: Session
     let state: GitDiffSessionState
 
     func makeNSView(context: Context) -> GitDiffWebView {
@@ -82,7 +81,11 @@ struct GitDiffSessionView: NSViewRepresentable {
         config.userContentController.add(context.coordinator, name: "viewedFile")
         let webView = GitDiffWebView(frame: .zero, configuration: config)
         webView.isInspectable = true
-        session.focusableView = webView
+        // bridge に NSView 参照を登録 (SwiftUI update cycle と分離)。
+        // 契約 C1 (アクティブ化時フォーカス) と SessionRegistry の click-to-activate 両方の用途。
+        DispatchQueue.main.async { [state] in
+            state.focusBridge.setView(webView)
+        }
         context.coordinator.state = state
         state.reload()
         loadDiff(into: webView)

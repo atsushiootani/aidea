@@ -27,6 +27,9 @@ enum KitSection: String, CaseIterable, Identifiable, Hashable {
 }
 
 /// Kit Session の内部状態。4 つの Loader と展開状態・選択を保持する。
+///
+/// Kit View は純 SwiftUI で、`@FocusState` + `.focusable()` で focus を取り、
+/// 上下キーでの項目移動は SwiftUI の `.onKeyPress` で実装する。
 @Observable
 final class KitSessionState: SessionState {
     let workspace: WorkspaceState
@@ -41,15 +44,15 @@ final class KitSessionState: SessionState {
     var expandedGroups: Set<String> = []
     /// 選択中の項目キー (`section:id`)
     var selection: String?
-
-    /// Kit がアクティブかどうか。KitSessionView が @FocusState と連動させる。
+    /// Kit がアクティブかどうか。KitSessionView が `@FocusState` と連動させる。
     var isActive: Bool = false
 
     init(workspace: WorkspaceState) {
         self.workspace = workspace
     }
 
-    /// Kit は純 SwiftUI なので focusableView ではなく isActive フラグで通知
+    /// Kit は純 SwiftUI 系 Session のため isActive フラグで SwiftUI 側に通知するだけ。
+    /// SwiftUI の `.focused($isActive)` バインドが内部 NSView の firstResponder 出し入れを自動処理する。
     func didBecomeActive(session: Session) {
         isActive = true
     }
