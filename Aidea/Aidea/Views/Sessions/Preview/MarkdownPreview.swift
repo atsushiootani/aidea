@@ -24,6 +24,9 @@ struct MarkdownPreview: View {
     let onLinkTap: ((URL) -> Void)?
     /// 目次 (ToC) の上部に確保する追加のマージン (親側にフローティングボタン等がある場合)
     let tocTopInset: CGFloat
+    /// オプション: 親から受け取るスクロールコントローラ。キー操作でスクロールさせるときに使う。
+    /// 非 nil の場合は ScrollView 内部に透明 NSView を仕込んで NSScrollView を橋渡しする。
+    let scrollController: ScrollController?
 
     /// 折りたたみ中の見出し行インデックス集合
     @State private var collapsedHeadings: Set<Int> = []
@@ -34,12 +37,14 @@ struct MarkdownPreview: View {
         text: String,
         baseURL: URL? = nil,
         onLinkTap: ((URL) -> Void)? = nil,
-        tocTopInset: CGFloat = 0
+        tocTopInset: CGFloat = 0,
+        scrollController: ScrollController? = nil
     ) {
         self.text = text
         self.baseURL = baseURL
         self.onLinkTap = onLinkTap
         self.tocTopInset = tocTopInset
+        self.scrollController = scrollController
     }
 
     var body: some View {
@@ -50,6 +55,12 @@ struct MarkdownPreview: View {
                         ForEach(visibleIndices, id: \.self) { index in
                             render(index: index, line: lines[index])
                                 .id("line-\(index)")
+                        }
+                        // スクロールコントローラの橋渡し用の透明 NSView
+                        // (NSScrollView を enclosingScrollView 経由で掴むため content 内に配置する)
+                        if let controller = scrollController {
+                            ScrollCommanderView(controller: controller)
+                                .frame(width: 0, height: 0)
                         }
                     }
                     .padding(16)

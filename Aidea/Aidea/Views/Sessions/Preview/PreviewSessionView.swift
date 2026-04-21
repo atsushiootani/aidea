@@ -67,9 +67,12 @@ struct PreviewSessionView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .task(id: state.url) {
-            // URL 変更時は bridge の NSView 参照をクリア (子ビューが再設定する)。
-            // 純 SwiftUI コンテンツ (image) の場合はクリア状態のまま SwiftUI に委譲される。
-            state.focusBridge.setView(nil)
+            // URL 変更時は bridge をクリアしない: 子ビュー (NSTextPreview 等) の makeNSView が
+            // body 評価中に既に setView を済ませている可能性があるため、ここで nil 代入すると
+            // 登録直後の値が消える。古いコンテンツの NSView は dismantle 時に bridge の
+            // weak ref が自動で nil になる。
+            // 純 SwiftUI コンテンツ (markdown view / image) は @FocusState + state.isActive で
+            // 独立にフォーカスを取るため、bridge の状態は影響しない。
             isEnglishText = false
             await loadPreview(for: state.url)
             // テキストの場合は英語判定 + キャッシュ確認

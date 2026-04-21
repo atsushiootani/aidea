@@ -22,15 +22,22 @@ final class PreviewSessionState: SessionState, FocusBridgeOwner {
     /// タブに表示するタイトル。nil のときは url の lastPathComponent を使う (既定挙動)。
     /// Kit から開くときに Skill/Command 名などをセットする。
     var title: String?
+    /// 純 SwiftUI コンテンツ (markdown の view モード等) がアクティブなときの SwiftUI `.focused()` バインド用フラグ。
+    /// AppKit 系コンテンツ (text / drawio / markdown の edit モード) では focusBridge が firstResponder を掴むため、
+    /// そのパスでは参照されない (併設による害はない)。
+    var isActive: Bool = false
 
-    /// 契約 C1: bridge 経由で現在の子ビュー NSView に firstResponder を移す。
-    /// 子ビューがまだ setView していない場合は bridge が pending を立てて待機する。
+    /// 契約 C1: bridge と isActive の両方を発火する。
+    /// NSView 系コンテンツでは子ビューが setView して bridge が firstResponder を取り、
+    /// 純 SwiftUI 系コンテンツでは isActive → @FocusState 経由で SwiftUI が focus を取る。
     func didBecomeActive(session: Session) {
         focusBridge.activate()
+        isActive = true
     }
 
-    /// 契約 C2: bridge 経由で自分配下の firstResponder を解放する。
+    /// 契約 C2: bridge と isActive の両方を解放する。
     func didResignActive(session: Session) {
         focusBridge.deactivate()
+        isActive = false
     }
 }
