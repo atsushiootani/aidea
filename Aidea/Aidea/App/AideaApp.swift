@@ -153,25 +153,11 @@ struct AideaApp: App {
 
     // MARK: - Tab/pane keyboard actions
 
-    /// Cmd+T: タブの `+` ボタンと同じツール一覧 (PaneView.availableTools) を NSMenu として
-    /// アクティブペインの `+` ボタン直下にポップアップ表示する。
+    /// Cmd+T: アクティブペインの `+` ボタンを押したのと完全に同じ動作を行う。
     private func newTabWithPicker() {
         guard let pane = currentPane() else { return }
-        let lay = layout
-        let reg = registry
-        let menu = NSMenu()
-        for tool in PaneView.availableTools(layout: lay) {
-            let item = ClosureMenuItem(
-                title: tool.displayName,
-                image: NSImage(systemSymbolName: tool.systemImageName, accessibilityDescription: nil)
-            ) {
-                PaneView.addSession(tool: tool, to: pane, layout: lay, registry: reg)
-            }
-            menu.addItem(item)
-        }
-        // アクティブペインの「+」ボタンの右下に表示。anchor 未取得時はフォールバックでマウス位置。
-        let location = tabPickerAnchor.bottomRightScreenPoint(for: pane.id) ?? NSEvent.mouseLocation
-        menu.popUp(positioning: nil, at: location, in: nil)
+        let point = tabPickerAnchor.bottomRightScreenPoint(for: pane.id) ?? NSEvent.mouseLocation
+        PaneView.showToolPickerMenu(at: point, pane: pane, layout: layout, registry: registry)
     }
 
     /// Cmd+W: 現在アクティブなタブを閉じる (メニュー経由)
@@ -449,26 +435,6 @@ struct AideaApp: App {
         ) { _ in
             saveAction()
         }
-    }
-}
-
-/// クロージャを保持する NSMenuItem。Cmd+T のツール選択メニュー等で使う。
-private final class ClosureMenuItem: NSMenuItem {
-    private let handler: () -> Void
-
-    init(title: String, image: NSImage?, handler: @escaping () -> Void) {
-        self.handler = handler
-        super.init(title: title, action: #selector(invoke), keyEquivalent: "")
-        self.target = self
-        self.image = image
-    }
-
-    required init(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-
-    @objc private func invoke() {
-        handler()
     }
 }
 

@@ -200,25 +200,20 @@ struct PaneView: View {
         return "\(sessionID.tool.displayName) \(sessionID.instance + 1)"
     }
 
-    /// 追加メニュー (+) ボタン。シングルトン制約のある tool は条件付きで非表示。
+    /// 追加メニュー (+) ボタン。クリックで `showToolPickerMenu` を呼び、
+    /// Cmd+T と完全に同じ NSMenu を「+」直下にポップアップ表示する。
     private var addButton: some View {
-        Menu {
-            ForEach(Self.availableTools(layout: layout)) { tool in
-                Button {
-                    Self.addSession(tool: tool, to: pane, layout: layout, registry: registry)
-                } label: {
-                    Label(tool.displayName, systemImage: tool.systemImageName)
-                }
-            }
+        Button {
+            let point = tabPickerAnchor.bottomRightScreenPoint(for: pane.id) ?? NSEvent.mouseLocation
+            Self.showToolPickerMenu(at: point, pane: pane, layout: layout, registry: registry)
         } label: {
             Image(systemName: "plus")
                 .font(.system(size: 11))
                 .padding(.horizontal, 4)
                 .padding(.vertical, 3)
+                .contentShape(Rectangle())
         }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
-        .fixedSize()
+        .buttonStyle(.plain)
         .background(AddButtonAnchorView(paneID: pane.id, anchor: tabPickerAnchor))
     }
 
@@ -248,6 +243,22 @@ struct PaneView: View {
         let id = SessionID(tool, instance: instance)
         pane.tabs.append(id)
         registry.setActiveTab(paneID: pane.id, tabIndex: pane.tabs.count - 1)
+    }
+
+    /// 指定 Pane 用のツール選択 NSMenu を screen 座標 `point` の左上に popUp 表示する。
+    /// `+` ボタンの action と AideaApp の Cmd+T 双方から呼ばれ、見た目・項目・挙動を完全一致させる。
+    static func showToolPickerMenu(at point: NSPoint, pane: Pane, layout: LayoutConfig, registry: SessionRegistry) {
+        let menu = NSMenu()
+        for tool in availableTools(layout: layout) {
+            let item = ClosureMenuItem(
+                title: tool.displayName,
+                image: NSImage(systemSymbolName: tool.systemImageName, accessibilityDescription: nil)
+            ) {
+                addSession(tool: tool, to: pane, layout: layout, registry: registry)
+            }
+            menu.addItem(item)
+        }
+        menu.popUp(positioning: nil, at: point, in: nil)
     }
 
     /// タブが空の状態のプレースホルダー
