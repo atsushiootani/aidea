@@ -20,6 +20,8 @@ struct AideaApp: App {
     @State private var recommendState: RecommendState
     /// Ctrl+Tab で起動する Active Session Switcher (Window レベル singleton)
     @State private var sessionSwitcher = ActiveSessionSwitcher()
+    /// Cmd+T のツール選択メニューを各ペインの「+」ボタン直下に表示するためのアンカー管理
+    @State private var tabPickerAnchor = TabPickerAnchor()
 
     init() {
         let ws = WorkspaceState()
@@ -55,6 +57,7 @@ struct AideaApp: App {
                 .environment(speechState)
                 .environment(companionStore)
                 .environment(recommendState)
+                .environment(tabPickerAnchor)
                 .onAppear {
                     registerTerminationObserver()
                     registerKeyEventMonitor()
@@ -175,7 +178,9 @@ struct AideaApp: App {
             }
             menu.addItem(item)
         }
-        menu.popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
+        // アクティブペインの「+」ボタンの右下に表示。anchor 未取得時はフォールバックでマウス位置。
+        let location = tabPickerAnchor.bottomRightScreenPoint(for: pane.id) ?? NSEvent.mouseLocation
+        menu.popUp(positioning: nil, at: location, in: nil)
     }
 
     /// Cmd+W: 現在アクティブなタブを閉じる (メニュー経由)

@@ -14,6 +14,7 @@ struct PaneView: View {
     @Environment(SessionRegistry.self) private var registry
     @Environment(LayoutConfig.self) private var layout
     @Environment(CompanionStore.self) private var companionStore
+    @Environment(TabPickerAnchor.self) private var tabPickerAnchor
 
     var body: some View {
         VStack(spacing: 0) {
@@ -220,6 +221,7 @@ struct PaneView: View {
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
         .fixedSize()
+        .background(AddButtonAnchorView(paneID: pane.id, anchor: tabPickerAnchor))
     }
 
     /// 指定 tool が追加可能か。シングルトン Tool はアプリ全体で 1 つだけ。
