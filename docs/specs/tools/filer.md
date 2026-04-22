@@ -106,6 +106,27 @@ Session 内部状態は [sessions/filer.md](../sessions/filer.md) を参照。
 - 実装は `SessionRegistry.openPreviewAtSlot(for:pane:index:title:)` 経由
 - projectRoot 自身はドラッグ対象にならない (既存の制約と同じ)
 
+### undoLastOperation — 直前の Filer 操作を取り消す / やり直す
+- **対象操作**: [renameSelected](#renameselected--名前変更) / [createFile](#createfile--ファイル新規作成) / [createDirectory](#createdirectory--ディレクトリ新規作成) / [deleteSelected](#deleteselected--選択ノードの削除-複数対応) / [moveByDragAndDrop](#movebydraganddrop--ドラッグドロップでファイルディレクトリを移動-複数対応) / [pasteFromClipboard](#pastefromclipboard--クリップボードから貼り付け)
+- **対象外**: [copySelected](#copyselected--クリップボードにコピー) (副作用なし) / [openSelectedInPreview](#openselectedinpreview--プレビューで開く) / [openInFinder](#openinfinder--finder-で開く) / [openWith](#openwith--指定のアプリケーションで開く) / [editExcludeRules](#editexcluderules--除外ルールを編集) (設定変更はアンドゥ対象外)
+- **キー**: `⌘ Z` (undo) / `⌘ ⇧ Z` (redo)
+- **スコープ**: **Filer Session 専用**。Window 内に Filer は singleton なので実質 Window 全体だが、他ツールの操作 (Terminal 入力 / Claude 送信 等) とは独立した履歴を持つ
+- **アンドゥの実装方針**:
+  - **rename**: 旧名→新名を記録し、`FileManager.moveItem(at:to:)` で逆方向に rename
+  - **move (ドラッグ&ドロップ含む)**: 旧 URL→新 URL を記録し、`moveItem(at:to:)` で元位置に戻す
+  - **delete**: `trashItem(at:resultingItemURL:)` で取得した **ゴミ箱内 URL** を保存し、アンドゥ時は `moveItem(at: trashURL, to: originalURL)` で復元
+  - **createFile / createDirectory**: 作成した URL を `trashItem` でゴミ箱送り (アンドゥ後に再 redo すると元の URL に戻す)
+  - **pasteFromClipboard**: 貼り付けで作成された URL 群を `trashItem` でゴミ箱送り
+- **複数選択操作のグループ化**: 「N 件をまとめて削除/移動/ペースト」は `beginUndoGrouping` / `endUndoGrouping` で 1 グループにまとめ、**1 回の Cmd+Z で全件まとめて戻る**
+- **redo**: `registerUndo` の中でさらに `registerUndo` する標準パターンで自動的に対応
+- **履歴の深さ**: 無制限 (NSUndoManager のデフォルト)
+- **永続化なし**: 履歴はメモリ上のみ。Window を閉じる / Filer Session を破棄すると失われる (`workspace.json` には保存しない)
+- **エラー時の扱い**:
+  - 復元先に同名ファイルが既に存在する / 権限が無い / ゴミ箱内 URL が既に消えている等の場合は NSAlert で通知
+  - **当該 1 件のみ復元失敗として扱い、履歴自体は失効させない**。同じグループ内の他のエントリは引き続き復元を試み、後続の `⌘ Z` で別操作に遡れる
+  - 部分的にしか復元できなかったグループでも履歴は前進する (失敗分の再試行は提供しない)
+- **Preview タブとの連携**: アンドゥで復元されたファイルが Preview に紐付くタブがあった場合の挙動は変えない (削除時の自動クローズと同じく `closePreviewsForDeleted` 経路に乗せず、復元 = 再オープンの扱いはユーザ次第)
+
 ### searchByName — ファイル名/ディレクトリ名のインクリメンタル検索
 - ペイン上部に `NSSearchField` を表示 (通常は非表示)
 - 入力するたびに全ツリーを走査し、名前に部分一致するノードとその祖先をフィルタ表示
@@ -206,6 +227,8 @@ Session 内部状態は [sessions/filer.md](../sessions/filer.md) を参照。
 | **Ctrl + A** | [openWith](#openwith--指定のアプリケーションで開く) |
 | **Cmd + C** | [copySelected](#copyselected--クリップボードにコピー) |
 | **Cmd + V** | [pasteFromClipboard](#pastefromclipboard--クリップボードから貼り付け) |
+| **Cmd + Z** | [undoLastOperation](#undolastoperation--直前の-filer-操作を取り消す--やり直す) (アンドゥ) |
+| **Cmd + Shift + Z** | [undoLastOperation](#undolastoperation--直前の-filer-操作を取り消す--やり直す) (リドゥ) |
 | **Esc** | 検索バーが開いていれば閉じる (`searchByName` のキャンセル) |
 | **Shift + ↑ / ↓** | 選択範囲の拡張 (NSOutlineView 標準) |
 | **Ctrl + P / N / F / B** | Emacs ライクナビゲーション ([共通ルール](../sessions/ui-rules.md#キーボードナビゲーション-emacs-ライク) を参照)。Ctrl+V/Z (ページ送り) は Filer では無効 |
@@ -301,6 +324,8 @@ DerivedData
 - `copySelected` は `NSPasteboard.general.clearContents()` → `writeObjects(urls as [NSURL])` で書き込む
 - `pasteFromClipboard` は `NSPasteboard.general.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true])` で取得
 - 衝突リネームは `nextAvailableURL(in:for:)` が `{base}_{N}{.ext}` を `N=2` から試し、存在しない名前が見つかるまでインクリメントして返す
+- アンドゥは `FilerSessionState.undoManager: UndoManager` で管理。各操作 (rename / move / delete / create / paste) が成功した時点で `registerUndo(withTarget:handler:)` で逆操作を登録する。複数選択操作は `beginUndoGrouping` / `endUndoGrouping` で 1 グループにまとめる
+- Cmd+Z / Cmd+Shift+Z は **`AideaApp.registerKeyEventMonitor` の `NSEvent.addLocalMonitorForEvents` で先取り**し、active session が `filer` のときだけ `FilerSessionState.undoManager.undo()` / `redo()` を呼ぶ。SwiftUI の Edit メニューは `@Environment(\.undoManager)` を見て AppKit 側 `NSResponder.undoManager` を見ないため、`performKeyEquivalent` 段階で disabled 判定 → beep を起こされる前にイベントを横取りする必要がある
 
 ---
 

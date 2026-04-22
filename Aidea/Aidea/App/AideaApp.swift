@@ -317,6 +317,29 @@ struct AideaApp: App {
                 return event
             }
 
+            // Cmd+Z / Cmd+Shift+Z (Filer の undo / redo)
+            // SwiftUI Edit メニューの Undo/Redo は @Environment(\.undoManager) を参照し、
+            // AppKit の NSResponder.undoManager を見ない。このため何も渡さないと
+            // performKeyEquivalent 段階で disabled 判定 → beep でイベント消費される。
+            // Filer がアクティブなときだけ自前で Filer の undoManager.undo()/redo() を呼ぶ。
+            if event.modifierFlags.contains(.command),
+               !event.modifierFlags.contains(.option),
+               !event.modifierFlags.contains(.control),
+               event.charactersIgnoringModifiers?.lowercased() == "z" {
+                if let activeID = registry.activeSessionID,
+                   activeID.tool == .filer,
+                   let filerState = registry.session(for: activeID)?.state as? FilerSessionState {
+                    let undoManager = filerState.undoManager
+                    if event.modifierFlags.contains(.shift) {
+                        if undoManager.canRedo { undoManager.redo() }
+                    } else {
+                        if undoManager.canUndo { undoManager.undo() }
+                    }
+                    return nil
+                }
+                return event
+            }
+
             // Cmd+W
             guard event.modifierFlags.contains(.command),
                   !event.modifierFlags.contains(.shift),
