@@ -12,6 +12,8 @@ impacts: []
 conventions:
   - docs/LAYOUT.md
 last_updated: 2026-04-22
+related_issues:
+  - "#13"
 ---
 
 # Tool 仕様: Filer
@@ -114,6 +116,29 @@ Session 内部状態は [sessions/filer.md](../sessions/filer.md) を参照。
 - OK / Cancel ボタン。OK で `FilerSessionState.excludeRules` を更新し、即座に Filer 表示と検索を再評価する
 - 適用後の状態は `workspace.json` に保存される (詳細は [除外ルール](#除外ルール) 節)
 
+### openInFinder — Finder で開く
+- **単一選択かつ非 root のときのみ**動作 (複数選択 / 選択なし / root 選択時は NSBeep して no-op)
+- **ファイル**: 親フォルダを Finder で開き、該当ファイルを選択状態にする (`NSWorkspace.shared.activateFileViewerSelecting([url])`)
+- **ディレクトリ**: そのフォルダ自体を Finder で開く (`NSWorkspace.shared.open(url)`)
+
+### openWith — 指定のアプリケーションで開く
+- **単一選択かつ非 root のときのみ**動作 (複数選択 / 選択なし / root 選択時は NSBeep して no-op)
+- macOS 標準の「このアプリケーションで開く」と同じ **OS 由来の候補リスト**を提示する
+  - 候補取得: `NSWorkspace.shared.urlsForApplications(toOpen: url)` (macOS 12+)
+  - デフォルトアプリ取得: `NSWorkspace.shared.urlForApplication(toOpen: url)` (macOS 12+)
+  - ファイル/ディレクトリ両対応 (URL ベース)
+- 候補が 0 件でもメニューは表示する (末尾の「その他...」だけの構成になる)
+- 候補項目を選ぶと `NSWorkspace.shared.open([url], withApplicationAt: appURL, configuration:)` で起動
+- **メニュー構成** (macOS Finder の「このアプリケーションで開く」に準拠):
+  1. **デフォルトアプリ** (取得できた場合のみ): 先頭に「{アプリ名} (デフォルト)」として表示
+  2. **区切り線** (デフォルトアプリがある場合のみ)
+  3. **候補アプリ一覧**: デフォルトアプリと重複するエントリは除く。アルファベット順は OS API の並び順に従う
+  4. **区切り線** (常に表示)
+  5. **その他...**: `NSOpenPanel` を `/Applications` 起点で表示し、`UTType.application` のみ選択可。選択したアプリで `NSWorkspace.shared.open(...)` を呼ぶ
+- **右クリックメニュー経由**: 「指定のアプリケーションで開く ▶」サブメニューに上記構成を展開
+- **ショートカット (`⌃A`) 経由**: サブメニューと同じ構成を `NSMenu.popUp` で選択行の付近に表示する
+  (サブメニュー経由と同じ構築関数を使い、UI 経路だけ切り替える)
+
 ### showContextMenu — 右クリックコンテキストメニュー
 - 右クリック位置の行が選択されていなければ、その行を選択してからメニュー表示
 - 表示項目 (選択状態に応じて有効/無効を切替):
@@ -122,6 +147,9 @@ Session 内部状態は [sessions/filer.md](../sessions/filer.md) を参照。
   - **新規ファイル** (`⌘N`)
   - **新規ディレクトリ** (`⌘⇧N`)
   - **削除** (`⌫`) — 選択ありかつ非 root が含まれるとき有効
+  - --- (区切り線) ---
+  - **Finder で開く** (`⌃O`) — 単一選択かつ非 root のとき有効
+  - **指定のアプリケーションで開く** (`⌃A`) ▶ — 単一選択かつ非 root のとき有効 (末尾に常に「その他...」があるため候補 0 件でも有効)
   - --- (区切り線) ---
   - **除外ルール設定...** — `editExcludeRules` を開く
 - 各項目はキーボード操作と 1:1 対応 (除外ルール設定は KB ショートカット無し)
@@ -140,6 +168,8 @@ Session 内部状態は [sessions/filer.md](../sessions/filer.md) を参照。
 | **Cmd + Shift + N** | [createDirectory](#createdirectory--ディレクトリ新規作成) |
 | **Backspace** | [deleteSelected](#deleteselected--選択ノードの削除-複数対応) |
 | **Cmd + F** | [searchByName](#searchbyname--ファイル名ディレクトリ名のインクリメンタル検索) |
+| **Ctrl + O** | [openInFinder](#openinfinder--finder-で開く) |
+| **Ctrl + A** | [openWith](#openwith--指定のアプリケーションで開く) |
 | **Esc** | 検索バーが開いていれば閉じる (`searchByName` のキャンセル) |
 | **Shift + ↑ / ↓** | 選択範囲の拡張 (NSOutlineView 標準) |
 | **Ctrl + P / N / F / B** | Emacs ライクナビゲーション ([共通ルール](../sessions/ui-rules.md#キーボードナビゲーション-emacs-ライク) を参照)。Ctrl+V/Z (ページ送り) は Filer では無効 |
@@ -227,6 +257,10 @@ DerivedData
   に蓄積し、データソースメソッドが `isSearching` 中はこれを参照する (元の rootNodes は破壊しない)
 - マッチハイライトは `NSMutableAttributedString` で背景色 (`.systemYellow.withAlphaComponent(0.6)`) と
   太字フォントを該当範囲に適用
+- `openInFinder` / `openWith` の候補列挙は `NSWorkspace.shared.urlsForApplications(toOpen:)` (macOS 12+) を使用
+- `openWith` のデフォルトアプリ解決は `NSWorkspace.shared.urlForApplication(toOpen:)` (macOS 12+) を使用
+- `openWith` の「その他...」は `NSOpenPanel` に `allowedContentTypes = [UTType.application]`, `directoryURL = /Applications` を設定して表示
+- `openWith` の右クリックサブメニューと Ctrl+A ポップアップは同一の `NSMenu` 構築関数を共用 (UI 経路のみ切替)
 
 ---
 

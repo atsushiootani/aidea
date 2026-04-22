@@ -5,6 +5,7 @@
 
 import SwiftUI
 import AppKit
+import UniformTypeIdentifiers
 
 /// Filer Session の SwiftUI ラッパ。FilerSessionState が保持する NSViewController を再利用する。
 struct FilerSessionView: NSViewControllerRepresentable {
@@ -737,6 +738,136 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
         return currentRoot
     }
 
+    /// 「単一選択かつ非 root」のとき選択ノードを返す。それ以外は nil。
+    /// openInFinder / openWith など projectRoot 自身を対象外にしたい操作で共用。
+    private func singleSelectedNonRoot() -> FileTreeNode? {
+        let nodes = selectedNodes()
+        guard nodes.count == 1, let node = nodes.first, node.url != currentRoot else {
+            return nil
+        }
+        return node
+    }
+
+    // MARK: - Open in Finder / Open With
+
+    /// Ctrl+O: 選択ノードを Finder で開く (単一選択かつ非 root のときのみ)。
+    /// ファイル: 親フォルダを開いて該当ファイルを選択状態にする。
+    /// ディレクトリ: そのフォルダ自体を Finder で開く。
+    /// 条件不一致のときは NSBeep して no-op。
+    func openInFinderAction() {
+        guard let node = singleSelectedNonRoot() else {
+            NSSound.beep()
+            return
+        }
+        if node.isDirectory {
+            NSWorkspace.shared.open(node.url)
+        } else {
+            NSWorkspace.shared.activateFileViewerSelecting([node.url])
+        }
+    }
+
+    /// Ctrl+A: 「指定のアプリケーションで開く」メニューを NSMenu でポップアップ表示する
+    /// (単一選択かつ非 root のときのみ)。候補 0 件でも末尾の「その他...」だけで表示する。
+    /// 候補は OS 標準の `urlsForApplications(toOpen:)` から取得し、右クリックの
+    /// サブメニューと同一の構築関数 `buildOpenWithMenu` を共用する。
+    func openWithAction() {
+        guard let node = singleSelectedNonRoot() else {
+            NSSound.beep()
+            return
+        }
+        let menu = buildOpenWithMenu(for: node)
+        let row = outlineView.row(forItem: node)
+        let pointInScreen = popUpAnchorScreenPoint(forRow: row)
+        menu.popUp(positioning: nil, at: pointInScreen, in: nil)
+    }
+
+    /// 「指定のアプリで開く」サブメニュー / Ctrl+A ポップアップで共用する NSMenu を構築する。
+    /// macOS Finder の「このアプリケーションで開く」に準拠した構成:
+    ///   1. デフォルトアプリ (取得できた場合のみ) — 「{名前} (デフォルト)」
+    ///   2. 区切り線 (デフォルトアプリがある場合のみ)
+    ///   3. 候補アプリ一覧 — デフォルトと重複するものは除く
+    ///   4. 区切り線 (常に)
+    ///   5. その他... — NSOpenPanel でアプリを選ばせて開く
+    private func buildOpenWithMenu(for node: FileTreeNode) -> NSMenu {
+        let menu = NSMenu()
+        let defaultAppURL = NSWorkspace.shared.urlForApplication(toOpen: node.url)
+        let candidates = NSWorkspace.shared.urlsForApplications(toOpen: node.url)
+
+        if let defaultURL = defaultAppURL {
+            menu.addItem(makeOpenWithMenuItem(for: node, appURL: defaultURL, isDefault: true))
+            menu.addItem(NSMenuItem.separator())
+        }
+
+        for appURL in candidates where appURL != defaultAppURL {
+            menu.addItem(makeOpenWithMenuItem(for: node, appURL: appURL, isDefault: false))
+        }
+
+        menu.addItem(NSMenuItem.separator())
+        let otherItem = ClosureMenuItem(title: "その他...", image: nil) { [weak self] in
+            self?.openWithOther(node: node)
+        }
+        menu.addItem(otherItem)
+        return menu
+    }
+
+    /// 「指定のアプリで開く」メニュー内の 1 項目を生成する。
+    /// `isDefault` が true のときは表示名の末尾に「 (デフォルト)」を付ける。
+    private func makeOpenWithMenuItem(for node: FileTreeNode, appURL: URL, isDefault: Bool) -> NSMenuItem {
+        // ローカライズされたアプリ名 (例: "Visual Studio Code.app" → "Visual Studio Code"、
+        // 各言語にローカライズされている場合はそれ)。取得失敗時は拡張子なしのファイル名でフォールバック
+        let resourceValues = try? appURL.resourceValues(forKeys: [.localizedNameKey])
+        let baseName = resourceValues?.localizedName
+            ?? appURL.deletingPathExtension().lastPathComponent
+        let title = isDefault ? "\(baseName) (デフォルト)" : baseName
+        let icon = NSWorkspace.shared.icon(forFile: appURL.path)
+        icon.size = NSSize(width: 16, height: 16)
+        return ClosureMenuItem(title: title, image: icon) { [weak self] in
+            self?.openNode(node, with: appURL)
+        }
+    }
+
+    /// 「その他...」を選んだときの処理。NSOpenPanel でアプリを選ばせて `openNode` を呼ぶ。
+    /// `/Applications` を起点にして `UTType.application` のみ選択可能とする。
+    private func openWithOther(node: FileTreeNode) {
+        let panel = NSOpenPanel()
+        panel.title = "アプリケーションを選択"
+        panel.directoryURL = URL(fileURLWithPath: "/Applications")
+        panel.allowedContentTypes = [UTType.application]
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        if panel.runModal() == .OK, let appURL = panel.url {
+            openNode(node, with: appURL)
+        }
+    }
+
+    /// 選択ノードを指定のアプリケーションで開く。エラーは NSAlert で通知。
+    private func openNode(_ node: FileTreeNode, with appURL: URL) {
+        let config = NSWorkspace.OpenConfiguration()
+        NSWorkspace.shared.open(
+            [node.url],
+            withApplicationAt: appURL,
+            configuration: config
+        ) { _, error in
+            guard let error = error else { return }
+            DispatchQueue.main.async {
+                NSAlert(error: error).runModal()
+            }
+        }
+    }
+
+    /// Ctrl+A ポップアップの表示位置 (screen 座標)。指定行の左下に揃える。
+    /// 行が見つからないときは現在のマウス位置を返す。
+    private func popUpAnchorScreenPoint(forRow row: Int) -> NSPoint {
+        guard row >= 0 else { return NSEvent.mouseLocation }
+        let rowRect = outlineView.rect(ofRow: row)
+        let pointInView = NSPoint(x: rowRect.minX, y: rowRect.maxY)
+        let pointInWindow = outlineView.convert(pointInView, to: nil)
+        guard let window = outlineView.window else { return NSEvent.mouseLocation }
+        let screenRect = window.convertToScreen(NSRect(origin: pointInWindow, size: .zero))
+        return screenRect.origin
+    }
+
     // MARK: - Context Menu
 
     /// 右クリックメニューを生成する。選択状態に応じて項目の有効/無効を切替。
@@ -804,6 +935,37 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
 
         menu.addItem(NSMenuItem.separator())
 
+        // 「Finder で開く」(⌃O): 単一選択かつ非 root のとき有効
+        let openInFinderItem = NSMenuItem(
+            title: "Finder で開く",
+            action: #selector(contextOpenInFinder),
+            keyEquivalent: "o"
+        )
+        openInFinderItem.keyEquivalentModifierMask = [.control]
+        openInFinderItem.target = self
+        openInFinderItem.isEnabled = isSingle && !singleIsRoot
+        menu.addItem(openInFinderItem)
+
+        // 「指定のアプリケーションで開く」(⌃A): 単一選択かつ非 root のとき有効
+        // サブメニューには Ctrl+A ポップアップと同じ buildOpenWithMenu の結果を入れる
+        // (候補 0 件でも末尾の「その他...」が常にあるため有効)
+        let openWithItem = NSMenuItem(
+            title: "指定のアプリケーションで開く",
+            action: nil,
+            keyEquivalent: "a"
+        )
+        openWithItem.keyEquivalentModifierMask = [.control]
+        openWithItem.target = self
+        if isSingle, !singleIsRoot, let node = nodes.first {
+            openWithItem.submenu = buildOpenWithMenu(for: node)
+            openWithItem.isEnabled = true
+        } else {
+            openWithItem.isEnabled = false
+        }
+        menu.addItem(openWithItem)
+
+        menu.addItem(NSMenuItem.separator())
+
         let excludeItem = NSMenuItem(
             title: "除外ルール設定...",
             action: #selector(contextEditExcludeRules),
@@ -821,6 +983,7 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
     @objc private func contextNewFile() { createFileAction() }
     @objc private func contextNewDir() { createDirectoryAction() }
     @objc private func contextDelete() { deleteSelectedAction() }
+    @objc private func contextOpenInFinder() { openInFinderAction() }
     @objc private func contextEditExcludeRules() { editExcludeRulesAction() }
 
     /// 除外ルール編集ダイアログを表示し、OK で owner.excludeRules を更新して再描画する

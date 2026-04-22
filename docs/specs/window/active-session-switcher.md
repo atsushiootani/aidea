@@ -81,7 +81,7 @@ last_updated: 2026-04-22
 
 - **icon**: Session の Tool に対応する SF Symbol (Tool.systemImageName を流用)
 - **Session 表示名**: Tab ヘッダの表示名と同じ規約
-  - Filer: `"Files"` 等の Tool displayName
+  - Filer: `"Filer"` 等の Tool displayName
   - Preview: `state.title` 優先、なければ `state.url?.lastPathComponent`
   - Terminal / Claude: `displayName` + インスタンス番号など (要実装で確定)
   - 共通仕様は per-tool spec に従う
