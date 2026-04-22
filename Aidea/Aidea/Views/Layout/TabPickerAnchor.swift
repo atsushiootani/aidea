@@ -7,36 +7,35 @@ import AppKit
 import Observation
 
 /// Cmd+T のツール選択メニューを「+」ボタンの右下に出すためのアンカー管理。
-/// 各 PaneView の「+」ボタン直下に仕込まれた NSView を paneID ごとに弱参照で保持し、
+/// 各 PaneView が GeometryReader 経由で「+」ボタンの window 座標 frame を登録し、
 /// AideaApp 側から screen 座標を問い合わせ可能にする。
+///
+/// NSViewRepresentable + `.background` 方式は SwiftUI Menu と組み合わせると
+/// Auto Layout の updateConstraints で NSException を投げて落ちたため、
+/// SwiftUI 内で完結する frame ベース方式を採用している。
 @Observable
 final class TabPickerAnchor {
-    /// paneID → 「+」ボタン NSView の弱参照ボックス
-    private var anchors: [UUID: WeakBox] = [:]
+    /// paneID → SwiftUI `.global` 座標系での「+」ボタン frame
+    private var frames: [UUID: CGRect] = [:]
 
-    /// AddButtonAnchorView から呼ばれる NSView 登録。上書き許容。
-    func register(paneID: UUID, view: NSView) {
-        anchors[paneID] = WeakBox(view: view)
+    /// AddButtonAnchorReader から呼ばれる frame 更新。上書き許容。
+    func register(paneID: UUID, frame: CGRect) {
+        frames[paneID] = frame
     }
 
-    /// 明示的な解除 (PaneView が消える際に呼ぶ)。呼び忘れても WeakBox.view が nil になるため致命的ではない。
+    /// PaneView が消える際の解除。呼び忘れても致命的ではない (古い frame は使われないだけ)。
     func unregister(paneID: UUID) {
-        anchors.removeValue(forKey: paneID)
+        frames.removeValue(forKey: paneID)
     }
 
-    /// 指定 Pane の「+」ボタン NSView の右下座標 (screen 座標系) を返す。
-    /// Window 未 attach や view が解放済なら nil を返す。
+    /// 指定 Pane の「+」ボタンの右下を screen 座標で返す。
+    /// メインウィンドウ未取得や frame 未登録の場合は nil。
     func bottomRightScreenPoint(for paneID: UUID) -> NSPoint? {
-        guard let box = anchors[paneID], let view = box.view, let window = view.window else { return nil }
-        // NSView は左下原点。「+」ボタンの右下 = (maxX, 0)
-        let localBottomRight = NSPoint(x: view.bounds.maxX, y: 0)
-        let windowPoint = view.convert(localBottomRight, to: nil)
+        guard let frame = frames[paneID], let window = NSApp.mainWindow else { return nil }
+        // SwiftUI .global は左上原点・window 内座標。AppKit window は左下原点なので Y 軸を反転する。
+        let contentHeight = window.contentLayoutRect.height
+        let windowPoint = NSPoint(x: frame.maxX, y: contentHeight - frame.maxY)
         let screenRect = window.convertToScreen(NSRect(origin: windowPoint, size: .zero))
         return screenRect.origin
-    }
-
-    /// NSView を弱参照で抱えるためのボックス
-    private struct WeakBox {
-        weak var view: NSView?
     }
 }

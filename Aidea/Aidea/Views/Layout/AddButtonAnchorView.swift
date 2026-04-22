@@ -4,26 +4,21 @@
 //
 
 import SwiftUI
-import AppKit
 
-/// SwiftUI の `+` ボタン (PaneView.addButton) の背後に透明な NSView を仕込み、
-/// 当該 NSView を TabPickerAnchor に登録する。AideaApp の Cmd+T ハンドラが
-/// この NSView の右下 screen 座標を読み取り、ツール選択メニューを「+」直下に表示する。
-struct AddButtonAnchorView: NSViewRepresentable {
+/// PaneView の「+」ボタンの背後に GeometryReader を仕込み、
+/// global 座標系での frame を TabPickerAnchor に伝える純 SwiftUI View。
+/// (NSViewRepresentable 方式は Menu の Auto Layout と衝突して落ちたため不採用)
+struct AddButtonAnchorView: View {
     let paneID: UUID
     let anchor: TabPickerAnchor
 
-    func makeNSView(context: Context) -> NSView {
-        let view = NSView()
-        // attach 完了直後に登録 (window 取得のため async)
-        DispatchQueue.main.async {
-            anchor.register(paneID: paneID, view: view)
+    var body: some View {
+        GeometryReader { proxy in
+            Color.clear
+                .onAppear { anchor.register(paneID: paneID, frame: proxy.frame(in: .global)) }
+                .onChange(of: proxy.frame(in: .global)) { _, newFrame in
+                    anchor.register(paneID: paneID, frame: newFrame)
+                }
         }
-        return view
-    }
-
-    func updateNSView(_ nsView: NSView, context: Context) {
-        // ペイン再構築で新しい NSView になる場合に備えて常に最新を上書き登録
-        anchor.register(paneID: paneID, view: nsView)
     }
 }
