@@ -33,6 +33,11 @@ final class FilerSessionState: SessionState, FocusBridgeOwner {
     var expandedURLs: Set<URL> = []
     /// Filer 表示・検索から除外するパターン一覧 (workspace.json v4 に永続化)
     var excludeRules: [String] = FilerSessionState.defaultExcludeRules
+    /// Filer 操作 (rename / move / delete / create / paste) のアンドゥ・リドゥ履歴。
+    /// 履歴はメモリ上のみで永続化しない (Window 終了 / Session 破棄で消える)。
+    /// 仕様: docs/specs/tools/filer.md#undolastoperation
+    @ObservationIgnored
+    let undoManager = UndoManager()
     /// アクティブな Session に転送するためのレジストリ参照
     weak var registry: SessionRegistry?
 

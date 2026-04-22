@@ -9,7 +9,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-20
+last_updated: 2026-04-22
 ---
 
 # Session 内部状態: Filer
@@ -26,6 +26,7 @@ last_updated: 2026-04-20
 | `selectedFile` | `URL?` | 現在選択中のファイル/ディレクトリ | ✅ |
 | `expandedURLs` | `Set<URL>` | アウトライン上で展開されているノード | ✅ |
 | `excludeRules` | `[String]` | 表示・検索の除外パターン (デフォルト + ユーザ追加) | ✅ |
+| `undoManager` | `NSUndoManager` (ObservationIgnored) | Filer 操作 (rename / move / delete / create / paste) のアンドゥ・リドゥ履歴 | ✅ (履歴はメモリ上のみ・永続化なし) |
 | `registry` | `weak var SessionRegistry?` | Filer ダブルクリック時に Preview を開くための参照 | ✅ |
 
 `excludeRules` のパターン形式・適用範囲・デフォルトは [../tools/filer.md#除外ルール](../tools/filer.md#除外ルール) を参照。

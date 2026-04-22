@@ -439,6 +439,8 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
         if sourceURLs.isEmpty { return false }
 
         var lastMoved: URL?
+        let actionName = sourceURLs.count == 1 ? "移動" : "\(sourceURLs.count) 個を移動"
+        owner?.undoManager.beginUndoGrouping()
         for source in sourceURLs {
             let dest = targetDir.appendingPathComponent(source.lastPathComponent)
 
@@ -462,15 +464,14 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
                 }
             }
 
-            do {
-                try FileManager.default.moveItem(at: source, to: dest)
+            if performUndoableMove(from: source, to: dest, actionName: actionName) {
                 lastMoved = dest
                 // 移動元ファイルを表示していた Preview タブを閉じる
                 owner?.registry?.closePreviewsForDeleted(source, isDirectory: isDirectoryAt(dest))
-            } catch {
-                NSAlert(error: error).runModal()
             }
         }
+        owner?.undoManager.endUndoGrouping()
+        owner?.undoManager.setActionName(actionName)
 
         if let moved = lastMoved {
             focusOnURL(moved)
@@ -642,11 +643,8 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
         ) else { return }
 
         let newURL = parent.appendingPathComponent(newName)
-        do {
-            try FileManager.default.moveItem(at: node.url, to: newURL)
+        if performUndoableMove(from: node.url, to: newURL, actionName: "リネーム") {
             focusOnURL(newURL)
-        } catch {
-            NSAlert(error: error).runModal()
         }
     }
 
@@ -674,14 +672,15 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
 
         guard alert.runModal() == .alertFirstButtonReturn else { return }
 
+        let actionName = nodes.count == 1 ? "削除" : "\(nodes.count) 個を削除"
+        owner?.undoManager.beginUndoGrouping()
         for node in nodes {
-            do {
-                try FileManager.default.trashItem(at: node.url, resultingItemURL: nil)
+            if performUndoableTrash(at: node.url, actionName: actionName) {
                 owner?.registry?.closePreviewsForDeleted(node.url, isDirectory: node.isDirectory)
-            } catch {
-                NSAlert(error: error).runModal()
             }
         }
+        owner?.undoManager.endUndoGrouping()
+        owner?.undoManager.setActionName(actionName)
     }
 
     /// Cmd+N キー: 新規ファイル作成
@@ -697,6 +696,12 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
         let newURL = parent.appendingPathComponent(name)
         let created = FileManager.default.createFile(atPath: newURL.path, contents: nil)
         if created {
+            // アンドゥ: 作成された URL を trash する (redo は restore で連鎖)
+            let actionName = "新規ファイル作成"
+            owner?.undoManager.registerUndo(withTarget: self) { target in
+                _ = target.performUndoableTrash(at: newURL, actionName: actionName)
+            }
+            owner?.undoManager.setActionName(actionName)
             focusOnURL(newURL)
         } else {
             let alert = NSAlert()
@@ -723,6 +728,12 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
                 at: newURL,
                 withIntermediateDirectories: false
             )
+            // アンドゥ: 作成された URL を trash する (redo は restore で連鎖)
+            let actionName = "新規ディレクトリ作成"
+            owner?.undoManager.registerUndo(withTarget: self) { target in
+                _ = target.performUndoableTrash(at: newURL, actionName: actionName)
+            }
+            owner?.undoManager.setActionName(actionName)
             focusOnURL(newURL)
         } catch {
             NSAlert(error: error).runModal()
@@ -799,6 +810,16 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
         }
 
         if !createdURLs.isEmpty {
+            // アンドゥ: ペーストで作成された URL 群を 1 グループとして trash する
+            let actionName = createdURLs.count == 1 ? "ペースト" : "\(createdURLs.count) 個をペースト"
+            owner?.undoManager.beginUndoGrouping()
+            for createdURL in createdURLs {
+                owner?.undoManager.registerUndo(withTarget: self) { target in
+                    _ = target.performUndoableTrash(at: createdURL, actionName: actionName)
+                }
+            }
+            owner?.undoManager.endUndoGrouping()
+            owner?.undoManager.setActionName(actionName)
             focusOnURLs(createdURLs)
         }
         if let error = firstError {
