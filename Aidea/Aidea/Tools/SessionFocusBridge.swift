@@ -30,7 +30,9 @@ final class SessionFocusBridge {
         self.view = view
         if pendingActivation, let v = view {
             pendingActivation = false
-            scheduleMakeFirstResponder(v)
+            DispatchQueue.main.async { [weak v] in
+                v?.window?.makeFirstResponder(v)
+            }
         }
     }
 
@@ -38,7 +40,9 @@ final class SessionFocusBridge {
     /// view が non-nil なら firstResponder にセット、nil なら pending を立てて待機する。
     func activate() {
         if let v = view {
-            scheduleMakeFirstResponder(v)
+            DispatchQueue.main.async { [weak v] in
+                v?.window?.makeFirstResponder(v)
+            }
         } else {
             pendingActivation = true
         }
@@ -60,22 +64,6 @@ final class SessionFocusBridge {
               let fr = win.firstResponder as? NSView,
               fr === v || fr.isDescendant(of: v) else { return }
         win.makeFirstResponder(nil)
-    }
-
-    /// `makeFirstResponder` を次のメインスレッドサイクルで発火する。
-    /// 発火時に `v.window == nil` (SwiftUI が NSHostingView 階層へ view を組み込む前) の場合は、
-    /// attach されるまで最大 `remainingAttempts` 回リトライする (runaway 防止の上限)。
-    /// 新規 Session の Tab キー等で、View の生成と activate() が同じ runloop サイクルで起きる
-    /// ケースで v.window が間に合わないバグを回避する。
-    private func scheduleMakeFirstResponder(_ view: NSView, remainingAttempts: Int = 5) {
-        DispatchQueue.main.async { [weak view, weak self] in
-            guard let v = view else { return }
-            if let win = v.window {
-                win.makeFirstResponder(v)
-            } else if remainingAttempts > 0 {
-                self?.scheduleMakeFirstResponder(v, remainingAttempts: remainingAttempts - 1)
-            }
-        }
     }
 }
 
