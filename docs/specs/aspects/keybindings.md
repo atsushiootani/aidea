@@ -14,12 +14,13 @@ syncs_with:
   - docs/specs/tools/terminal.md
   - docs/specs/tools/web.md
   - docs/specs/window/shortcuts.md
+  - docs/specs/window/active-session-switcher.md
   - docs/specs/companions/recommend-mode.md
 impacts: []
 conventions:
   - docs/LAYOUT.md
   - docs/specs/aspects/README.md
-last_updated: 2026-04-21
+last_updated: 2026-04-22
 ---
 
 # キー操作・マウス操作一覧
@@ -43,6 +44,8 @@ Aidea の全キーボードショートカットとマウス操作のリファ�
 | ⌘ ] | 次のペインへ（ラップ） |
 | ⌘ ⌥ → | 現在のペインを左右に分割 |
 | ⌘ ⌥ ↓ | 現在のペインを上下に分割 |
+| ⌃ Tab | Active Session Switcher 表示 / 履歴を古い方へ移動 (Ctrl リリースで確定) |
+| ⌃ ⇧ Tab | Switcher 表示中、選択を新しい方へ移動 |
 
 ### ツール切替
 

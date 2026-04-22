@@ -26,8 +26,17 @@ final class SessionRegistry {
     /// Pane.activeIndex が変わったことを SwiftUI に通知するためのカウンタ
     private var _activeVersion: Int = 0
 
-    /// アクティブ Session ID の変更履歴 (末尾が最新)。openPreview のルーティングに使う。
-    @ObservationIgnored private(set) var activeHistory: [SessionID] = []
+    /// アクティブ Session ID の変更履歴 (末尾が最新、重複排除済、最大 50 件)。
+    /// openPreview のルーティング / Active Session Switcher (Ctrl+Tab) の表示元 / Tab クローズで除去。
+    /// 永続化対象 (workspace.json v5)。
+    @ObservationIgnored private(set) var activeSessionHistory: [SessionID] = []
+
+    /// スナップショットから activeSessionHistory を一括復元する。
+    /// `apply` 時の `setActiveTab` より前に呼ぶこと (順序が逆だと履歴が上書きされる)。
+    /// 末尾が最新の前提を維持し、50 件キャップは保存時に保証されている。
+    func restoreActiveSessionHistory(_ history: [SessionID]) {
+        activeSessionHistory = history
+    }
 
     init(workspace: WorkspaceState, layout: LayoutConfig) {
         self.workspace = workspace
@@ -61,7 +70,7 @@ final class SessionRegistry {
     }
 
     /// ペインとタブを指定してアクティブを切り替える。
-    /// ライフサイクルコールバック (deactivate → activate) と activeHistory 更新を一括で行う。
+    /// ライフサイクルコールバック (deactivate → activate) と activeSessionHistory 更新を一括で行う。
     /// PaneView のタブクリック、Cmd+[, Cmd+Shift+] 等の全操作がこのメソッドを経由する。
     func setActiveTab(paneID: UUID, tabIndex: Int? = nil) {
         let oldSessionID = activeSessionID
@@ -81,10 +90,10 @@ final class SessionRegistry {
             if let newID = newSessionID, let newSession = session(for: newID) {
                 newSession.activate()
                 // 履歴更新
-                activeHistory.removeAll { $0 == newID }
-                activeHistory.append(newID)
-                if activeHistory.count > 50 {
-                    activeHistory.removeFirst(activeHistory.count - 50)
+                activeSessionHistory.removeAll { $0 == newID }
+                activeSessionHistory.append(newID)
+                if activeSessionHistory.count > 50 {
+                    activeSessionHistory.removeFirst(activeSessionHistory.count - 50)
                 }
             }
         }
@@ -147,8 +156,11 @@ final class SessionRegistry {
     }
 
     /// Session を一覧から除去。Tab クローズと同時に呼ばれる。
+    /// Active Session Switcher で「既に存在しない Session」を表示しないよう、
+    /// 履歴 (activeSessionHistory) からも該当 ID を除去する。
     func destroySession(_ id: SessionID) {
         sessions.removeAll { $0.id == id }
+        activeSessionHistory.removeAll { $0 == id }
     }
 
     /// Session を取得 (なければ作成)。Tab 追加時や View 描画時に使う。
@@ -177,7 +189,7 @@ final class SessionRegistry {
         // 呼び出し元ペインを回避して配置先を決定
         let callerPane = activePane
         var targetPane: Pane?
-        for id in activeHistory.reversed() {
+        for id in activeSessionHistory.reversed() {
             if let pane = layout.allPanes.first(where: { $0.tabs.contains(id) }),
                pane !== callerPane {
                 targetPane = pane
@@ -246,7 +258,7 @@ final class SessionRegistry {
         // 呼び出し元ペイン以外に配置
         let callerPane = activePane
         var targetPane: Pane?
-        for id in activeHistory.reversed() {
+        for id in activeSessionHistory.reversed() {
             if let pane = layout.allPanes.first(where: { $0.tabs.contains(id) }),
                pane !== callerPane {
                 targetPane = pane

@@ -9,7 +9,7 @@ import Foundation
 /// `<projectRoot>/.aidea/workspace.json` にプロジェクトごとに JSON で書き出す。
 final class WorkspaceSnapshotManager {
     /// 現在のスナップショットフォーマットバージョン
-    private static let currentVersion: Int = 4
+    private static let currentVersion: Int = 5
 
     /// projectRoot から保存先 URL を導出する
     static func fileURL(for projectRoot: URL) -> URL {
@@ -100,7 +100,8 @@ final class WorkspaceSnapshotManager {
             activePaneID: registry.activePaneID,
             companions: companionStore?.companions,
             companionBindings: bindings,
-            recommends: recommendStore?()
+            recommends: recommendStore?(),
+            activeSessionHistory: registry.activeSessionHistory
         )
     }
 
@@ -192,7 +193,8 @@ final class WorkspaceSnapshotManager {
             activePaneID: snapshot.activePaneID,
             companions: companions,
             companionBindings: bindings,
-            recommends: recommends
+            recommends: recommends,
+            activeSessionHistory: snapshot.activeSessionHistory
         )
     }
 
@@ -251,6 +253,11 @@ final class WorkspaceSnapshotManager {
             let state = session.state as! KitSessionState
             state.expandedSections = Set(kit.expandedSections.compactMap { KitSection(rawValue: $0) })
             state.expandedGroups = Set(kit.expandedGroups)
+        }
+
+        // activeSessionHistory を復元 (setActiveTab より前に置くこと。逆だと末尾追加で上書きされる)
+        if let history = snapshot.activeSessionHistory {
+            registry.restoreActiveSessionHistory(history)
         }
 
         // Active Pane を復元

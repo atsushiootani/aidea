@@ -6,13 +6,14 @@ derived_from:
   - docs/decisions/0013-session-as-first-class-object.md
 syncs_with:
   - docs/specs/sessions/focus-contract.md
+  - docs/specs/window/active-session-switcher.md
 impacts:
   - docs/specs/tools/filer.md
   - docs/specs/tools/preview.md
   - docs/specs/sessions/preview.md
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-21
+last_updated: 2026-04-22
 ---
 
 # アクティブ Session の仕組み
@@ -26,7 +27,19 @@ Session 概念自体の位置づけは [ui-rules.md#概念モデル](./ui-rules.
 
 - `SessionRegistry.activeSessionID` が Window 全体で **1 つの Active Session** を保持する
 - Tab クリック、またはセッションビュー内のクリック (SwiftUI 領域のみ) で切替される
-- `activeSessionID` の変更履歴は `activeHistory` に蓄積される (**最大 50 件**)
+- `activeSessionID` の変更履歴は `activeSessionHistory` に蓄積される
+
+## activeSessionHistory の更新ルール
+
+- 末尾が最新、先頭が最古
+- 同一 SessionID は **1 度しか含まれない** (新たに active になった時点で古い位置から削除して末尾に追加)
+- **最大 50 件**。超えたら古い方から自動破棄
+- **Tab クローズで該当 SessionID を履歴から除去** (`destroySession(_:)` 内で実施)
+- **`workspace.json` (v5) に永続化される**。詳細は [persistence.md](../aspects/persistence.md#workspacejson-レイアウトsession-状態コンパニオンレコメンド統合) を参照
+
+利用箇所:
+- Filer ダブルクリック時の Preview 配置先決定 (後述)
+- [Active Session Switcher](../window/active-session-switcher.md) (`Ctrl+Tab` で履歴を辿るウィンドウ) の表示元データ
 
 ---
 
@@ -55,7 +68,7 @@ Session 概念自体の位置づけは [ui-rules.md#概念モデル](./ui-rules.
 Filer でファイルをダブルクリックすると Preview Session を新規作成するが、
 **どのペインに作るか** を履歴から決定する:
 
-1. `activeHistory` をさかのぼる
+1. `activeSessionHistory` をさかのぼる
 2. 「**非 Filer ペインの最新 Session**」を探す
 3. そのペインに新しい Preview Session タブを作成する
 

@@ -18,6 +18,8 @@ struct AideaApp: App {
     @State private var speechState: SpeechState
     @State private var companionStore: CompanionStore
     @State private var recommendState: RecommendState
+    /// Ctrl+Tab で起動する Active Session Switcher (Window レベル singleton)
+    @State private var sessionSwitcher = ActiveSessionSwitcher()
 
     init() {
         let ws = WorkspaceState()
@@ -56,6 +58,7 @@ struct AideaApp: App {
                 .onAppear {
                     registerTerminationObserver()
                     registerKeyEventMonitor()
+                    sessionSwitcher.install(registry: registry, companionStore: companionStore)
                 }
         }
         .commands {
