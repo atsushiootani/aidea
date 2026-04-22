@@ -97,6 +97,15 @@ Session 内部状態は [sessions/filer.md](../sessions/filer.md) を参照。
 - 移動後は移動先ノードにフォーカス
 - 外部アプリからのドロップ (Finder 等) も `.fileURL` 経由で受け入れる
 
+### dragToTabSlot — タブスロットへのドラッグでプレビューを開く
+- ファイラ内のファイルをドラッグして [TabSlot](../glossary.md#ui-階層-5-階層モデル) にドロップすると、そのスロット位置に新規 Preview Session を挿入する
+- **対象はファイルのみ**: ディレクトリをドラッグしている場合は TabSlot 側が accept せず、ドロップ不可の見た目になる
+- **複数選択**: 選択順にスロット位置から連続挿入 (`index`, `index+1`, `index+2`, ...)
+- **既存 Preview の dedupe**: 既に同じ URL の Preview タブがあれば **そのタブをアクティブ化するだけ** で、スロット位置への移動は行わない ([sessions/active-session.md#preview-を開くときの呼び出し規約](../sessions/active-session.md#preview-を開くときの呼び出し規約) の dedupe ルールを継承)
+- **外部アプリ (Finder 等) からのドロップも受け入れる** (`.fileURL` 経由で同じ経路を通る)
+- 実装は `SessionRegistry.openPreviewAtSlot(for:pane:index:title:)` 経由
+- projectRoot 自身はドラッグ対象にならない (既存の制約と同じ)
+
 ### searchByName — ファイル名/ディレクトリ名のインクリメンタル検索
 - ペイン上部に `NSSearchField` を表示 (通常は非表示)
 - 入力するたびに全ツリーを走査し、名前に部分一致するノードとその祖先をフィルタ表示
@@ -213,7 +222,8 @@ Session 内部状態は [sessions/filer.md](../sessions/filer.md) を参照。
 | ダブルクリック (ファイル) | [openSelectedInPreview](#openselectedinpreview--プレビューで開く) |
 | ダブルクリック (ディレクトリ) | 展開/折りたたみトグル |
 | ディスクロージャ三角形クリック | 展開/折りたたみトグル |
-| ドラッグ&ドロップ | [moveByDragAndDrop](#movebydraganddrop--ドラッグドロップでファイルディレクトリを移動-複数対応) |
+| ドラッグ&ドロップ (ディレクトリ / 空白) | [moveByDragAndDrop](#movebydraganddrop--ドラッグドロップでファイルディレクトリを移動-複数対応) |
+| ドラッグ&ドロップ (タブスロット) | [dragToTabSlot](#dragtotabslot--タブスロットへのドラッグでプレビューを開く) |
 | 右クリック | [showContextMenu](#showcontextmenu--右クリックコンテキストメニュー) |
 
 ---

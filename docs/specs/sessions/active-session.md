@@ -1,6 +1,6 @@
 ---
 title: アクティブ Session の仕組み
-description: SessionRegistry.activeSessionID の切替・履歴 (50 件)・Filer ダブルクリック挙動・Preview 開き規約 (openPreview / openPreviewAsSibling)
+description: SessionRegistry.activeSessionID の切替・履歴 (50 件)・Filer ダブルクリック挙動・Preview 開き規約 (openPreview / openPreviewAsSibling / openPreviewAtSlot)
 derived_from:
   - docs/specs/sessions/ui-rules.md
   - docs/decisions/0013-session-as-first-class-object.md
@@ -101,3 +101,15 @@ Preview 内のリンククリックや翻訳ボタンから別のファイルを
 利用箇所:
 - `MarkdownContainer` — Markdown 内のリンククリック / 翻訳版の表示
 - `PreviewSessionView` — テキストファイルの翻訳版の表示
+
+### TabSlot にドラッグ&ドロップで Preview を開く場合 (slot 指定配置)
+
+Filer や外部アプリ (Finder 等) からファイルを TabSlot にドロップした場合は `SessionRegistry.openPreviewAtSlot(for:pane:index:title:)` を使う。`openPreview` / `openPreviewAsSibling` とは配置ルールが異なる:
+
+- **ドロップされた TabSlot の `pane` + `index` 位置** に新しい Preview タブを挿入する
+- 同じ URL の Preview が既に存在する場合は **dedupe** (新規作成せずアクティブ化。slot 位置への移動は行わない)
+- 複数ファイル同時ドロップ時は `index`, `index+1`, `index+2`, ... と連続挿入
+- ディレクトリは呼び出し元 (`TabSlotView`) が受け入れないため、この経路には来ない
+
+利用箇所:
+- `TabSlotView` — Filer / Finder からの fileURL ドロップ

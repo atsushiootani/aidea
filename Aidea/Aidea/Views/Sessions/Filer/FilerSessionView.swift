@@ -100,9 +100,12 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
         // キーボードイベントをこのコントローラに委譲
         outlineView.controller = self
         // ドラッグ&ドロップ: ファイル URL の並び替え/移動を受け付ける
+        // .copy を許可する理由: SwiftUI 側の TabSlotView `.dropDestination(for: URL.self)` は
+        // デフォルトで .copy 操作を期待するため。Filer 内ドロップは acceptDrop が .move を返すので
+        // 実際の操作は引き続き move として解決される。
         outlineView.registerForDraggedTypes([.fileURL])
-        outlineView.setDraggingSourceOperationMask([.move], forLocal: true)
-        outlineView.setDraggingSourceOperationMask([.move], forLocal: false)
+        outlineView.setDraggingSourceOperationMask([.move, .copy], forLocal: true)
+        outlineView.setDraggingSourceOperationMask([.move, .copy], forLocal: false)
         // ダブルクリックで Preview Session を新規作成
         outlineView.target = self
         outlineView.doubleAction = #selector(handleDoubleClick)
