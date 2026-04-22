@@ -123,6 +123,9 @@ struct PaneView: View {
                 Image(systemName: "xmark")
                     .font(.system(size: 9, weight: .bold))
                     .foregroundStyle(isGlobalActive ? Color.white.opacity(0.85) : Color.secondary)
+                    // X の見た目は 9pt のまま、frame + contentShape で tap 受付エリアを 20×20 に広げる
+                    .frame(width: 20, height: 20)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
         }
