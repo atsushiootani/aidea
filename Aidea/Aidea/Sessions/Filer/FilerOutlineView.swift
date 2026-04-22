@@ -63,6 +63,19 @@ final class FilerOutlineView: NSOutlineView {
             return
         }
 
+        // Cmd + C: コピー / Cmd + V: ペースト
+        // (Cmd 単独修飾のときのみ反応。Shift/Ctrl/Opt 同時押しは super に委ねる)
+        if cmd, !shift, !ctrl, !opt {
+            if chars == "c" {
+                controller.copySelectedAction()
+                return
+            }
+            if chars == "v" {
+                controller.pasteFromClipboardAction()
+                return
+            }
+        }
+
         // Esc: 検索バーが開いていれば閉じる (それ以外は super に任せる)
         if event.keyCode == 53 {
             if controller.closeSearchBarIfOpen() {

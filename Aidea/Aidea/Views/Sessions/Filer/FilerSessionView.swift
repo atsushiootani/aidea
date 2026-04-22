@@ -748,6 +748,148 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
         return node
     }
 
+    // MARK: - Copy / Paste
+
+    /// Cmd+C: 選択ノード (projectRoot 除く) を `NSPasteboard.general` に
+    /// `NSPasteboard.PasteboardType.fileURL` 形式で書き込む。
+    /// 対象が 0 件のときは NSBeep で no-op。macOS 標準形式なので Finder 等と相互運用可能。
+    func copySelectedAction() {
+        let urls = selectedNodes()
+            .filter { $0.url != currentRoot }
+            .map { $0.url }
+        guard !urls.isEmpty else {
+            NSSound.beep()
+            return
+        }
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.writeObjects(urls as [NSURL])
+    }
+
+    /// Cmd+V: `NSPasteboard.general` から file URL を取り出し、
+    /// `targetParentDirectory()` で決まる貼り付け先ディレクトリへ `copyItem` で物理コピーする。
+    /// 同名衝突時は `nextAvailableURL` で `_N` をインクリメントしてリネーム。
+    /// ペースト完了後、新しく作成されたエントリ群を選択状態にフォーカスする。
+    func pasteFromClipboardAction() {
+        let pasteboard = NSPasteboard.general
+        let options: [NSPasteboard.ReadingOptionKey: Any] = [.urlReadingFileURLsOnly: true]
+        let sources = (pasteboard.readObjects(forClasses: [NSURL.self], options: options) as? [URL]) ?? []
+        guard !sources.isEmpty else {
+            NSSound.beep()
+            return
+        }
+        guard let destination = targetParentDirectory() else {
+            NSSound.beep()
+            return
+        }
+
+        var createdURLs: [URL] = []
+        var firstError: Error?
+        for source in sources {
+            let target = nextAvailableURL(in: destination, for: source.lastPathComponent)
+            do {
+                try FileManager.default.copyItem(at: source, to: target)
+                createdURLs.append(target)
+            } catch {
+                if firstError == nil { firstError = error }
+            }
+        }
+
+        if !createdURLs.isEmpty {
+            focusOnURLs(createdURLs)
+        }
+        if let error = firstError {
+            NSAlert(error: error).runModal()
+        }
+    }
+
+    /// 指定ディレクトリ内で、元のエントリ名と同名がある場合に衝突しない名前 URL を返す。
+    /// 衝突なしならそのまま、衝突ありなら `_2`, `_3`, ... をインクリメントして探す。
+    /// 拡張子あり (`foo.txt`) → 拡張子の前に `_N` を差し込む (`foo_2.txt`)。
+    /// 拡張子なし (`README`) / ディレクトリ (`mydir`) → 末尾に `_N` を付ける (`README_2` / `mydir_2`)。
+    private func nextAvailableURL(in directory: URL, for originalName: String) -> URL {
+        let candidate = directory.appendingPathComponent(originalName)
+        if !FileManager.default.fileExists(atPath: candidate.path) {
+            return candidate
+        }
+        let ext = (originalName as NSString).pathExtension
+        let base = (originalName as NSString).deletingPathExtension
+        var index = 2
+        while true {
+            let newName: String
+            if ext.isEmpty {
+                newName = "\(base)_\(index)"
+            } else {
+                newName = "\(base)_\(index).\(ext)"
+            }
+            let newURL = directory.appendingPathComponent(newName)
+            if !FileManager.default.fileExists(atPath: newURL.path) {
+                return newURL
+            }
+            index += 1
+        }
+    }
+
+    /// 複数 URL を選択状態にフォーカスする。ペースト/移動など複数ノード作成後に使う。
+    /// 内部で一度だけ `handleFileSystemChange()` を呼んでから IndexSet を構築する。
+    /// 先頭 URL の親まで展開し、末尾 URL を scrollRowToVisible で表示に寄せる。
+    private func focusOnURLs(_ urls: [URL]) {
+        guard !urls.isEmpty, let root = currentRoot else { return }
+        handleFileSystemChange()
+
+        // 対象ノードへ辿り着くためにそれぞれの親ディレクトリを展開しておく
+        for url in urls {
+            let rootPath = root.path
+            guard url.path.hasPrefix(rootPath) else { continue }
+            let relative = String(url.path.dropFirst(rootPath.count))
+                .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+            if relative.isEmpty { continue }
+            let components = relative.split(separator: "/").map(String.init)
+            var currentList: [FileTreeNode] = rootNodes
+            for (i, name) in components.enumerated() {
+                guard let node = currentList.first(where: { $0.name == name }) else { break }
+                if i < components.count - 1 {
+                    if node.children == nil {
+                        node.children = loadAndFilter(directory: node.url, parent: node)
+                    }
+                    outlineView.expandItem(node)
+                    currentList = node.children ?? []
+                }
+            }
+        }
+
+        var indexes = IndexSet()
+        var lastRow = -1
+        for url in urls {
+            guard let node = findNode(matching: url, in: rootNodes) else { continue }
+            let row = outlineView.row(forItem: node)
+            if row >= 0 {
+                indexes.insert(row)
+                lastRow = row
+            }
+        }
+        if !indexes.isEmpty {
+            outlineView.selectRowIndexes(indexes, byExtendingSelection: false)
+            if lastRow >= 0 {
+                outlineView.scrollRowToVisible(lastRow)
+            }
+            outlineView.window?.makeFirstResponder(outlineView)
+        }
+    }
+
+    /// 指定 URL に一致するノードを `rootNodes` から再帰的に探す。
+    /// ディレクトリの子はロード済みに限り走査 (未ロード分は `focusOnURLs` 側で事前に expand 済み)。
+    private func findNode(matching url: URL, in nodes: [FileTreeNode]) -> FileTreeNode? {
+        for node in nodes {
+            if node.url == url { return node }
+            if let children = node.children,
+               let hit = findNode(matching: url, in: children) {
+                return hit
+            }
+        }
+        return nil
+    }
+
     // MARK: - Open in Finder / Open With
 
     /// Ctrl+O: 選択ノードを Finder で開く (単一選択かつ非 root のときのみ)。
@@ -966,6 +1108,35 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
 
         menu.addItem(NSMenuItem.separator())
 
+        // 「コピー」(⌘C): 選択ありかつ非 root が含まれるとき有効
+        let copyItem = NSMenuItem(
+            title: "コピー",
+            action: #selector(contextCopy),
+            keyEquivalent: "c"
+        )
+        copyItem.keyEquivalentModifierMask = [.command]
+        copyItem.target = self
+        copyItem.isEnabled = hasSelection && nodes.contains { $0.url != currentRoot }
+        menu.addItem(copyItem)
+
+        // 「ペースト」(⌘V): クリップボードに fileURL があり、貼り付け先が決定できるとき有効
+        let pasteItem = NSMenuItem(
+            title: "ペースト",
+            action: #selector(contextPaste),
+            keyEquivalent: "v"
+        )
+        pasteItem.keyEquivalentModifierMask = [.command]
+        pasteItem.target = self
+        let pasteboard = NSPasteboard.general
+        let pasteboardHasFileURL = pasteboard.canReadObject(
+            forClasses: [NSURL.self],
+            options: [.urlReadingFileURLsOnly: true]
+        )
+        pasteItem.isEnabled = pasteboardHasFileURL && targetParentDirectory() != nil
+        menu.addItem(pasteItem)
+
+        menu.addItem(NSMenuItem.separator())
+
         let excludeItem = NSMenuItem(
             title: "除外ルール設定...",
             action: #selector(contextEditExcludeRules),
@@ -984,6 +1155,8 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
     @objc private func contextNewDir() { createDirectoryAction() }
     @objc private func contextDelete() { deleteSelectedAction() }
     @objc private func contextOpenInFinder() { openInFinderAction() }
+    @objc private func contextCopy() { copySelectedAction() }
+    @objc private func contextPaste() { pasteFromClipboardAction() }
     @objc private func contextEditExcludeRules() { editExcludeRulesAction() }
 
     /// 除外ルール編集ダイアログを表示し、OK で owner.excludeRules を更新して再描画する
