@@ -3,6 +3,8 @@ node_modules/
 .env
 .env.*
 *.log
+*.profraw
+*.profdata
 .claude/.simplify-ignore-cache/
 .claude/worktrees/
 .obsidian

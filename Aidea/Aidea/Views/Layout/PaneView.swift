@@ -14,6 +14,7 @@ struct PaneView: View {
     @Environment(SessionRegistry.self) private var registry
     @Environment(LayoutConfig.self) private var layout
     @Environment(CompanionStore.self) private var companionStore
+    @Environment(TabPickerAnchor.self) private var tabPickerAnchor
 
     var body: some View {
         VStack(spacing: 0) {
@@ -123,6 +124,9 @@ struct PaneView: View {
                 Image(systemName: "xmark")
                     .font(.system(size: 9, weight: .bold))
                     .foregroundStyle(isGlobalActive ? Color.white.opacity(0.85) : Color.secondary)
+                    // X の見た目は 9pt のまま、frame + contentShape で tap 受付エリアを 20×20 に広げる
+                    .frame(width: 20, height: 20)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
         }
@@ -196,40 +200,65 @@ struct PaneView: View {
         return "\(sessionID.tool.displayName) \(sessionID.instance + 1)"
     }
 
-    /// 追加メニュー (+) ボタン。シングルトン制約のある tool は条件付きで非表示。
+    /// 追加メニュー (+) ボタン。クリックで `showToolPickerMenu` を呼び、
+    /// Cmd+T と完全に同じ NSMenu を「+」直下にポップアップ表示する。
     private var addButton: some View {
-        Menu {
-            ForEach(Tool.allCases) { tool in
-                if isAddable(tool) {
-                    Button {
-                        addSession(tool: tool)
-                    } label: {
-                        Label(tool.displayName, systemImage: tool.systemImageName)
-                    }
-                }
-            }
+        Button {
+            let point = tabPickerAnchor.bottomRightScreenPoint(for: pane.id) ?? NSEvent.mouseLocation
+            Self.showToolPickerMenu(at: point, pane: pane, layout: layout, registry: registry)
         } label: {
             Image(systemName: "plus")
                 .font(.system(size: 11))
                 .padding(.horizontal, 4)
                 .padding(.vertical, 3)
+                .contentShape(Rectangle())
         }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
-        .fixedSize()
+        .buttonStyle(.plain)
+        .background(AddButtonAnchorView(paneID: pane.id, anchor: tabPickerAnchor))
     }
 
-    /// 指定 tool が追加可能か。シングルトン Tool はアプリ全体で 1 つだけ。
-    private func isAddable(_ tool: Tool) -> Bool {
+    /// 指定 tool が追加可能か (PaneView の `+` メニューと AideaApp の Cmd+T で共用)。
+    /// シングルトン Tool はアプリ全体で 1 つだけ。`gitDiff` は Git ツール経由でしか開かない。
+    static func isAddable(_ tool: Tool, layout: LayoutConfig) -> Bool {
         let singletons: Set<Tool> = [.filer, .git, .kit]
         if singletons.contains(tool) {
             return !layout.allPanes.contains { pane in
                 pane.tabs.contains { $0.tool == tool }
             }
         }
-        // gitDiff はメニューからは追加しない (Git ツール経由で開く)
         if tool == .gitDiff { return false }
         return true
+    }
+
+    /// `+` メニュー / Cmd+T で表示する追加可能ツール一覧
+    static func availableTools(layout: LayoutConfig) -> [Tool] {
+        Tool.allCases.filter { isAddable($0, layout: layout) }
+    }
+
+    /// 新しい Session を生成して指定 Pane に追加し、active タブにする。
+    /// PaneView の `+` メニューと AideaApp の Cmd+T で共用する。
+    static func addSession(tool: Tool, to pane: Pane, layout: LayoutConfig, registry: SessionRegistry) {
+        let instance = layout.nextSessionInstance(of: tool)
+        let _ = registry.createSession(tool: tool, instance: instance)
+        let id = SessionID(tool, instance: instance)
+        pane.tabs.append(id)
+        registry.setActiveTab(paneID: pane.id, tabIndex: pane.tabs.count - 1)
+    }
+
+    /// 指定 Pane 用のツール選択 NSMenu を screen 座標 `point` の左上に popUp 表示する。
+    /// `+` ボタンの action と AideaApp の Cmd+T 双方から呼ばれ、見た目・項目・挙動を完全一致させる。
+    static func showToolPickerMenu(at point: NSPoint, pane: Pane, layout: LayoutConfig, registry: SessionRegistry) {
+        let menu = NSMenu()
+        for tool in availableTools(layout: layout) {
+            let item = ClosureMenuItem(
+                title: tool.displayName,
+                image: NSImage(systemSymbolName: tool.systemImageName, accessibilityDescription: nil)
+            ) {
+                addSession(tool: tool, to: pane, layout: layout, registry: registry)
+            }
+            menu.addItem(item)
+        }
+        menu.popUp(positioning: nil, at: point, in: nil)
     }
 
     /// タブが空の状態のプレースホルダー
@@ -242,15 +271,6 @@ struct PaneView: View {
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    /// 新しい Session を追加 (常に新インスタンスを採番)
-    private func addSession(tool: Tool) {
-        let instance = layout.nextSessionInstance(of: tool)
-        let _ = registry.createSession(tool: tool, instance: instance)
-        let id = SessionID(tool, instance: instance)
-        pane.tabs.append(id)
-        registry.setActiveTab(paneID: pane.id, tabIndex: pane.tabs.count - 1)
     }
 
     /// タブをクローズ。全タブが閉じられた場合、このペイン自体をレイアウトツリーから取り除く。

@@ -20,6 +20,8 @@ struct AideaApp: App {
     @State private var recommendState: RecommendState
     /// Ctrl+Tab で起動する Active Session Switcher (Window レベル singleton)
     @State private var sessionSwitcher = ActiveSessionSwitcher()
+    /// Cmd+T のツール選択メニューを各ペインの「+」ボタン直下に表示するためのアンカー管理
+    @State private var tabPickerAnchor = TabPickerAnchor()
 
     init() {
         let ws = WorkspaceState()
@@ -55,6 +57,7 @@ struct AideaApp: App {
                 .environment(speechState)
                 .environment(companionStore)
                 .environment(recommendState)
+                .environment(tabPickerAnchor)
                 .onAppear {
                     registerTerminationObserver()
                     registerKeyEventMonitor()
@@ -150,32 +153,11 @@ struct AideaApp: App {
 
     // MARK: - Tab/pane keyboard actions
 
-    /// Cmd+T: タブの `+` ボタンと同じ NSMenu を現在位置にポップアップ表示する
+    /// Cmd+T: アクティブペインの `+` ボタンを押したのと完全に同じ動作を行う。
     private func newTabWithPicker() {
         guard let pane = currentPane() else { return }
-        let lay = layout
-        let reg = registry
-        let available = Tool.allCases.filter { tool in
-            if tool == .filer {
-                return !lay.allPanes.contains { $0.tabs.contains { $0.tool == .filer } }
-            }
-            return true
-        }
-        let menu = NSMenu()
-        for tool in available {
-            let item = ClosureMenuItem(
-                title: tool.displayName,
-                image: NSImage(systemSymbolName: tool.systemImageName, accessibilityDescription: nil)
-            ) {
-                let instance = lay.nextSessionInstance(of: tool)
-                let _ = reg.createSession(tool: tool, instance: instance)
-                let id = SessionID(tool, instance: instance)
-                pane.tabs.append(id)
-                reg.setActiveTab(paneID: pane.id, tabIndex: pane.tabs.count - 1)
-            }
-            menu.addItem(item)
-        }
-        menu.popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
+        let point = tabPickerAnchor.bottomRightScreenPoint(for: pane.id) ?? NSEvent.mouseLocation
+        PaneView.showToolPickerMenu(at: point, pane: pane, layout: layout, registry: registry)
     }
 
     /// Cmd+W: 現在アクティブなタブを閉じる (メニュー経由)
@@ -453,26 +435,6 @@ struct AideaApp: App {
         ) { _ in
             saveAction()
         }
-    }
-}
-
-/// クロージャを保持する NSMenuItem。Cmd+T のツール選択メニュー等で使う。
-private final class ClosureMenuItem: NSMenuItem {
-    private let handler: () -> Void
-
-    init(title: String, image: NSImage?, handler: @escaping () -> Void) {
-        self.handler = handler
-        super.init(title: title, action: #selector(invoke), keyEquivalent: "")
-        self.target = self
-        self.image = image
-    }
-
-    required init(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-
-    @objc private func invoke() {
-        handler()
     }
 }
 
