@@ -363,10 +363,8 @@ final class SessionRegistry {
             }.sessionFocusCleanup(gitState))
         case .gitDiff:
             let diffState = session.state as! GitDiffSessionState
-            return AnyView(VStack(spacing: 0) {
-                GitDiffSessionView(state: diffState)
-                ScenePromptsEditorView(scene: diffState.currentScene() ?? "gitDiff", defaults: diffState.recommendedPrompts())
-            }.sessionFocusCleanup(diffState))
+            return AnyView(GitDiffSessionContainer(state: diffState, sessionID: id)
+                              .sessionFocusCleanup(diffState))
         }
     }
 

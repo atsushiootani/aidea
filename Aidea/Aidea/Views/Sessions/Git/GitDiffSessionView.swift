@@ -316,3 +316,33 @@ struct GitDiffSessionView: NSViewRepresentable {
         webView.loadHTMLString(html, baseURL: nil)
     }
 }
+
+/// `GitDiffSessionView` を VStack で包み、SwiftUI ライフサイクル経由で focus の取り直しを行うラッパ。
+///
+/// GitDiff は WKWebView を使うため、初回 `setView` 経由で発火する `makeFirstResponder` が
+/// view の NSWindow attach 完了前に走って空振りすることがある (新規 GitDiff 作成 + 即アクティブ化
+/// のケース)。`PreviewSessionView` が `.task` 内で `reactivateCurrentSession()` を呼んで focus を
+/// 取り直しているのと同じパターンを GitDiff にも適用し、view が hierarchy に乗った直後の安全網にする。
+struct GitDiffSessionContainer: View {
+    let state: GitDiffSessionState
+    let sessionID: SessionID
+    @Environment(SessionRegistry.self) private var registry
+
+    var body: some View {
+        VStack(spacing: 0) {
+            GitDiffSessionView(state: state)
+            ScenePromptsEditorView(scene: state.currentScene() ?? "gitDiff",
+                                   defaults: state.recommendedPrompts())
+        }
+        .onAppear {
+            // WKWebView の attach 完了を待つため次の runloop で reactivate を発火。
+            // 自分がアクティブ Session のままなら focusBridge.activate() が再度呼ばれ、
+            // setView 済の view に対して makeFirstResponder が走る (Preview .task と同パターン)。
+            DispatchQueue.main.async {
+                if registry.activeSessionID == sessionID {
+                    registry.reactivateCurrentSession()
+                }
+            }
+        }
+    }
+}
