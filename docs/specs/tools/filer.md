@@ -12,8 +12,6 @@ impacts: []
 conventions:
   - docs/LAYOUT.md
 last_updated: 2026-04-22
-related_issues:
-  - "#13"
 ---
 
 # Tool 仕様: Filer
