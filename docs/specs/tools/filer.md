@@ -11,7 +11,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-20
+last_updated: 2026-04-22
 ---
 
 # Tool 仕様: Filer
@@ -209,74 +209,6 @@ DerivedData
 ### 編集
 
 [editExcludeRules](#editexcluderules--除外ルールを編集) を参照。
-
----
-
-## 受け入れ基準 (Acceptance Criteria)
-
-### openSelectedInPreview
-- [x] ファイル選択中に Enter → Preview Session が開く
-- [x] ディレクトリ選択中に Enter → 展開/折りたたみ
-- [x] 複数選択中にファイルのみすべて Preview で開かれる
-- [x] 選択なしで Enter → 何も起きない
-
-### renameSelected
-- [x] 単一選択時、ダイアログが現在名プリセットで開く
-- [x] 同名があれば赤字エラー + OK 無効化
-- [x] 自分自身の名前はエラーにならない
-- [x] 確定で moveItem、成功後に新位置にフォーカス
-- [x] Esc でキャンセル
-- [x] projectRoot 自身は変更不可
-- [x] 複数選択時は no-op
-
-### createFile / createDirectory
-- [x] ダイアログが空の入力で開く
-- [x] Enter で入力名のファイル/ディレクトリを作成
-- [x] Esc でキャンセル (何も作られない)
-- [x] 空入力での確定はキャンセル扱い
-- [x] 同名時は赤字エラー + OK 無効化
-- [x] 作成後、新ノードにフォーカス
-
-### deleteSelected
-- [x] 選択に応じた確認ダイアログが表示される (単一/複数)
-- [x] OK でゴミ箱へ移動される
-- [x] Esc / キャンセルで何も起きない
-- [x] ディレクトリは配下ごと削除される旨を明示
-- [x] 削除後に該当 Preview タブが自動で閉じる
-- [x] projectRoot は削除されない
-
-### moveByDragAndDrop
-- [x] ノードをドラッグして別ディレクトリにドロップで移動される
-- [x] ファイルノードにドロップすると親ディレクトリに移動する
-- [x] 同一親へのドロップは no-op
-- [x] 自身/配下へのドロップは禁止
-- [x] 同名がある場合、上書き確認ダイアログが出る
-- [x] 複数選択ノードを一括で移動できる
-- [x] projectRoot はドラッグできない
-- [x] 移動後に FSEvents でツリーが更新され、新位置にフォーカス
-
-### searchByName
-- [x] Cmd+F で検索バーが現れてフォーカス
-- [x] 入力のたびにフィルタが効く (incremental)
-- [x] マッチ文字がハイライト表示される
-- [x] マッチ結果の親ディレクトリが展開された状態で表示される
-- [x] Esc (検索フィールド / ファイラ本体 どちらでも) で閉じる
-- [x] 検索中 Enter → Preview で開ける
-
-### showContextMenu
-- [x] 右クリックでメニューが出る
-- [x] クリック位置の行が未選択なら選択してから表示
-- [x] 選択状態に応じて項目の有効/無効が切り替わる
-- [ ] メニュー末尾に「除外ルール設定...」が表示される
-
-### editExcludeRules / 除外ルール
-- [ ] 設定ダイアログが現在の除外ルール (改行区切り) で開く
-- [ ] OK で `excludeRules` が更新され、Filer 表示と検索の両方が即座に再評価される
-- [ ] Cancel で何も変更されない
-- [ ] 「デフォルトに戻す」ボタンで除外リストがデフォルトに戻る
-- [ ] 除外ルールは `workspace.json` (v4) に保存され、再起動後も復元される
-- [ ] basename パターン (`node_modules`) と path パターン (`.claude/worktrees`) と glob (`*.swp`) がそれぞれ意図通り動く
-- [ ] 表示で除外されたエントリは検索でもヒットしない (完全一致)
 
 ---
 

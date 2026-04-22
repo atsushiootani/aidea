@@ -13,7 +13,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-21
+last_updated: 2026-04-22
 ---
 
 # Tool 仕様: Preview
@@ -152,26 +152,6 @@ Obsidian の drawio プラグインと同等の UX を目指す。
 | **Ctrl + P / N / F / B / V / Z** | テキスト/Markdown 表示時はスクロール、drawio は drawio 側に任せる |
 | **Cmd + E** | drawio ファイル表示時に編集モードへトグル |
 | **Esc** | drawio 編集モードをキャンセルしてプレビューへ戻る |
-
----
-
-## 受け入れ基準 (Acceptance Criteria)
-
-### 既存 (実装済)
-- [x] テキストファイルを NSTextView で表示
-- [x] 1MB 超 / バイナリは警告表示
-- [x] 画像ファイルを NSImage で表示
-- [x] `.md` ファイルを Markdown としてレンダリング
-
-### drawio (実装済)
-- [x] `.drawio.svg` ファイルを Preview Session で開くと静的な図が表示される
-- [x] 右上に `✎ Edit` ボタンが表示される
-- [x] Edit ボタン押下で drawio エディタ (embed.diagrams.net) が同じペイン内に表示される
-- [x] 既存の XML がエディタにロードされる
-- [x] エディタ上で編集できる
-- [x] 保存ボタンで元ファイルに書き戻し、プレビューモードに戻る
-- [x] キャンセルボタンで編集内容を破棄
-- [x] `.drawio` (純 XML) もサポート (`DrawioStaticView` が `embed.diagrams.net` chrome=0 でレンダリング)
 
 ---
 

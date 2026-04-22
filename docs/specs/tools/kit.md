@@ -1,6 +1,6 @@
 ---
 title: Tool 仕様: Kit
-description: Skills / Commands / Agents / MCPs の 4 セクションを 1 ペインで閲覧する Kit Tool 仕様
+description: Skills / Commands / Agents / MCPs の 4 セクションを 1 ペインで閲覧する Kit Tool 仕様 (Window singleton / FSEvents 自動更新)
 derived_from:
   - docs/specs/sessions/ui-rules.md
   - docs/specs/window/
@@ -10,7 +10,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-17
+last_updated: 2026-04-22
 ---
 
 # Tool 仕様: Kit
@@ -27,9 +27,11 @@ Session 内部状態は [sessions/kit.md](../sessions/kit.md) を参照。
 ## 概要
 
 - Claude Code エコシステムの 4 種類のリソースを 1 つのペインで閲覧する Tool
+- **Window 内 singleton**: Aidea Window に 1 つだけ存在する (Filer / Git と同等)。Tool 追加メニューから 2 個目以降は追加不可
 - **4 つのセクション**を縦並びのアコーディオン UI で表示 (すべて同時に展開可能)
 - 各セクションは折りたたみ可、ヘッダーに件数を表示
 - Skills / Commands は `~/.claude/` と `<projectRoot>/.claude/` の両方を走査し、USER / PROJECT バッジで区別
+- **FSEvents で `.claude/` 配下を監視し、外部での変更を自動反映**する (詳細: [#自動更新](#自動更新))
 - 既存の [Skills / Commands / MCPs Tool はこの Kit に統合され廃止される](#廃止される-tool)
 
 ## 廃止される Tool
@@ -77,6 +79,40 @@ Session 内部状態は [sessions/kit.md](../sessions/kit.md) を参照。
 ### searchInKit — セクション横断インクリメンタル検索 (将来)
 - Cmd+F でヘッダー上部に検索バー、全セクション横断で名前をフィルタ
 - MVP では未実装、Phase 5 で検討
+
+---
+
+## 自動更新
+
+Filer / Git と同じ `FileWatcher` (FSEvents) を使い、外部エディタでの追加・削除・内容変更を即座に Kit 表示へ反映する。手動更新ボタンは設けない。
+
+### 監視対象
+
+| パス | カバーするリソース |
+|---|---|
+| `~/.claude/` | USER スコープの Agents / Skills / Commands |
+| `<projectRoot>/.claude/` | PROJECT スコープの Agents / Skills / Commands |
+
+Kit は **Window 内 singleton** なので、watcher は Window に 1 つだけ (Filer / Git と同じ制御)。
+
+### 挙動
+
+- 監視パス配下でファイルイベントが起きたら **200ms デバウンス後に `reloadAll()`** を実行する (連続イベントで過剰 reload しないため)
+- `projectRoot` が変化したら監視対象のプロジェクトパスを差し替えて再 start する
+- Session 破棄時に watcher を stop する
+
+### `~/.claude.json` (MCP 設定) の扱い
+
+`~/.claude.json` は単一ファイルで FSEvents の直接監視が難しいため、個別 watcher は設けない。代わりに以下でカバー:
+
+- `~/.claude/` 配下の任意の変更時に `reloadAll()` が MCP もまとめて再読み込みする
+- Kit Session 活性化時 (`onAppear`) の既存 `reloadAll()` 呼び出しも維持する
+
+→ MCP だけ単独変更した場合の即時反映は見送る。実運用で問題になれば将来拡張。
+
+### FileWatcher の拡張
+
+既存の `FileWatcher.start(path:onChange:)` は単一パス前提なので、複数パスを受け付ける `start(paths:onChange:)` オーバーロードを追加する。`FSEventStreamCreate` は複数パスの配列を受け付けるため、内部変更のみで対応できる。既存呼び出し元 (Filer / Git / SpeechWatcher) は影響なし。
 
 ---
 
@@ -163,35 +199,6 @@ code-reviewer              inherit      USER
 
 ---
 
-## 受け入れ基準 (Acceptance Criteria)
-
-### 表示
-- [x] 1 つのペインに 4 セクション (AGENTS / SKILLS / COMMANDS / MCP SERVERS) が縦並びで表示される
-- [x] 各セクションヘッダーに件数が表示される
-- [x] 各セクションは折りたたみ可、初期状態で全セクション展開
-- [x] 各行に名前・ステータスバッジ・USER/PROJECT バッジが 3 カラム表示される
-- [x] Skills / Commands は USER と PROJECT の両方を 1 つのリストに混在表示し、PROJECT を後ろに並べる
-- [x] Skills / Commands は名前の `.` / `-` 前方一致でサブグループ化され、各グループが折りたたみ可能
-- [x] **スクロール時もセクションヘッダーは常に可視** (LazyVStack の pinnedViews)
-- [x] セクション間に水平区切り線
-
-### 操作
-- [x] ダブルクリックで Preview Session が開く
-- [x] Preview は `SessionRegistry.openPreview(for:title:)` 経由で生成される
-- [x] Preview タブのタイトルは項目の表示名 (例: `diagram.architecture`、`SKILL.md` ではない)
-- [x] 折りたたみ状態は SessionState に保持される (ペイン移動で失われない)
-- [ ] ↑/↓ で行選択が移動、セクション境界を越えられる (将来)
-- [ ] ←/→ で現在行のセクションを折りたたみ/展開 (将来)
-- [ ] Ctrl+P/N で ↑/↓ 相当、Ctrl+F/B で ←/→ 相当 (将来)
-
-### 廃止との両立
-- [x] `Tool.skills` / `.commands` / `.mcps` が削除される
-- [x] 既存の `SkillsSessionState` / `CommandsSessionState` / `McpsSessionState` と View が削除される
-- [x] 既存のディレクトリ (`Sessions/Skills/` など) も削除
-- [x] `LayoutConfig` の初期値から skills/commands/mcps が消え、代わりに `kit` が入る
-
----
-
 ## 実装メモ
 
 ### SessionState
@@ -256,3 +263,4 @@ Views/Sessions/Kit/KitSessionView.swift
 - Agent の `inherit` 実装詳細
 - セクション並び替え・非表示設定
 - 件数のフィルタリング (検索時)
+- `~/.claude.json` 単独変更の即時反映 (現状は他リソース変更や Kit 再活性化にピギーバック)

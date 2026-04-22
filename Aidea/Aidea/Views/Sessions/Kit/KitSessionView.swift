@@ -125,10 +125,14 @@ struct KitSessionView: View {
             // Tab: SwiftUI の標準 focus nav を止める (Git/GitDiff 等へのフォーカス漏れ防止)
             .onKeyPress(.tab) { .handled }
             .onAppear {
-                reloadAll()
+                state.ensureWatcherStarted()
+                state.reloadAll()
                 if state.isActive { isFocused = true }
             }
-            .onChange(of: workspace.projectRoot) { _, _ in reloadAll() }
+            .onChange(of: workspace.projectRoot) { _, _ in
+                state.ensureWatcherStarted()
+                state.reloadAll()
+            }
             .onChange(of: state.isActive) { _, active in
                 if active { isFocused = true }
             }
@@ -342,16 +346,6 @@ struct KitSessionView: View {
         let tags = visibleTags
         guard let idx = tags.firstIndex(of: tag), idx + 1 < tags.count else { return nil }
         return tags[idx + 1]
-    }
-
-    // MARK: - Data reload
-
-    /// 全 Loader を projectRoot で再読み込み
-    private func reloadAll() {
-        state.agentsLoader.reload(projectRoot: workspace.projectRoot)
-        state.skillsLoader.reload(projectRoot: workspace.projectRoot)
-        state.commandsLoader.reload(projectRoot: workspace.projectRoot)
-        state.mcpLoader.reload()
     }
 
     // MARK: - Grouping (Skills / Commands)
