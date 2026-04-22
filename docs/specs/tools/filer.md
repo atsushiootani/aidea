@@ -119,6 +119,30 @@ Session 内部状態は [sessions/filer.md](../sessions/filer.md) を参照。
 - **ファイル**: 親フォルダを Finder で開き、該当ファイルを選択状態にする (`NSWorkspace.shared.activateFileViewerSelecting([url])`)
 - **ディレクトリ**: そのフォルダ自体を Finder で開く (`NSWorkspace.shared.open(url)`)
 
+### copySelected — クリップボードにコピー
+- **複数選択対応**。選択中のファイル/ディレクトリを `NSPasteboard.general` に `NSPasteboard.PasteboardType.fileURL` 形式で書き込む
+- projectRoot (ルート) 自身はコピー対象から除外
+- 選択なし / projectRoot のみ選択時は NSBeep して no-op
+- macOS 標準形式で書き込むため、**Finder / 他アプリと相互運用可能** (Finder でコピー → Aidea にペースト、Aidea でコピー → Finder にペースト のどちらも可)
+- Aidea を閉じても pasteboard は OS 全体の領域なので残る
+
+### pasteFromClipboard — クリップボードから貼り付け
+- `NSPasteboard.general` から `NSPasteboard.PasteboardType.fileURL` を取得し、対象ディレクトリへ `FileManager.default.copyItem(at:to:)` で物理コピーする (ディレクトリは再帰コピー)
+- pasteboard 上に `fileURL` 形式の URL が 0 件なら NSBeep して no-op
+- **貼り付け先ディレクトリの決定ルール** ([createFile](#createfile--ファイル新規作成) と同じ):
+  - **単一選択でディレクトリ** (root 含む): そのディレクトリ内
+  - **単一選択でファイル**: その親ディレクトリ
+  - 複数選択 or 選択なし: projectRoot 直下
+- **同名衝突時のリネーム**: 末尾に `_N` を付ける (`N = 2, 3, 4, ...` と存在しない名前までインクリメント)
+  - 拡張子あり (`foo.txt`): 拡張子の前に `_N` → `foo_2.txt` / `foo_3.txt` / ...
+  - 拡張子なし (`README`): 末尾に `_N` → `README_2` / `README_3` / ...
+  - ディレクトリ (`mydir`): 末尾に `_N` → `mydir_2` / `mydir_3` / ...
+  - 判定は「貼り付け先ディレクトリにそのエントリ名のノードが存在するか」で行う (ファイル/ディレクトリの区別はしない)
+- コピー元と貼り付け先が同じディレクトリのときも同じ規則で動く (必ず衝突するのでリネームが走る)
+- 複数ファイル/ディレクトリのコピーは順に処理し、それぞれのエントリ単位で衝突判定する
+- ペースト完了後、新しく作成されたエントリ群を選択状態にフォーカスする (drag&drop / createFile と同じパターン)
+- エラー時 (権限なし / 容量不足 / コピー元が既に存在しない 等) は NSAlert で通知。1 件でも失敗した場合は `NSAlert(error:)` を上げ、成功分の選択フォーカスはそのまま適用する
+
 ### openWith — 指定のアプリケーションで開く
 - **単一選択かつ非 root のときのみ**動作 (複数選択 / 選択なし / root 選択時は NSBeep して no-op)
 - macOS 標準の「このアプリケーションで開く」と同じ **OS 由来の候補リスト**を提示する
@@ -149,6 +173,9 @@ Session 内部状態は [sessions/filer.md](../sessions/filer.md) を参照。
   - **Finder で開く** (`⌃O`) — 単一選択かつ非 root のとき有効
   - **指定のアプリケーションで開く** (`⌃A`) ▶ — 単一選択かつ非 root のとき有効 (末尾に常に「その他...」があるため候補 0 件でも有効)
   - --- (区切り線) ---
+  - **コピー** (`⌘C`) — 選択ありかつ非 root が含まれるとき有効
+  - **ペースト** (`⌘V`) — クリップボードに `fileURL` 候補があり、貼り付け先ディレクトリが決定できるとき有効
+  - --- (区切り線) ---
   - **除外ルール設定...** — `editExcludeRules` を開く
 - 各項目はキーボード操作と 1:1 対応 (除外ルール設定は KB ショートカット無し)
 
@@ -168,6 +195,8 @@ Session 内部状態は [sessions/filer.md](../sessions/filer.md) を参照。
 | **Cmd + F** | [searchByName](#searchbyname--ファイル名ディレクトリ名のインクリメンタル検索) |
 | **Ctrl + O** | [openInFinder](#openinfinder--finder-で開く) |
 | **Ctrl + A** | [openWith](#openwith--指定のアプリケーションで開く) |
+| **Cmd + C** | [copySelected](#copyselected--クリップボードにコピー) |
+| **Cmd + V** | [pasteFromClipboard](#pastefromclipboard--クリップボードから貼り付け) |
 | **Esc** | 検索バーが開いていれば閉じる (`searchByName` のキャンセル) |
 | **Shift + ↑ / ↓** | 選択範囲の拡張 (NSOutlineView 標準) |
 | **Ctrl + P / N / F / B** | Emacs ライクナビゲーション ([共通ルール](../sessions/ui-rules.md#キーボードナビゲーション-emacs-ライク) を参照)。Ctrl+V/Z (ページ送り) は Filer では無効 |
@@ -259,6 +288,9 @@ DerivedData
 - `openWith` のデフォルトアプリ解決は `NSWorkspace.shared.urlForApplication(toOpen:)` (macOS 12+) を使用
 - `openWith` の「その他...」は `NSOpenPanel` に `allowedContentTypes = [UTType.application]`, `directoryURL = /Applications` を設定して表示
 - `openWith` の右クリックサブメニューと Ctrl+A ポップアップは同一の `NSMenu` 構築関数を共用 (UI 経路のみ切替)
+- `copySelected` は `NSPasteboard.general.clearContents()` → `writeObjects(urls as [NSURL])` で書き込む
+- `pasteFromClipboard` は `NSPasteboard.general.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true])` で取得
+- 衝突リネームは `nextAvailableURL(in:baseName:extension:)` が `{base}_{N}{.ext}` を `N=2` から試し、存在しない名前が見つかるまでインクリメントして返す
 
 ---
 
@@ -270,6 +302,5 @@ DerivedData
 - fuzzy search (現状は substring マッチ)
 - 検索結果の並び順 (マッチ度順?)
 - 削除時に完全削除オプション (Shift+Backspace?)
-- 外部アプリからファイルコピー (現状は move のみ)
-- コピー&ペースト (Cmd+C / Cmd+V)
+- カット (Cmd+X) — 現状は Copy のみ。Cut は別 issue で検討
 - 複数ノードの rename (batch rename)
