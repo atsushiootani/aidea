@@ -192,4 +192,83 @@ struct SessionFocusBridgeTests {
         bridge.deactivate()
         #expect(window.firstResponder === view1, "bridge の参照が別 View に移った後は元の view を触らない")
     }
+
+    // MARK: - window 未 attach 時のリトライ
+
+    /// view が window 階層に組み込まれる前に activate された場合、
+    /// attach 完了を待ってリトライし最終的に firstResponder になる。
+    /// 新規 GitDiff Session を Tab キーで開いたときの再現 (NSHostingView 階層の組み込みが遅れる)。
+    @Test
+    func activate_beforeViewAttachedToWindow_retriesUntilAttached() async throws {
+        let view = FocusableTestView()
+        let bridge = SessionFocusBridge()
+
+        // view を window に attach しないまま setView + activate
+        bridge.setView(view)
+        bridge.activate()
+
+        // 1 tick 経過しても window が nil のためリトライが継続する
+        await drainMainQueue()
+        #expect(view.window == nil, "attach 前の状態をセットアップ")
+
+        // この時点で view を window に attach する
+        let window = makeWindow(content: view)
+
+        // attach 後、リトライが届いて firstResponder になるまで数 tick 待つ
+        for _ in 0..<10 {
+            await drainMainQueue()
+        }
+
+        #expect(window.firstResponder === view, "attach 後のリトライで firstResponder に設定される")
+    }
+
+    /// view が最後まで window に attach されなかった場合、
+    /// リトライ上限を超えた時点で諦める (runaway しない)。
+    @Test
+    func activate_viewNeverAttached_givesUpAfterRetries() async throws {
+        let view = FocusableTestView()
+        let bridge = SessionFocusBridge()
+
+        bridge.setView(view)
+        bridge.activate()
+
+        // リトライ上限を超える程度 tick を回す
+        for _ in 0..<20 {
+            await drainMainQueue()
+        }
+
+        // 後から attach してもリトライは打ち切られているため自動フォーカスしない
+        let window = makeWindow(content: view)
+        for _ in 0..<3 {
+            await drainMainQueue()
+        }
+
+        #expect(window.firstResponder !== view, "リトライ上限後は attach しても自動フォーカスしない")
+    }
+
+    /// pending 状態 (view 未設定で activate) 後に setView された view がまだ window に attach
+    /// されていない場合も、attach 完了を待ってリトライする。
+    @Test
+    func pendingActivation_resolvedByDetachedView_retriesUntilAttached() async throws {
+        let view = FocusableTestView()
+        let bridge = SessionFocusBridge()
+
+        // view 未設定で activate → pending 状態
+        bridge.activate()
+        await drainMainQueue()
+
+        // setView で pending 解消するが、view はまだ window に attach されていない
+        bridge.setView(view)
+        await drainMainQueue()
+        #expect(view.window == nil)
+
+        // この時点で view を window に attach する
+        let window = makeWindow(content: view)
+
+        for _ in 0..<10 {
+            await drainMainQueue()
+        }
+
+        #expect(window.firstResponder === view, "setView 経由の発火でも attach 待ちリトライが効く")
+    }
 }

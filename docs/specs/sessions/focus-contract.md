@@ -13,7 +13,7 @@ impacts:
   - docs/specs/sessions/ui-rules.md
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-21
+last_updated: 2026-04-22
 ---
 
 # Session フォーカス契約
@@ -89,6 +89,7 @@ final class SessionFocusBridge {
 
 - `setView(_:)` で値が更新され、かつ `pendingActivation == true` かつ新しい view が non-nil なら、その場で `makeFirstResponder` を発火して pending を解消する
 - `activate()` は `view` が nil なら `pendingActivation = true` を立てるだけで何もしない (後の `setView` で解消される)
+- `makeFirstResponder` 発火時に `view.window == nil` (SwiftUI が NSHostingView 階層へ view を組み込む前) の場合は、attach されるまで次のメインスレッドサイクルで最大 5 回までリトライする。新規 Session を Tab キー等で開いたときに、View の生成と `activate()` が同じ runloop サイクルで起き `v.window` が間に合わないケースに備える。5 回超過で諦める (runaway 防止)
 - `deactivate()` / `releaseIfOurs()` は **`window.firstResponder` が `view` 自身またはその子孫の場合だけ** `makeFirstResponder(nil)` を呼ぶ。それ以外は何もしない
 - `view` を弱参照 (`weak`) で保持し、NSView の所有は SessionState 側 (lazy property) に任せる
 
