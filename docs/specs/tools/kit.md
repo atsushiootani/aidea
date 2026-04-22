@@ -199,42 +199,6 @@ code-reviewer              inherit      USER
 
 ---
 
-## 受け入れ基準 (Acceptance Criteria)
-
-### 表示
-- [x] 1 つのペインに 4 セクション (AGENTS / SKILLS / COMMANDS / MCP SERVERS) が縦並びで表示される
-- [x] 各セクションヘッダーに件数が表示される
-- [x] 各セクションは折りたたみ可、初期状態で全セクション展開
-- [x] 各行に名前・ステータスバッジ・USER/PROJECT バッジが 3 カラム表示される
-- [x] Skills / Commands は USER と PROJECT の両方を 1 つのリストに混在表示し、PROJECT を後ろに並べる
-- [x] Skills / Commands は名前の `.` / `-` 前方一致でサブグループ化され、各グループが折りたたみ可能
-- [x] **スクロール時もセクションヘッダーは常に可視** (LazyVStack の pinnedViews)
-- [x] セクション間に水平区切り線
-
-### 操作
-- [x] ダブルクリックで Preview Session が開く
-- [x] Preview は `SessionRegistry.openPreview(for:title:)` 経由で生成される
-- [x] Preview タブのタイトルは項目の表示名 (例: `diagram.architecture`、`SKILL.md` ではない)
-- [x] 折りたたみ状態は SessionState に保持される (ペイン移動で失われない)
-- [ ] ↑/↓ で行選択が移動、セクション境界を越えられる (将来)
-- [ ] ←/→ で現在行のセクションを折りたたみ/展開 (将来)
-- [ ] Ctrl+P/N で ↑/↓ 相当、Ctrl+F/B で ←/→ 相当 (将来)
-
-### 廃止との両立
-- [x] `Tool.skills` / `.commands` / `.mcps` が削除される
-- [x] 既存の `SkillsSessionState` / `CommandsSessionState` / `McpsSessionState` と View が削除される
-- [x] 既存のディレクトリ (`Sessions/Skills/` など) も削除
-- [x] `LayoutConfig` の初期値から skills/commands/mcps が消え、代わりに `kit` が入る
-
-### Singleton / 自動更新
-- [ ] Kit は Window 全体で 1 つだけ (`PaneView.isAddable` の `singletons` に `.kit` が含まれ、Tool 追加メニューから 2 個目以降は追加不可)
-- [ ] `~/.claude/{agents,skills,commands}/` 配下のファイル追加・削除・内容変更が Kit の表示に自動反映される
-- [ ] `<projectRoot>/.claude/{agents,skills,commands}/` 配下の変更も同様に反映される
-- [ ] プロジェクトルート変更時は watcher の監視対象が新しい `<projectRoot>/.claude/` に差し替わる
-- [ ] Kit Session 破棄時に watcher が stop される
-
----
-
 ## 実装メモ
 
 ### SessionState

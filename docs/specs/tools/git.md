@@ -13,7 +13,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-17
+last_updated: 2026-04-22
 ---
 
 # Tool 仕様: Git
@@ -206,27 +206,6 @@ issue #26 では 2 つの Tool が必要:
 | シングルクリック | ファイル選択 |
 | ダブルクリック | GitDiff を別ペインの新規タブに開く |
 | 右クリック | コンテキストメニュー (将来) |
-
----
-
-## 受け入れ基準
-
-### Git ツール
-- [ ] Working Changes モードで `git diff --name-status` の結果がツリー表示される
-- [ ] PR Preview モードで `git diff main...HEAD --name-status` の結果がツリー表示される
-- [ ] セグメントピッカーでモード切替ができる
-- [ ] 変更のあるファイルだけが表示される (変更なしは非表示)
-- [ ] ファイルにステータスアイコン (M/A/D/R) が表示される
-- [ ] ダブルクリック / Enter で GitDiff が別ペインに開く
-- [ ] `.git` 配下の変更で自動更新される
-- [ ] シングルトン制約: 2 つ目の Git ツールは `+` メニューに出ない
-
-### GitDiff ツール
-- [ ] diff2html で左右分割 (side-by-side) 表示される
-- [ ] シンタックスハイライトが効く
-- [ ] ハンクごとに Discard ボタンが表示される (Working Changes から開いた場合のみ)
-- [ ] Discard → 確認ダイアログ → 変更が破棄される → diff が更新される
-- [ ] 複数ファイルの GitDiff を同時に開ける
 
 ---
 

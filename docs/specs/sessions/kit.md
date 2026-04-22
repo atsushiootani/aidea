@@ -17,7 +17,7 @@ last_updated: 2026-04-22
 `kit` Tool の Session は `KitSessionState` (`@Observable`) として状態を保持する。
 **ペイン移動で状態が失われない** ことを保証する。
 
-Tool 仕様 (UI / 操作 / 受け入れ基準) は [../tools/kit.md](../tools/kit.md) を参照。
+Tool 仕様 (UI / 操作) は [../tools/kit.md](../tools/kit.md) を参照。
 共通 UI ルールは [ui-rules.md](./ui-rules.md) を参照。
 
 ## 状態
