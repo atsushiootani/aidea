@@ -6,11 +6,12 @@ derived_from:
   - docs/decisions/0013-session-as-first-class-object.md
 syncs_with:
   - docs/specs/sessions/focus-contract.md
-  - docs/specs/window/active-session-switcher.md
+  - docs/specs/aspects/persistence.md
 impacts:
   - docs/specs/tools/filer.md
   - docs/specs/tools/preview.md
   - docs/specs/sessions/preview.md
+  - docs/specs/window/active-session-switcher.md
 conventions:
   - docs/LAYOUT.md
 last_updated: 2026-04-22

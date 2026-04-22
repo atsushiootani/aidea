@@ -6,6 +6,7 @@ derived_from:
   - docs/decisions/0014-no-ctrl-number-shortcuts.md
 syncs_with:
   - docs/specs/aspects/keybindings.md
+  - docs/specs/window/active-session-switcher.md
 impacts: []
 conventions:
   - docs/LAYOUT.md

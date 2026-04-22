@@ -61,7 +61,7 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 
 ```
 <projectRoot>/.aidea/
-├── workspace.json        # レイアウト・Session 状態・コンパニオン・レコメンドの統合スナップショット (v4)
+├── workspace.json        # レイアウト・Session 状態・コンパニオン・レコメンド・アクティブ Session 履歴の統合スナップショット (v5)
 ├── backchannels/         # Claude からのメッセージ受信ディレクトリ
 │   └── speech-*.txt      # 読み上げ対象テキスト (消費後に削除)
 ├── claude/               # Claude 起動時に読ませるリソース
