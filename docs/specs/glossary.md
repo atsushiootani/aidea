@@ -29,7 +29,7 @@ Aidea プロジェクトで使われる用語の定義。
 | **Window** | アプリの 1 ウィンドウ。Aidea は 1 Window = 1 プロジェクト |
 | **Pane** | Window 内の物理的な区画。`LayoutConfig` の `splitLeaf` / `removeLeaf` により動的に分割・削除される。境界をドラッグでリサイズ可 |
 | **Tab** | ペイン内の表示切替単位。1 つの Session を参照する。タブヘッダに表示される |
-| **TabSlot** | タブバー上の挿入位置。タブとタブの間、および両端に配置される。タブが N 個あるとき TabSlot は N+1 個存在し、ドラッグ&ドロップで Session を移動/並び替えするときの drop destination になる。ホバー時にアクセントカラーの縦線で可視化 |
+| **TabSlot** | タブバー上の挿入位置。タブとタブの間、および両端に配置される。タブが N 個あるとき TabSlot は N+1 個存在し、Session の移動/並び替え (SessionID ドロップ) に加え、Filer / Finder からファイルをドロップすると **その位置に Preview Session が新規作成**される drop destination。ホバー時にアクセントカラーの縦線で可視化 |
 | **Session** | 1 つの実体。Window 全体で一意の `SessionID` を持ち、独立した状態 (`SessionState`) を保持する。ペイン移動で状態は失われない |
 | **Tool** | 機能の種別を表す enum (`filer` / `kit` / `terminal` / `claude` / `web` / `preview` / `git` / `gitDiff`)。Tool そのものは状態を持たない。複数の Session が同じ Tool を共有しうる |
 

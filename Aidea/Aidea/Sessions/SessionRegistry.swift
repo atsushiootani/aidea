@@ -239,6 +239,31 @@ final class SessionRegistry {
         setActiveTab(paneID: pane.id, tabIndex: insertIndex)
     }
 
+    /// TabSlot へのファイル D&D から呼ばれる: ドロップされた slot 位置
+    /// (pane + index) に新規 Preview タブを挿入する。
+    /// 同じ URL の Preview が既に存在する場合は dedupe (新規作成せずアクティブ化。
+    /// slot 位置への移動は行わない)。
+    func openPreviewAtSlot(for url: URL, pane: Pane, index: Int, title: String? = nil) {
+        for p in layout.allPanes {
+            for (i, id) in p.tabs.enumerated() where id.tool == .preview {
+                if let s = session(for: id),
+                   let preview = s.state as? PreviewSessionState,
+                   preview.url == url {
+                    if let title = title { preview.title = title }
+                    setActiveTab(paneID: p.id, tabIndex: i)
+                    return
+                }
+            }
+        }
+        let instance = layout.nextSessionInstance(of: .preview)
+        let session = createSession(tool: .preview, instance: instance)
+        (session.state as? PreviewSessionState)?.url = url
+        (session.state as? PreviewSessionState)?.title = title
+        let clamped = max(0, min(index, pane.tabs.count))
+        pane.tabs.insert(session.id, at: clamped)
+        setActiveTab(paneID: pane.id, tabIndex: clamped)
+    }
+
     /// Git ツールから GitDiff を別ペインの新規タブに開く。
     /// 既に同じファイルの GitDiff が開いていればそれをアクティブ化する。
     func openGitDiff(mode: GitMode, scrollToFile: String? = nil) {

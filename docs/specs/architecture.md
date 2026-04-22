@@ -12,7 +12,7 @@ impacts:
   - docs/specs/aspects/persistence.md
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-17
+last_updated: 2026-04-22
 ---
 
 # Architecture
@@ -145,7 +145,7 @@ Views → Sessions → Services → Models
 | `SplitLayoutView` | `NSViewControllerRepresentable` | `LayoutConfig` のツリーを再帰的に `NSSplitViewController` に展開し、ツリー構造が変わるたびに root controller を差し替える |
 | `LayoutContainerViewController` | `NSViewController` | SwiftUI 側から子 `NSViewController` を丸ごと差し替えられるコンテナ (`childController` の set で旧 controller を外して新 view を貼る) |
 | `PaneView` | SwiftUI View | 1 つの物理ペインを表し、タブバー + ZStack で Session View を束ねる。分割ボタン・追加メニュー・ドラッグによるタブ移動もここ |
-| `TabSlotView` | SwiftUI View | タブ間の挿入位置を表す 8px 幅のドロップターゲット。`SessionID` をドロップすると `SessionRegistry.moveSession` を呼ぶ |
+| `TabSlotView` | SwiftUI View | タブ間の挿入位置を表す 8px 幅のドロップターゲット。`SessionID` をドロップすると `SessionRegistry.moveSession`、`fileURL` (ファイルのみ) をドロップすると `SessionRegistry.openPreviewAtSlot` を呼ぶ |
 
 - レイアウトツリー (`LayoutNode`) の構造変化は `SplitLayoutView.signature(of:)` の文字列比較で検知し、差分があるときだけ再構築する
 - 分割ディバイダ位置は `NSSplitView.autosaveName` に `Aidea.split.<node.id>` を設定して AppKit が自動保存する
