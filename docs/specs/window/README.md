@@ -8,7 +8,7 @@ impacts:
   - docs/specs/window/*
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-17
+last_updated: 2026-04-22
 ---
 
 # Window インデックス
@@ -22,3 +22,4 @@ Session 単位のルールは [../sessions/](../sessions/README.md) を参照。
 |---|---|
 | [dialogs.md](./dialogs.md) | モーダルダイアログのキー割当・破壊操作確認・バリデーション |
 | [shortcuts.md](./shortcuts.md) | グローバルショートカット (タブ・ペイン操作、ツール切替) |
+| [active-session-switcher.md](./active-session-switcher.md) | Ctrl+Tab で表示する Session 履歴切替ウィンドウ |

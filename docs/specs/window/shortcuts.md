@@ -6,10 +6,11 @@ derived_from:
   - docs/decisions/0014-no-ctrl-number-shortcuts.md
 syncs_with:
   - docs/specs/aspects/keybindings.md
+  - docs/specs/window/active-session-switcher.md
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-17
+last_updated: 2026-04-22
 ---
 
 # グローバルショートカット
@@ -30,6 +31,8 @@ Window 全体で有効なキーボードショートカット。
 | **⌘ ]** | 次のペインへ (ラップ) |
 | **⌘ ⌥ →** | 現在のペインを左右に分割 |
 | **⌘ ⌥ ↓** | 現在のペインを上下に分割 |
+| **⌃ Tab** | Active Session Switcher 表示 / 履歴を古い方へ移動。Ctrl リリースで確定 (詳細: [active-session-switcher.md](./active-session-switcher.md)) |
+| **⌃ ⇧ Tab** | Switcher 表示中、選択を新しい方へ移動 |
 
 ## ツール切替 (インスタンスの循環フォーカス)
 

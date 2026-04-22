@@ -12,6 +12,7 @@ struct WorkspaceSnapshot: Codable {
     /// v2: レイアウトを LayoutNode ツリーで保存する形式
     /// v3: companions / bindings / recommends を統合
     /// v4: Filer Tab に excludeRules を追加 (issue #68)
+    /// v5: activeSessionHistory を追加 (issue #49)
     let version: Int
     /// レイアウトツリーのルートノード
     let layoutRoot: LayoutNodeSnapshot
@@ -34,6 +35,13 @@ struct WorkspaceSnapshot: Codable {
     let companionBindings: [CompanionBinding]?
     /// Scene ごとのレコメンド設定
     let recommends: [String: SceneConfig]?
+
+    // --- v5 で追加 ---
+
+    /// アクティブ Session 切替履歴 (末尾が最新、重複排除済、最大 50 件)。
+    /// Active Session Switcher (Ctrl+Tab) の表示元データ。
+    /// v4 以前のスナップショットでは nil → 空配列扱いで apply される。
+    let activeSessionHistory: [SessionID]?
 }
 
 /// コンパニオン ↔ セッションの紐付け (永続化用)

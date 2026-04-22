@@ -13,12 +13,14 @@ syncs_with:
   - docs/specs/sessions/kit.md
   - docs/specs/sessions/preview.md
   - docs/specs/sessions/web.md
+  - docs/specs/sessions/active-session.md
   - docs/specs/tools/preview.md
+  - docs/specs/window/active-session-switcher.md
 impacts: []
 conventions:
   - docs/LAYOUT.md
   - docs/specs/aspects/README.md
-last_updated: 2026-04-20
+last_updated: 2026-04-22
 ---
 
 # Persistence (データ永続化)
@@ -59,7 +61,7 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 
 ```
 <projectRoot>/.aidea/
-├── workspace.json        # レイアウト・Session 状態・コンパニオン・レコメンドの統合スナップショット (v4)
+├── workspace.json        # レイアウト・Session 状態・コンパニオン・レコメンド・アクティブ Session 履歴の統合スナップショット (v5)
 ├── backchannels/         # Claude からのメッセージ受信ディレクトリ
 │   └── speech-*.txt      # 読み上げ対象テキスト (消費後に削除)
 ├── claude/               # Claude 起動時に読ませるリソース
@@ -80,7 +82,7 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 ### `workspace.json` (レイアウト・Session 状態・コンパニオン・レコメンド統合)
 
 - **管理**: `Services/Workspace/WorkspaceSnapshotManager.swift`
-- **フォーマット**: JSON (`version: 4`)
+- **フォーマット**: JSON (`version: 5`)
 - **保存内容**:
   - レイアウトツリー (ノード ID / 分割軸 / ペイン構造)
   - 各 Tab の状態:
@@ -92,10 +94,12 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
   - `companions`: `[{id, name, icon, initialPrompt}]` (CompanionStore から収集)
   - `companionBindings`: `[{companionID, sessionID}]` (activeSessionMap から収集)
   - `recommends`: `{scene: {prompts: [String], defaultCompanionIndex: Int}}` (RecommendStore から収集)
-- **読込**: `AideaApp.init()` で `WorkspaceSnapshotManager.load()` → `apply()` を呼び出し、レイアウト/コンパニオン/レコメンドをまとめて復元
+  - `activeSessionHistory`: `[SessionID]` — アクティブ Session 切替履歴 (末尾が最新、重複排除済、最大 50 件)。[Active Session Switcher](../window/active-session-switcher.md) の表示元 (v5 で追加)
+- **読込**: `AideaApp.init()` で `WorkspaceSnapshotManager.load()` → `apply()` を呼び出し、レイアウト/コンパニオン/レコメンド/履歴をまとめて復元
 - **保存**: アプリ終了時 / バックグラウンド化時に一括保存 (`AideaApp.registerTerminationObserver()`)
 - **v2 → v3 マイグレーション**: 読込時に `companions == nil` なら旧 `.aidea/companions.json` / `.aidea/recommends.json` を読み取って統合し、旧ファイルを削除する
 - **v3 → v4 マイグレーション**: 読込時に Filer Tab の `excludeRules == nil` ならデフォルト除外ルール ([../tools/filer.md#デフォルト除外ルール](../tools/filer.md#デフォルト除外ルール)) を設定する
+- **v4 → v5 マイグレーション**: 読込時に `activeSessionHistory == nil` なら空配列扱い (履歴なしで起動。Switcher は最初の Ctrl+Tab 以降から動作)
 
 ### `.aidea/ja/<path>` (翻訳キャッシュ)
 
