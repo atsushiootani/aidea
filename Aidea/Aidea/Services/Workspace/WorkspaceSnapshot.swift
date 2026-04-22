@@ -13,6 +13,7 @@ struct WorkspaceSnapshot: Codable {
     /// v3: companions / bindings / recommends を統合
     /// v4: Filer Tab に excludeRules を追加 (issue #68)
     /// v5: activeSessionHistory を追加 (issue #49)
+    /// v6: Filer Tab に userDecorationRules を追加 (issue #9)
     let version: Int
     /// レイアウトツリーのルートノード
     let layoutRoot: LayoutNodeSnapshot
@@ -76,12 +77,14 @@ struct WebSnapshot: Codable {
     let url: URL
 }
 
-/// Filer Session の永続化対象 (展開ディレクトリ一覧 + 除外ルール)
+/// Filer Session の永続化対象 (展開ディレクトリ一覧 + 除外ルール + ユーザデコレーション)
 struct FilerSnapshot: Codable {
     let id: SessionID
     let expandedURLs: [URL]
     /// v4 で追加。v3 以前は nil → apply 時に `FilerSessionState.defaultExcludeRules` を割り当てる
     let excludeRules: [String]?
+    /// v6 で追加。v5 以前は nil → apply 時に空配列扱い (デフォルトデコレーションのみ有効)
+    let userDecorationRules: [DecorationRule]?
 }
 
 /// Kit Session の永続化対象 (セクション・サブグループの開閉状態)

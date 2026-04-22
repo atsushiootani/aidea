@@ -22,6 +22,34 @@ final class FilerSessionState: SessionState, FocusBridgeOwner {
         ".claude/worktrees"
     ]
 
+    /// デコレーションのデフォルトルール。`userDecorationRules` の前に連結され、後勝ち合成のベースになる。
+    /// 永続化対象外 (Aidea 同梱の定数として常に最新を使う)。
+    /// 仕様: `docs/specs/tools/filer.md#デフォルトデコレーション`
+    static let defaultDecorationRules: [DecorationRule] = [
+        DecorationRule(pattern: "*",                       icon: "doc"),
+        DecorationRule(pattern: "*.swift",                 icon: "swift"),
+        DecorationRule(pattern: "*.md",                    icon: "doc.text"),
+        DecorationRule(pattern: "*.markdown",              icon: "doc.text"),
+        DecorationRule(pattern: "*.json",                  icon: "doc.badge.gearshape"),
+        DecorationRule(pattern: "*.yaml",                  icon: "doc.badge.gearshape"),
+        DecorationRule(pattern: "*.yml",                   icon: "doc.badge.gearshape"),
+        DecorationRule(pattern: "*.png",                   icon: "photo"),
+        DecorationRule(pattern: "*.jpg",                   icon: "photo"),
+        DecorationRule(pattern: "*.jpeg",                  icon: "photo"),
+        DecorationRule(pattern: "*.gif",                   icon: "photo"),
+        DecorationRule(pattern: "*.heic",                  icon: "photo"),
+        DecorationRule(pattern: "*.webp",                  icon: "photo"),
+        DecorationRule(pattern: "*.pdf",                   icon: "doc.richtext"),
+        DecorationRule(pattern: "*.zip",                   icon: "doc.zipper"),
+        DecorationRule(pattern: "*.tar",                   icon: "doc.zipper"),
+        DecorationRule(pattern: "*.gz",                    icon: "doc.zipper"),
+        DecorationRule(pattern: "*.sh",                    icon: "terminal"),
+        DecorationRule(pattern: "*.zsh",                   icon: "terminal"),
+        DecorationRule(pattern: "*.bash",                  icon: "terminal"),
+        DecorationRule(pattern: "*.drawio",                icon: "drawio"),
+        DecorationRule(pattern: "*.drawio.svg",            icon: "drawio")
+    ]
+
     let workspace: WorkspaceState
     /// View 側で参照する NSViewController (持ち回しで状態を維持する)
     let controller: FileTreeViewController
@@ -33,6 +61,10 @@ final class FilerSessionState: SessionState, FocusBridgeOwner {
     var expandedURLs: Set<URL> = []
     /// Filer 表示・検索から除外するパターン一覧 (workspace.json v4 に永続化)
     var excludeRules: [String] = FilerSessionState.defaultExcludeRules
+    /// アイコン / 行背景色のユーザ追加デコレーションルール (workspace.json v6 に永続化)
+    /// `defaultDecorationRules` の後に連結され、後勝ちで装飾を上書きする。
+    /// 仕様: `docs/specs/tools/filer.md#デコレーション`
+    var userDecorationRules: [DecorationRule] = []
     /// Filer 操作 (rename / move / delete / create / paste) のアンドゥ・リドゥ履歴。
     /// 履歴はメモリ上のみで永続化しない (Window 終了 / Session 破棄で消える)。
     /// 仕様: docs/specs/tools/filer.md#undolastoperation

@@ -61,7 +61,7 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 
 ```
 <projectRoot>/.aidea/
-├── workspace.json        # レイアウト・Session 状態・コンパニオン・レコメンド・アクティブ Session 履歴の統合スナップショット (v5)
+├── workspace.json        # レイアウト・Session 状態・コンパニオン・レコメンド・アクティブ Session 履歴の統合スナップショット (v6)
 ├── backchannels/         # Claude からのメッセージ受信ディレクトリ
 │   └── speech-*.txt      # 読み上げ対象テキスト (消費後に削除)
 ├── claude/               # Claude 起動時に読ませるリソース
@@ -82,13 +82,13 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 ### `workspace.json` (レイアウト・Session 状態・コンパニオン・レコメンド統合)
 
 - **管理**: `Services/Workspace/WorkspaceSnapshotManager.swift`
-- **フォーマット**: JSON (`version: 5`)
+- **フォーマット**: JSON (`version: 6`)
 - **保存内容**:
   - レイアウトツリー (ノード ID / 分割軸 / ペイン構造)
   - 各 Tab の状態:
     - Preview: `url` + `title`
     - Web: `url`
-    - Filer: `expandedURLs` + `excludeRules`
+    - Filer: `expandedURLs` + `excludeRules` + `userDecorationRules`
     - Kit: `expandedSections` + `expandedGroups`
   - アクティブペイン ID
   - `companions`: `[{id, name, icon, initialPrompt}]` (CompanionStore から収集)
@@ -100,6 +100,7 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 - **v2 → v3 マイグレーション**: 読込時に `companions == nil` なら旧 `.aidea/companions.json` / `.aidea/recommends.json` を読み取って統合し、旧ファイルを削除する
 - **v3 → v4 マイグレーション**: 読込時に Filer Tab の `excludeRules == nil` ならデフォルト除外ルール ([../tools/filer.md#デフォルト除外ルール](../tools/filer.md#デフォルト除外ルール)) を設定する
 - **v4 → v5 マイグレーション**: 読込時に `activeSessionHistory == nil` なら空配列扱い (履歴なしで起動。Switcher は最初の Ctrl+Tab 以降から動作)
+- **v5 → v6 マイグレーション**: 読込時に Filer Tab の `userDecorationRules == nil` なら空配列扱い (デフォルトデコレーションのみ有効)。デフォルトデコレーション ([../tools/filer.md#デフォルトデコレーション](../tools/filer.md#デフォルトデコレーション)) は永続化対象外なので、Aidea 同梱定数として常に最新を使う
 
 ### `.aidea/ja/<path>` (翻訳キャッシュ)
 
