@@ -39,6 +39,7 @@ Aidea の設計判断を 1 件ずつ記録する。フォーマットは [Michae
 | [0018](./0018-session-and-state-separation.md) | Session と SessionState を分離して保持する | 採用 |
 | [0019](./0019-all-tabs-zstack-rendering.md) | 全 Tab の SessionView を ZStack で常駐レンダリングする | 暫定 |
 | [0020](./0020-session-focus-bridge.md) | フォーカス契約を SessionState + SessionFocusBridge に委譲する | 採用 |
+| [0021](./0021-tabslot-url-drop-via-appkit-overlay.md) | TabSlot のファイル URL ドロップは AppKit overlay で受ける | 採用 |
 
 ## 状態の値
 

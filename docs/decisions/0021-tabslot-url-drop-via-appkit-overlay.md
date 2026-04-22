@@ -3,10 +3,8 @@ title: "0021: TabSlot のファイル URL ドロップは AppKit overlay で受�
 description: Filer (NSOutlineView) から TabSlot へのファイルドロップを SwiftUI の dropDestination/onDrop ではなく NSViewRepresentable + registerForDraggedTypes で受ける設計
 status: 採用
 derived_from: []
-syncs_with:
-  - docs/specs/tools/filer.md
-impacts:
-  - docs/specs/sessions/active-session.md
+syncs_with: []
+impacts: []
 replaces: []
 replaced_by: []
 conventions:

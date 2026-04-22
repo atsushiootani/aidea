@@ -7,7 +7,7 @@ import SwiftUI
 
 /// タブバー上の挿入位置を表す View (TabSlot)。
 /// 見た目は 4px の縦線 (ホバー時のみアクセントカラー)、ドロップの当たり判定は
-/// 横 12pt × 高さ 22pt で掴みやすくする。
+/// 横 8pt × 高さ 22pt。
 ///
 /// 2 種類の drop を受け付ける:
 /// - `SessionID`: 既存タブをこの slot に移動 (`SessionRegistry.moveSession`)
@@ -24,7 +24,7 @@ struct TabSlotView: View {
 
     var body: some View {
         Color.clear
-            .frame(width: 12, height: 22)
+            .frame(width: 8, height: 22)
             .overlay(
                 Rectangle()
                     .fill(isTargeted ? Color.accentColor : Color.clear)
