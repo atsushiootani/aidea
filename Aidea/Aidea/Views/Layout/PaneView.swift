@@ -203,13 +203,11 @@ struct PaneView: View {
     /// 追加メニュー (+) ボタン。シングルトン制約のある tool は条件付きで非表示。
     private var addButton: some View {
         Menu {
-            ForEach(Tool.allCases) { tool in
-                if isAddable(tool) {
-                    Button {
-                        addSession(tool: tool)
-                    } label: {
-                        Label(tool.displayName, systemImage: tool.systemImageName)
-                    }
+            ForEach(Self.availableTools(layout: layout)) { tool in
+                Button {
+                    Self.addSession(tool: tool, to: pane, layout: layout, registry: registry)
+                } label: {
+                    Label(tool.displayName, systemImage: tool.systemImageName)
                 }
             }
         } label: {
@@ -224,17 +222,32 @@ struct PaneView: View {
         .background(AddButtonAnchorView(paneID: pane.id, anchor: tabPickerAnchor))
     }
 
-    /// 指定 tool が追加可能か。シングルトン Tool はアプリ全体で 1 つだけ。
-    private func isAddable(_ tool: Tool) -> Bool {
+    /// 指定 tool が追加可能か (PaneView の `+` メニューと AideaApp の Cmd+T で共用)。
+    /// シングルトン Tool はアプリ全体で 1 つだけ。`gitDiff` は Git ツール経由でしか開かない。
+    static func isAddable(_ tool: Tool, layout: LayoutConfig) -> Bool {
         let singletons: Set<Tool> = [.filer, .git, .kit]
         if singletons.contains(tool) {
             return !layout.allPanes.contains { pane in
                 pane.tabs.contains { $0.tool == tool }
             }
         }
-        // gitDiff はメニューからは追加しない (Git ツール経由で開く)
         if tool == .gitDiff { return false }
         return true
+    }
+
+    /// `+` メニュー / Cmd+T で表示する追加可能ツール一覧
+    static func availableTools(layout: LayoutConfig) -> [Tool] {
+        Tool.allCases.filter { isAddable($0, layout: layout) }
+    }
+
+    /// 新しい Session を生成して指定 Pane に追加し、active タブにする。
+    /// PaneView の `+` メニューと AideaApp の Cmd+T で共用する。
+    static func addSession(tool: Tool, to pane: Pane, layout: LayoutConfig, registry: SessionRegistry) {
+        let instance = layout.nextSessionInstance(of: tool)
+        let _ = registry.createSession(tool: tool, instance: instance)
+        let id = SessionID(tool, instance: instance)
+        pane.tabs.append(id)
+        registry.setActiveTab(paneID: pane.id, tabIndex: pane.tabs.count - 1)
     }
 
     /// タブが空の状態のプレースホルダー
@@ -247,15 +260,6 @@ struct PaneView: View {
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    /// 新しい Session を追加 (常に新インスタンスを採番)
-    private func addSession(tool: Tool) {
-        let instance = layout.nextSessionInstance(of: tool)
-        let _ = registry.createSession(tool: tool, instance: instance)
-        let id = SessionID(tool, instance: instance)
-        pane.tabs.append(id)
-        registry.setActiveTab(paneID: pane.id, tabIndex: pane.tabs.count - 1)
     }
 
     /// タブをクローズ。全タブが閉じられた場合、このペイン自体をレイアウトツリーから取り除く。

@@ -153,28 +153,19 @@ struct AideaApp: App {
 
     // MARK: - Tab/pane keyboard actions
 
-    /// Cmd+T: タブの `+` ボタンと同じ NSMenu を現在位置にポップアップ表示する
+    /// Cmd+T: タブの `+` ボタンと同じツール一覧 (PaneView.availableTools) を NSMenu として
+    /// アクティブペインの `+` ボタン直下にポップアップ表示する。
     private func newTabWithPicker() {
         guard let pane = currentPane() else { return }
         let lay = layout
         let reg = registry
-        let available = Tool.allCases.filter { tool in
-            if tool == .filer {
-                return !lay.allPanes.contains { $0.tabs.contains { $0.tool == .filer } }
-            }
-            return true
-        }
         let menu = NSMenu()
-        for tool in available {
+        for tool in PaneView.availableTools(layout: lay) {
             let item = ClosureMenuItem(
                 title: tool.displayName,
                 image: NSImage(systemSymbolName: tool.systemImageName, accessibilityDescription: nil)
             ) {
-                let instance = lay.nextSessionInstance(of: tool)
-                let _ = reg.createSession(tool: tool, instance: instance)
-                let id = SessionID(tool, instance: instance)
-                pane.tabs.append(id)
-                reg.setActiveTab(paneID: pane.id, tabIndex: pane.tabs.count - 1)
+                PaneView.addSession(tool: tool, to: pane, layout: lay, registry: reg)
             }
             menu.addItem(item)
         }

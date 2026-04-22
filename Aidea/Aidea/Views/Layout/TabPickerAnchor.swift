@@ -36,6 +36,11 @@ final class TabPickerAnchor {
         let contentHeight = window.contentLayoutRect.height
         let windowPoint = NSPoint(x: frame.maxX, y: contentHeight - frame.maxY)
         let screenRect = window.convertToScreen(NSRect(origin: windowPoint, size: .zero))
-        return screenRect.origin
+        // Menu の background frame は + Image の vertical padding (3pt) や NSMenu の内部余白を含むため、
+        // 画面上で上方向に少し寄せて「+」アイコンとメニュー上端をピッタリくっつける。
+        return NSPoint(x: screenRect.origin.x, y: screenRect.origin.y + Self.popupYOffset)
     }
+
+    /// 「+」アイコンとメニュー上端をくっつけるための上方向オフセット (AppKit 座標系: 正で上)
+    private static let popupYOffset: CGFloat = 12
 }
