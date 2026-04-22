@@ -26,6 +26,7 @@ last_updated: 2026-04-22
 | `selectedFile` | `URL?` | 現在選択中のファイル/ディレクトリ | ✅ |
 | `expandedURLs` | `Set<URL>` | アウトライン上で展開されているノード | ✅ |
 | `excludeRules` | `[String]` | 表示・検索の除外パターン (デフォルト + ユーザ追加) | ✅ |
+| `userDecorationRules` | `[DecorationRule]` | アイコン / 行背景色のユーザ追加ルール (デフォルトの後に連結 = 後勝ち) | ✅ |
 | `undoManager` | `NSUndoManager` (ObservationIgnored) | Filer 操作 (rename / move / delete / create / paste) のアンドゥ・リドゥ履歴 | ✅ (履歴はメモリ上のみ・永続化なし) |
 | `registry` | `weak var SessionRegistry?` | Filer ダブルクリック時に Preview を開くための参照 | ✅ |
 
@@ -33,7 +34,9 @@ last_updated: 2026-04-22
 
 ## 永続化
 
-`expandedURLs` と `excludeRules` は `<projectRoot>/.aidea/workspace.json` (v4) に含めて保存される。
+`expandedURLs` / `excludeRules` / `userDecorationRules` は `<projectRoot>/.aidea/workspace.json` (v6) に含めて保存される。
+`undoManager` は永続化対象外 (アプリ終了で履歴は失われる)。
+`defaultDecorationRules` は Aidea 同梱の定数なので永続化しない。
 詳細は [../aspects/persistence.md](../aspects/persistence.md) を参照。
 
 ## シングルトン制約

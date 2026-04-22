@@ -547,12 +547,53 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
         } else {
             cell.textField?.stringValue = node.name
         }
-        let iconName = FileTreeLoader.iconName(for: node)
-        // SF Symbols で見つからなければ Assets.xcassets の named asset にフォールバック
-        // (例: `drawio` は独自アセット)
-        cell.imageView?.image = NSImage(systemSymbolName: iconName, accessibilityDescription: nil)
+        let decoration = resolveDecoration(for: node)
+        let iconName = decoration.icon ?? (node.isDirectory ? "folder" : "doc")
+        // SF Symbols で見つからなければ Assets.xcassets の named asset にフォールバック (例: `drawio`)
+        let image = NSImage(systemSymbolName: iconName, accessibilityDescription: nil)
             ?? NSImage(named: iconName)
+        cell.imageView?.image = image
+        // デコレーション色は行背景に適用するため、アイコン自体は標準色のまま (tint しない)
+        cell.imageView?.contentTintColor = nil
         return cell
+    }
+
+    /// 行背景にデコレーション色を反映する。検索ハイライトはセル側で attributedString に焼くため、
+    /// ここでは純粋に行 background の塗り (システム選択色は AppKit が上書きする) のみ担う。
+    func outlineView(_ outlineView: NSOutlineView, rowViewForItem item: Any) -> NSTableRowView? {
+        guard let node = item as? FileTreeNode else { return nil }
+        let decoration = resolveDecoration(for: node)
+        let row = DecorationRowView()
+        row.decorationBackground = DecorationColorPresets.appliedBackground(for: decoration.color)
+        return row
+    }
+
+    /// 現在のデコレーション (default + user) で指定 node の装飾を解決する。
+    /// projectRoot 自身と root 直下の特殊ノードに対するパスは `currentRoot` 相対で計算。
+    private func resolveDecoration(for node: FileTreeNode) -> DecorationMatcher.Resolved {
+        let userRules = owner?.userDecorationRules ?? []
+        let matcher = DecorationMatcher(
+            defaults: FilerSessionState.defaultDecorationRules,
+            userRules: userRules
+        )
+        // ディレクトリは defaults をスキップして "folder" 既定 (背景色は user rule のみ適用)
+        if node.isDirectory {
+            let userOnly = DecorationMatcher(defaults: [], userRules: userRules)
+            let resolved = userOnly.resolve(relativePath: relativePath(for: node.url))
+            return DecorationMatcher.Resolved(icon: resolved.icon ?? "folder", color: resolved.color)
+        }
+        return matcher.resolve(relativePath: relativePath(for: node.url))
+    }
+
+    /// projectRoot からの相対パス (先頭スラッシュ無し) を返す。currentRoot 配下でなければ basename を返す。
+    private func relativePath(for url: URL) -> String {
+        guard let root = currentRoot?.standardizedFileURL.path else { return url.lastPathComponent }
+        let target = url.standardizedFileURL.path
+        if target == root { return "" }
+        if target.hasPrefix(root + "/") {
+            return String(target.dropFirst(root.count + 1))
+        }
+        return url.lastPathComponent
     }
 
     /// 検索クエリにマッチした文字をハイライトした NSAttributedString を作る
@@ -1170,6 +1211,15 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
         excludeItem.isEnabled = true
         menu.addItem(excludeItem)
 
+        let decorationItem = NSMenuItem(
+            title: "デコレーションルール...",
+            action: #selector(contextEditDecorationRules),
+            keyEquivalent: ""
+        )
+        decorationItem.target = self
+        decorationItem.isEnabled = true
+        menu.addItem(decorationItem)
+
         return menu
     }
 
@@ -1182,6 +1232,7 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
     @objc private func contextCopy() { copySelectedAction() }
     @objc private func contextPaste() { pasteFromClipboardAction() }
     @objc private func contextEditExcludeRules() { editExcludeRulesAction() }
+    @objc private func contextEditDecorationRules() { editDecorationRulesAction() }
 
     /// 除外ルール編集ダイアログを表示し、OK で owner.excludeRules を更新して再描画する
     func editExcludeRulesAction() {
@@ -1196,6 +1247,14 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
         if isSearching {
             applySearch(searchQuery)
         }
+    }
+
+    /// デコレーションルール編集ダイアログを表示し、OK で owner.userDecorationRules を更新して再描画する
+    func editDecorationRulesAction() {
+        let current = owner?.userDecorationRules ?? []
+        guard let updated = DecorationRulesDialog.show(initial: current) else { return }
+        owner?.userDecorationRules = updated
+        outlineView.reloadData()
     }
 
     /// 指定 URL のノードにフォーカスする (明示的に再取得してから選択する)。

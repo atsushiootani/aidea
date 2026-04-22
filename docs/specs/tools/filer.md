@@ -137,6 +137,23 @@ Session 内部状態は [sessions/filer.md](../sessions/filer.md) を参照。
 - 検索中に Enter → [openSelectedInPreview](#openselectedinpreview--プレビューで開く) 相当
 - 再度 Cmd+F で検索バーの表示トグル
 
+### applyDecorations — ファイル/ディレクトリの装飾を適用
+- 各エントリのアイコン (SF Symbol) と **行全体の背景色** を [デコレーション](#デコレーション) 節のルールに従って装飾する
+- マッチングは「デフォルトデコレーション → ユーザデコレーション」を順に評価し、**後勝ち** (リスト後方ほど高優先) で `icon` と `color` を合成する
+- 検索結果のマッチハイライト (黄色背景) は背景色より優先する (重ねて表示)
+
+### editDecorationRules — デコレーションルールを編集
+- ペイン上部の歯車メニュー (除外ルールと同じ歯車) から「デコレーションルール...」ダイアログを開く
+- NSTableView ベースのエディタで、各行に **パターン** / **アイコン (SF Symbol)** / **色** の 3 列を表示
+- 行末の「+追加」で新規追加、各行の「−」で削除
+- **行を上下にドラッグして並べ替え可能** (NSTableView の D&D)。順序がマッチングの優先順位に直結し、後ろにあるルールほど高優先 (後勝ち)
+- アイコン列のセルをクリックすると **推奨 SF Symbol 10〜20 個のグリッド + 「その他...」** ポップアップを表示
+  - 「その他...」を選ぶと SF Symbol 名を文字列で直接入力できる小ダイアログを開く (`NSImage(systemSymbolName:)` で実在チェック)
+- 色列のセルをクリックすると **推奨色プリセット + 「カスタム...」** ポップアップを表示
+  - 「カスタム...」を選ぶと `NSColorPanel` から自由に色を指定できる (hex 形式で保存)
+- OK で `FilerSessionState.userDecorationRules` を更新し、即座に Filer 表示を再描画
+- 永続化される (`workspace.json` v6)
+
 ### editExcludeRules — 除外ルールを編集
 - ペイン上部の歯車ボタン (または検索バー横の設定アイコン) から「除外ルール設定...」ダイアログを開く
 - 改行区切りで複数のパターンを編集できる `NSScrollView` 内の `NSTextView`
@@ -207,7 +224,8 @@ Session 内部状態は [sessions/filer.md](../sessions/filer.md) を参照。
   - **ペースト** (`⌘V`) — クリップボードに `fileURL` 候補があり、貼り付け先ディレクトリが決定できるとき有効
   - --- (区切り線) ---
   - **除外ルール設定...** — `editExcludeRules` を開く
-- 各項目はキーボード操作と 1:1 対応 (除外ルール設定は KB ショートカット無し)
+  - **デコレーションルール...** — `editDecorationRules` を開く
+- 各項目はキーボード操作と 1:1 対応 (除外ルール設定 / デコレーションルールは KB ショートカット無し)
 
 ---
 
@@ -248,6 +266,91 @@ Session 内部状態は [sessions/filer.md](../sessions/filer.md) を参照。
 | ドラッグ&ドロップ (ディレクトリ / 空白) | [moveByDragAndDrop](#movebydraganddrop--ドラッグドロップでファイルディレクトリを移動-複数対応) |
 | ドラッグ&ドロップ (タブスロット) | [dragToTabSlot](#dragtotabslot--タブスロットへのドラッグでプレビューを開く) |
 | 右クリック | [showContextMenu](#showcontextmenu--右クリックコンテキストメニュー) |
+
+---
+
+## デコレーション
+
+ファイル/ディレクトリの **アイコン (SF Symbol)** と **行全体の背景色** を、glob パターンマッチで自由に指定する仕組み。
+
+### 適用範囲
+
+- **アイコン**: NSOutlineView セルの `imageView` に SF Symbol を表示 (`NSImage(systemSymbolName:)`)。指定がなければデフォルトデコレーション (拡張子別) のアイコンを使う
+- **背景色**: NSOutlineView 行全体に背景塗りを適用 (`NSTableRowView.backgroundColor`)。指定がなければ無装飾
+- 検索結果マッチハイライト (黄色背景) はデコレーション背景色より優先 (上に重ねて表示)
+- 選択行のシステム標準ハイライトは AppKit に任せる (デコレーション背景色は選択時に上書きされる)
+
+### パターン形式
+
+[除外ルールのパターン形式](#パターン形式) と完全に同じ glob を採用 (`*` / `?` / `<basename>` / `<path>/<...>`、大小区別、ファイル/ディレクトリ非区別)。
+ディレクトリ自身に対しても適用可能 (例: `node_modules` でディレクトリそのものを装飾)。
+
+### マッチングルール
+
+複数のルールにマッチした場合は **後勝ち** (配列の後方ほど高優先)。
+
+- 評価順: `defaultDecorationRules` → `userDecorationRules` の順に連結した 1 本の配列を上から評価
+- マッチした全ルールを順に合成し、`icon` / `color` ともに **最後にマッチしたルールの値** を使う
+  - 後ろのルールが `icon: nil` を持つ場合は前のルールの `icon` を引き継ぐ (色も同様)
+- これにより「特定ディレクトリ全体に薄い色 → さらに特定ファイルだけ強調色」のスタイルが書ける
+
+### DecorationRule 構造
+
+| 要素 | 型 | 用途 | 省略時 |
+|---|---|---|---|
+| `pattern` | String | glob パターン (除外ルール形式) | (必須) |
+| `icon` | String? | SF Symbol 名 / 一部 Asset 名 (`drawio` 等) | 前のルールの値 or 標準アイコン |
+| `color` | String? | 色名 (推奨プリセットのキー) または hex `#RRGGBB` | 前のルールの値 or 無装飾 |
+
+### 推奨 SF Symbol
+
+`DecorationIconPresets.recommended: [String]` (約 10〜20 個) を Aidea が定義。
+編集 UI のアイコン列ポップアップで先頭にグリッド表示する。
+末尾の「その他...」を選ぶと SF Symbol 名を直接タイプする小ダイアログを開き、任意の SF Symbol を指定可能 (`NSImage(systemSymbolName:)` で実在チェックして無効なら赤字表示)。
+
+候補例: `swift` / `doc.text` / `doc.richtext` / `photo` / `terminal` / `gear` / `flame` / `star` / `bolt` / `paperplane` / `leaf` / `sparkles` / `cube` / `paintbrush` / `wrench.and.screwdriver` / `book` / `chart.bar` / `globe` / `ant` / `tag`
+
+### 推奨色
+
+`DecorationColorPresets.recommended: [(name, NSColor)]` (約 10 色)。
+編集 UI の色列ポップアップで先頭にスウォッチ表示する。
+「カスタム...」を選ぶと `NSColorPanel` から自由に色を指定可能 (内部で hex 文字列に正規化して保存)。
+
+候補例: 黄 / 橙 / 赤 / ピンク / 紫 / 青 / 水色 / 緑 / 茶 / グレー
+**背景色は systemColor を `alpha 0.2` 程度に薄めて適用** (テキストの可読性を確保)。
+
+### デフォルトデコレーション
+
+現状コードの `FileTreeLoader.iconName(for:)` 拡張子マッピングを **デフォルトデコレーション (`defaultDecorationRules`)** として明示的に表現する。
+
+| パターン | アイコン (SF Symbol) | 色 |
+|---|---|---|
+| `*` (全ファイル) | `doc` | — |
+| `*.swift` | `swift` | — |
+| `*.md` / `*.markdown` | `doc.text` | — |
+| `*.json` / `*.yaml` / `*.yml` | `doc.badge.gearshape` | — |
+| `*.png` / `*.jpg` / `*.jpeg` / `*.gif` / `*.heic` / `*.webp` | `photo` | — |
+| `*.pdf` | `doc.richtext` | — |
+| `*.zip` / `*.tar` / `*.gz` | `doc.zipper` | — |
+| `*.sh` / `*.zsh` / `*.bash` | `terminal` | — |
+| `*.drawio` / `*.drawio.svg` | (Asset `drawio`) | — |
+
+ディレクトリ (`folder`) は `node.isDirectory` 判定で別途決まり、`*` フォールバック以前に適用する (= デコレーションリストに含めず実装側で先に解決)。
+
+色は全てなし (デフォルトは無装飾)。**ユーザは `userDecorationRules` を編集するだけで、デフォルト分は触らない** (Aidea 本体のアップデートで進化する)。
+
+- 管理場所 (当面): `FilerSessionState.defaultDecorationRules` — Swift 側の定数
+- 管理場所 (将来): #80 完了時に Bundle 内 `default-workspace.json` へ移管予定
+
+### 永続化
+
+各 Filer Session が **`userDecorationRules: [DecorationRule]`** (ユーザ追加分のみ) を保持し、`workspace.json` (v6) に Filer Tab の状態として保存される。
+`defaultDecorationRules` は Aidea 同梱の定数なので **永続化しない**。
+詳細は [../sessions/filer.md](../sessions/filer.md) と [../aspects/persistence.md](../aspects/persistence.md) を参照。
+
+### 編集
+
+[editDecorationRules](#editdecorationrules--デコレーションルールを編集) を参照。
 
 ---
 
@@ -324,6 +427,11 @@ DerivedData
 - `copySelected` は `NSPasteboard.general.clearContents()` → `writeObjects(urls as [NSURL])` で書き込む
 - `pasteFromClipboard` は `NSPasteboard.general.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true])` で取得
 - 衝突リネームは `nextAvailableURL(in:for:)` が `{base}_{N}{.ext}` を `N=2` から試し、存在しない名前が見つかるまでインクリメントして返す
+- デコレーション解決は `DecorationMatcher` (除外ルールの `ExcludeMatcher` と同じ glob 実装を再利用) でファイル/ディレクトリ → 適用ルール群を取り出し、後勝ちで `icon` / `color` を合成する
+- 描画は `outlineView(_:viewFor:)` で `imageView` のアイコン + tint を、`outlineView(_:rowViewForItem:)` で `NSTableRowView.backgroundColor` を設定する。`color` は hex 文字列を `NSColor` に復元したうえで `alpha 0.2` を掛けて適用する
+- `DecorationRulesDialog` は `NSTableView` ベースで、編集中は内部に `[DecorationRule]` を持ち OK 確定で `FilerSessionState.userDecorationRules` を上書きする (除外ルールと同じパターン)
+- 行 D&D 並べ替えは独自 pasteboard type `jp.ruri.aidea.decoration-row` を使い、`pasteboardWriterForRow` / `validateDrop` (`.above` のみ accept) / `acceptDrop` で `[DecorationRule]` の要素を移動する
+- 行内のアイコン / 色 ポップアップは NSAlert モーダル中でも selection event が届くよう `NSMenu.popUpContextMenu(_:with:for:)` (NSEvent ベース) で表示する。`menu.popUp(positioning:at:in:)` 経路は NSAlert モーダル下では target/action 配信が走らず handler が呼ばれないため不可
 - アンドゥは `FilerSessionState.undoManager: UndoManager` で管理。各操作 (rename / move / delete / create / paste) が成功した時点で `registerUndo(withTarget:handler:)` で逆操作を登録する。複数選択操作は `beginUndoGrouping` / `endUndoGrouping` で 1 グループにまとめる
 - Cmd+Z / Cmd+Shift+Z は **`AideaApp.registerKeyEventMonitor` の `NSEvent.addLocalMonitorForEvents` で先取り**し、active session が `filer` のときだけ `FilerSessionState.undoManager.undo()` / `redo()` を呼ぶ。SwiftUI の Edit メニューは `@Environment(\.undoManager)` を見て AppKit 側 `NSResponder.undoManager` を見ないため、`performKeyEquivalent` 段階で disabled 判定 → beep を起こされる前にイベントを横取りする必要がある
 
@@ -339,3 +447,6 @@ DerivedData
 - 削除時に完全削除オプション (Shift+Backspace?)
 - カット (Cmd+X) — 現状は Copy のみ。Cut は別 issue で検討
 - 複数ノードの rename (batch rename)
+- デコレーション編集 UI の SF Symbol ビジュアル picker (現状は推奨グリッド + 文字列入力。NSCollectionView ベースの全件検索 picker は将来 issue)
+- デコレーションのインポート / エクスポート / プロジェクト間共有
+- デコレーション色の濃淡 / 太字テキスト / アイコンサイズ等の追加スタイル要素
