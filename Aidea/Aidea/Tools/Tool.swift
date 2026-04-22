@@ -24,7 +24,7 @@ enum Tool: String, CaseIterable, Identifiable, Hashable, Codable, Sendable {
     /// タブヘッダ等に表示する人間向け名前
     var displayName: String {
         switch self {
-        case .filer:    return "Files"
+        case .filer:    return "Filer"
         case .kit:      return "Kit"
         case .terminal: return "Terminal"
         case .claude:   return "Claude"

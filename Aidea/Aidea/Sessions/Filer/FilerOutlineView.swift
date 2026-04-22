@@ -27,6 +27,8 @@ final class FilerOutlineView: NSOutlineView {
         let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
         let shift = flags.contains(.shift)
         let cmd = flags.contains(.command)
+        let ctrl = flags.contains(.control)
+        let opt = flags.contains(.option)
         let chars = (event.charactersIgnoringModifiers ?? "").lowercased()
 
         // Enter (keyCode 36) / Return (keyCode 76 on some keyboards)
@@ -64,6 +66,20 @@ final class FilerOutlineView: NSOutlineView {
         // Esc: 検索バーが開いていれば閉じる (それ以外は super に任せる)
         if event.keyCode == 53 {
             if controller.closeSearchBarIfOpen() {
+                return
+            }
+        }
+
+        // Ctrl+O: Finder で開く / Ctrl+A: 指定のアプリで開く
+        // (Emacs ナビゲーションより先に判定。Ctrl 単独修飾のときのみ反応させ、
+        //  Ctrl+Cmd / Ctrl+Shift / Ctrl+Opt 等の組み合わせは super に委ねる)
+        if ctrl, !cmd, !shift, !opt {
+            if chars == "o" {
+                controller.openInFinderAction()
+                return
+            }
+            if chars == "a" {
+                controller.openWithAction()
                 return
             }
         }
