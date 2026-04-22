@@ -1,6 +1,6 @@
 ---
 title: Session 内部状態: Kit
-description: KitSessionState の状態 (expandedSections / expandedGroups / selection) と 4 種ローダ・workspace.json 永続化
+description: KitSessionState の状態 (expandedSections / expandedGroups / selection) と 4 種ローダ・FileWatcher 自動更新・workspace.json 永続化
 derived_from:
   - docs/specs/sessions/ui-rules.md
 syncs_with:
@@ -9,7 +9,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-17
+last_updated: 2026-04-22
 ---
 
 # Session 内部状態: Kit
@@ -39,6 +39,24 @@ Tool 仕様 (UI / 操作 / 受け入れ基準) は [../tools/kit.md](../tools/ki
 | `SkillsLoader` | `~/.claude/skills/*/SKILL.md` + `<projectRoot>/.claude/skills/*/SKILL.md` |
 | `CommandsLoader` | `~/.claude/commands/*.md` + `<projectRoot>/.claude/commands/*.md` |
 | `McpLoader` | `~/.claude.json` の `mcpServers` |
+
+## 自動更新 (FileWatcher)
+
+Kit は Window singleton で、`KitSessionState` が `FileWatcher` を 1 つ保持する。外部エディタ等で `.claude/` 配下に変更が発生したら自動的に `reloadAll()` を実行する。Tool 仕様は [../tools/kit.md#自動更新](../tools/kit.md#自動更新) を参照。
+
+| プロパティ | 型 | 用途 | 永続化 |
+|---|---|---|---|
+| `watcher` | `FileWatcher` | `~/.claude/` と `<projectRoot>/.claude/` を監視 | — |
+| `reloadDebounce` | `DispatchWorkItem?` | 変更通知のデバウンス (200ms) | — |
+
+### ライフサイクル
+
+| イベント | アクション |
+|---|---|
+| Session 生成時 | `watcher.start(paths: [~/.claude, <projectRoot>/.claude])` |
+| `projectRoot` 変更時 | watcher を stop → 新しい projectRoot で再 start |
+| 変更通知 (FSEvents コールバック) | 200ms デバウンス後に `reloadAll()` |
+| Session 破棄時 | `watcher.stop()` |
 
 ## 永続化
 

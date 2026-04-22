@@ -48,7 +48,7 @@ Aidea プロジェクトで使われる用語の定義。
 | ID | 内容 | 制約 |
 |---|---|---|
 | `filer` | ファイラ (NSOutlineView ベース) | **シングルトン** (Window 全体で 1 つだけ) |
-| `kit` | Claude Code エコシステムの装備品一式 (Agents / Skills / Commands / MCPs) を 1 つのペインに束ねた Tool | — |
+| `kit` | Claude Code エコシステムの装備品一式 (Agents / Skills / Commands / MCPs) を 1 つのペインに束ねた Tool | **シングルトン** (Window 全体で 1 つだけ) |
 | `terminal` | SwiftTerm ベースの PTY ターミナル | — |
 | `claude` | Claude CLI を自動起動するターミナル + Backchannel 連携 (コンパニオンが紐付く) | — |
 | `web` | WKWebView ベースの Web ブラウザ | — |

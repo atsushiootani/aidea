@@ -221,7 +221,7 @@ struct PaneView: View {
 
     /// 指定 tool が追加可能か。シングルトン Tool はアプリ全体で 1 つだけ。
     private func isAddable(_ tool: Tool) -> Bool {
-        let singletons: Set<Tool> = [.filer, .git]
+        let singletons: Set<Tool> = [.filer, .git, .kit]
         if singletons.contains(tool) {
             return !layout.allPanes.contains { pane in
                 pane.tabs.contains { $0.tool == tool }

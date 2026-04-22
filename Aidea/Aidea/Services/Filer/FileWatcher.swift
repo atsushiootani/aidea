@@ -13,9 +13,16 @@ final class FileWatcher {
     /// 変更通知のコールバック。引数は変更があったパスの集合。
     private var onChange: ((Set<String>) -> Void)?
 
-    /// 監視を開始する。既に動いていれば一旦停止してから再開する。
+    /// 単一パスの監視を開始する。`start(paths:onChange:)` への委譲エントリ。
     func start(path: String, onChange: @escaping (Set<String>) -> Void) {
+        start(paths: [path], onChange: onChange)
+    }
+
+    /// 複数パスの監視を開始する。既に動いていれば一旦停止してから再開する。
+    /// Kit のように USER / PROJECT 両スコープを 1 watcher でまとめて監視したい用途で使う。
+    func start(paths: [String], onChange: @escaping (Set<String>) -> Void) {
         stop()
+        guard !paths.isEmpty else { return }
         self.onChange = onChange
 
         var context = FSEventStreamContext(
@@ -42,7 +49,7 @@ final class FileWatcher {
             kCFAllocatorDefault,
             callback,
             &context,
-            [path] as CFArray,
+            paths as CFArray,
             FSEventStreamEventId(kFSEventStreamEventIdSinceNow),
             0.5,
             UInt32(kFSEventStreamCreateFlagFileEvents)
