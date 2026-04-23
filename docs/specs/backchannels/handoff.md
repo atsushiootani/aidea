@@ -25,9 +25,18 @@ last_updated: 2026-04-23
 ## 概要
 
 - 送信元 Claude が `.aidea/backchannels/handoff-{timestamp}.json` を書き出す
-- Aidea が FSEvents で検知し、宛先 Companion の Claude セッションに PTY で `message` 本文を送信する
+- Aidea が FSEvents で検知し、宛先 Companion の Claude セッションに PTY で **ファイル参照メッセージ** (`.aidea/backchannels/handoff-{name}.json の作業をやってね`) を送信する
+- 受信側 Claude が handoff.md の指示に従って handoff-*.json を読み、`message` 本文を作業指示として実行する
 - 宛先セッションが未起動なら自動起動する。宛先タブはアクティブ化する
 - 送信元 Claude は書き出したら通常どおりターンを終える (待機ループを持たない)
+
+### なぜ本文を PTY に直接送らずファイル参照にするか
+
+`message` 本文が長文・改行・コードブロックを含むと、PTY ペーストでの文字化け・改行誤認・ターミナル制御文字干渉のリスクが増える。本文は backchannel (ファイル) に集約し、frontchannel (PTY) は参照通知だけにすることで:
+
+- PTY に流すテキストを固定文言の短い 1 行に抑えられる (クォート・改行・エスケープ問題を回避)
+- 受信側 Claude はファイルを読む標準操作で本文を取得するため、長文・構造化データも安全に運べる
+- ハンドオフ履歴が `.aidea/backchannels/` にファイルとして残り、監査・再実行が容易になる
 
 ---
 
@@ -37,13 +46,16 @@ last_updated: 2026-04-23
 1. 送信元 Companion の instructions.md が .aidea/claude/handoff.md を参照し、Claude がそれを読み込む
 2. 送信元 Claude が .aidea/backchannels/handoff-{timestamp}.json を書き出す
 3. Aidea が FSEvents で handoff-*.json の作成を検知
-4. HandoffWatcher が JSON をパースし、HandoffDispatcher に渡す
+4. HandoffWatcher が JSON をパースし、HandoffDispatcher に (HandoffMessage, 元ファイル URL) を渡す
 5. HandoffDispatcher:
    a. to を index 解決 (index 指定 or name 逆引き)
    b. 宛先 Companion が未起動なら自動起動 (CompanionLauncher 経由)
-   c. 宛先 ClaudeSessionState.terminalView.send(txt: message + "\r")
+   c. 宛先 ClaudeSessionState.sendMessage(".aidea/backchannels/{filename} の作業をやってね") を送信
    d. 宛先タブをアクティブ化
-6. 処理完了後、handoff-*.json を削除
+6. handoff-*.json は残す (受信側 Claude が読むため。ログとしても使う)
+7. 受信側 Claude が handoff.md の受信側セクションに従って:
+   a. 指定された handoff-*.json を読む
+   b. JSON の `message` を作業指示として解釈し、そのまま実行する
 ```
 
 ---
@@ -69,6 +81,8 @@ last_updated: 2026-04-23
 | `message` | `String` | **はい** | 宛先 Claude に送信する本文。PTY にそのまま `send(txt:)` される (末尾 `\r` は Dispatcher 側で付与) |
 
 `from` / `task` は MVP では受信時にパースするだけで UI には反映しない (将来拡張の足場)。
+
+`message` は長文・改行・コードブロックを含んでよい。PTY に直接流さず受信側 Claude がファイルから読むため、エスケープやターミナル制御文字を気にする必要はない (JSON 文字列としての正しいエスケープだけ守る)。
 
 ### ファイル名
 
@@ -105,7 +119,7 @@ name 検索のマッチ例:
 解決で得た `index` の Companion が `sessionID == nil` の場合:
 
 1. [companion.md の未起動時起動フロー](../companions/companion.md#起動フロー-claude-セッション未起動) を再利用する (`registry.createSession` → `ClaudeSessionState.companionPrompt` にセット → `store.bind`)
-2. Claude CLI の起動と `companionPrompt` の自動送信は `ClaudeSessionState.autoStartClaude` が担うため、ハンドオフ側は PTY ready を検知してから `message` を送信する
+2. Claude CLI の起動と `companionPrompt` の自動送信は `ClaudeSessionState.autoStartClaude` が担うため、ハンドオフ側は PTY ready を検知してから **ファイル参照メッセージ**を送信する
 3. PTY ready 検知は既存の `autoStartClaude` の状態監視を踏襲する (詳細は実装時に `ClaudeSessionState` と合わせて詰める)
 
 ### 自分自身宛 (`from == to`)
@@ -116,12 +130,16 @@ name 検索のマッチ例:
 
 ## Claude への指示 (.aidea/claude/handoff.md)
 
-Aidea が初回セットアップ時に Bundle からコピーするファイル (既存なら上書きしない)。本文想定:
+Aidea が初回セットアップ時に Bundle からコピーするファイル (既存なら上書きしない)。送信側・受信側の両方の挙動を明記する。本文想定:
 
 ```markdown
 # ハンドオフ機能
 
-他の Companion にタスクを受け渡したいときは、以下のファイルを書き出してね。
+## 送信側: 他の Companion にタスクを渡したいとき
+
+ユーザから「パスして」「任せて」「依頼して」「〇〇ちゃんに振って」などと指示されたときも、この機能のことを指しているよ。
+
+以下のファイルを書き出してね。
 
 .aidea/backchannels/handoff-{timestamp}.json
 
@@ -129,14 +147,14 @@ Aidea が初回セットアップ時に Bundle からコピーするファイル
 - 1 ファイル 1 ハンドオフ (追記ではなく新規作成)
 - 書き終わったら通常どおりターンを終えてよい。返信を待機するループは作らないこと
 
-## JSON スキーマ
+### JSON スキーマ
 
 | フィールド | 必須 | 意味 |
 |---|---|---|
 | `from` | いいえ | 自分の index (0..8) または name |
 | `to`   | はい   | 宛先 Companion の index (0..8) または name |
 | `task` | いいえ | 種別ラベル (例: implement / review / plan) |
-| `message` | はい | 宛先 Claude に送信する本文 |
+| `message` | はい | 宛先 Claude に送信する本文。長文・改行・コードブロック OK (JSON としての正しいエスケープだけ守る) |
 
 例 (index 指定):
 
@@ -155,6 +173,19 @@ Aidea が初回セットアップ時に Bundle からコピーするファイル
       "task": "implement",
       "message": "今日最優先の issue は #77。計画に従って実装お願い"
     }
+
+## 受信側: 「.aidea/backchannels/handoff-*.json の作業をやってね」と言われたとき
+
+Aidea から以下のような短いメッセージが届くことがあるよ。
+
+    .aidea/backchannels/handoff-20260423T162737.json の作業をやってね
+
+これは他の Companion からのハンドオフ依頼だよ。以下の手順で対応してね。
+
+1. 指定された handoff-*.json を読む
+2. `message` フィールドの内容をユーザからの指示として解釈し、そのまま作業する
+3. `from` / `task` は参考情報 (誰からのどんな種別の依頼か)。作業内容そのものは `message` に書かれている
+4. 作業後、handoff-*.json を削除する必要はない (ログとして残す)
 ```
 
 ### ファイルフォーマット
@@ -180,8 +211,8 @@ Aidea が初回セットアップ時に Bundle からコピーするファイル
 | コンポーネント | 責務 |
 |---|---|
 | **HandoffMessage** | `handoff-*.json` をデコードする Codable 構造体。`to` / `from` は `Int` / `String` どちらも受け付ける enum (`.index(Int)` / `.name(String)`) |
-| **HandoffWatcher** | FSEvents で `.aidea/backchannels/handoff-*.json` を監視し、検知時に HandoffDispatcher に投げる (SpeechWatcher と同じパターン) |
-| **HandoffDispatcher** | JSON をパース → 宛先解決 → Companion 自動起動 (必要時) → `ClaudeSessionState.terminalView.send(txt:)` → タブアクティブ化 → ファイル削除 |
+| **HandoffWatcher** | FSEvents で `.aidea/backchannels/handoff-*.json` を監視し、検知時に `(HandoffMessage, ファイル URL)` を HandoffDispatcher に投げる (SpeechWatcher と同じパターン)。ファイルは削除せず残す |
+| **HandoffDispatcher** | 宛先解決 → Companion 自動起動 (必要時) → `ClaudeSessionState.sendMessage(".aidea/backchannels/{filename} の作業をやってね")` でファイル参照メッセージを送信 → タブアクティブ化。`message` 本文は PTY に流さない (受信側 Claude がファイルから読む) |
 
 配置: `Services/Backchannel/Handoff/` ディレクトリを新設し 3 ファイルを収める。
 
@@ -215,13 +246,15 @@ Aidea が初回セットアップ時に Bundle からコピーするファイル
 ## 境界
 
 ### Always
-- handoff ファイルは送信完了後に削除する
+- handoff ファイルは残す (受信側 Claude が読むため。ログとしても使う)
+- frontchannel に流すのは固定文言のファイル参照メッセージ (`.aidea/backchannels/{filename} の作業をやってね`) 1 行だけ
 - 宛先が未起動なら自動起動してから送信する
 - 送信元が自分自身宛 (`from == to`) でも通常配送する (MVP ではループ検出しない)
 - `to` は index (Int) または name (String) の両方を受け付ける
 
 ### Never
 - 宛先 Claude セッションで待機ループを作らない (ADR 0023)
+- `message` 本文を PTY (frontchannel) 経由で直接送信しない。受信側 Claude がファイルを読む経路に統一する
 - `message` 本文を Aidea 側で加工・変換しない (Frontchannel の原則と同じ)
 - ハンドオフ履歴を `workspace.json` に永続化しない (ランタイム情報のみ)
 - 循環検出を MVP で実装しない (将来の拡張ポイント)

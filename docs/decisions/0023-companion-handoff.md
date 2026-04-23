@@ -42,11 +42,21 @@ Claude のセッション間で直接メッセージを流すのは現実的で�
 
 1. **受信**: FSEvents で `.aidea/backchannels/handoff-*.json` を監視 (既存の SpeechWatcher と同じパターン)
 2. **解釈**: JSON をデコードし、`to` フィールド (index / name) から宛先 Companion を解決
-3. **配送**: 宛先の Claude セッションが未起動なら自動起動し、`ClaudeSessionState.terminalView.send(txt:)` で `message` 本文を PTY に送信 (Frontchannel の再利用)
+3. **配送**: 宛先の Claude セッションが未起動なら自動起動し、`ClaudeSessionState.sendMessage(".aidea/backchannels/{filename} の作業をやってね")` で **ファイル参照メッセージ** を PTY に送信する (Frontchannel の再利用)。`message` 本文は PTY には流さず、受信側 Claude が handoff-*.json を読んで取得する
 4. **UI 遷移**: 宛先タブを自動アクティブ化 (既存 Frontchannel ルールと同じ)
-5. **後片付け**: 処理完了後に handoff-*.json を削除
+5. **後片付け**: handoff-*.json は残す (受信側 Claude が読むため。ハンドオフ履歴のログとしても機能)
 
 送信元 Claude 側には **待機ループを作らない**。ハンドオフを書き出したら通常どおりターンを終え、結果を待つかどうかはユーザの運用 (次ターンで質問する等) に委ねる。
+
+### なぜ Frontchannel に本文を直送せずファイル参照にするか
+
+`message` 本文が長文・改行・コードブロックを含むと、PTY ペーストでの文字化けや改行誤認・ターミナル制御文字干渉のリスクが増える。本文は backchannel (ファイル) に集約し、frontchannel (PTY) は固定文言の参照通知だけに抑える設計にすることで:
+
+- PTY に流すテキストが常に `.aidea/backchannels/handoff-{name}.json の作業をやってね` という 1 行に収まる (エスケープ・改行問題を回避)
+- 受信側 Claude はファイルを読む標準操作で本文を取得するため、構造化データや長文を安全に運べる
+- `.aidea/backchannels/` にハンドオフファイルが残り、ハンドオフ経緯を事後に参照・再実行しやすい
+
+この分離は Backchannel/Frontchannel の既存原則 (Claude → Aidea はファイル / Aidea → Claude は PTY send) を壊さず、ハンドオフ本文を「Backchannel に置いておいて、Frontchannel は通知だけ」という明確な責務で配置できる。
 
 ### 機能宣言チェーン (既存 Backchannel 規約に乗せる)
 
@@ -88,6 +98,7 @@ name 指定を許容する理由は、送信元 Claude のプロンプト文面�
 | **宛先は name のみ / index のみ** | name のみだと Companion をリネームした瞬間に壊れる。index のみだと送信元 Claude のプロンプトが「companion-3 にハンドオフ」のようにユーザにとって不自然。両方サポートして使い分けられる方が運用上柔軟 |
 | **ハンドオフを `.aidea/claude/companions/<index>/` 内に置き、Companion ごとにファイル分離** | Aidea が全 Companion ディレクトリを監視する必要があり FSEvents 設定が増える。`.aidea/backchannels/` 1 箇所に集約する既存モデルと揃える方が単純 |
 | **既存 Speech / Notify と統合した汎用 Action JSON** | backchannel.md が将来予定として挙げていた `action-*.json` と同じ粒度にする案。ただしハンドオフ固有の概念 (宛先 / message 本文) を Action 内のサブ型として扱うと、Dispatcher の分岐が複雑になる。先に Handoff を独立したメッセージ種別として実装してから、類似パターンが増えた段階で汎用化を再検討する |
+| **`message` 本文を Frontchannel に直接 PTY 送信する** | 長文・改行・コードブロック・コマンドを含む `message` を PTY に直接流すと、ペースト時の文字化け・改行誤認・ターミナル制御文字干渉が発生する。本文は Backchannel (ファイル) に集約し、Frontchannel は固定文言の参照通知だけに留める方がロバストで、構造化データを安全に運べ、監査性も高まる |
 
 ## 関連
 
