@@ -18,6 +18,7 @@ struct AideaApp: App {
     @State private var speechState: SpeechState
     @State private var companionStore: CompanionStore
     @State private var recommendState: RecommendState
+    @State private var handoffState: HandoffState
     /// Ctrl+Tab で起動する Active Session Switcher (Window レベル singleton)
     @State private var sessionSwitcher = ActiveSessionSwitcher()
     /// Cmd+T のツール選択メニューを各ペインの「+」ボタン直下に表示するためのアンカー管理
@@ -30,6 +31,7 @@ struct AideaApp: App {
         let speech = SpeechState()
         let companions = CompanionStore()
         let recommend = RecommendState()
+        let handoff = HandoffState()
         let manager = WorkspaceSnapshotManager()
 
         // 起動時に snapshot を読み込んで適用する。読み込めない場合 (Bundle テンプレも失敗) は
@@ -59,6 +61,7 @@ struct AideaApp: App {
         _speechState = State(initialValue: speech)
         _companionStore = State(initialValue: companions)
         _recommendState = State(initialValue: recommend)
+        _handoffState = State(initialValue: handoff)
     }
 
     var body: some Scene {
@@ -70,11 +73,13 @@ struct AideaApp: App {
                 .environment(speechState)
                 .environment(companionStore)
                 .environment(recommendState)
+                .environment(handoffState)
                 .environment(tabPickerAnchor)
                 .onAppear {
                     registerTerminationObserver()
                     registerKeyEventMonitor()
                     sessionSwitcher.install(registry: registry, companionStore: companionStore)
+                    startHandoff()
                 }
         }
         .commands {
@@ -399,6 +404,98 @@ struct AideaApp: App {
             DispatchQueue.main.asyncAfter(deadline: .now() + 6.0) {
                 claudeState.sendMessage(prompt)
             }
+        }
+    }
+
+    // MARK: - Handoff
+
+    /// HandoffState の監視を開始する。projectRoot が未設定なら何もしない。
+    /// 受信したハンドオフは `dispatchHandoff` が宛先解決 → Claude セッションへのファイル参照メッセージ送信を行う。
+    private func startHandoff() {
+        guard let projectRoot = workspace.projectRoot else { return }
+        let store = companionStore
+        let reg = registry
+        let lay = layout
+        let state = handoffState
+        handoffState.start(projectRoot: projectRoot) { message, url in
+            Self.dispatchHandoff(message, handoffURL: url, companionStore: store, registry: reg, layout: lay, handoffState: state)
+        }
+    }
+
+    /// ハンドオフメッセージを宛先 Companion に配送する。
+    /// PTY には `message` 本文を直接送らず、固定文言のファイル参照メッセージ
+    /// (`.aidea/backchannels/{filename} の作業をやってね`) を送る。本文は受信側 Claude が
+    /// handoff-*.json を自ら読んで取得する (docs/specs/backchannels/handoff.md)。
+    /// - 宛先が起動済みなら activateSession → sendMessage
+    /// - 未起動なら Claude セッションを生成・bind し、起動後 (≈6 秒) に sendMessage する
+    /// 宛先解決失敗時は HandoffState にエラーを通知する。
+    private static func dispatchHandoff(
+        _ message: HandoffMessage,
+        handoffURL: URL,
+        companionStore: CompanionStore,
+        registry: SessionRegistry,
+        layout: LayoutConfig,
+        handoffState: HandoffState
+    ) {
+        guard let index = resolveHandoffTarget(message.to, in: companionStore) else {
+            handoffState.reportError("ハンドオフ先が解決できません: \(describeTarget(message.to))")
+            return
+        }
+        handoffState.clearError()
+        let companion = companionStore.companion(forIndex: index)
+        let referenceMessage = ".aidea/backchannels/\(handoffURL.lastPathComponent) の作業をやってね"
+
+        // 起動済み → アクティブ化してファイル参照メッセージを送信
+        if let sessionID = companion.sessionID,
+           let session = registry.session(for: sessionID),
+           let claudeState = session.state as? ClaudeSessionState {
+            registry.activateSession(sessionID)
+            claudeState.sendMessage(referenceMessage)
+            return
+        }
+
+        // 未起動 → 起動してから Claude の起動待ち (≈6 秒) の後にファイル参照メッセージを送る
+        let instance = layout.nextSessionInstance(of: .claude)
+        let session = registry.createSession(tool: .claude, instance: instance)
+        if let claudeState = session.state as? ClaudeSessionState {
+            claudeState.companionPrompt = CompanionInstructions.loadCommand(for: index)
+            claudeState.companionIndex = index
+        }
+        companionStore.bind(index: index, sessionID: session.id)
+        if let pane = registry.activePane ?? layout.allPanes.first {
+            pane.tabs.append(session.id)
+            registry.setActiveTab(paneID: pane.id, tabIndex: pane.tabs.count - 1)
+        }
+        if let claudeState = session.state as? ClaudeSessionState {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 6.0) {
+                claudeState.sendMessage(referenceMessage)
+            }
+        }
+    }
+
+    /// HandoffMessage.Target から CompanionStore の index を解決する。
+    /// - index 指定は範囲チェックのみ
+    /// - name 指定は trim + case-insensitive の先頭マッチ
+    private static func resolveHandoffTarget(
+        _ target: HandoffMessage.Target,
+        in store: CompanionStore
+    ) -> Int? {
+        switch target {
+        case .index(let i):
+            guard i >= 0, i < store.companions.count else { return nil }
+            return i
+        case .name(let raw):
+            let needle = raw.trimmingCharacters(in: .whitespaces).lowercased()
+            guard !needle.isEmpty else { return nil }
+            return store.companions.firstIndex { $0.name.trimmingCharacters(in: .whitespaces).lowercased() == needle }
+        }
+    }
+
+    /// エラーメッセージ生成用に Target を人間可読な文字列にする
+    private static func describeTarget(_ target: HandoffMessage.Target) -> String {
+        switch target {
+        case .index(let i): return "index=\(i)"
+        case .name(let s): return "name=\"\(s)\""
         }
     }
 
