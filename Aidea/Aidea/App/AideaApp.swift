@@ -44,7 +44,6 @@ struct AideaApp: App {
                     index: $0,
                     name: "Companion \($0 + 1)",
                     icon: "Companions/companion-\($0 + 1)",
-                    initialPrompt: "",
                     sessionID: nil
                 )
             }
@@ -238,7 +237,7 @@ struct AideaApp: App {
             let instance = layout.nextSessionInstance(of: .claude)
             let session = registry.createSession(tool: .claude, instance: instance)
             if let state = session.state as? ClaudeSessionState {
-                state.companionPrompt = companion.initialPrompt
+                state.companionPrompt = CompanionInstructions.loadCommand(for: index)
                 state.companionIndex = index
             }
             companionStore.bind(index: index, sessionID: session.id)
@@ -387,7 +386,7 @@ struct AideaApp: App {
         let instance = layout.nextSessionInstance(of: .claude)
         let session = registry.createSession(tool: .claude, instance: instance)
         if let claudeState = session.state as? ClaudeSessionState {
-            claudeState.companionPrompt = companion.initialPrompt
+            claudeState.companionPrompt = CompanionInstructions.loadCommand(for: index)
             claudeState.companionIndex = index
         }
         companionStore.bind(index: index, sessionID: session.id)

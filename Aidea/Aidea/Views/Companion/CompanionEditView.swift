@@ -5,10 +5,12 @@
 
 import SwiftUI
 
-/// コンパニオンの編集シート。名前、初期プロンプト、自動起動の設定。
+/// コンパニオンの編集シート。名前と「指示書を開く」ボタンを持つ。
+/// 初期プロンプト本文は v8 以降ファイル化されたため、本シートでは編集せず Preview セッションに委譲する (ADR 0022)。
 struct CompanionEditView: View {
     @State var companion: CompanionConfig
     let onSave: (CompanionConfig) -> Void
+    let onOpenInstructions: () -> Void
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -35,15 +37,19 @@ struct CompanionEditView: View {
                     .textFieldStyle(.roundedBorder)
             }
 
-            // 初期プロンプト
+            // 指示書 (instructions.md を Preview セッションで開く)
             VStack(alignment: .leading, spacing: 4) {
-                Text("初期プロンプト")
+                Text("指示書")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                TextEditor(text: $companion.initialPrompt)
-                    .font(.system(size: 12, design: .monospaced))
-                    .frame(height: 120)
-                    .border(Color.secondary.opacity(0.3))
+                Button {
+                    onOpenInstructions()
+                    dismiss()
+                } label: {
+                    Label("instructions.md を開く", systemImage: "doc.text")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .help(".aidea/claude/companions/\(companion.index)/instructions.md を Preview タブで開きます")
             }
 
             // ボタン
