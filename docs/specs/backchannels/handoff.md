@@ -60,9 +60,29 @@ last_updated: 2026-04-23
    d. 宛先タブをアクティブ化
 7. handoff-*.json は残す (受信側 Claude が読むため + 作業履歴として、ADR 0024)
 8. 受信側 Claude が handoff.md の受信側セクションに従って:
-   a. 指定された handoff-*.json を読む
-   b. JSON の `message` を作業指示として解釈し、そのまま実行する
+   a. speech 機能が有効 (.aidea/claude/speech.md を読み込んでいる) なら、
+      handoff-*.json を読む前に acknowledge 用の speech-*.txt を書き出す (即応サイン)
+      → Aidea の SpeechWatcher が検知して VOICEVOX で読み上げ → ユーザは即座に
+      ハンドオフが宛先 Companion に届いたことを音で確認できる
+   b. 指定された handoff-*.json を読む
+   c. JSON の `message` を作業指示として解釈し、そのまま実行する
+   d. 作業完了時、通常どおりレスポンス末尾で要約 speech を書き出す (既存の speech フロー)
 ```
+
+### 受信時の即応 acknowledge (issue #108)
+
+受信側 Claude がハンドオフ依頼を受け取ったタイミングで、作業着手前に短い「〇〇ちゃんが確かに受け取ったよ！」を読み上げさせる (〇〇 = 自分の Companion 名)。目的:
+
+- ユーザがハンドオフ先 Companion の Claude が気付いたことを **音で即座に確認** できる
+- **名前が入ることで「どの Companion が受け取ったか」まで同時に識別** できる (複数 Companion 並列時)
+- 長文の `message` を Read ツールで読む間の無音時間が埋まり、体感レスポンスが向上する
+- 作業開始 / 完了のサインが音で区切られ、複数 Companion の並列稼働時に状況把握が楽になる
+
+**文言は「<自分の名前>ちゃんが確かに受け取ったよ！」** とする。名前の取得元は `.aidea/workspace.json` の `companions[<自分のN>].name`。名前が `-chan` / `ちゃん` で終わっている場合はその部分を除去してから「ちゃん」を付けることで重複を避ける。読み上げやすさのため英語名はカタカナ化してよい (例: `main-chan` → 「メインちゃんが確かに受け取ったよ！」、`Companion 4` → 「コンパニオンヨンちゃんが確かに受け取ったよ！」)。
+
+**speech 機能が無効な Companion は書き出さない**。受信側 Claude が `.aidea/claude/speech.md` を読んでいない (= 機能宣言チェーン上 speech 機能を持たない) 場合は acknowledge も出さない。
+
+Aidea 側の実装変更は **不要**。完全に `.aidea/claude/handoff.md` の受信側セクションの指示書テキストだけで実装する。
 
 ---
 
@@ -195,10 +215,15 @@ Aidea から以下のような短いメッセージが届くことがあるよ�
 
 これは他の Companion からのハンドオフ依頼だよ。以下の手順で対応してね。
 
-1. 指定された handoff-*.json を読む
-2. `message` フィールドの内容をユーザからの指示として解釈し、そのまま作業する
-3. `from` / `task` は参考情報 (誰からのどんな種別の依頼か)。作業内容そのものは `message` に書かれている
-4. 作業後、handoff-*.json を削除しないでね (ログとして残す)
+1. (speech 機能を有効化している場合のみ) ハンドオフに気付いたサインとして、
+   handoff-*.json を読む前に自分の .aidea/backchannels/<自分のN>/speech-{timestamp}.txt に
+   「<自分の名前>ちゃんが確かに受け取ったよ！」を書き出す (即応 acknowledge、issue #108)。
+   自分の名前は `.aidea/workspace.json` の `companions[<自分のN>].name` から取得。
+   名前末尾の `-chan` / `ちゃん` は除去し、読み上げやすいようカタカナ化 (例: `main-chan` → 「メインちゃんが確かに受け取ったよ！」)
+2. 指定された handoff-*.json を読む
+3. `message` フィールドの内容をユーザからの指示として解釈し、そのまま作業する
+4. `from` / `task` は参考情報 (誰からのどんな種別の依頼か)。作業内容そのものは `message` に書かれている
+5. 作業後、handoff-*.json を削除しないでね (ログとして残す)
 ```
 
 ### ファイルフォーマット
