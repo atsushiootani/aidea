@@ -34,9 +34,32 @@ final class ClaudeSessionState: SessionState, FocusBridgeOwner {
     /// `companionPrompt` と同じ経路で createSession / スナップショット復元時にセットされる。
     var companionIndex: Int?
 
-    /// Frontchannel: Claude セッションにメッセージを送信する
+    /// PTY 起動 + claude コマンド送信 + companionPrompt 送信/Enter が完了し、
+    /// Frontchannel (`sendMessage`) からの入力を受け付け可能になったか。
+    /// `autoStartClaude` のシーケンスが終わるタイミングで true に遷移する。
+    /// 呼び出し側は `sendMessageWhenReady` を使えば ready まで自動で待機する。
+    var isReady: Bool = false
+
+    /// 保留中の送信メッセージ (isReady=false の間に `sendMessageWhenReady` で積まれる)
+    @ObservationIgnored private var pendingMessages: [String] = []
+
+    /// Frontchannel: Claude セッションにメッセージを送信する。ready 判定は行わないため
+    /// 起動直後に呼ぶと TUI 初期化中で取りこぼされる可能性がある。Claude 起動シーケンス完了を
+    /// 待ってから送りたい場合は `sendMessageWhenReady` を使う。
     func sendMessage(_ message: String) {
         terminalView.send(txt: message + "\r")
+    }
+
+    /// Claude 起動シーケンス完了 (isReady=true) を待ってから `sendMessage` を呼ぶ。
+    /// - 既に ready なら即送信
+    /// - まだ準備中なら `pendingMessages` に積み、`autoStartClaude` の最終ステップで flush される
+    /// 呼び出し側は固定 asyncAfter で待つ必要がなくなり、Claude 側 TUI 初期化時間の変動にも追従できる。
+    func sendMessageWhenReady(_ message: String) {
+        if isReady {
+            sendMessage(message)
+        } else {
+            pendingMessages.append(message)
+        }
     }
 
     /// レコメンドモード用の Scene 識別子を返す。Companion ごとに Scene を分ける。
@@ -102,12 +125,20 @@ final class ClaudeSessionState: SessionState, FocusBridgeOwner {
     /// 固定パターンで、Claude が Read ツールで本体を取りに行く (ADR 0022)。
     /// send() は PTY へのキー入力なので、ユーザーが手で打ったのと同等。
     /// (ADR 0008 の非対話シェル問題を回避)
+    /// 起動シーケンス完了時に `isReady = true` にし、`pendingMessages` を flush する。
     private func autoStartClaude(terminal: PersistentTerminalView) {
         let prompt = companionPrompt
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             terminal.send(txt: "claude\n")
         }
-        guard let prompt, !prompt.isEmpty else { return }
+        guard let prompt, !prompt.isEmpty else {
+            // companionPrompt が無い場合は claude コマンド送信後すぐ ready とみなす。
+            // 0.3s の余裕は PTY が claude 起動 (TUI 描画開始) を完了する目安。
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.3) { [weak self] in
+                self?.markReady()
+            }
+            return
+        }
         // 本文と Enter を分離して送る。
         // Claude Code (Ink 製 TUI) は bracketed paste を有効にしており、
         // 本文と \r を一度に送ると \r も paste の一部とみなされ submit されないため、
@@ -117,6 +148,22 @@ final class ClaudeSessionState: SessionState, FocusBridgeOwner {
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 5.3) {
             terminal.send(txt: "\r")
+        }
+        // Enter 送信後 0.7s で ready とみなし、待機中の sendMessage を flush する。
+        // 0.7s は従来 dispatchHandoff / sendRecommendedPrompt が使っていた固定遅延 6.0s と
+        // 等価 (5.3 + 0.7 = 6.0) で、過去実績値を温存しつつ仕組みを「状態遷移ベース」に置き換える。
+        DispatchQueue.main.asyncAfter(deadline: .now() + 6.0) { [weak self] in
+            self?.markReady()
+        }
+    }
+
+    /// isReady を true にし、保留中のメッセージを順次 sendMessage で flush する。
+    private func markReady() {
+        isReady = true
+        let messages = pendingMessages
+        pendingMessages.removeAll()
+        for message in messages {
+            sendMessage(message)
         }
     }
 }

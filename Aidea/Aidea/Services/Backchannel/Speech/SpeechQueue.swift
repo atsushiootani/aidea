@@ -10,10 +10,12 @@ import Observation
 /// テキストをキューに積み、VOICEVOX で順番に音声再生するキュー。
 @Observable
 final class SpeechQueue: NSObject, AVAudioPlayerDelegate {
-    /// キュー要素: 本文と (任意の) スピーカーID
+    /// キュー要素: 本文と (任意の) スピーカーID、送信元 Companion index
     private struct Item {
         let text: String
         let speakerId: Int?
+        /// 送信元 Companion の index (0..8)。現在 UI で使っていないが、将来の発言バッジ表示等の足場
+        let companionIndex: Int?
     }
 
     var isSpeaking: Bool = false
@@ -24,8 +26,9 @@ final class SpeechQueue: NSObject, AVAudioPlayerDelegate {
 
     /// テキストをキューに追加する。再生中でなければ即座に再生開始。
     /// speakerId が nil の場合は VoicevoxService のデフォルトスピーカーを使用する。
-    func enqueue(_ text: String, speakerId: Int? = nil) {
-        queue.append(Item(text: text, speakerId: speakerId))
+    /// companionIndex は送信元 Companion (0..8)。読み上げ自体には使わないが足場として受け取る。
+    func enqueue(_ text: String, speakerId: Int? = nil, companionIndex: Int? = nil) {
+        queue.append(Item(text: text, speakerId: speakerId, companionIndex: companionIndex))
         processNext()
     }
 

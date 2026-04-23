@@ -13,7 +13,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-20
+last_updated: 2026-04-23
 ---
 
 # Tool 仕様: Claude
@@ -63,8 +63,9 @@ Backchannel の詳細は [backchannels/backchannel.md](../backchannels/backchann
 ```
 1. zsh -c "cd '{projectRoot}' && exec zsh -l" で対話シェルを起動
 2. 1 秒後: send("claude\n") で claude を起動
-3. 5 秒後: send("{Backchannel 指示}") で本文を送信
+3. 5 秒後: send("{companionPrompt}") で Companion 指示書読み込みコマンドを送信
 4. 5.3 秒後: send("\r") で submit
+5. 6.0 秒後: isReady フラグを true にセット (Frontchannel からの sendMessage が安全に使える状態)
 ```
 
 ### 自動送信のタイミング
@@ -73,26 +74,29 @@ Backchannel の詳細は [backchannels/backchannel.md](../backchannels/backchann
 |---------|------|------|
 | zsh 起動 | 0s | PTY プロセス開始 |
 | claude 送信 | +1.0s | `claude\n` を PTY に送信 |
-| companionPrompt 本文送信 | +5.0s | コンパニオンの `initialPrompt` 本文を PTY に送信 |
+| companionPrompt 送信 | +5.0s | `CompanionInstructions.loadCommand(for:)` が生成した固定パターン文字列 (`.aidea/claude/companions/<index>/instructions.md を読んで従ってね`) を PTY に送信 |
 | Enter 送信 | +5.3s | `\r` を送って submit させる |
+| isReady=true | +6.0s | Frontchannel (sendMessage) を受け付け可能とマーク。待機中の送信はこのタイミングで実行される |
 
 - `send()` は PTY にキー入力を送るため、対話シェル内での手入力と同等
 - ADR 0008 の非対話シェル問題を回避
-- companionPrompt が空の場合はステップ 3-4 をスキップ
+- companionPrompt が空の場合はステップ 3-4 をスキップし、isReady は `+1.3s` でセット
 - 本文と `\r` を分離するのは、Claude Code (Ink 製 TUI) が bracketed paste を有効にしており、両者を一度に送ると `\r` も paste の一部とみなされ submit されないため。本文の入力処理が終わる間 (≈0.3s) を挟む
+- v8 以降、Aidea が送るのは固定パターン文字列のみ。Claude が Read ツールで `instructions.md` 本文を取りに行く (ADR 0022)。Claude 側は `instructions.md` 冒頭から `.aidea/claude/aidea.md` / `speech.md` / `handoff.md` 等を段階的に読み込む
 
 ---
 
 ## Backchannel 連携
 
-コンパニオンの `initialPrompt` が `.aidea/claude/` 配下のファイルを読むよう指示することで Backchannel 機能を有効化する。デフォルトの `initialPrompt` は `".aidea/claude/aidea.md と .aidea/claude/speech.md を読んで従ってね"`。
+コンパニオンの `instructions.md` 内で `.aidea/claude/` 配下の機能ファイルを参照することで Backchannel 機能が有効化される (機能宣言チェーン、ADR 0022)。Aidea が起動時に送るのは `CompanionInstructions.loadCommand(for:)` が生成する固定パターン文字列のみで、本文は Claude が Read ツール経由でファイルから取得する。
 
-1. BackchannelSetup が `.aidea/claude/aidea.md` と `speech.md` を Bundle からコピー済み
-2. companionPrompt 送信により Claude がこれらのファイルを読む
-3. 以降 Claude が `.aidea/backchannels/speech-{timestamp}.txt` にレスポンス要約を書き出す
-4. Aidea の SpeechWatcher が検知して VOICEVOX で読み上げ
+1. BackchannelSetup が `.aidea/claude/aidea.md` / `speech.md` / `handoff.md` と `companions/<0..8>/instructions.md` を Bundle からコピー済み (既存ファイルは上書きしない)
+2. companionPrompt 送信により Claude が `instructions.md` を読み込む
+3. `instructions.md` の参照行に従って Claude が `aidea.md` / `speech.md` / `handoff.md` 等を段階的に読み込む (参照しない Companion はその機能を持たない)
+4. 以降 Claude が `.aidea/backchannels/<companion-index>/speech-{timestamp}.txt` や `handoff-{timestamp}.json` にメッセージを書き出す (ADR 0024)
+5. Aidea の SpeechWatcher / HandoffWatcher が検知して VOICEVOX 読み上げ / 他 Companion への配送を行う
 
-詳細は [backchannels/voicevox.md](../backchannels/voicevox.md) を参照。
+詳細は [backchannels/voicevox.md](../backchannels/voicevox.md) / [backchannels/handoff.md](../backchannels/handoff.md) を参照。
 
 ---
 
@@ -121,7 +125,7 @@ Backchannel の詳細は [backchannels/backchannel.md](../backchannels/backchann
 
 ### Always
 - 対話シェル内で `send()` により claude を起動する（非対話シェルからの exec ではない）
-- Backchannel 指示はコンパニオンの `initialPrompt` 経由で `.aidea/claude/*.md` を読むよう Claude に伝える形で行う
+- Backchannel 指示はコンパニオンの `instructions.md` 経由で `.aidea/claude/*.md` を読むよう Claude に伝える形で行う (v8 以降、ADR 0022)
 - PersistentTerminalView は Terminal ツールと共用する
 
 ### Never

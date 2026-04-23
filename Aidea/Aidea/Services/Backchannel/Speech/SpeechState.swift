@@ -19,8 +19,8 @@ final class SpeechState {
     func start(projectRoot: URL) {
         self.projectRoot = projectRoot
         BackchannelSetup.setup(projectRoot: projectRoot)
-        watcher.onSpeechFile = { [weak self] speakerId, text in
-            self?.handleSpeechText(text, speakerId: speakerId)
+        watcher.onSpeechFile = { [weak self] speakerId, companionIndex, text in
+            self?.handleSpeechText(text, speakerId: speakerId, companionIndex: companionIndex)
         }
         if isEnabled {
             watcher.start(projectRoot: projectRoot)
@@ -28,10 +28,10 @@ final class SpeechState {
         checkVoicevox()
     }
 
-    /// speech ファイルが検知された時の処理
-    private func handleSpeechText(_ text: String, speakerId: Int?) {
+    /// speech ファイルが検知された時の処理。companionIndex は将来の UI 拡張 (発言 Companion バッジ等) 用に受け取る。
+    private func handleSpeechText(_ text: String, speakerId: Int?, companionIndex: Int) {
         guard isEnabled else { return }
-        queue.enqueue(text, speakerId: speakerId)
+        queue.enqueue(text, speakerId: speakerId, companionIndex: companionIndex)
     }
 
     /// VOICEVOX の起動状態を確認してステータスを更新する

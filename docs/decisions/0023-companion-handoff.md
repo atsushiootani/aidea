@@ -4,7 +4,8 @@ description: コンパニオン間でタスクを受け渡すハンドオフ機�
 status: 提案
 derived_from: []
 syncs_with: []
-impacts: []
+impacts:
+  - docs/decisions/0024-backchannel-per-companion-archive.md
 replaces: []
 replaced_by: []
 conventions:
@@ -15,6 +16,8 @@ last_updated: 2026-04-23
 # 0023: コンパニオン間ハンドオフは Aidea オーケストレータ方式で実装する
 
 **日付**: 2026-04-23
+
+> **進化予定** (2026-04-23): 本 ADR ではハンドオフファイルを `.aidea/backchannels/` **直下** (`handoff-*.json`) に置く前提で設計していたが、[ADR 0024](./0024-backchannel-per-companion-archive.md) で **Companion 別サブディレクトリ** (`.aidea/backchannels/<from>/handoff-*.json`) に配置し `from` フィールドを必須化する仕様に更新された。以下本文中の flat パス記述 (「`.aidea/backchannels/handoff-*.json`」「`.aidea/backchannels/handoff-{timestamp}.json`」等) は ADR 0024 の配置に読み替えること。配送フロー・宛先解決・Frontchannel 再利用といった中核設計は 0024 でも維持されている。
 
 ## 背景
 
