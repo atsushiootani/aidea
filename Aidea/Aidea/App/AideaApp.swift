@@ -399,11 +399,9 @@ struct AideaApp: App {
             pane.tabs.append(session.id)
             registry.setActiveTab(paneID: pane.id, tabIndex: pane.tabs.count - 1)
         }
-        // Claude 起動完了を待ってからプロンプトを送信
+        // Claude 起動完了 (isReady) を待ってから送信。ready 前でも積んでおけば flush される。
         if let claudeState = session.state as? ClaudeSessionState {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 6.0) {
-                claudeState.sendMessage(prompt)
-            }
+            claudeState.sendMessageWhenReady(prompt)
         }
     }
 
@@ -417,21 +415,22 @@ struct AideaApp: App {
         let reg = registry
         let lay = layout
         let state = handoffState
-        handoffState.start(projectRoot: projectRoot) { message, url in
-            Self.dispatchHandoff(message, handoffURL: url, companionStore: store, registry: reg, layout: lay, handoffState: state)
+        handoffState.start(projectRoot: projectRoot) { message, url, fromIndex in
+            Self.dispatchHandoff(message, handoffURL: url, fromIndex: fromIndex, companionStore: store, registry: reg, layout: lay, handoffState: state)
         }
     }
 
     /// ハンドオフメッセージを宛先 Companion に配送する。
     /// PTY には `message` 本文を直接送らず、固定文言のファイル参照メッセージ
-    /// (`.aidea/backchannels/{filename} の作業をやってね`) を送る。本文は受信側 Claude が
-    /// handoff-*.json を自ら読んで取得する (docs/specs/backchannels/handoff.md)。
-    /// - 宛先が起動済みなら activateSession → sendMessage
-    /// - 未起動なら Claude セッションを生成・bind し、起動後 (≈6 秒) に sendMessage する
+    /// (`.aidea/backchannels/<from>/{filename} の作業をやってね`) を送る。本文は受信側 Claude が
+    /// handoff-*.json を自ら読んで取得する (docs/specs/backchannels/handoff.md, ADR 0024)。
+    /// - 宛先が起動済みなら activateSession → sendMessage (即送信)
+    /// - 未起動なら Claude セッションを生成・bind し、`sendMessageWhenReady` で起動完了時に flush させる
     /// 宛先解決失敗時は HandoffState にエラーを通知する。
     private static func dispatchHandoff(
         _ message: HandoffMessage,
         handoffURL: URL,
+        fromIndex: Int,
         companionStore: CompanionStore,
         registry: SessionRegistry,
         layout: LayoutConfig,
@@ -443,18 +442,18 @@ struct AideaApp: App {
         }
         handoffState.clearError()
         let companion = companionStore.companion(forIndex: index)
-        let referenceMessage = ".aidea/backchannels/\(handoffURL.lastPathComponent) の作業をやってね"
+        let referenceMessage = ".aidea/backchannels/\(fromIndex)/\(handoffURL.lastPathComponent) の作業をやってね"
 
-        // 起動済み → アクティブ化してファイル参照メッセージを送信
+        // 起動済み → アクティブ化して ready 状態に応じて送信 (sendMessageWhenReady は即時 or 保留を自動で選ぶ)
         if let sessionID = companion.sessionID,
            let session = registry.session(for: sessionID),
            let claudeState = session.state as? ClaudeSessionState {
             registry.activateSession(sessionID)
-            claudeState.sendMessage(referenceMessage)
+            claudeState.sendMessageWhenReady(referenceMessage)
             return
         }
 
-        // 未起動 → 起動してから Claude の起動待ち (≈6 秒) の後にファイル参照メッセージを送る
+        // 未起動 → 起動してから isReady=true を待って送信
         let instance = layout.nextSessionInstance(of: .claude)
         let session = registry.createSession(tool: .claude, instance: instance)
         if let claudeState = session.state as? ClaudeSessionState {
@@ -467,9 +466,7 @@ struct AideaApp: App {
             registry.setActiveTab(paneID: pane.id, tabIndex: pane.tabs.count - 1)
         }
         if let claudeState = session.state as? ClaudeSessionState {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 6.0) {
-                claudeState.sendMessage(referenceMessage)
-            }
+            claudeState.sendMessageWhenReady(referenceMessage)
         }
     }
 

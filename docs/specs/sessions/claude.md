@@ -30,6 +30,7 @@ Backchannel の詳細は [../backchannels/backchannel.md](../backchannels/backch
 |---|---|---|---|
 | `companionPrompt` | `String?` | 起動後 PTY に `send()` される文字列。v8 以降は `CompanionInstructions.loadCommand(for:)` で生成される固定パターン (`.aidea/claude/companions/<index>/instructions.md を読んで従ってね`) | ✅ |
 | `companionIndex` | `Int?` | 紐付く Companion の index (0…8)。Scene 識別子 `claude:<index>` および `companionPrompt` 文字列の解決に使う | ✅ |
+| `isReady` | `Bool` | `autoStartClaude` のシーケンス完了 (claude 起動 + companionPrompt 送信 + Enter) を経て Frontchannel (`sendMessage`) を受け付け可能になったかどうか。`sendMessageWhenReady` が判定に使う | — |
 | `cached` | `PersistentTerminalView?` (ObservationIgnored) | PTY + SwiftTerm 端末 View。Terminal と共用 | ✅ |
 | `terminalView` | `PersistentTerminalView` (computed) | `cached` の lazy アクセサ | — |
 
@@ -55,14 +56,16 @@ Backchannel の詳細は [../backchannels/backchannel.md](../backchannels/backch
 ```
 1. zsh -c "cd '{projectRoot}' && exec zsh -l" で対話シェルを起動
 2. +1.0s: send("claude\n") で Claude CLI を起動
-3. +5.0s: send("{companionPrompt}") でコンパニオンの initialPrompt 本文を送信
+3. +5.0s: send("{companionPrompt}") で Companion 指示書読み込みコマンドを送信 (v8 以降の固定パターン、ADR 0022)
 4. +5.3s: send("\r") で submit させる
+5. +6.0s: isReady=true。保留されていた `sendMessageWhenReady` の送信を順に flush
 ```
 
 - ステップ 3-4 は分離して送る。Claude Code (Ink 製 TUI) は bracketed paste を有効にしており、本文と `\r` を一度に送ると `\r` も paste の一部とみなされ submit されないため、本文の入力処理が終わる間 (≈0.3s) を挟んでから `\r` を送る
-- companionPrompt が空の場合はステップ 3-4 をスキップ
+- companionPrompt が空の場合はステップ 3-4 をスキップし、isReady は `+1.3s` でセット
 - v8 以降のデフォルトは `".aidea/claude/companions/<index>/instructions.md を読んで従ってね"` (`CompanionInstructions.loadCommand(for:)` が生成)。Claude が `Read` ツールで本体を読みに行き、必要に応じて `aidea.md` / `speech.md` 等を段階的開示する
 - ADR 0008 により、非対話シェルから直接 `claude` を exec せず、**対話シェル内で `send()`** する
+- ハンドオフ / レコメンドプロンプトのように起動直後に Frontchannel へ送信したい場合は、固定 asyncAfter で待たず `sendMessageWhenReady` を使う。ready=false の間は内部で積んで `+6.0s` で flush される
 
 ## コンパニオンとの紐付け
 

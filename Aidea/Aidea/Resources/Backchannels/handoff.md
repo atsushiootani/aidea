@@ -6,23 +6,28 @@
 
 以下のファイルを書き出してね。
 
-.aidea/backchannels/handoff-{timestamp}.json
+.aidea/backchannels/<N>/handoff-{timestamp}.json
 
+- <N>: あなた自身の Companion index。`.aidea/claude/companions/<N>/instructions.md`
+  のパス `<N>` をそのまま使ってね
 - {timestamp}: 現在時刻 (YYYYMMDDTHHmmss)
+- ディレクトリがなければ作成してね (mkdir -p 相当)
 - 1 ファイル 1 ハンドオフ (追記ではなく新規作成)
 - 書き終わったら通常どおりターンを終えてよい。返信を待機するループは作らないこと
+- 書き出したファイルは削除しないでね (作業履歴として残るよ)
 
 ### JSON スキーマ
 
 | フィールド | 必須 | 意味 |
 |---|---|---|
-| `from` | いいえ | 自分の index (0..8) または name |
-| `to`   | はい   | 宛先 Companion の index (0..8) または name |
+| `from` | はい | 自分の index (0..8)。パスの <N> と同じ数値にすること |
+| `to`   | はい | 宛先 Companion の index (0..8) または name |
 | `task` | いいえ | 種別ラベル (例: implement / review / plan) |
 | `message` | はい | 宛先 Claude に送信する本文。長文・改行・コードブロック OK (JSON としての正しいエスケープだけ守る) |
 
-例 (index 指定):
+例 (index 指定、Companion 1 が送信):
 
+    // .aidea/backchannels/1/handoff-20260423T163907.json
     {
       "from": 1,
       "to": 0,
@@ -30,24 +35,25 @@
       "message": "issue #77 を計画に従って実装してね"
     }
 
-例 (name 指定):
+例 (name 指定、Companion 3 が送信):
 
+    // .aidea/backchannels/3/handoff-20260423T164000.json
     {
-      "from": "concier-chan",
+      "from": 3,
       "to": "main-chan",
       "task": "implement",
       "message": "今日最優先の issue は #77。計画に従って実装お願い"
     }
 
-## 受信側: 「.aidea/backchannels/handoff-*.json の作業をやってね」と言われたとき
+## 受信側: 「.aidea/backchannels/<N>/handoff-*.json の作業をやってね」と言われたとき
 
 Aidea から以下のような短いメッセージが届くことがあるよ。
 
-    .aidea/backchannels/handoff-20260423T162737.json の作業をやってね
+    .aidea/backchannels/1/handoff-20260423T162737.json の作業をやってね
 
-これは他の Companion からのハンドオフ依頼だよ。以下の手順で対応してね。
+これは他の Companion (この例だと Companion 1) からのハンドオフ依頼だよ。以下の手順で対応してね。
 
 1. 指定された handoff-*.json を読む
 2. `message` フィールドの内容をユーザからの指示として解釈し、そのまま作業する
 3. `from` / `task` は参考情報 (誰からのどんな種別の依頼か)。作業内容そのものは `message` に書かれている
-4. 作業後、handoff-*.json を削除する必要はない (ログとして残す)
+4. 作業後、handoff-*.json を削除しないでね (ログとして残す)

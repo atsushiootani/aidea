@@ -18,13 +18,11 @@ final class HandoffState {
     @ObservationIgnored private let watcher = HandoffWatcher()
     @ObservationIgnored private var projectRoot: URL?
 
-    /// 監視を開始する。`onDispatch` は HandoffMessage ごとに (メッセージ, 元ファイル URL) で呼ばれる。
-    /// URL は呼び出し側が「`.aidea/backchannels/{filename} の作業をやってね`」を組み立てるのに使う。
-    func start(projectRoot: URL, onDispatch: @escaping (HandoffMessage, URL) -> Void) {
+    /// 監視を開始する。`onDispatch` は HandoffMessage ごとに (メッセージ, 元ファイル URL, 送信元 companionIndex) で呼ばれる。
+    /// URL + companionIndex は呼び出し側が「`.aidea/backchannels/<from>/{filename} の作業をやってね`」を組み立てるのに使う。
+    func start(projectRoot: URL, onDispatch: @escaping (HandoffMessage, URL, Int) -> Void) {
         self.projectRoot = projectRoot
-        watcher.onHandoff = { message, url in
-            onDispatch(message, url)
-        }
+        watcher.onHandoff = onDispatch
         watcher.onError = { [weak self] text in
             self?.reportError(text)
         }

@@ -4,6 +4,7 @@ description: UserDefaults / Keychain / Bundle Resources / .aidea/ のデータ�
 derived_from:
   - docs/specs/architecture.md
   - docs/decisions/0022-companion-instructions-as-files.md
+  - docs/decisions/0024-backchannel-per-companion-archive.md
 syncs_with:
   - docs/specs/backchannels/backchannel.md
   - docs/specs/backchannels/voicevox.md
@@ -79,9 +80,13 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 ```
 <projectRoot>/.aidea/
 ├── workspace.json            # レイアウト・Session 状態・コンパニオン・レコメンド・履歴の統合スナップショット (v8)
-├── backchannels/             # Claude からのメッセージ受信ディレクトリ
-│   ├── speech-*.txt          # 読み上げ対象テキスト (消費後に削除)
-│   └── handoff-*.json        # Companion 間ハンドオフ (受信側 Claude が読むため残す / ログ用途、[../backchannels/handoff.md](../backchannels/handoff.md))
+├── backchannels/             # Claude からのメッセージ受信ディレクトリ (ADR 0024: Companion 別に分離し履歴保全)
+│   ├── 0/                    # Companion 0 のメッセージ置き場
+│   │   ├── speech-*.txt      # 読み上げ対象テキスト (処理後も残す / 履歴)
+│   │   └── handoff-*.json    # Companion 0 が送信したハンドオフ (処理後も残す、[../backchannels/handoff.md](../backchannels/handoff.md))
+│   ├── 1/                    # Companion 1
+│   │   └── ...
+│   └── ...                   # 0..8 (必要に応じて Claude が mkdir で作成)
 ├── claude/                   # Claude 起動時に読ませるリソース
 │   ├── aidea.md              # Backchannel 機能の指示書 (共有)
 │   ├── speech.md             # speech 機能の指示書 (共有)
@@ -213,33 +218,40 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 
 ## Backchannel 通信
 
-Claude → Aidea 方向の通信は**ファイル経由**で行う。
+Claude → Aidea 方向の通信は**ファイル経由**で行う。詳細は [../backchannels/backchannel.md](../backchannels/backchannel.md) を参照。
 
 ### フロー
 
 ```
-1. Claude 起動時
-   └─ コンパニオンの initialPrompt が .aidea/claude/aidea.md と speech.md を読ませる
+1. Claude セッション起動時
+   └─ Aidea が固定パターン文字列 (.aidea/claude/companions/<index>/instructions.md
+      を読んで従ってね) を PTY に送信 (ADR 0022)
+   └─ Claude が instructions.md を読み、さらに参照先の .aidea/claude/aidea.md /
+      speech.md / handoff.md を段階的に読み込む
 
 2. Claude がレスポンス末尾で以下を実行:
-   └─ .aidea/backchannels/speech-{timestamp}.txt に要約テキストを書き出す
-        (100 文字以内の日本語、英単語はカタカナ化、記号省略)
+   └─ .aidea/backchannels/<companion-index>/speech-{timestamp}.txt に要約テキストを
+      書き出す (100 文字以内の日本語、英単語はカタカナ化、記号省略)
+   └─ ディレクトリがなければ Claude 側で mkdir -p 相当で作成
 
-3. SpeechWatcher (FSEvents) が .aidea/backchannels/ を監視
-   ├─ speech.txt または speech-*.txt を検知
-   ├─ コンテンツをコールバックで SpeechState に渡す
-   └─ 処理後にファイルを削除
+3. SpeechWatcher (FSEvents) が .aidea/backchannels/ を再帰監視
+   ├─ 親ディレクトリが 0..8 の整数である speech-*.txt を検知 (それ以外は警告ログのみで無視)
+   ├─ コンテンツ + companionIndex をコールバックで SpeechState に渡す
+   └─ ファイルは削除せず残す (ADR 0024: 作業履歴として保全)
 
-4. SpeechState が VOICEVOX Service (localhost:50021) に投げて読み上げ
+4. SpeechQueue が VOICEVOX Service (localhost:50021) に投げて読み上げ
 ```
 
 ### 関連クラス
 
 | ファイル | 役割 |
 |---|---|
-| `Services/Backchannel/BackchannelSetup.swift` | Bundle → `.aidea/claude/` の初期コピー |
-| `Services/Backchannel/Speech/SpeechWatcher.swift` | `.aidea/backchannels/` の FSEvents 監視 |
-| `Services/Backchannel/Speech/SpeechState.swift` | Speech 状態管理と VOICEVOX 連携 |
+| `Services/Backchannel/BackchannelSetup.swift` | Bundle → `.aidea/claude/` の初期コピー (`aidea.md` / `speech.md` / `handoff.md` / コンパニオン指示書 9 個) |
+| `Services/Backchannel/Speech/SpeechWatcher.swift` | `.aidea/backchannels/<0..8>/speech-*.txt` の FSEvents 再帰監視 |
+| `Services/Backchannel/Speech/SpeechState.swift` | Speech 状態管理と SpeechQueue への投入 |
+| `Services/Backchannel/Speech/SpeechQueue.swift` | VOICEVOX 合成 → AVAudioPlayer 再生キュー |
+| `Services/Backchannel/Handoff/HandoffWatcher.swift` | `.aidea/backchannels/<0..8>/handoff-*.json` の FSEvents 再帰監視 |
+| `Services/Backchannel/Handoff/HandoffState.swift` | Handoff 状態管理 + Dispatcher 呼び出し |
 
 詳細は [../backchannels/](../backchannels/README.md) を参照。
 
@@ -255,7 +267,8 @@ Claude → Aidea 方向の通信は**ファイル経由**で行う。
 | 起動時 (Bundle 読込も失敗) | Filer 1 ペインの最小レイアウトを生成して継続起動 (緊急フォールバック) | `AideaApp.init()` |
 | projectRoot 変更時 | `.aidea/` 生成 + `.gitignore` 追記 + Backchannel 再初期化 | `WorkspaceState.setProjectRoot()` |
 | Companion / Recommend 変更時 | インメモリのみ更新 (即座保存しない) | `CompanionStore` / `RecommendStore` |
-| Claude からメッセージ受信時 | `speech-*.txt` → 読み上げ → ファイル削除 | `SpeechWatcher` |
+| Claude から speech 受信時 | `<n>/speech-*.txt` → 読み上げ (ファイルは残す、ADR 0024) | `SpeechWatcher` |
+| Claude から handoff 受信時 | `<n>/handoff-*.json` → 宛先解決 → 送信 (ファイルは残す、ADR 0024) | `HandoffWatcher` |
 | 終了時 / バックグラウンド化時 | `workspace.json` (4 グループ統合) 保存 | `AideaApp.registerTerminationObserver()` |
 
 ---

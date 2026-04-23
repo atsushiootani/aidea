@@ -1,8 +1,9 @@
 ---
 title: "Backchannel: コンパニオン間ハンドオフ"
-description: Companion 間でタスクを受け渡す Handoff メッセージ (.aidea/backchannels/handoff-*.json) の JSON スキーマ・宛先解決・Aidea 側 Watcher/Dispatcher 実装仕様
+description: Companion 間でタスクを受け渡す Handoff メッセージ (.aidea/backchannels/<n>/handoff-*.json) の JSON スキーマ・宛先解決・Aidea 側 Watcher/Dispatcher 実装仕様
 derived_from:
   - docs/decisions/0023-companion-handoff.md
+  - docs/decisions/0024-backchannel-per-companion-archive.md
   - docs/specs/companions/companion.md
   - docs/specs/frontchannels/frontchannel.md
 syncs_with:
@@ -24,11 +25,12 @@ last_updated: 2026-04-23
 
 ## 概要
 
-- 送信元 Claude が `.aidea/backchannels/handoff-{timestamp}.json` を書き出す
-- Aidea が FSEvents で検知し、宛先 Companion の Claude セッションに PTY で **ファイル参照メッセージ** (`.aidea/backchannels/handoff-{name}.json の作業をやってね`) を送信する
+- 送信元 Claude が `.aidea/backchannels/<from>/handoff-{timestamp}.json` を書き出す (`<from>` は自分の Companion index)
+- Aidea が FSEvents で検知し、宛先 Companion の Claude セッションに PTY で **ファイル参照メッセージ** (`.aidea/backchannels/<from>/handoff-{name}.json の作業をやってね`) を送信する
 - 受信側 Claude が handoff.md の指示に従って handoff-*.json を読み、`message` 本文を作業指示として実行する
 - 宛先セッションが未起動なら自動起動する。宛先タブはアクティブ化する
 - 送信元 Claude は書き出したら通常どおりターンを終える (待機ループを持たない)
+- ハンドオフ配送後もファイルは削除せず残す (作業履歴として保全、[ADR 0024](../../decisions/0024-backchannel-per-companion-archive.md))
 
 ### なぜ本文を PTY に直接送らずファイル参照にするか
 
@@ -44,16 +46,20 @@ last_updated: 2026-04-23
 
 ```
 1. 送信元 Companion の instructions.md が .aidea/claude/handoff.md を参照し、Claude がそれを読み込む
-2. 送信元 Claude が .aidea/backchannels/handoff-{timestamp}.json を書き出す
-3. Aidea が FSEvents で handoff-*.json の作成を検知
-4. HandoffWatcher が JSON をパースし、HandoffDispatcher に (HandoffMessage, 元ファイル URL) を渡す
-5. HandoffDispatcher:
+2. 送信元 Claude が自分の index <from> を instructions.md のパスから特定する
+3. 送信元 Claude が .aidea/backchannels/<from>/handoff-{timestamp}.json を書き出す
+   (ディレクトリがなければ Claude 側で mkdir -p 相当で作成)
+4. Aidea が FSEvents で <0..8>/handoff-*.json の作成を検知
+5. HandoffWatcher が親ディレクトリ名 (<from>) を読み取り、JSON をパース
+   a. JSON の `from` と親ディレクトリが一致することを検証 (不一致はエラー、ファイルは残す)
+   b. (HandoffMessage, 元ファイル URL, companionIndex) を HandoffDispatcher に渡す
+6. HandoffDispatcher:
    a. to を index 解決 (index 指定 or name 逆引き)
    b. 宛先 Companion が未起動なら自動起動 (CompanionLauncher 経由)
-   c. 宛先 ClaudeSessionState.sendMessage(".aidea/backchannels/{filename} の作業をやってね") を送信
+   c. 宛先 ClaudeSessionState.sendMessage(".aidea/backchannels/<from>/{filename} の作業をやってね") を送信
    d. 宛先タブをアクティブ化
-6. handoff-*.json は残す (受信側 Claude が読むため。ログとしても使う)
-7. 受信側 Claude が handoff.md の受信側セクションに従って:
+7. handoff-*.json は残す (受信側 Claude が読むため + 作業履歴として、ADR 0024)
+8. 受信側 Claude が handoff.md の受信側セクションに従って:
    a. 指定された handoff-*.json を読む
    b. JSON の `message` を作業指示として解釈し、そのまま実行する
 ```
@@ -75,20 +81,21 @@ last_updated: 2026-04-23
 
 | フィールド | 型 | 必須 | 意味 |
 |---|---|---|---|
-| `from` | `Int` (0..8) or `String` | いいえ | 送信元 Companion の index または name。UI 表示・ログ用途。未指定でも動作する |
+| `from` | `Int` (0..8) | **はい** | 送信元 Companion の index。ファイルパスの `<companion-index>` と一致すること (Aidea 側で検証、不一致は破棄) |
 | `to` | `Int` (0..8) or `String` | **はい** | 宛先 Companion の index または name。解決失敗時はメッセージを破棄する |
 | `task` | `String` | いいえ | ハンドオフの種別を表す任意ラベル (例: `implement` / `review` / `plan`)。UI バッジ・ログで使う |
 | `message` | `String` | **はい** | 宛先 Claude に渡す作業指示の本文。PTY には流さず、受信側 Claude が handoff-*.json を自ら読んで取得する (エスケープ・改行・制御文字の心配不要) |
 
-`from` / `task` は MVP では受信時にパースするだけで UI には反映しない (将来拡張の足場)。
+`from` は ADR 0024 でパスの `<companion-index>` を導入したため必須化した (以前は任意)。`task` は MVP では受信時にパースするだけで UI には反映しない (将来拡張の足場)。
 
 `message` は長文・改行・コードブロックを含んでよい。PTY に直接流さず受信側 Claude がファイルから読むため、エスケープやターミナル制御文字を気にする必要はない (JSON 文字列としての正しいエスケープだけ守る)。
 
-### ファイル名
+### ファイル名とパス
 
-- パターン: `handoff-{timestamp}.json`
+- パス: `.aidea/backchannels/<from>/handoff-{timestamp}.json`
+- `<from>`: 送信元 Companion の index (`0..8`)
 - `{timestamp}`: `YYYYMMDDTHHmmss` 形式 (既存 speech-*.txt と同じ)
-- 同ミリ秒に複数ファイルを作る場合は Claude 側で一意になるよう工夫する (衝突時は FSEvents で最後に書かれた方が残る挙動)
+- 同 timestamp でも `<from>` が異なれば衝突しない (ADR 0024 の副次的メリット)。同一 Companion が同 timestamp に複数書く場合は Claude 側で一意になるよう工夫する
 
 ---
 
@@ -141,23 +148,28 @@ Aidea が初回セットアップ時に Bundle からコピーするファイル
 
 以下のファイルを書き出してね。
 
-.aidea/backchannels/handoff-{timestamp}.json
+.aidea/backchannels/<N>/handoff-{timestamp}.json
 
+- <N>: あなた自身の Companion index。`.aidea/claude/companions/<N>/instructions.md`
+  のパス `<N>` をそのまま使ってね
 - {timestamp}: 現在時刻 (YYYYMMDDTHHmmss)
+- ディレクトリがなければ作成してね (mkdir -p 相当)
 - 1 ファイル 1 ハンドオフ (追記ではなく新規作成)
 - 書き終わったら通常どおりターンを終えてよい。返信を待機するループは作らないこと
+- 書き出したファイルは削除しないでね (作業履歴として残るよ)
 
 ### JSON スキーマ
 
 | フィールド | 必須 | 意味 |
 |---|---|---|
-| `from` | いいえ | 自分の index (0..8) または name |
-| `to`   | はい   | 宛先 Companion の index (0..8) または name |
+| `from` | はい | 自分の index (0..8)。パスの <N> と同じ数値にすること |
+| `to`   | はい | 宛先 Companion の index (0..8) または name |
 | `task` | いいえ | 種別ラベル (例: implement / review / plan) |
 | `message` | はい | 宛先 Claude に送信する本文。長文・改行・コードブロック OK (JSON としての正しいエスケープだけ守る) |
 
-例 (index 指定):
+例 (index 指定、Companion 1 が送信):
 
+    // .aidea/backchannels/1/handoff-20260423T163907.json
     {
       "from": 1,
       "to": 0,
@@ -165,34 +177,35 @@ Aidea が初回セットアップ時に Bundle からコピーするファイル
       "message": "issue #77 を計画に従って実装してね"
     }
 
-例 (name 指定):
+例 (name 指定、Companion 3 が送信):
 
+    // .aidea/backchannels/3/handoff-20260423T164000.json
     {
-      "from": "concier-chan",
+      "from": 3,
       "to": "main-chan",
       "task": "implement",
       "message": "今日最優先の issue は #77。計画に従って実装お願い"
     }
 
-## 受信側: 「.aidea/backchannels/handoff-*.json の作業をやってね」と言われたとき
+## 受信側: 「.aidea/backchannels/<N>/handoff-*.json の作業をやってね」と言われたとき
 
 Aidea から以下のような短いメッセージが届くことがあるよ。
 
-    .aidea/backchannels/handoff-20260423T162737.json の作業をやってね
+    .aidea/backchannels/1/handoff-20260423T162737.json の作業をやってね
 
 これは他の Companion からのハンドオフ依頼だよ。以下の手順で対応してね。
 
 1. 指定された handoff-*.json を読む
 2. `message` フィールドの内容をユーザからの指示として解釈し、そのまま作業する
 3. `from` / `task` は参考情報 (誰からのどんな種別の依頼か)。作業内容そのものは `message` に書かれている
-4. 作業後、handoff-*.json を削除する必要はない (ログとして残す)
+4. 作業後、handoff-*.json を削除しないでね (ログとして残す)
 ```
 
 ### ファイルフォーマット
 
 - 文字コード: UTF-8
 - 拡張子: `.json` 固定
-- JSON パース失敗 / 必須フィールド欠落 → ログ出力してファイル削除、送信スキップ
+- JSON パース失敗 / 必須フィールド欠落 / `from` とパスの `<companion-index>` 不一致 → ログ出力 + 必要に応じて UI 通知、ファイルは残す (監査用)
 
 ### 有効化方法 (コンパニオン instructions.md)
 
@@ -210,11 +223,11 @@ Aidea から以下のような短いメッセージが届くことがあるよ�
 
 | コンポーネント | 責務 |
 |---|---|
-| **HandoffMessage** | `handoff-*.json` をデコードする Codable 構造体。`to` / `from` は `Int` / `String` どちらも受け付ける enum (`.index(Int)` / `.name(String)`) |
-| **HandoffWatcher** | FSEvents で `.aidea/backchannels/handoff-*.json` を監視し、検知時に `(HandoffMessage, ファイル URL)` を HandoffDispatcher に投げる (SpeechWatcher と同じパターン)。ファイルは削除せず残す |
-| **HandoffDispatcher** | 宛先解決 → Companion 自動起動 (必要時) → `ClaudeSessionState.sendMessage(".aidea/backchannels/{filename} の作業をやってね")` でファイル参照メッセージを送信 → タブアクティブ化。`message` 本文は PTY に流さない (受信側 Claude がファイルから読む) |
+| **HandoffMessage** | `handoff-*.json` をデコードする Codable 構造体。`from` は `Int` (0..8) 必須、`to` は `Int` / `String` どちらも受け付ける enum (`.index(Int)` / `.name(String)`) |
+| **HandoffWatcher** | FSEvents で `.aidea/backchannels/<0..8>/handoff-*.json` を再帰監視。親ディレクトリ名 (`<from>`) を読み取り、JSON `from` と一致することを検証してから `(HandoffMessage, ファイル URL, companionIndex)` を HandoffDispatcher に投げる。ファイルは削除せず残す |
+| **HandoffDispatcher** | 宛先解決 → Companion 自動起動 (必要時) → `ClaudeSessionState.sendMessage(".aidea/backchannels/<from>/{filename} の作業をやってね")` でファイル参照メッセージを送信 → タブアクティブ化。`message` 本文は PTY に流さない (受信側 Claude がファイルから読む) |
 
-配置: `Services/Backchannel/Handoff/` ディレクトリを新設し 3 ファイルを収める。
+配置: `Services/Backchannel/Handoff/` ディレクトリ (既存) に 3 ファイルを収める。
 
 `HandoffDispatcher` は `CompanionStore` / `SessionRegistry` / `LayoutConfig` を参照する必要があるため、`AideaApp` から依存を注入する (既存 `BackchannelSetup` と並ぶ位置付け)。
 
@@ -236,7 +249,10 @@ Aidea から以下のような短いメッセージが届くことがあるよ�
 
 | 状態 | 挙動 |
 |---|---|
-| JSON パース失敗 | ログ出力。UI には出さない (Claude 側の書き損じを自己修復させる) |
+| JSON パース失敗 | ログ出力 + ヘッダにエラー 1 行表示 (ユーザが気付けるよう可視化する。Claude 側の書き損じも UI に出ることで即座に差し戻し依頼できる) |
+| 親ディレクトリが `0..8` 以外 | 無視 (警告ログのみ) |
+| `backchannels/` 直下の handoff-*.json | 無視 (旧 flat 形式は仕様外、警告ログのみ) |
+| `from` 欠落 / 範囲外 / 親ディレクトリと不一致 | ログ出力 + ヘッダにエラー 1 行表示 |
 | `to` 欠落 / 型不正 / 範囲外 index / name 未マッチ | ログ出力 + ヘッダにエラー 1 行表示 |
 | `message` 欠落 / 空文字 | ログ出力 |
 | 宛先 Companion の自動起動失敗 | ログ出力 + ヘッダにエラー表示 |
@@ -248,13 +264,18 @@ Aidea から以下のような短いメッセージが届くことがあるよ�
 ## 境界
 
 ### Always
-- handoff ファイルは残す (受信側 Claude が読むため。ログとしても使う)
-- frontchannel に流すのは固定文言のファイル参照メッセージ (`.aidea/backchannels/{filename} の作業をやってね`) 1 行だけ
+- handoff ファイルは残す (受信側 Claude が読むため + 作業履歴として、ADR 0024)
+- 書き出し先は `.aidea/backchannels/<from>/handoff-{timestamp}.json` 形式
+- `from` は必須。JSON 内の `from` とパスの `<companion-index>` は一致することを検証する
+- frontchannel に流すのは固定文言のファイル参照メッセージ (`.aidea/backchannels/<from>/{filename} の作業をやってね`) 1 行だけ
 - 宛先が未起動なら自動起動してから送信する
 - 送信元が自分自身宛 (`from == to`) でも通常配送する (MVP ではループ検出しない)
 - `to` は index (Int) または name (String) の両方を受け付ける
 
 ### Never
+- handoff ファイルを Aidea 側で削除しない (ADR 0024)
+- 親ディレクトリが `0..8` 以外のファイルをハンドラに通さない
+- `.aidea/backchannels/` 直下の handoff-*.json を処理しない (旧 flat 配置は仕様外)
 - 宛先 Claude セッションで待機ループを作らない (ADR 0023)
 - `message` 本文を PTY (frontchannel) 経由で直接送信しない。受信側 Claude がファイルを読む経路に統一する
 - `message` 本文を Aidea 側で加工・変換しない (Frontchannel の原則と同じ)
