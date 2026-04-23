@@ -7,6 +7,7 @@ derived_from:
 syncs_with:
   - docs/specs/backchannels/backchannel.md
   - docs/specs/backchannels/voicevox.md
+  - docs/specs/backchannels/handoff.md
   - docs/specs/frontchannels/scene.md
   - docs/specs/companions/companion.md
   - docs/specs/companions/recommend-mode.md
@@ -68,6 +69,7 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 | `default-workspace.json` | `<projectRoot>/.aidea/workspace.json` の初期テンプレ (ハードコード排除の SSoT) |
 | `Backchannels/aidea.md` | Backchannel 機能の指示書。`BackchannelSetup` が `.aidea/claude/` にコピー |
 | `Backchannels/speech.md` | speech 機能の指示書 (同上) |
+| `Backchannels/handoff.md` | Companion 間ハンドオフ機能の指示書 (同上)。詳細は [../backchannels/handoff.md](../backchannels/handoff.md) |
 | `Backchannels/companion-instructions.md` | コンパニオン指示書 (`instructions.md`) のデフォルトテンプレ。`BackchannelSetup` が 9 個に複製して `.aidea/claude/companions/<0..8>/instructions.md` に配置 (既存ファイルは上書きしない) |
 
 **設計ポリシー**: ハードコードしがちなデフォルト値 (初期レイアウト・コンパニオン定義・レコメンドプロンプト等) は Swift コード側に二重管理せず、Bundle 同梱の JSON / Markdown を **唯一のソース** とする。
@@ -78,10 +80,12 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 <projectRoot>/.aidea/
 ├── workspace.json            # レイアウト・Session 状態・コンパニオン・レコメンド・履歴の統合スナップショット (v8)
 ├── backchannels/             # Claude からのメッセージ受信ディレクトリ
-│   └── speech-*.txt          # 読み上げ対象テキスト (消費後に削除)
+│   ├── speech-*.txt          # 読み上げ対象テキスト (消費後に削除)
+│   └── handoff-*.json        # Companion 間ハンドオフ (消費後に削除、[../backchannels/handoff.md](../backchannels/handoff.md))
 ├── claude/                   # Claude 起動時に読ませるリソース
 │   ├── aidea.md              # Backchannel 機能の指示書 (共有)
 │   ├── speech.md             # speech 機能の指示書 (共有)
+│   ├── handoff.md            # Companion 間ハンドオフの指示書 (共有)
 │   └── companions/           # コンパニオン別の指示書 (v8 新設)
 │       ├── 0/
 │       │   ├── instructions.md  # ← Aidea が起動時に "読んで" と指示するエントリーポイント

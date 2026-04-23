@@ -3,8 +3,10 @@ title: Backchannel 仕様
 description: Aidea と Claude のファイルベース IPC 機構。設計原則・.aidea/ ディレクトリ構造・機能宣言チェーン・ファイル監視 (FSEvents)・コンパニオン instructions.md
 derived_from:
   - docs/decisions/0022-companion-instructions-as-files.md
+  - docs/decisions/0023-companion-handoff.md
 syncs_with:
   - docs/specs/backchannels/voicevox.md
+  - docs/specs/backchannels/handoff.md
   - docs/specs/aspects/persistence.md
   - docs/specs/companions/companion.md
 impacts:
@@ -53,10 +55,11 @@ Aidea は `.aidea/` ディレクトリを共有バスとして使用し、FSEven
 │       ├── 1/instructions.md
 │       └── ...                  # 0…8 の 9 ディレクトリ固定 (ADR 0022)
 ├── backchannels/
-│   ├── speech-{timestamp}.txt  # VOICEVOX 読み上げ用テキスト
-│   ├── notify-{timestamp}.txt  # 通知バナー用テキスト (将来)
-│   └── ...                     # 将来の Backchannel メッセージ
-└── workspace.json              # 既存: レイアウト永続化
+│   ├── speech-{timestamp}.txt    # VOICEVOX 読み上げ用テキスト
+│   ├── handoff-{timestamp}.json  # Companion 間ハンドオフ (handoff.md 参照)
+│   ├── notify-{timestamp}.txt    # 通知バナー用テキスト (将来)
+│   └── ...                       # 将来の Backchannel メッセージ
+└── workspace.json                # 既存: レイアウト永続化
 ```
 
 ### パス規約
@@ -112,11 +115,12 @@ instructions.md 内から相対参照 (`./persona.md` など) で他ファイル
 |---|---|---|
 | `aidea.md` | Aidea 環境の共通指示 (Backchannel 機能の土台) | `.aidea/claude/` 直下 (全 Companion 共有) |
 | `speech.md` | 読み上げ機能の定義 | 同上 |
+| `handoff.md` | コンパニオン間ハンドオフ機能の定義 ([handoff.md](./handoff.md)) | 同上 |
 | `{feature}.md` | 将来の共有機能 | 同上 |
 | `companions/<index>/instructions.md` | コンパニオンごとの起動指示 (エントリーポイント) | `.aidea/claude/companions/<0..8>/` |
 | `companions/<index>/*.md` | 段階的開示用の補助ファイル (persona / workflow など) | 同上 |
 
-`BackchannelSetup.setup()` が初回セットアップ時に Bundle 内の既知ファイルを `.aidea/claude/` にコピーする (`aidea.md` / `speech.md` / `companions/<0..8>/instructions.md` を `Backchannels/companion-instructions.md` から複製)。**既存ファイルは上書きしない** (ユーザ編集の保護)。
+`BackchannelSetup.setup()` が初回セットアップ時に Bundle 内の既知ファイルを `.aidea/claude/` にコピーする (`aidea.md` / `speech.md` / `handoff.md` / `companions/<0..8>/instructions.md` を `Backchannels/companion-instructions.md` から複製)。**既存ファイルは上書きしない** (ユーザ編集の保護)。
 
 ---
 
@@ -128,6 +132,7 @@ Aidea は `.aidea/backchannels/` ディレクトリを FSEvents で監視する�
 | ファイルパターン | ハンドラ | 参照仕様 |
 |-----------------|---------|---------|
 | `speech-*.txt` | SpeechWatcher → VoicevoxService | [voicevox.md](./voicevox.md) |
+| `handoff-*.json` | HandoffWatcher → HandoffDispatcher → (宛先の) ClaudeSessionState | [handoff.md](./handoff.md) |
 
 ---
 
@@ -136,6 +141,7 @@ Aidea は `.aidea/backchannels/` ディレクトリを FSEvents で監視する�
 | 種別 | ファイルパターン | 形式 | 用途 |
 |------|-----------------|------|------|
 | **Speech** | `speech-{timestamp}.txt` | プレーンテキスト | VOICEVOX 読み上げ |
+| **Handoff** | `handoff-{timestamp}.json` | JSON | Companion 間タスク受け渡し ([handoff.md](./handoff.md)) |
 | Notification | `notify-{timestamp}.txt` | プレーンテキスト | 通知バナー表示 |
 | Action | `action-{timestamp}.json` | JSON | UI 操作の指示 |
 | Status | `status.json` | JSON | Claude の作業状態表示 |

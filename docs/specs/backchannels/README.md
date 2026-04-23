@@ -21,6 +21,7 @@ Claude が `.aidea/backchannels/` にファイルを書き出して Aidea に通
 |---|---|
 | [backchannel.md](./backchannel.md) | Backchannel プロトコル全般 (設計原則・ディレクトリ構造・機能宣言チェーン・ファイル監視) |
 | [voicevox.md](./voicevox.md) | Speech メッセージの VOICEVOX 読み上げ実装 |
+| [handoff.md](./handoff.md) | Handoff メッセージによる Companion 間タスク受け渡し |
 
 ## 関連
 

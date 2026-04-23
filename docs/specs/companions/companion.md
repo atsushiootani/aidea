@@ -178,6 +178,7 @@ Aidea 起動時、`workspace.json` から Claude タブが復元されるケー�
 
 - [../frontchannels/frontchannel.md](../frontchannels/frontchannel.md) — 送信メカニズム (PTY `send(txt:)`)
 - [recommend-mode.md](./recommend-mode.md) — Cmd+Enter によるレコメンド選択 UI
+- [../backchannels/handoff.md](../backchannels/handoff.md) — Companion 間ハンドオフ ([ADR 0023](../../decisions/0023-companion-handoff.md))
 - [../tools/claude.md](../tools/claude.md) — Claude セッション側の挙動
 - [../aspects/persistence.md](../aspects/persistence.md) — `workspace.json` v7 保存・Bundle テンプレ
 - [../sessions/ui-rules.md#概念モデル](../sessions/ui-rules.md#概念モデル) — SessionID / 5 概念
