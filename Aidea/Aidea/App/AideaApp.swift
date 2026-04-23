@@ -143,7 +143,7 @@ struct AideaApp: App {
                 .keyboardShortcut("0", modifiers: [.command, .option])
         }
         CommandMenu("コンパニオン") {
-            ForEach(0..<8) { index in
+            ForEach(0..<9) { index in
                 Button("Companion \(index + 1)") { activateCompanion(index: index) }
                     .keyboardShortcut(KeyEquivalent(Character(String(index + 1))), modifiers: [.command])
             }
