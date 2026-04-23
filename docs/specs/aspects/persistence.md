@@ -3,6 +3,7 @@ title: Persistence (データ永続化)
 description: UserDefaults / Keychain / Bundle Resources / .aidea/ のデータ永続化と初期値テンプレ仕様を機能群横断で集約
 derived_from:
   - docs/specs/architecture.md
+  - docs/decisions/0022-companion-instructions-as-files.md
 syncs_with:
   - docs/specs/backchannels/backchannel.md
   - docs/specs/backchannels/voicevox.md
@@ -67,6 +68,7 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 | `default-workspace.json` | `<projectRoot>/.aidea/workspace.json` の初期テンプレ (ハードコード排除の SSoT) |
 | `Backchannels/aidea.md` | Backchannel 機能の指示書。`BackchannelSetup` が `.aidea/claude/` にコピー |
 | `Backchannels/speech.md` | speech 機能の指示書 (同上) |
+| `Backchannels/companion-instructions.md` | コンパニオン指示書 (`instructions.md`) のデフォルトテンプレ。`BackchannelSetup` が 9 個に複製して `.aidea/claude/companions/<0..8>/instructions.md` に配置 (既存ファイルは上書きしない) |
 
 **設計ポリシー**: ハードコードしがちなデフォルト値 (初期レイアウト・コンパニオン定義・レコメンドプロンプト等) は Swift コード側に二重管理せず、Bundle 同梱の JSON / Markdown を **唯一のソース** とする。
 
@@ -74,18 +76,25 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 
 ```
 <projectRoot>/.aidea/
-├── workspace.json        # レイアウト・Session 状態・コンパニオン・レコメンド・履歴の統合スナップショット (v7)
-├── backchannels/         # Claude からのメッセージ受信ディレクトリ
-│   └── speech-*.txt      # 読み上げ対象テキスト (消費後に削除)
-├── claude/               # Claude 起動時に読ませるリソース
-│   ├── aidea.md          # Backchannel 機能の指示書
-│   └── speech.md         # speech 機能の指示書 (Bundle からコピー)
-└── ja/                   # 英語ドキュメントの日本語翻訳キャッシュ
+├── workspace.json            # レイアウト・Session 状態・コンパニオン・レコメンド・履歴の統合スナップショット (v8)
+├── backchannels/             # Claude からのメッセージ受信ディレクトリ
+│   └── speech-*.txt          # 読み上げ対象テキスト (消費後に削除)
+├── claude/                   # Claude 起動時に読ませるリソース
+│   ├── aidea.md              # Backchannel 機能の指示書 (共有)
+│   ├── speech.md             # speech 機能の指示書 (共有)
+│   └── companions/           # コンパニオン別の指示書 (v8 新設)
+│       ├── 0/
+│       │   ├── instructions.md  # ← Aidea が起動時に "読んで" と指示するエントリーポイント
+│       │   └── *.md             # (任意) 段階的開示の参照先
+│       ├── 1/instructions.md
+│       └── ...                  # 0…8 の 9 ディレクトリ固定
+└── ja/                       # 英語ドキュメントの日本語翻訳キャッシュ
     └── <相対パス>/<filename>
 ```
 
 - `projectRoot` が変わるたびに `ensureAideaDirectory()` が `.aidea/` と `.aidea/ja/` を生成し、**プロジェクトの `.gitignore` に `.aidea/` を自動追記** する
 - `.aidea/claude/*.md` と `.aidea/backchannels/` は初回のみ `BackchannelSetup.setup()` が作成・複製する
+- `.aidea/claude/companions/<0..8>/instructions.md` も `BackchannelSetup.setup()` が `Backchannels/companion-instructions.md` を 9 個に複製する (既存ファイルは上書きしない)
 - v2 以前の旧ファイル `.aidea/companions.json` / `.aidea/recommends.json` は起動時に `WorkspaceSnapshotManager` が `workspace.json` v3 に統合して自動削除する
 
 ---
@@ -95,7 +104,7 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 ### `workspace.json` (統合スナップショット)
 
 - **管理**: `Services/Workspace/WorkspaceSnapshotManager.swift`
-- **フォーマット**: JSON (`version: 7`)
+- **フォーマット**: JSON (`version: 8`)
 - **初期値の SSoT**: Bundle 同梱の `Aidea/Resources/default-workspace.json` (ハードコード排除)
 - **読込フロー** (`WorkspaceSnapshotManager.load(projectRoot:)`):
   1. `<projectRoot>/.aidea/workspace.json` が存在 → 読込・マイグレーション適用
@@ -134,10 +143,11 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
       "index": 0,
       "name": "Companion 1",
       "icon": "Companions/companion-1",
-      "initialPrompt": "...",
       "sessionID": null            // null = 未起動 / SessionID = 起動中の Claude セッション
     },
     /* ... index 1〜8 まで必ず 9 要素 ... */
+    // v8 で initialPrompt フィールドは削除。指示書本文は
+    // .aidea/claude/companions/<index>/instructions.md に外部化 (ADR 0022)
   ],
   "recommends": {
     "git:workingChanges": { "prompts": ["..."], "defaultCompanionIndex": 0 }
@@ -155,6 +165,7 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 | v5 | `activeSessionHistory` を追加 (issue #49) | nil 時に空配列扱い |
 | v6 | Filer Tab に `userDecorationRules` を追加 (issue #9) | nil 時に空配列扱い (デフォルトデコレーションは Aidea 同梱定数) |
 | v7 | **構造を 4 グループ化 + コンパニオン UUID → index 化 + bindings 統合 (issue #80)** | 後述 |
+| v8 | **コンパニオン `initialPrompt` フィールドを削除し、指示書を `.aidea/claude/companions/<index>/instructions.md` に外部化 (ADR 0022)** | 後述 |
 
 #### v6 → v7 マイグレーションの詳細
 
@@ -168,6 +179,17 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
    - 9 個の枠に該当データが無い index は Bundle テンプレの初期値で埋める (name/icon/initialPrompt はテンプレを採用)
 3. **recommends は構造変更なし** (キー名・形式そのまま)
 
+#### v7 → v8 マイグレーションの詳細
+
+1. **`companions[].initialPrompt` 削除**: v7 までフィールドに保持していた initialPrompt 文字列を、各 `index` について以下の処理で外部化する
+   - 対象パス: `<projectRoot>/.aidea/claude/companions/<index>/instructions.md`
+   - **ファイル不在時のみ書き出し**: ユーザが既に手動編集している場合の上書きを避ける
+   - 親ディレクトリ (`.aidea/claude/companions/<index>/`) は自動生成
+2. v8 スナップショット返却時には `initialPrompt` フィールドを含めない (Codable 側で削除済み)
+3. 以降の保存からは v8 として書き出される
+
+新規プロジェクト (workspace.json 不在) は `BackchannelSetup.setup()` が `Backchannels/companion-instructions.md` を 9 個に複製する経路で初期化される。
+
 ### `default-workspace.json` の構造ルール
 
 - `workspace.json` のスキーマと **完全に一致** させる (フィールド省略不可)
@@ -175,6 +197,7 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 - `version` は現行スキーマバージョンと一致
 - `companions` には必ず 9 要素 (index 0〜8) を含め、`sessionID` は全て `null`
 - レイアウト・companion 名称・recommend プロンプト等の **デフォルト値はすべてここに集約**。Swift コード側へのハードコードは禁止
+- v8 以降は `companions[].initialPrompt` を含めない (ファイル化したため)。指示書テンプレ本文は `Aidea/Resources/Backchannels/companion-instructions.md` (Bundle 同梱) が SSoT
 
 ### `.aidea/ja/<path>` (翻訳キャッシュ)
 

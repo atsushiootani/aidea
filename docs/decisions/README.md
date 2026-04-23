@@ -8,7 +8,7 @@ impacts:
   - docs/decisions/*
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-21
+last_updated: 2026-04-23
 ---
 
 # Architecture Decision Records
@@ -40,6 +40,7 @@ Aidea の設計判断を 1 件ずつ記録する。フォーマットは [Michae
 | [0019](./0019-all-tabs-zstack-rendering.md) | 全 Tab の SessionView を ZStack で常駐レンダリングする | 暫定 |
 | [0020](./0020-session-focus-bridge.md) | フォーカス契約を SessionState + SessionFocusBridge に委譲する | 採用 |
 | [0021](./0021-tabslot-url-drop-via-appkit-overlay.md) | TabSlot のファイル URL ドロップは AppKit overlay で受ける | 採用 |
+| [0022](./0022-companion-instructions-as-files.md) | コンパニオン初期指示を外部 Markdown ファイルに分離する | 採用 |
 
 ## 状態の値
 

@@ -1,12 +1,14 @@
 ---
 title: コンパニオン
-description: ヘッダの 9 体アイコン・index 識別の CompanionConfig/CompanionStore 仕様・workspace.json v7 経由の永続化・起動フロー
+description: ヘッダの 9 体アイコン・index 識別の CompanionConfig/CompanionStore 仕様・workspace.json v8 経由の永続化・起動フロー・instructions.md 外部化
 derived_from:
   - docs/specs/frontchannels/frontchannel.md
   - docs/specs/sessions/ui-rules.md
+  - docs/decisions/0022-companion-instructions-as-files.md
 syncs_with:
   - docs/specs/companions/recommend-mode.md
   - docs/specs/aspects/persistence.md
+  - docs/specs/backchannels/backchannel.md
 impacts:
   - docs/specs/tools/claude.md
 conventions:
@@ -37,7 +39,7 @@ last_updated: 2026-04-23
 |---|---|
 | アイコン (起動済み) | 紐付く Claude セッションをアクティブ化 |
 | アイコン (未起動) | コンパニオンの設定で Claude セッションを起動し bind する |
-| 名前ラベル | `CompanionEditView` (sheet) を開いて設定を編集 (name / icon / initialPrompt) |
+| 名前ラベル | `CompanionEditView` (sheet) を開いて設定を編集 (name / icon / 「指示書を開く」ボタン) |
 
 ---
 
@@ -52,16 +54,27 @@ last_updated: 2026-04-23
 | `index` | `Int` (0〜8) | コンパニオン識別子。ヘッダ表示順とも一致 |
 | `name` | `String` | タブ・ラベルに出る表示名 |
 | `icon` | `String` | アイコン名 (`Companions/companion-N` または SF Symbols 名) |
-| `initialPrompt` | `String` | Claude 起動直後に送信する初期プロンプト |
 | `sessionID` | `SessionID?` | 紐付いた Claude セッション。`nil` なら未起動 |
 
-`sessionID` は **設定** (name/icon/initialPrompt) と同じ構造体に同居する。これは workspace.json が「現在のワークスペースのスナップショット」であり、設定とランタイム状態を一体で保存する設計に揃えている (sessions セクションも同様の構成)。
+`sessionID` は **設定** (name/icon) と同じ構造体に同居する。これは workspace.json が「現在のワークスペースのスナップショット」であり、設定とランタイム状態を一体で保存する設計に揃えている (sessions セクションも同様の構成)。
+
+#### initialPrompt の外部ファイル化 (v8 以降)
+
+v7 までは `CompanionConfig.initialPrompt: String` に文字列として保持していたが、v8 で削除。各コンパニオンの初期指示は `<projectRoot>/.aidea/claude/companions/<index>/instructions.md` に外部化されている (詳細は [ADR 0022](../../decisions/0022-companion-instructions-as-files.md))。
+
+Aidea が起動時に PTY へ送る文字列は `companionIndex` から派生する固定パターン:
+
+```
+.aidea/claude/companions/<index>/instructions.md を読んで従ってね
+```
+
+これを生成・パス解決するヘルパが `Services/Companion/CompanionInstructions.swift` に集約される (`loadCommand(for:)` / `entrypointURL(projectRoot:index:)`)。
 
 ### `CompanionIconPresets`
 
 アイコン画像の静的プリセット。9 枚のカスタム画像 (`Assets.xcassets/Companions/companion-1..9`) を定義する。小サイズ版 (`companion-N-small`) とテーマカラーも併せて保持する。
 
-ただし **コンパニオンのデフォルト名 / icon / initialPrompt の値そのもの** は `Aidea/Resources/default-workspace.json` (Bundle 同梱) の `companions[]` が SSoT。`CompanionIconPresets` は Assets 上のアイコンリソース対応表のみを担う。
+ただし **コンパニオンのデフォルト名 / icon の値そのもの** は `Aidea/Resources/default-workspace.json` (Bundle 同梱) の `companions[]` が SSoT。`CompanionIconPresets` は Assets 上のアイコンリソース対応表のみを担う。デフォルトの instructions.md 本文は `Aidea/Resources/Backchannels/companion-instructions.md` (Bundle 同梱、1 ファイルを 9 個に複製) が SSoT。
 
 ---
 
@@ -82,7 +95,7 @@ last_updated: 2026-04-23
 
 | メソッド | 役割 |
 |---|---|
-| `update(_ companion: CompanionConfig)` | 指定 index のコンパニオン設定を更新 (`sessionID` を含む全フィールド差し替え) |
+| `update(_ companion: CompanionConfig)` | 指定 index のコンパニオン設定を更新 (`name` / `icon` / `sessionID` を差し替え) |
 | `bind(index: Int, sessionID: SessionID)` | コンパニオンと Claude セッションを紐付け (`companions[index].sessionID = sessionID`) |
 | `unbind(index: Int)` | 紐付け解除 (`companions[index].sessionID = nil`) |
 | `unbindSession(_ sessionID: SessionID)` | 該当 sessionID を持つ index の `sessionID` を nil にする (タブを閉じたとき用) |
@@ -94,9 +107,11 @@ last_updated: 2026-04-23
 
 ### 永続化
 
-`companions` 配列は `workspace.json` v7 の `companions` フィールドにそのまま保存される。詳細スキーマは [../aspects/persistence.md](../aspects/persistence.md) を参照。
+`companions` 配列は `workspace.json` v8 の `companions` フィールドに保存される (`initialPrompt` フィールドは v8 で削除済み)。詳細スキーマは [../aspects/persistence.md](../aspects/persistence.md) を参照。
 
-旧スキーマ (UUID 識別 + `companionBindings` 別配列) からのマイグレーションは v6 → v7 で `WorkspaceSnapshotManager` が実施する (icon 名から index 逆算)。
+旧スキーマからのマイグレーション:
+- v6 → v7: UUID 識別 + `companionBindings` 別配列を icon 名 → index 逆算で統合
+- v7 → v8: `companions[].initialPrompt` を削除 + 各文字列を `.aidea/claude/companions/<index>/instructions.md` に書き出し (ファイル不在時のみ。詳細は [ADR 0022](../../decisions/0022-companion-instructions-as-files.md))
 
 ---
 
@@ -105,7 +120,7 @@ last_updated: 2026-04-23
 | 型 | ファイル | 責務 |
 |---|---|---|
 | `CompanionView` | `Views/Companion/CompanionView.swift` | ヘッダに 9 体並べる本体。アイコンタップで起動/フォーカス、ラベルタップで編集 sheet を開く。レコメンドモード中は選択コンパニオンの下に `RecommendBubbleView` を表示 |
-| `CompanionEditView` | `Views/Companion/CompanionEditView.swift` | 名前・initialPrompt を編集する sheet (`update(_:)` を呼ぶ) |
+| `CompanionEditView` | `Views/Companion/CompanionEditView.swift` | 名前・アイコンを編集する sheet (`update(_:)` を呼ぶ)。「指示書を開く」ボタンで `SessionRegistry.openPreview` 経由で `.aidea/claude/companions/<index>/instructions.md` を Preview セッションとして開く (markdown view + 編集モード) |
 | `RecommendBubbleView` | `Views/Companion/RecommendBubbleView.swift` | `RecommendState.prompts` を縦に並べ、選択中をアクセントカラーでハイライトする吹き出し |
 
 ---
@@ -117,12 +132,15 @@ last_updated: 2026-04-23
 2. companion = store.companion(forIndex: N) を取得 (必ず存在)
 3. layout.nextSessionInstance(of: .claude) で新 instance 番号を採番
 4. registry.createSession(tool: .claude, instance:) で Claude セッション生成
-5. ClaudeSessionState.companionPrompt に companion.initialPrompt をセット
+5. ClaudeSessionState.companionPrompt に CompanionInstructions.loadCommand(for: N) をセット
+   = ".aidea/claude/companions/N/instructions.md を読んで従ってね"
    (ターミナル起動後に自動送信される → tools/claude.md)
 6. store.bind(index: N, sessionID: session.id)
    → companions[N].sessionID が更新される
 7. アクティブ pane の末尾にタブ追加しアクティブ化
 ```
+
+`instructions.md` が不在のまま起動した場合の挙動は `BackchannelSetup` の責務 (新規プロジェクト初回セットアップ時にコピー)。詳細は [../backchannels/backchannel.md](../backchannels/backchannel.md) を参照。
 
 ---
 
@@ -144,9 +162,11 @@ Aidea 起動時、`workspace.json` から Claude タブが復元されるケー�
    - companions を走査し、sessionID != nil な index について
    - registry.ensureSession(for: sessionID) で ClaudeSessionState を生成
      (PTY/terminalView は引き続き lazy)
-   - 対応する companion.initialPrompt を state.companionPrompt にセット
+   - state.companionPrompt = CompanionInstructions.loadCommand(for: index) をセット
+     ( = ".aidea/claude/companions/<index>/instructions.md を読んで従ってね")
+   - state.companionIndex = index もセット (Scene 識別子 claude:<index> 解決用)
 4. ユーザがタブをアクティブ化 → terminalView 生成 → 自動起動シーケンス
-   → initialPrompt が送信される
+   → companionPrompt が送信される
 ```
 
 この再注入がないと、復元された Claude セッションは `companionPrompt == nil` のままで
