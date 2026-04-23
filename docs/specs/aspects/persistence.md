@@ -81,7 +81,7 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 ├── workspace.json            # レイアウト・Session 状態・コンパニオン・レコメンド・履歴の統合スナップショット (v8)
 ├── backchannels/             # Claude からのメッセージ受信ディレクトリ
 │   ├── speech-*.txt          # 読み上げ対象テキスト (消費後に削除)
-│   └── handoff-*.json        # Companion 間ハンドオフ (消費後に削除、[../backchannels/handoff.md](../backchannels/handoff.md))
+│   └── handoff-*.json        # Companion 間ハンドオフ (受信側 Claude が読むため残す / ログ用途、[../backchannels/handoff.md](../backchannels/handoff.md))
 ├── claude/                   # Claude 起動時に読ませるリソース
 │   ├── aidea.md              # Backchannel 機能の指示書 (共有)
 │   ├── speech.md             # speech 機能の指示書 (共有)

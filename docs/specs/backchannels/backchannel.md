@@ -154,7 +154,7 @@ Aidea は `.aidea/backchannels/` ディレクトリを FSEvents で監視する�
 
 ### Always
 - `.aidea/` 配下のファイル監視は FSEvents を使う
-- 処理済みファイルは削除してクリーンアップする
+- 処理済みファイルは原則削除してクリーンアップする (例外: `handoff-*.json` は受信側 Claude が読むため残す。詳細は [handoff.md](./handoff.md))
 - 全ターミナルから `.aidea/backchannels/` に書き出す
 - `.aidea/claude/{feature}.md` と `.aidea/claude/companions/<0..8>/instructions.md` は初回セットアップ時に Bundle からコピーする
 - Claude セッション起動時に送信するのは `CompanionInstructions.loadCommand(for:)` で生成した固定パターン文字列のみ
