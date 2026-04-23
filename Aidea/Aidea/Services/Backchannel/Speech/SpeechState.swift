@@ -19,8 +19,8 @@ final class SpeechState {
     func start(projectRoot: URL) {
         self.projectRoot = projectRoot
         BackchannelSetup.setup(projectRoot: projectRoot)
-        watcher.onSpeechFile = { [weak self] text in
-            self?.handleSpeechText(text)
+        watcher.onSpeechFile = { [weak self] speakerId, text in
+            self?.handleSpeechText(text, speakerId: speakerId)
         }
         if isEnabled {
             watcher.start(projectRoot: projectRoot)
@@ -29,9 +29,9 @@ final class SpeechState {
     }
 
     /// speech ファイルが検知された時の処理
-    private func handleSpeechText(_ text: String) {
+    private func handleSpeechText(_ text: String, speakerId: Int?) {
         guard isEnabled else { return }
-        queue.enqueue(text)
+        queue.enqueue(text, speakerId: speakerId)
     }
 
     /// VOICEVOX の起動状態を確認してステータスを更新する

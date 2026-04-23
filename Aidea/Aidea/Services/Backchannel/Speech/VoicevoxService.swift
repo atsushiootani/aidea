@@ -8,12 +8,14 @@ import Foundation
 /// VOICEVOX REST API クライアント。audio_query → synthesis の2ステップで音声を合成する。
 enum VoicevoxService {
     private static let baseURL = "http://localhost:50021"
-    private static let defaultSpeaker = 20 // もち子さん
+    /// speaker 未指定時に使用するデフォルトスピーカー（もち子さん）
+    static let defaultSpeaker = 20
 
-    /// テキストから WAV 音声データを生成する
-    static func synthesize(_ text: String, speaker: Int = defaultSpeaker) async throws -> Data {
-        let query = try await audioQuery(text: text, speaker: speaker)
-        return try await synthesis(query: query, speaker: speaker)
+    /// テキストから WAV 音声データを生成する。speaker が nil の場合はデフォルトスピーカーを使用する。
+    static func synthesize(_ text: String, speaker: Int? = nil) async throws -> Data {
+        let resolved = speaker ?? defaultSpeaker
+        let query = try await audioQuery(text: text, speaker: resolved)
+        return try await synthesis(query: query, speaker: resolved)
     }
 
     /// VOICEVOX が起動しているか確認する

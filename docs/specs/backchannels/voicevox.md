@@ -1,6 +1,6 @@
 ---
 title: "Backchannel: VOICEVOX 読み上げ"
-description: Speech メッセージを VOICEVOX (localhost:50021 / Speaker 20) で音声合成し AVAudioPlayer で再生する実装仕様
+description: Speech メッセージを VOICEVOX (localhost:50021) で音声合成し AVAudioPlayer で再生する実装仕様。スピーカーはファイル1行目で指定可
 derived_from: []
 syncs_with:
   - docs/specs/backchannels/backchannel.md
@@ -9,7 +9,7 @@ impacts:
   - docs/specs/tools/claude.md
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-20
+last_updated: 2026-04-23
 ---
 
 # Backchannel: VOICEVOX 読み上げ
@@ -55,7 +55,27 @@ Aidea が初回セットアップ時に Bundle からコピーするファイル
 - 1ファイル1メッセージ（追記ではなく新規作成）
 - VOICEVOXで読み上げるため、英単語はカタカナに変換すること
 - 記号は省略すること
+
+## スピーカーID
+
+ファイルの1行目に読み上げスピーカーIDを数値のみで記述する。
+2行目以降が読み上げテキスト本文。
+
+例:
+
+    2
+    こんにちはご主人
 ```
+
+### ファイルフォーマット
+
+| 行 | 内容 | 必須 |
+|----|------|------|
+| 1 行目 | スピーカーID（数値のみ、前後空白可） | いいえ |
+| 2 行目以降 | 読み上げテキスト本文 | はい |
+
+- 1 行目が `Int` としてパースできる場合はスピーカーIDとして扱い、2 行目以降を本文として再生する
+- パースできない場合は全文を本文として扱い、デフォルトスピーカー（20 / もち子さん）で再生する（後方互換）
 
 ### 有効化方法 (コンパニオン initialPrompt)
 
@@ -73,12 +93,14 @@ Aidea が初回セットアップ時に Bundle からコピーするファイル
 | 設定項目 | 値 |
 |----------|-----|
 | エンドポイント | `http://localhost:50021` |
-| Speaker | 20（もち子さん） |
+| デフォルトスピーカー | 20（もち子さん） |
+
+スピーカーは speech ファイル 1 行目の指定があればそちらを優先する。
 
 ### API フロー
 
-1. **audio_query**: `POST /audio_query?speaker=20&text={text}` → JSON (音声パラメータ)
-2. **synthesis**: `POST /synthesis?speaker=20` に JSON を送信 → WAV データ
+1. **audio_query**: `POST /audio_query?speaker={id}&text={text}` → JSON (音声パラメータ)
+2. **synthesis**: `POST /synthesis?speaker={id}` に JSON を送信 → WAV データ
 3. **再生**: AVAudioPlayer で WAV を再生
 
 ---
@@ -87,9 +109,9 @@ Aidea が初回セットアップ時に Bundle からコピーするファイル
 
 | コンポーネント | 責務 |
 |---------------|------|
-| **SpeechWatcher** | FSEvents で `.aidea/backchannels/speech-*.txt` を監視、検知時にファイル読み取り → SpeechQueue に投入 |
-| **VoicevoxService** | VOICEVOX REST API クライアント (audio_query → synthesis) |
-| **SpeechQueue** | テキストをキューに積み、VOICEVOX → AVAudioPlayer で順番に再生 |
+| **SpeechWatcher** | FSEvents で `.aidea/backchannels/speech-*.txt` を監視、検知時にファイル読み取り → 1 行目のスピーカーIDをパース → SpeechQueue に投入 |
+| **VoicevoxService** | VOICEVOX REST API クライアント (audio_query → synthesis)。`speaker` 引数でスピーカー指定 |
+| **SpeechQueue** | `(speakerId?, text)` をキューに積み、VOICEVOX → AVAudioPlayer で順番に再生 |
 | **SpeechState** | 読み上げ ON/OFF 状態管理 (@Observable)、ヘッダ UI と接続 |
 
 ---

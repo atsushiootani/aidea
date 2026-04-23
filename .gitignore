@@ -13,3 +13,5 @@ node_modules/
 # 実装計画スナップショットはセッション固有のため git 管理しない。
 # 永続的な判断は docs/decisions/ に ADR として昇格させる。
 docs/plans/
+
+quickmemo/
