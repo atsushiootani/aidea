@@ -42,9 +42,16 @@ Scene に応じたレコメンドプロンプトがコンパニオンの吹き�
 | `git:workingChanges` | Git ツール、Working Changes モード |
 | `git:prPreview` | Git ツール、PR Preview モード |
 | `gitDiff:workingChanges` | GitDiff ツール、Working Changes モード |
+| `gitDiff:prPreview` | GitDiff ツール、PR Preview モード |
+| `claude:0` … `claude:8` | Claude ツール、Companion index ごと (0…8 固定) |
 | `filer` | Filer ツール |
 | `terminal` | Terminal ツール |
-| `preview:markdown:view` | Preview、Markdown、ビューモード |
+| `preview` | Preview ツール |
+| `kit` | Kit ツール |
+| `web` | Web ツール |
+| `preview:markdown:view` | Preview、Markdown、ビューモード (将来拡張余地) |
+
+Claude セッションは Companion と 1:1 で紐付くため、Scene 識別子も Companion index ごとに分ける。これにより Companion の役割別 (例: テスト担当 / レビュー担当) にレコメンドプロンプトを使い分けられる。
 
 ---
 

@@ -92,6 +92,7 @@ struct CompanionView: View {
         let id = session.id
         if let state = session.state as? ClaudeSessionState {
             state.companionPrompt = companion.initialPrompt
+            state.companionIndex = companion.index
         }
         store.bind(index: companion.index, sessionID: id)
 

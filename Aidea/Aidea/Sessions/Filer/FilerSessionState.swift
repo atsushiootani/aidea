@@ -84,6 +84,10 @@ final class FilerSessionState: SessionState, FocusBridgeOwner {
         focusBridge.deactivate()
     }
 
+    /// レコメンドモード用の Scene 識別子。Filer は mode 分岐なしの単一 Scene。
+    /// 仕様: docs/specs/sessions/filer.md#scene-とレコメンドプロンプト
+    func currentScene() -> String? { "filer" }
+
     init(workspace: WorkspaceState) {
         self.workspace = workspace
         self.controller = FileTreeViewController()

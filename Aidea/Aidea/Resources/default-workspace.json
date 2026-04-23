@@ -147,6 +147,20 @@
     "gitDiff:prPreview": {
       "prompts": ["PRをマージして", "レビューして"],
       "defaultCompanionIndex": 0
-    }
+    },
+    "claude:0": { "prompts": [], "defaultCompanionIndex": 0 },
+    "claude:1": { "prompts": [], "defaultCompanionIndex": 1 },
+    "claude:2": { "prompts": [], "defaultCompanionIndex": 2 },
+    "claude:3": { "prompts": [], "defaultCompanionIndex": 3 },
+    "claude:4": { "prompts": [], "defaultCompanionIndex": 4 },
+    "claude:5": { "prompts": [], "defaultCompanionIndex": 5 },
+    "claude:6": { "prompts": [], "defaultCompanionIndex": 6 },
+    "claude:7": { "prompts": [], "defaultCompanionIndex": 7 },
+    "claude:8": { "prompts": [], "defaultCompanionIndex": 8 },
+    "filer":    { "prompts": [], "defaultCompanionIndex": 0 },
+    "terminal": { "prompts": [], "defaultCompanionIndex": 0 },
+    "preview":  { "prompts": [], "defaultCompanionIndex": 0 },
+    "kit":      { "prompts": [], "defaultCompanionIndex": 0 },
+    "web":      { "prompts": [], "defaultCompanionIndex": 0 }
   }
 }

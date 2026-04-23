@@ -86,23 +86,33 @@ protocol SessionState {
 
 ### 初期定義 (Bundle 同梱の `default-workspace.json` の `recommends` に格納)
 
-| Scene | レコメンドプロンプト |
-|--------|---------------------|
-| `git:workingChanges` | `"コミットして"` `"プッシュして"` `"PRを作って"` |
-| `git:prPreview` | `"PRをマージして"` `"レビューして"` |
-| `gitDiff:workingChanges` | `"コミットして"` `"プッシュして"` `"PRを作って"` |
-| `gitDiff:prPreview` | `"PRをマージして"` `"レビューして"` |
-| 上記以外 | エントリ無し → Cmd+Enter は何もしない |
+| Scene | レコメンドプロンプト (初期値) | `defaultCompanionIndex` |
+|--------|---------------------|---|
+| `git:workingChanges` | `"コミットして"` `"プッシュして"` `"PRを作って"` | `0` |
+| `git:prPreview` | `"PRをマージして"` `"レビューして"` | `0` |
+| `gitDiff:workingChanges` | `"コミットして"` `"プッシュして"` `"PRを作って"` | `0` |
+| `gitDiff:prPreview` | `"PRをマージして"` `"レビューして"` | `0` |
+| `claude:0` … `claude:8` | `[]` (空。ユーザが各 Companion の役割に応じて追加) | Scene 識別子末尾の index と同値 (自 Companion) |
+| `filer` | `[]` | `0` |
+| `terminal` | `[]` | `0` |
+| `preview` | `[]` | `0` |
+| `kit` | `[]` | `0` |
+| `web` | `[]` | `0` |
+| 上記以外 | エントリ無し → Cmd+Enter は何もしない | — |
 
-新たな Scene へのプロンプト追加は `default-workspace.json` の `recommends` を編集する (Swift コードへのハードコードは禁止)。
+- **Claude Scene のみ `defaultCompanionIndex` が自 Companion に一致する** (`claude:5` なら `5`)。これにより Claude セッションで Cmd+Enter した際に、最初に選択されるのが「そのセッション自身が紐付く Companion」になる。
+- 他セッションの初期 `defaultCompanionIndex` は `0` (= Companion 1)。ユーザが ScenePromptsEditorView から変更できる。
+- `prompts` が空の Scene では Cmd+Enter しても吹き出しが出ない (レコメンドなし)。ユーザが ScenePromptsEditorView で追加することで有効化される。
 
-将来の拡張例:
+新たな Scene へのプロンプト追加は `default-workspace.json` の `recommends` を編集するか、実行時に ScenePromptsEditorView から編集する (Swift コードへのハードコードは禁止)。
+
+将来の拡張例 (参考):
 
 | ビュー | レコメンドプロンプト例 |
 |--------|----------------------|
 | Filer | `"このファイルをレビューして: {path}"` |
 | Preview | `"このドキュメントを翻訳して"` |
-| GitDiff | `"この差分をレビューして"` |
+| Claude (Companion 別) | テスト担当 Companion なら `"テスト実行して"`、レビュー担当なら `"差分をレビューして"` |
 
 ---
 

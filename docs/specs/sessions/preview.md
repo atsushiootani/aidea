@@ -1,17 +1,19 @@
 ---
 title: Session 内部状態: Preview
-description: PreviewSessionState の状態 (url / title)・openPreview 呼び出し規約・workspace.json 永続化
+description: PreviewSessionState の状態 (url / title)・openPreview 呼び出し規約・workspace.json 永続化・Scene とレコメンドプロンプト
 derived_from:
   - docs/specs/sessions/ui-rules.md
   - docs/specs/sessions/active-session.md
   - docs/specs/sessions/focus-contract.md
+  - docs/specs/frontchannels/scene.md
 syncs_with:
   - docs/specs/tools/preview.md
   - docs/specs/aspects/persistence.md
+  - docs/specs/companions/recommend-mode.md
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-21
+last_updated: 2026-04-23
 ---
 
 # Session 内部状態: Preview
@@ -41,3 +43,14 @@ Preview は `SessionRegistry.openPreview(for:title:)` 経由で開く。
 ## 永続化
 
 `url` と `title` は `<projectRoot>/.aidea/workspace.json` に保存される。詳細は [../aspects/persistence.md](../aspects/persistence.md) を参照。
+
+## Scene とレコメンドプロンプト
+
+`SessionState` プロトコル ([../frontchannels/scene.md](../frontchannels/scene.md)) を実装し、Cmd+Enter でのレコメンド送信に対応する。
+
+| `currentScene()` | 場面 |
+|---|---|
+| `"preview"` | Preview ツール全体 (現行は単一 Scene) |
+
+- 将来的にコンテンツ種別 (markdown / image / drawio) や編集モードで分岐する余地あり (例: `"preview:markdown:view"` / `"preview:markdown:edit"`)。**現時点では単一 Scene `"preview"` で開始** し、必要性が出た段階で細分化する。
+- 初期プロンプトは空配列 (`[]`)、`defaultCompanionIndex` は `0`。

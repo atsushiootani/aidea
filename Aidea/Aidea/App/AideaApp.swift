@@ -239,6 +239,7 @@ struct AideaApp: App {
             let session = registry.createSession(tool: .claude, instance: instance)
             if let state = session.state as? ClaudeSessionState {
                 state.companionPrompt = companion.initialPrompt
+                state.companionIndex = index
             }
             companionStore.bind(index: index, sessionID: session.id)
             if let pane = registry.activePane ?? layout.allPanes.first {
@@ -387,6 +388,7 @@ struct AideaApp: App {
         let session = registry.createSession(tool: .claude, instance: instance)
         if let claudeState = session.state as? ClaudeSessionState {
             claudeState.companionPrompt = companion.initialPrompt
+            claudeState.companionIndex = index
         }
         companionStore.bind(index: index, sessionID: session.id)
         if let pane = registry.activePane ?? layout.allPanes.first {

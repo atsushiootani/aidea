@@ -306,7 +306,7 @@ final class WorkspaceSnapshotManager {
         // Recommends を復元
         RecommendStore.setAll(snapshot.recommends)
 
-        // Claude セッションの ensureSession + companionPrompt 再注入
+        // Claude セッションの ensureSession + companionPrompt / companionIndex 再注入
         // (sessionID != nil な companion それぞれに対して)
         if let companionStore {
             for companion in companionStore.companions {
@@ -314,6 +314,7 @@ final class WorkspaceSnapshotManager {
                 let session = registry.ensureSession(for: sessionID)
                 if let state = session.state as? ClaudeSessionState {
                     state.companionPrompt = companion.initialPrompt
+                    state.companionIndex = companion.index
                 }
             }
         }
