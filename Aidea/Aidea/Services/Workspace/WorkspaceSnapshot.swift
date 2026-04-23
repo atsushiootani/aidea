@@ -5,50 +5,40 @@
 
 import Foundation
 
-/// ワークスペース全体の保存スナップショット。
+/// ワークスペース全体の保存スナップショット (v7)。
 /// `workspace.json` にシリアライズされ、起動時に復元される。
+/// トップレベルは 4 つの意味的グループに分かれる:
+/// - `layout`     : ペイン構造 + アクティブペイン
+/// - `sessions`   : 各 Session タブの永続化状態 + アクティブ履歴
+/// - `companions` : 9 個固定のコンパニオン定義 + Claude セッション紐付け (sessionID 統合)
+/// - `recommends` : scene → レコメンドプロンプト設定
 struct WorkspaceSnapshot: Codable {
-    /// スナップショットフォーマットのバージョン (将来のマイグレーション用)
-    /// v2: レイアウトを LayoutNode ツリーで保存する形式
-    /// v3: companions / bindings / recommends を統合
-    /// v4: Filer Tab に excludeRules を追加 (issue #68)
-    /// v5: activeSessionHistory を追加 (issue #49)
-    /// v6: Filer Tab に userDecorationRules を追加 (issue #9)
+    /// スナップショットフォーマットのバージョン
+    /// v7: 4 グループ化 + コンパニオン UUID → index 化 + bindings 統合 (issue #80)
     let version: Int
-    /// レイアウトツリーのルートノード
-    let layoutRoot: LayoutNodeSnapshot
-    /// Preview Session の状態一覧
-    let previews: [PreviewSnapshot]
-    /// Web Session の状態一覧
-    let webs: [WebSnapshot]
-    /// Filer Session の状態一覧 (展開ディレクトリ等)
-    let filers: [FilerSnapshot]
-    /// Kit Session の状態一覧 (セクション・サブグループの開閉)
-    let kits: [KitSnapshot]
-    /// アクティブなペインの ID
-    let activePaneID: UUID?
-
-    // --- v3 で追加 ---
-
-    /// コンパニオン設定一覧
-    let companions: [CompanionConfig]?
-    /// コンパニオン ↔ Claude セッションの紐付け
-    let companionBindings: [CompanionBinding]?
-    /// Scene ごとのレコメンド設定
-    let recommends: [String: SceneConfig]?
-
-    // --- v5 で追加 ---
-
-    /// アクティブ Session 切替履歴 (末尾が最新、重複排除済、最大 50 件)。
-    /// Active Session Switcher (Ctrl+Tab) の表示元データ。
-    /// v4 以前のスナップショットでは nil → 空配列扱いで apply される。
-    let activeSessionHistory: [SessionID]?
+    let layout: LayoutSnapshot
+    let sessions: SessionsSnapshot
+    /// 必ず 9 要素 (index 0...8)
+    let companions: [CompanionConfig]
+    /// scene 識別子 → SceneConfig
+    let recommends: [String: SceneConfig]
 }
 
-/// コンパニオン ↔ セッションの紐付け (永続化用)
-struct CompanionBinding: Codable {
-    let companionID: UUID
-    let sessionID: SessionID
+/// レイアウト関連 (ペイン構造 + アクティブペイン)
+struct LayoutSnapshot: Codable {
+    let tree: LayoutNodeSnapshot
+    let activePaneID: UUID?
+}
+
+/// 各 Session タブの永続化状態 + アクティブ履歴
+struct SessionsSnapshot: Codable {
+    let previews: [PreviewSnapshot]
+    let webs: [WebSnapshot]
+    let filers: [FilerSnapshot]
+    let kits: [KitSnapshot]
+    /// アクティブ Session 切替履歴 (末尾が最新、重複排除済、最大 50 件)。
+    /// Active Session Switcher (Ctrl+Tab) の表示元データ
+    let activeHistory: [SessionID]
 }
 
 /// LayoutNode ツリーの永続化用表現 (再帰 enum)
@@ -81,9 +71,9 @@ struct WebSnapshot: Codable {
 struct FilerSnapshot: Codable {
     let id: SessionID
     let expandedURLs: [URL]
-    /// v4 で追加。v3 以前は nil → apply 時に `FilerSessionState.defaultExcludeRules` を割り当てる
+    /// v3 以前は永続化に含まれず nil 扱い → apply 時に `FilerSessionState.defaultExcludeRules` を割り当てる
     let excludeRules: [String]?
-    /// v6 で追加。v5 以前は nil → apply 時に空配列扱い (デフォルトデコレーションのみ有効)
+    /// v5 以前は永続化に含まれず nil 扱い → apply 時に空配列扱い (デフォルトデコレーションのみ有効)
     let userDecorationRules: [DecorationRule]?
 }
 

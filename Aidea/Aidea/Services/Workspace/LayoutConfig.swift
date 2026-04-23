@@ -6,49 +6,29 @@
 import Foundation
 import Observation
 
-/// 1 つの物理ペインが保持する Tab のリストとアクティブなタブ位置。
-/// 各 Tab は 1 つの Session を参照する。
-@Observable
-final class Pane: Identifiable {
-    let id: UUID
-    var tabs: [SessionID]
-    var activeIndex: Int
-
-    init(id: UUID = UUID(), tabs: [SessionID], activeIndex: Int = 0) {
-        self.id = id
-        self.tabs = tabs
-        self.activeIndex = activeIndex
-    }
-
-    /// 現在アクティブな SessionID。tabs が空なら nil。
-    var activeSessionID: SessionID? {
-        guard activeIndex >= 0, activeIndex < tabs.count else { return nil }
-        return tabs[activeIndex]
-    }
-}
-
 /// 動的ペイン構成。`root` は LayoutNode ツリーで、leaf が Pane を保持する。
+/// 初期値は持たず、起動時に `WorkspaceSnapshotManager.apply()` で必ず上書きされる。
+/// デフォルトレイアウトの SSoT は Bundle 同梱 `Aidea/Resources/default-workspace.json`。
 @Observable
 final class LayoutConfig {
     /// レイアウトツリーのルート
     var root: LayoutNode
 
+    /// 空 root で初期化する。実際の root は apply() で上書きされる前提。
     init() {
-        self.root = Self.defaultRoot()
+        // 仮の最小レイアウト (Filer 1 ペイン)。
+        // 通常は AideaApp.init() で snapshot.apply() により即座に上書きされる
+        self.root = Self.fallbackRoot()
     }
 
     init(root: LayoutNode) {
         self.root = root
     }
 
-    /// 既定の 4 ペインレイアウトを構築する
-    static func defaultRoot() -> LayoutNode {
-        let topLeft = LayoutNode(value: .leaf(Pane(tabs: [SessionID(.filer)])))
-        let bottomLeft = LayoutNode(value: .leaf(Pane(tabs: [SessionID(.kit)])))
-        let left = LayoutNode(value: .split(axis: .vertical, children: [topLeft, bottomLeft]))
-        let center = LayoutNode(value: .leaf(Pane(tabs: [SessionID(.terminal)])))
-        let right = LayoutNode(value: .leaf(Pane(tabs: [SessionID(.web)])))
-        return LayoutNode(value: .split(axis: .horizontal, children: [left, center, right]))
+    /// 緊急フォールバック用の最小レイアウト (Filer 1 ペイン)。
+    /// Bundle テンプレ読込にも失敗した場合のみ使われる
+    static func fallbackRoot() -> LayoutNode {
+        LayoutNode(value: .leaf(Pane(tabs: [SessionID(.filer)])))
     }
 
     /// 全 Pane の配列 (Tool インスタンス番号採番などで横断的に参照)

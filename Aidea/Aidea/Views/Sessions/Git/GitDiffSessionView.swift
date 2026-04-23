@@ -331,8 +331,7 @@ struct GitDiffSessionContainer: View {
     var body: some View {
         VStack(spacing: 0) {
             GitDiffSessionView(state: state)
-            ScenePromptsEditorView(scene: state.currentScene() ?? "gitDiff",
-                                   defaults: state.recommendedPrompts())
+            ScenePromptsEditorView(scene: state.currentScene() ?? "gitDiff")
         }
         .onAppear {
             // WKWebView の attach 完了を待つため次の runloop で reactivate を発火。

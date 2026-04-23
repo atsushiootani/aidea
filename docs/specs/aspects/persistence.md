@@ -1,6 +1,6 @@
 ---
 title: Persistence (データ永続化)
-description: UserDefaults / Keychain / .aidea/ のデータ永続化仕様を機能群横断で集約
+description: UserDefaults / Keychain / Bundle Resources / .aidea/ のデータ永続化と初期値テンプレ仕様を機能群横断で集約
 derived_from:
   - docs/specs/architecture.md
 syncs_with:
@@ -20,18 +20,19 @@ impacts: []
 conventions:
   - docs/LAYOUT.md
   - docs/specs/aspects/README.md
-last_updated: 2026-04-22
+last_updated: 2026-04-23
 ---
 
 # Persistence (データ永続化)
 
 Aidea が **どのデータをどこに、どのタイミングで保存するか** の仕様。
 
-保存先は大きく 3 種類:
+保存先は大きく 4 種類:
 
 1. **UserDefaults** — アプリ全体のユーザ設定 (最小限)
 2. **Keychain** — 機密情報 (API キー)
-3. **`<projectRoot>/.aidea/`** — プロジェクト固有の状態・リソース・通信データ (メイン)
+3. **Bundle Resources** — アプリ同梱の初期値テンプレ・指示書 (読み取り専用)
+4. **`<projectRoot>/.aidea/`** — プロジェクト固有の状態・リソース・通信データ (メイン)
 
 `~/Library/Application Support/Aidea/` は **現時点では使用していない**。プロジェクト固有の情報は `.aidea/` 配下に集約することで、プロジェクトをまたいだ干渉を防いでいる。
 
@@ -57,11 +58,23 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 管理: `Utilities/KeychainHelper.swift` (`save` / `load` / `delete`)
 利用: `Services/Translation/ClaudeTranslator.swift`
 
+### Bundle Resources (`Aidea/Resources/`)
+
+アプリバンドルに同梱する **初期値テンプレ・指示書**。Xcode の `PBXFileSystemSynchronizedRootGroup` (Xcode 16) により `Aidea/Resources/` 配下は自動でビルドに含まれる (pbxproj 編集不要)。
+
+| パス | 用途 |
+|---|---|
+| `default-workspace.json` | `<projectRoot>/.aidea/workspace.json` の初期テンプレ (ハードコード排除の SSoT) |
+| `Backchannels/aidea.md` | Backchannel 機能の指示書。`BackchannelSetup` が `.aidea/claude/` にコピー |
+| `Backchannels/speech.md` | speech 機能の指示書 (同上) |
+
+**設計ポリシー**: ハードコードしがちなデフォルト値 (初期レイアウト・コンパニオン定義・レコメンドプロンプト等) は Swift コード側に二重管理せず、Bundle 同梱の JSON / Markdown を **唯一のソース** とする。
+
 ### `<projectRoot>/.aidea/` (プロジェクト固有)
 
 ```
 <projectRoot>/.aidea/
-├── workspace.json        # レイアウト・Session 状態・コンパニオン・レコメンド・アクティブ Session 履歴の統合スナップショット (v6)
+├── workspace.json        # レイアウト・Session 状態・コンパニオン・レコメンド・履歴の統合スナップショット (v7)
 ├── backchannels/         # Claude からのメッセージ受信ディレクトリ
 │   └── speech-*.txt      # 読み上げ対象テキスト (消費後に削除)
 ├── claude/               # Claude 起動時に読ませるリソース
@@ -79,28 +92,89 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 
 ## ファイル詳細
 
-### `workspace.json` (レイアウト・Session 状態・コンパニオン・レコメンド統合)
+### `workspace.json` (統合スナップショット)
 
 - **管理**: `Services/Workspace/WorkspaceSnapshotManager.swift`
-- **フォーマット**: JSON (`version: 6`)
-- **保存内容**:
-  - レイアウトツリー (ノード ID / 分割軸 / ペイン構造)
-  - 各 Tab の状態:
-    - Preview: `url` + `title`
-    - Web: `url`
-    - Filer: `expandedURLs` + `excludeRules` + `userDecorationRules`
-    - Kit: `expandedSections` + `expandedGroups`
-  - アクティブペイン ID
-  - `companions`: `[{id, name, icon, initialPrompt}]` (CompanionStore から収集)
-  - `companionBindings`: `[{companionID, sessionID}]` (activeSessionMap から収集)
-  - `recommends`: `{scene: {prompts: [String], defaultCompanionIndex: Int}}` (RecommendStore から収集)
-  - `activeSessionHistory`: `[SessionID]` — アクティブ Session 切替履歴 (末尾が最新、重複排除済、最大 50 件)。[Active Session Switcher](../window/active-session-switcher.md) の表示元 (v5 で追加)
-- **読込**: `AideaApp.init()` で `WorkspaceSnapshotManager.load()` → `apply()` を呼び出し、レイアウト/コンパニオン/レコメンド/履歴をまとめて復元
-- **保存**: アプリ終了時 / バックグラウンド化時に一括保存 (`AideaApp.registerTerminationObserver()`)
-- **v2 → v3 マイグレーション**: 読込時に `companions == nil` なら旧 `.aidea/companions.json` / `.aidea/recommends.json` を読み取って統合し、旧ファイルを削除する
-- **v3 → v4 マイグレーション**: 読込時に Filer Tab の `excludeRules == nil` ならデフォルト除外ルール ([../tools/filer.md#デフォルト除外ルール](../tools/filer.md#デフォルト除外ルール)) を設定する
-- **v4 → v5 マイグレーション**: 読込時に `activeSessionHistory == nil` なら空配列扱い (履歴なしで起動。Switcher は最初の Ctrl+Tab 以降から動作)
-- **v5 → v6 マイグレーション**: 読込時に Filer Tab の `userDecorationRules == nil` なら空配列扱い (デフォルトデコレーションのみ有効)。デフォルトデコレーション ([../tools/filer.md#デフォルトデコレーション](../tools/filer.md#デフォルトデコレーション)) は永続化対象外なので、Aidea 同梱定数として常に最新を使う
+- **フォーマット**: JSON (`version: 7`)
+- **初期値の SSoT**: Bundle 同梱の `Aidea/Resources/default-workspace.json` (ハードコード排除)
+- **読込フロー** (`WorkspaceSnapshotManager.load(projectRoot:)`):
+  1. `<projectRoot>/.aidea/workspace.json` が存在 → 読込・マイグレーション適用
+  2. 不在 → Bundle 同梱の `default-workspace.json` を読込・初期スナップショットとして返す
+  3. Bundle 読込も失敗 → nil を返す (AideaApp 側で緊急フォールバック)
+- **書出タイミング**: 初回起動時にテンプレを適用しても **即書出はしない**。アプリ終了時 / バックグラウンド化時に通常の保存フローで `<projectRoot>/.aidea/workspace.json` が初めて生成される
+- **緊急フォールバック** (`AideaApp.init()`): Bundle 読込にも失敗した場合は **Filer 1 ペインの最小レイアウト** を生成して継続起動する (通常は発生しない)
+
+#### スキーマ (v7)
+
+トップレベルは 4 つの意味的グループに分かれる。
+
+| グループ | 説明 |
+|---|---|
+| `layout` | ペイン構造 + アクティブペイン |
+| `sessions` | 各 Session タブの永続化状態 + アクティブ履歴 |
+| `companions` | 9 個固定のコンパニオン定義 + Claude セッション紐付け |
+| `recommends` | scene → レコメンドプロンプト設定 |
+
+```jsonc
+{
+  "version": 7,
+  "layout": {
+    "tree": { /* LayoutNodeSnapshot ツリー (split/leaf 再帰) */ },
+    "activePaneID": "<UUID>" // または null
+  },
+  "sessions": {
+    "previews": [{ "id": {...}, "url": "...", "title": "..." }],
+    "webs":     [{ "id": {...}, "url": "..." }],
+    "filers":   [{ "id": {...}, "expandedURLs": [...], "excludeRules": [...], "userDecorationRules": [...] }],
+    "kits":     [{ "id": {...}, "expandedSections": [...], "expandedGroups": [...] }],
+    "activeHistory": [/* SessionID 配列 */]
+  },
+  "companions": [
+    {
+      "index": 0,
+      "name": "Companion 1",
+      "icon": "Companions/companion-1",
+      "initialPrompt": "...",
+      "sessionID": null            // null = 未起動 / SessionID = 起動中の Claude セッション
+    },
+    /* ... index 1〜8 まで必ず 9 要素 ... */
+  ],
+  "recommends": {
+    "git:workingChanges": { "prompts": ["..."], "defaultCompanionIndex": 0 }
+  }
+}
+```
+
+#### マイグレーション履歴
+
+| 版 | 変更内容 | マイグレーション |
+|---|---|---|
+| v2 | レイアウトを LayoutNode ツリーで保存する形式 | (基底) |
+| v3 | `companions` / `companionBindings` / `recommends` を統合 | 旧 `.aidea/companions.json` / `.aidea/recommends.json` を読み込んで統合し削除 |
+| v4 | Filer Tab に `excludeRules` を追加 (issue #68) | nil 時にデフォルト除外ルールを設定 |
+| v5 | `activeSessionHistory` を追加 (issue #49) | nil 時に空配列扱い |
+| v6 | Filer Tab に `userDecorationRules` を追加 (issue #9) | nil 時に空配列扱い (デフォルトデコレーションは Aidea 同梱定数) |
+| v7 | **構造を 4 グループ化 + コンパニオン UUID → index 化 + bindings 統合 (issue #80)** | 後述 |
+
+#### v6 → v7 マイグレーションの詳細
+
+1. **トップレベル平坦構造の集約**:
+   - `layoutRoot` / `activePaneID` → `layout.{tree, activePaneID}`
+   - `previews` / `webs` / `filers` / `kits` / `activeSessionHistory` → `sessions.{previews, webs, filers, kits, activeHistory}`
+2. **コンパニオン UUID → index 化** + **bindings 統合**:
+   - 旧 `companions: [{ id: UUID, name, icon, initialPrompt }]` の各要素について、`icon` 名 (`Companions/companion-N`) から `index` を逆算 (`N - 1`)
+   - 推定できない companion (icon が想定外形式) は捨てる。同じ index に複数該当した場合は後勝ち
+   - 旧 `companionBindings: [{ companionID, sessionID }]` を、対応する new companion の `sessionID` フィールドに移植
+   - 9 個の枠に該当データが無い index は Bundle テンプレの初期値で埋める (name/icon/initialPrompt はテンプレを採用)
+3. **recommends は構造変更なし** (キー名・形式そのまま)
+
+### `default-workspace.json` の構造ルール
+
+- `workspace.json` のスキーマと **完全に一致** させる (フィールド省略不可)
+- 値が空の場合も配列は `[]` / 辞書は `{}` を明示
+- `version` は現行スキーマバージョンと一致
+- `companions` には必ず 9 要素 (index 0〜8) を含め、`sessionID` は全て `null`
+- レイアウト・companion 名称・recommend プロンプト等の **デフォルト値はすべてここに集約**。Swift コード側へのハードコードは禁止
 
 ### `.aidea/ja/<path>` (翻訳キャッシュ)
 
@@ -149,11 +223,13 @@ Claude → Aidea 方向の通信は**ファイル経由**で行う。
 | タイミング | 対象 | 呼び出し元 |
 |---|---|---|
 | 起動時 | UserDefaults → `projectRoot` 復元 | `WorkspaceState.init()` |
-| 起動時 | `workspace.json` 読込・レイアウト / コンパニオン / レコメンド一括復元 → bind 済みセッションへの `companionPrompt` 再注入 | `AideaApp.init()` → `WorkspaceSnapshotManager.apply()` |
+| 起動時 (workspace.json 既存) | `workspace.json` 読込 → 復元・マイグレーション適用 | `WorkspaceSnapshotManager.load()` |
+| 起動時 (workspace.json 不在) | Bundle 同梱 `default-workspace.json` 読込 → 初期スナップショットとして適用 | `WorkspaceSnapshotManager.load()` |
+| 起動時 (Bundle 読込も失敗) | Filer 1 ペインの最小レイアウトを生成して継続起動 (緊急フォールバック) | `AideaApp.init()` |
 | projectRoot 変更時 | `.aidea/` 生成 + `.gitignore` 追記 + Backchannel 再初期化 | `WorkspaceState.setProjectRoot()` |
 | Companion / Recommend 変更時 | インメモリのみ更新 (即座保存しない) | `CompanionStore` / `RecommendStore` |
 | Claude からメッセージ受信時 | `speech-*.txt` → 読み上げ → ファイル削除 | `SpeechWatcher` |
-| 終了時 / バックグラウンド化時 | `workspace.json` (レイアウト + コンパニオン + レコメンド統合) 保存 | `AideaApp.registerTerminationObserver()` |
+| 終了時 / バックグラウンド化時 | `workspace.json` (4 グループ統合) 保存 | `AideaApp.registerTerminationObserver()` |
 
 ---
 
@@ -162,6 +238,7 @@ Claude → Aidea 方向の通信は**ファイル経由**で行う。
 - **プロジェクト固有は `.aidea/`**: 複数プロジェクトをまたいだ干渉を避けるため、プロジェクト固有の状態・リソース・通信データはすべて `<projectRoot>/.aidea/` に集約する
 - **グローバル設定は UserDefaults**: プロジェクトに依存しないユーザ設定のみ
 - **機密情報は Keychain**: API キー等は macOS 標準の Keychain に委譲
+- **デフォルト値は Bundle Resources**: ハードコードを避け、Swift と JSON の二重管理を排する
 - **`.aidea/` は git 管理外**: Aidea が自動で `.gitignore` に追加する (プロジェクト側で除外する手間を省く)
 - **ファイルフォーマットは JSON / Markdown / Plain Text**: バイナリは使わず、直接編集・diff 可能にする
 
@@ -173,3 +250,4 @@ Claude → Aidea 方向の通信は**ファイル経由**で行う。
 - [../backchannels/](../backchannels/README.md) — 通信チャネル (Claude → Aidea) の詳細
 - [../frontchannels/](../frontchannels/README.md) — 通信チャネル (Aidea → Claude) の詳細
 - [../sessions/ui-rules.md#概念モデル](../sessions/ui-rules.md#概念モデル) — Session 概念
+- [../companions/companion.md](../companions/companion.md) — コンパニオン仕様 (9 個固定 + index 識別)

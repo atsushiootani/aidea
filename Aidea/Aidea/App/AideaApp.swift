@@ -32,11 +32,25 @@ struct AideaApp: App {
         let recommend = RecommendState()
         let manager = WorkspaceSnapshotManager()
 
-        // 起動時にスナップショットがあれば適用、無ければ既定のアクティブ Pane を設定
+        // 起動時に snapshot を読み込んで適用する。読み込めない場合 (Bundle テンプレも失敗) は
+        // 緊急フォールバックとして最小レイアウト + ミニマルコンパニオン枠で継続起動する。
         if let snapshot = manager.load(projectRoot: ws.projectRoot) {
             manager.apply(snapshot, to: lay, registry: reg, companionStore: companions)
-        } else if let firstPane = lay.allPanes.first {
-            reg.setActiveTab(paneID: firstPane.id, tabIndex: firstPane.activeIndex)
+        } else {
+            NSLog("[Aidea] Bundle default-workspace.json も読込失敗。緊急フォールバックを適用")
+            lay.root = LayoutConfig.fallbackRoot()
+            companions.companions = (0..<9).map {
+                CompanionConfig(
+                    index: $0,
+                    name: "Companion \($0 + 1)",
+                    icon: "Companions/companion-\($0 + 1)",
+                    initialPrompt: "",
+                    sessionID: nil
+                )
+            }
+            if let firstPane = lay.allPanes.first {
+                reg.setActiveTab(paneID: firstPane.id, tabIndex: firstPane.activeIndex)
+            }
         }
 
         _workspace = State(initialValue: ws)
@@ -212,26 +226,21 @@ struct AideaApp: App {
     /// Cmd+1..0 : 指定 Tool のタブへフォーカス。既にその Tool がアクティブなら次のインスタンスへ循環。
     /// Cmd+1~8 でコンパニオンを起動またはアクティブにする
     private func activateCompanion(index: Int) {
-        let icons = CompanionIconPresets.imageIcons
-        guard index < icons.count else { return }
+        guard index < CompanionIconPresets.imageIcons.count,
+              index < companionStore.companions.count else { return }
         let companion = companionStore.companion(forIndex: index)
 
-        if let companion, companionStore.isActive(companion.id),
-           let sessionID = companionStore.activeSessionMap[companion.id] {
+        if let sessionID = companion.sessionID {
             // 既に起動中 → フォーカス
             registry.activateSession(sessionID)
         } else {
             // 未起動 → 起動
-            let config = companion ?? companionStore.createDefault(forIndex: index)
-            if companionStore.companions.first(where: { $0.id == config.id }) == nil {
-                companionStore.add(config)
-            }
             let instance = layout.nextSessionInstance(of: .claude)
             let session = registry.createSession(tool: .claude, instance: instance)
             if let state = session.state as? ClaudeSessionState {
-                state.companionPrompt = config.initialPrompt
+                state.companionPrompt = companion.initialPrompt
             }
-            companionStore.bind(companionID: config.id, sessionID: session.id)
+            companionStore.bind(index: index, sessionID: session.id)
             if let pane = registry.activePane ?? layout.allPanes.first {
                 pane.tabs.append(session.id)
                 registry.setActiveTab(paneID: pane.id, tabIndex: pane.tabs.count - 1)
@@ -304,15 +313,12 @@ struct AideaApp: App {
 
             // Cmd+Enter でレコメンドモード起動
             if event.modifierFlags.contains(.command), event.keyCode == 36 {
-                if let activeSession = registry.activeSession {
-                    let scene = activeSession.state.currentScene()
-                    let defaults = activeSession.state.recommendedPrompts()
-                    let prompts = RecommendStore.resolve(scene: scene, defaults: defaults)
-                    let defaultCompanion = scene.map { RecommendStore.defaultCompanionIndex(for: $0) } ?? 0
-                    if !prompts.isEmpty {
-                        recommend.activate(prompts: prompts, companionIndex: defaultCompanion)
-                        return nil
-                    }
+                if let activeSession = registry.activeSession,
+                   let scene = activeSession.state.currentScene(),
+                   let prompts = RecommendStore.prompts(for: scene), !prompts.isEmpty {
+                    let defaultCompanion = RecommendStore.defaultCompanionIndex(for: scene)
+                    recommend.activate(prompts: prompts, companionIndex: defaultCompanion)
+                    return nil
                 }
                 return event
             }
@@ -364,12 +370,11 @@ struct AideaApp: App {
         }
         let index = recommend.selectedCompanionIndex
         recommend.deactivate()
-
+        guard index >= 0, index < companionStore.companions.count else { return }
         let companion = companionStore.companion(forIndex: index)
 
         // 既に起動中ならメッセージを送信
-        if let companion, companionStore.isActive(companion.id),
-           let sessionID = companionStore.activeSessionMap[companion.id],
+        if let sessionID = companion.sessionID,
            let session = registry.session(for: sessionID),
            let state = session.state as? ClaudeSessionState {
             registry.activateSession(sessionID)
@@ -378,16 +383,12 @@ struct AideaApp: App {
         }
 
         // 未起動 → 起動してから送信
-        let config = companion ?? companionStore.createDefault(forIndex: index)
-        if companionStore.companions.first(where: { $0.id == config.id }) == nil {
-            companionStore.add(config)
-        }
         let instance = layout.nextSessionInstance(of: .claude)
         let session = registry.createSession(tool: .claude, instance: instance)
         if let claudeState = session.state as? ClaudeSessionState {
-            claudeState.companionPrompt = config.initialPrompt
+            claudeState.companionPrompt = companion.initialPrompt
         }
-        companionStore.bind(companionID: config.id, sessionID: session.id)
+        companionStore.bind(index: index, sessionID: session.id)
         if let pane = registry.activePane ?? layout.allPanes.first {
             pane.tabs.append(session.id)
             registry.setActiveTab(paneID: pane.id, tabIndex: pane.tabs.count - 1)

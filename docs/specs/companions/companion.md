@@ -1,6 +1,6 @@
 ---
 title: コンパニオン
-description: ヘッダの 9 体アイコン・CompanionConfig/CompanionStore の仕様・workspace.json v3 経由の永続化・起動フロー
+description: ヘッダの 9 体アイコン・index 識別の CompanionConfig/CompanionStore 仕様・workspace.json v7 経由の永続化・起動フロー
 derived_from:
   - docs/specs/frontchannels/frontchannel.md
   - docs/specs/sessions/ui-rules.md
@@ -11,12 +11,12 @@ impacts:
   - docs/specs/tools/claude.md
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-20
+last_updated: 2026-04-23
 ---
 
 # コンパニオン
 
-> ヘッダに常時並ぶ 9 体のアイコン。1 体が 1 つの Claude セッションに紐付き、
+> ヘッダに常時並ぶ **9 体固定** のアイコン。1 体が 1 つの Claude セッションに紐付き、
 > 起動・フォーカス・レコメンド送信の入口になる。
 
 [../frontchannels/frontchannel.md](../frontchannels/frontchannel.md) が規定する「Aidea → Claude」通信の起点にあたる UI 概念。
@@ -26,9 +26,9 @@ last_updated: 2026-04-20
 
 ## 概要
 
-- ヘッダ (`AppHeaderView`) に **常に 9 体のコンパニオンアイコンが並ぶ**
+- ヘッダ (`AppHeaderView`) に **9 体のコンパニオンアイコンが index 0〜8 で常に並ぶ** (個数は固定で増減できない)
 - 各アイコンは `CompanionIconPresets.imageIcons` (9 枚) に対応
-- 起動済み (Claude セッションと bind 済み) のアイコンは彩度 1.0、未起動は 0.3 でグレーアウト
+- 起動済み (Claude セッションと bind 済み = `sessionID != nil`) のアイコンは彩度 1.0、未起動は 0.3 でグレーアウト
 - アクティブタブがそのコンパニオンの Claude セッションならアクセントカラーで枠が付く
 
 ### タップ操作
@@ -36,8 +36,8 @@ last_updated: 2026-04-20
 | 対象 | 動作 |
 |---|---|
 | アイコン (起動済み) | 紐付く Claude セッションをアクティブ化 |
-| アイコン (未起動) | デフォルト設定で Claude セッションを起動し bind する |
-| 名前ラベル | `CompanionEditView` (sheet) を開いて設定を編集 |
+| アイコン (未起動) | コンパニオンの設定で Claude セッションを起動し bind する |
+| 名前ラベル | `CompanionEditView` (sheet) を開いて設定を編集 (name / icon / initialPrompt) |
 
 ---
 
@@ -45,48 +45,58 @@ last_updated: 2026-04-20
 
 ### `CompanionConfig`
 
-1 体のコンパニオン設定。`Models/Companion/CompanionConfig.swift` の `Codable` 構造体。
+1 体のコンパニオン設定 + 起動状態。`Models/Companion/CompanionConfig.swift` の `Codable` 構造体。
 
 | プロパティ | 型 | 意味 |
 |---|---|---|
-| `id` | `UUID` | コンパニオン識別子 (bind の鍵) |
+| `index` | `Int` (0〜8) | コンパニオン識別子。ヘッダ表示順とも一致 |
 | `name` | `String` | タブ・ラベルに出る表示名 |
 | `icon` | `String` | アイコン名 (`Companions/companion-N` または SF Symbols 名) |
 | `initialPrompt` | `String` | Claude 起動直後に送信する初期プロンプト |
+| `sessionID` | `SessionID?` | 紐付いた Claude セッション。`nil` なら未起動 |
+
+`sessionID` は **設定** (name/icon/initialPrompt) と同じ構造体に同居する。これは workspace.json が「現在のワークスペースのスナップショット」であり、設定とランタイム状態を一体で保存する設計に揃えている (sessions セクションも同様の構成)。
 
 ### `CompanionIconPresets`
 
 アイコン画像の静的プリセット。9 枚のカスタム画像 (`Assets.xcassets/Companions/companion-1..9`) を定義する。小サイズ版 (`companion-N-small`) とテーマカラーも併せて保持する。
+
+ただし **コンパニオンのデフォルト名 / icon / initialPrompt の値そのもの** は `Aidea/Resources/default-workspace.json` (Bundle 同梱) の `companions[]` が SSoT。`CompanionIconPresets` は Assets 上のアイコンリソース対応表のみを担う。
 
 ---
 
 ## ストア (`CompanionStore`)
 
 `Services/Companion/CompanionStore.swift` の `@Observable` クラス。
-設定と紐付けをインメモリで保持し、永続化は [`WorkspaceSnapshotManager`](../../../Aidea/Aidea/Services/Workspace/WorkspaceSnapshotManager.swift) 経由で `.aidea/workspace.json` に書き出される (詳細は [../aspects/persistence.md](../aspects/persistence.md))。
+9 個固定のコンパニオン配列をインメモリで保持し、永続化は [`WorkspaceSnapshotManager`](../../../Aidea/Aidea/Services/Workspace/WorkspaceSnapshotManager.swift) 経由で `.aidea/workspace.json` に書き出される (詳細は [../aspects/persistence.md](../aspects/persistence.md))。
 
 ### 状態
 
 | プロパティ | 型 | 意味 |
 |---|---|---|
-| `companions` | `[CompanionConfig]` | 登録済みコンパニオンの配列 |
-| `activeSessionMap` | `[UUID: SessionID]` | コンパニオン ID → 紐付いた Claude セッション |
+| `companions` | `[CompanionConfig]` | **必ず 9 要素 (index 0〜8)**。空にしたり追加・削除はしない |
+
+`bindings` 相当の情報は `CompanionConfig.sessionID` に統合済み。別マップは持たない。
 
 ### 主要 API
 
 | メソッド | 役割 |
 |---|---|
-| `add / update / remove / upsert` | コンパニオン CRUD (インメモリのみ更新。保存は workspace.json 終了時) |
-| `bind(companionID:sessionID:)` | コンパニオンと Claude セッションを紐付け |
-| `unbind(companionID:)` / `unbindSession(_:)` | 紐付け解除 (タブを閉じたときは後者) |
-| `isActive(_:)` | セッション起動中かを返す |
-| `companion(forIndex:)` | アイコンインデックスから登録済みコンパニオンを検索 |
-| `createDefault(forIndex:)` | アイコンインデックスから未登録のデフォルト設定を生成 |
-| `companionName(for:)` | `SessionID` からコンパニオン名を逆引き (タブ表示で使用) |
+| `update(_ companion: CompanionConfig)` | 指定 index のコンパニオン設定を更新 (`sessionID` を含む全フィールド差し替え) |
+| `bind(index: Int, sessionID: SessionID)` | コンパニオンと Claude セッションを紐付け (`companions[index].sessionID = sessionID`) |
+| `unbind(index: Int)` | 紐付け解除 (`companions[index].sessionID = nil`) |
+| `unbindSession(_ sessionID: SessionID)` | 該当 sessionID を持つ index の `sessionID` を nil にする (タブを閉じたとき用) |
+| `isActive(_ index: Int) -> Bool` | `companions[index].sessionID != nil` |
+| `companion(forIndex index: Int) -> CompanionConfig` | `companions[index]` (non-optional) |
+| `companionName(for sessionID: SessionID) -> String?` | `SessionID` から該当コンパニオン名を逆引き (タブ表示で使用) |
+
+`add` / `remove` / `upsert` / `createDefault(forIndex:)` は **廃止** (9 個固定で動的増減しないため)。
 
 ### 永続化
 
-`CompanionConfig` の配列と `activeSessionMap` (bindings) は `workspace.json` v3 の `companions` / `companionBindings` フィールドに保存される。旧 `.aidea/companions.json` が存在する場合は起動時に `WorkspaceSnapshotManager` が自動でマイグレーションして削除する。詳細スキーマは [../aspects/persistence.md](../aspects/persistence.md) を参照。
+`companions` 配列は `workspace.json` v7 の `companions` フィールドにそのまま保存される。詳細スキーマは [../aspects/persistence.md](../aspects/persistence.md) を参照。
+
+旧スキーマ (UUID 識別 + `companionBindings` 別配列) からのマイグレーションは v6 → v7 で `WorkspaceSnapshotManager` が実施する (icon 名から index 逆算)。
 
 ---
 
@@ -95,26 +105,23 @@ last_updated: 2026-04-20
 | 型 | ファイル | 責務 |
 |---|---|---|
 | `CompanionView` | `Views/Companion/CompanionView.swift` | ヘッダに 9 体並べる本体。アイコンタップで起動/フォーカス、ラベルタップで編集 sheet を開く。レコメンドモード中は選択コンパニオンの下に `RecommendBubbleView` を表示 |
-| `CompanionEditView` | `Views/Companion/CompanionEditView.swift` | 名前・initialPrompt を編集する sheet |
+| `CompanionEditView` | `Views/Companion/CompanionEditView.swift` | 名前・initialPrompt を編集する sheet (`update(_:)` を呼ぶ) |
 | `RecommendBubbleView` | `Views/Companion/RecommendBubbleView.swift` | `RecommendState.prompts` を縦に並べ、選択中をアクセントカラーでハイライトする吹き出し |
 
 ---
 
-## 起動フロー (未登録コンパニオン)
+## 起動フロー (Claude セッション未起動)
 
 ```
-1. ユーザが未起動アイコンをタップ
-2. CompanionStore.createDefault(forIndex:) でデフォルト設定を生成
-   - name: "Companion N+1"
-   - icon: プリセット画像
-   - initialPrompt: ".aidea/claude/aidea.md と .aidea/claude/speech.md を読んで従ってね"
-3. store に未登録なら add (インメモリ反映のみ、永続化は workspace.json 終了時)
-4. layout.nextSessionInstance(of: .claude) で新 instance 番号を採番
-5. registry.createSession(tool: .claude, instance:) で Claude セッション生成
-6. ClaudeSessionState.companionPrompt に initialPrompt をセット
+1. ユーザが未起動アイコン (index N) をタップ
+2. companion = store.companion(forIndex: N) を取得 (必ず存在)
+3. layout.nextSessionInstance(of: .claude) で新 instance 番号を採番
+4. registry.createSession(tool: .claude, instance:) で Claude セッション生成
+5. ClaudeSessionState.companionPrompt に companion.initialPrompt をセット
    (ターミナル起動後に自動送信される → tools/claude.md)
-7. store.bind(companionID:sessionID:)
-8. アクティブ pane の末尾にタブ追加しアクティブ化
+6. store.bind(index: N, sessionID: session.id)
+   → companions[N].sessionID が更新される
+7. アクティブ pane の末尾にタブ追加しアクティブ化
 ```
 
 ---
@@ -125,18 +132,19 @@ Aidea 起動時、`workspace.json` から Claude タブが復元されるケー�
 
 ```
 1. AideaApp.init() が WorkspaceSnapshotManager.load(projectRoot:) で
-   workspace.json を読み込む (v2 の場合は旧 companions.json / recommends.json を
-   統合した v3 相当のスナップショットに自動マイグレーション)
+   workspace.json を読み込む
+   - 旧版なら自動マイグレーション (v6 → v7 で UUID → index 化、bindings 統合)
+   - workspace.json 不在なら Bundle 同梱の default-workspace.json を使う
 2. WorkspaceSnapshotManager.apply() が同期的に以下を実行:
    - レイアウトツリー復元 (タブ構成のみ、セッション実体は未生成)
-   - snapshot.companions を CompanionStore.companions にセット
-   - snapshot.companionBindings を CompanionStore.activeSessionMap にセット
+   - snapshot.companions を CompanionStore.companions にセット (9 要素)
    - snapshot.recommends を RecommendStore にセット
-3. 同じ apply() 内で bind 済みセッションへの companionPrompt 再注入:
-   - activeSessionMap を走査し、各 sessionID について
+3. 同じ apply() 内で sessionID が non-nil なコンパニオンに対して
+   companionPrompt 再注入:
+   - companions を走査し、sessionID != nil な index について
    - registry.ensureSession(for: sessionID) で ClaudeSessionState を生成
      (PTY/terminalView は引き続き lazy)
-   - 対応する CompanionConfig.initialPrompt を state.companionPrompt にセット
+   - 対応する companion.initialPrompt を state.companionPrompt にセット
 4. ユーザがタブをアクティブ化 → terminalView 生成 → 自動起動シーケンス
    → initialPrompt が送信される
 ```
@@ -151,5 +159,5 @@ Aidea 起動時、`workspace.json` から Claude タブが復元されるケー�
 - [../frontchannels/frontchannel.md](../frontchannels/frontchannel.md) — 送信メカニズム (PTY `send(txt:)`)
 - [recommend-mode.md](./recommend-mode.md) — Cmd+Enter によるレコメンド選択 UI
 - [../tools/claude.md](../tools/claude.md) — Claude セッション側の挙動
-- [../aspects/persistence.md](../aspects/persistence.md) — `workspace.json` v3 保存のタイミング
+- [../aspects/persistence.md](../aspects/persistence.md) — `workspace.json` v7 保存・Bundle テンプレ
 - [../sessions/ui-rules.md#概念モデル](../sessions/ui-rules.md#概念モデル) — SessionID / 5 概念

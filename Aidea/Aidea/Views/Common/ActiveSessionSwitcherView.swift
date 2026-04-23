@@ -80,11 +80,9 @@ struct ActiveSessionSwitcherView: View {
     /// Claude セッションに紐付くコンパニオンのテーマカラーを返す。
     /// PaneView.companionTintColor と同じ実装。
     private func companionTintColor(for sessionID: SessionID) -> Color {
-        for (companionID, sid) in companionStore.activeSessionMap where sid == sessionID {
-            if let companion = companionStore.companions.first(where: { $0.id == companionID }),
-               let rgb = CompanionIconPresets.themeColors[companion.icon] {
-                return Color(red: rgb.red, green: rgb.green, blue: rgb.blue)
-            }
+        if let companion = companionStore.companions.first(where: { $0.sessionID == sessionID }),
+           let rgb = CompanionIconPresets.themeColors[companion.icon] {
+            return Color(red: rgb.red, green: rgb.green, blue: rgb.blue)
         }
         return Color.secondary
     }

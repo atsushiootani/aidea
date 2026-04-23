@@ -106,14 +106,6 @@ final class GitSessionState: SessionState, FocusBridgeOwner {
         }
     }
 
-    /// デフォルトのレコメンドプロンプト
-    func recommendedPrompts() -> [String] {
-        switch mode {
-        case .workingChanges: return ["コミットして", "プッシュして", "PRを作って"]
-        case .prPreview: return ["PRをマージして", "レビューして"]
-        }
-    }
-
     /// 契約 C1: bridge 経由で outlineView に firstResponder を移す。
     /// NSView 参照の登録は View 側 (GitSessionView.makeNSViewController) で行う。
     func didBecomeActive(session: Session) {

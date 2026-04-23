@@ -1,0 +1,152 @@
+{
+  "version": 7,
+  "layout": {
+    "tree": {
+      "split": {
+        "id": "00000000-0000-0000-0000-000000000001",
+        "axis": "horizontal",
+        "children": [
+          {
+            "split": {
+              "id": "00000000-0000-0000-0000-000000000002",
+              "axis": "vertical",
+              "children": [
+                {
+                  "leaf": {
+                    "id": "00000000-0000-0000-0000-000000000003",
+                    "pane": {
+                      "paneID": "00000000-0000-0000-0000-000000000004",
+                      "tabs": [{ "tool": "filer", "instance": 0 }],
+                      "activeIndex": 0
+                    }
+                  }
+                },
+                {
+                  "leaf": {
+                    "id": "00000000-0000-0000-0000-000000000005",
+                    "pane": {
+                      "paneID": "00000000-0000-0000-0000-000000000006",
+                      "tabs": [{ "tool": "kit", "instance": 0 }],
+                      "activeIndex": 0
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "leaf": {
+              "id": "00000000-0000-0000-0000-000000000007",
+              "pane": {
+                "paneID": "00000000-0000-0000-0000-000000000008",
+                "tabs": [{ "tool": "terminal", "instance": 0 }],
+                "activeIndex": 0
+              }
+            }
+          },
+          {
+            "leaf": {
+              "id": "00000000-0000-0000-0000-000000000009",
+              "pane": {
+                "paneID": "00000000-0000-0000-0000-00000000000a",
+                "tabs": [{ "tool": "web", "instance": 0 }],
+                "activeIndex": 0
+              }
+            }
+          }
+        ]
+      }
+    },
+    "activePaneID": null
+  },
+  "sessions": {
+    "previews": [],
+    "webs": [],
+    "filers": [],
+    "kits": [],
+    "activeHistory": []
+  },
+  "companions": [
+    {
+      "index": 0,
+      "name": "Companion 1",
+      "icon": "Companions/companion-1",
+      "initialPrompt": ".aidea/claude/aidea.md と .aidea/claude/speech.md を読んで従ってね",
+      "sessionID": null
+    },
+    {
+      "index": 1,
+      "name": "Companion 2",
+      "icon": "Companions/companion-2",
+      "initialPrompt": ".aidea/claude/aidea.md と .aidea/claude/speech.md を読んで従ってね",
+      "sessionID": null
+    },
+    {
+      "index": 2,
+      "name": "Companion 3",
+      "icon": "Companions/companion-3",
+      "initialPrompt": ".aidea/claude/aidea.md と .aidea/claude/speech.md を読んで従ってね",
+      "sessionID": null
+    },
+    {
+      "index": 3,
+      "name": "Companion 4",
+      "icon": "Companions/companion-4",
+      "initialPrompt": ".aidea/claude/aidea.md と .aidea/claude/speech.md を読んで従ってね",
+      "sessionID": null
+    },
+    {
+      "index": 4,
+      "name": "Companion 5",
+      "icon": "Companions/companion-5",
+      "initialPrompt": ".aidea/claude/aidea.md と .aidea/claude/speech.md を読んで従ってね",
+      "sessionID": null
+    },
+    {
+      "index": 5,
+      "name": "Companion 6",
+      "icon": "Companions/companion-6",
+      "initialPrompt": ".aidea/claude/aidea.md と .aidea/claude/speech.md を読んで従ってね",
+      "sessionID": null
+    },
+    {
+      "index": 6,
+      "name": "Companion 7",
+      "icon": "Companions/companion-7",
+      "initialPrompt": ".aidea/claude/aidea.md と .aidea/claude/speech.md を読んで従ってね",
+      "sessionID": null
+    },
+    {
+      "index": 7,
+      "name": "Companion 8",
+      "icon": "Companions/companion-8",
+      "initialPrompt": ".aidea/claude/aidea.md と .aidea/claude/speech.md を読んで従ってね",
+      "sessionID": null
+    },
+    {
+      "index": 8,
+      "name": "Companion 9",
+      "icon": "Companions/companion-9",
+      "initialPrompt": ".aidea/claude/aidea.md と .aidea/claude/speech.md を読んで従ってね",
+      "sessionID": null
+    }
+  ],
+  "recommends": {
+    "git:workingChanges": {
+      "prompts": ["コミットして", "プッシュして", "PRを作って"],
+      "defaultCompanionIndex": 0
+    },
+    "git:prPreview": {
+      "prompts": ["PRをマージして", "レビューして"],
+      "defaultCompanionIndex": 0
+    },
+    "gitDiff:workingChanges": {
+      "prompts": ["コミットして", "プッシュして", "PRを作って"],
+      "defaultCompanionIndex": 0
+    },
+    "gitDiff:prPreview": {
+      "prompts": ["PRをマージして", "レビューして"],
+      "defaultCompanionIndex": 0
+    }
+  }
+}

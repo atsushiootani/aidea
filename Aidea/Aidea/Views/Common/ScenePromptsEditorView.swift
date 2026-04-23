@@ -9,12 +9,11 @@ import SwiftUI
 /// 左端にデフォルトコンパニオンアイコン、右にプロンプトをタグ風に表示。
 struct ScenePromptsEditorView: View {
     let scene: String
-    let defaults: [String]
     @Environment(CompanionStore.self) private var companionStore
     @State private var revision: Int = 0  // 変更検知用
 
     private var prompts: [String] {
-        RecommendStore.resolve(scene: scene, defaults: defaults)
+        RecommendStore.prompts(for: scene) ?? []
     }
 
     private var defaultCompanionIndex: Int {
@@ -81,7 +80,7 @@ struct ScenePromptsEditorView: View {
                                 .scaledToFit()
                                 .frame(width: 32, height: 32)
                                 .clipShape(RoundedRectangle(cornerRadius: 2))
-                            Text(companionStore.companion(forIndex: i)?.name ?? "Companion \(i + 1)")
+                            Text(i < companionStore.companions.count ? companionStore.companion(forIndex: i).name : "Companion \(i + 1)")
                                 .font(.system(size: 11))
                             Spacer()
                             if i == defaultCompanionIndex {

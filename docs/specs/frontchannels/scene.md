@@ -9,7 +9,7 @@ impacts:
   - docs/specs/companions/recommend-mode.md
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-20
+last_updated: 2026-04-23
 ---
 
 # Frontchannel: Scene
@@ -50,7 +50,7 @@ Scene に応じたレコメンドプロンプトがコンパニオンの吹き�
 
 ## 永続化
 
-`workspace.json` v3 の `recommends` フィールドに Scene 識別子 → `SceneConfig` のマッピングを保存する。詳細は [../aspects/persistence.md](../aspects/persistence.md) を参照。
+`workspace.json` v7 の `recommends` フィールドに Scene 識別子 → `SceneConfig` のマッピングを保存する。詳細は [../aspects/persistence.md](../aspects/persistence.md) を参照。
 
 ```json
 {
@@ -60,13 +60,24 @@ Scene に応じたレコメンドプロンプトがコンパニオンの吹き�
 }
 ```
 
+### 初期値の SSoT
+
+各 Scene のデフォルトプロンプトは **Bundle 同梱の `Aidea/Resources/default-workspace.json` の `recommends` フィールド** を唯一のソースとする。Swift コード側 (SessionState 等) にハードコードしない。
+
+新しい Scene を追加する手順:
+
+1. 該当 SessionState の `currentScene()` で識別子を返すようにする
+2. `default-workspace.json` の `recommends` にエントリを追加する
+
 ---
 
 ## プロンプトの解決順序
 
 1. `workspace.json` の `recommends` にその Scene のエントリがあればそれを使う
-2. なければ SessionState のデフォルト値（ハードコード）を使う
-3. デフォルト値もなければレコメンドなし（Cmd+Enter 無反応）
+   - 起動時に workspace.json が無い場合は `default-workspace.json` から流入したエントリが使われる
+2. エントリが無い Scene ではレコメンドなし (Cmd+Enter 無反応)
+
+ハードコードフォールバックは持たない。Scene ごとの初期値はすべて `default-workspace.json` 経由で `RecommendStore` に流入する。
 
 ---
 
@@ -76,9 +87,7 @@ Scene に応じたレコメンドプロンプトがコンパニオンの吹き�
 protocol SessionState {
     /// 現在の Scene 識別子を返す
     func currentScene() -> String?
-    /// デフォルトのレコメンドプロンプトを返す
-    func recommendedPrompts() -> [String]
 }
 ```
 
-RecommendState は `currentScene()` で識別子を取得し、RecommendStore から対応するプロンプトを引く。
+`recommendedPrompts()` は廃止 (初期値の二重管理を防ぐため)。RecommendState は `currentScene()` で識別子を取得し、RecommendStore から対応するプロンプトを引く。
