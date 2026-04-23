@@ -1,13 +1,15 @@
 ---
 title: Session 内部状態: Claude
-description: ClaudeSessionState の状態 (companionPrompt / companionIndex / cached)・companionPrompt のセット経路・自動起動シーケンス・コンパニオン紐付け・Scene とレコメンドプロンプト
+description: ClaudeSessionState の状態 (companionPrompt / companionIndex / cached)・companionPrompt のセット経路・自動起動シーケンス・コンパニオン紐付け・Scene とレコメンドプロンプト・instructions.md ロード方式
 derived_from:
   - docs/specs/sessions/ui-rules.md
   - docs/decisions/0008-no-claude-autostart.md
+  - docs/decisions/0022-companion-instructions-as-files.md
   - docs/specs/frontchannels/scene.md
 syncs_with:
   - docs/specs/tools/claude.md
   - docs/specs/companions/recommend-mode.md
+  - docs/specs/companions/companion.md
 impacts: []
 conventions:
   - docs/LAYOUT.md
@@ -26,8 +28,8 @@ Backchannel の詳細は [../backchannels/backchannel.md](../backchannels/backch
 
 | プロパティ | 型 | 用途 | ペイン移動で保持 |
 |---|---|---|---|
-| `companionPrompt` | `String?` | コンパニオンの `initialPrompt`。起動後 `send()` される | ✅ |
-| `companionIndex` | `Int?` | 紐付く Companion の index (0…8)。Scene 識別子 `claude:<index>` の解決に使う | ✅ |
+| `companionPrompt` | `String?` | 起動後 PTY に `send()` される文字列。v8 以降は `CompanionInstructions.loadCommand(for:)` で生成される固定パターン (`.aidea/claude/companions/<index>/instructions.md を読んで従ってね`) | ✅ |
+| `companionIndex` | `Int?` | 紐付く Companion の index (0…8)。Scene 識別子 `claude:<index>` および `companionPrompt` 文字列の解決に使う | ✅ |
 | `cached` | `PersistentTerminalView?` (ObservationIgnored) | PTY + SwiftTerm 端末 View。Terminal と共用 | ✅ |
 | `terminalView` | `PersistentTerminalView` (computed) | `cached` の lazy アクセサ | — |
 
@@ -38,13 +40,15 @@ Backchannel の詳細は [../backchannels/backchannel.md](../backchannels/backch
 `companionPrompt` は `autoStartClaude` が参照するため、**`terminalView` 生成前**に
 セットされている必要がある。以下 2 経路のいずれかで設定される:
 
-1. **新規起動**: `createSession` 直後に `state.companionPrompt = config.initialPrompt`
+1. **新規起動**: `createSession` 直後に `state.companionPrompt = CompanionInstructions.loadCommand(for: index)` をセット
    (`CompanionView` / `AideaApp.activateCompanion` / `sendRecommendedPrompt`)
 2. **スナップショット復元**: `WorkspaceSnapshotManager.apply()` が `CompanionStore.activeSessionMap`
-   を走査し、bind 済みセッションに対して `ensureSession` で state を生成した上で再注入
+   を走査し、bind 済みセッションに対して `ensureSession` で state を生成した上で同じヘルパで再注入
    (詳細は [../companions/companion.md#起動フロー-スナップショット復元時](../companions/companion.md))
 
 どちらの経路でも、`terminalView` の lazy 生成時に `autoStartClaude` が参照する。
+
+`CompanionInstructions` (`Services/Companion/CompanionInstructions.swift`) はパスとロードコマンド文字列の生成を集約するヘルパ。複数の呼び出し元で同じパターンを再生成しないよう、ハードコードを 1 箇所に閉じ込める ([ADR 0022](../../decisions/0022-companion-instructions-as-files.md))。
 
 ## 自動起動シーケンス
 
@@ -57,8 +61,8 @@ Backchannel の詳細は [../backchannels/backchannel.md](../backchannels/backch
 
 - ステップ 3-4 は分離して送る。Claude Code (Ink 製 TUI) は bracketed paste を有効にしており、本文と `\r` を一度に送ると `\r` も paste の一部とみなされ submit されないため、本文の入力処理が終わる間 (≈0.3s) を挟んでから `\r` を送る
 - companionPrompt が空の場合はステップ 3-4 をスキップ
-- デフォルトの initialPrompt は `".aidea/claude/aidea.md と .aidea/claude/speech.md を読んで従ってね"`
-- ADR 0008 により、非対話シェルから直接 `claude` を exec せず、**対話シェル内で `send()`** する。
+- v8 以降のデフォルトは `".aidea/claude/companions/<index>/instructions.md を読んで従ってね"` (`CompanionInstructions.loadCommand(for:)` が生成)。Claude が `Read` ツールで本体を読みに行き、必要に応じて `aidea.md` / `speech.md` 等を段階的開示する
+- ADR 0008 により、非対話シェルから直接 `claude` を exec せず、**対話シェル内で `send()`** する
 
 ## コンパニオンとの紐付け
 

@@ -1,5 +1,5 @@
 {
-  "version": 7,
+  "version": 8,
   "layout": {
     "tree": {
       "split": {
@@ -67,69 +67,15 @@
     "activeHistory": []
   },
   "companions": [
-    {
-      "index": 0,
-      "name": "Companion 1",
-      "icon": "Companions/companion-1",
-      "initialPrompt": ".aidea/claude/aidea.md と .aidea/claude/speech.md を読んで従ってね",
-      "sessionID": null
-    },
-    {
-      "index": 1,
-      "name": "Companion 2",
-      "icon": "Companions/companion-2",
-      "initialPrompt": ".aidea/claude/aidea.md と .aidea/claude/speech.md を読んで従ってね",
-      "sessionID": null
-    },
-    {
-      "index": 2,
-      "name": "Companion 3",
-      "icon": "Companions/companion-3",
-      "initialPrompt": ".aidea/claude/aidea.md と .aidea/claude/speech.md を読んで従ってね",
-      "sessionID": null
-    },
-    {
-      "index": 3,
-      "name": "Companion 4",
-      "icon": "Companions/companion-4",
-      "initialPrompt": ".aidea/claude/aidea.md と .aidea/claude/speech.md を読んで従ってね",
-      "sessionID": null
-    },
-    {
-      "index": 4,
-      "name": "Companion 5",
-      "icon": "Companions/companion-5",
-      "initialPrompt": ".aidea/claude/aidea.md と .aidea/claude/speech.md を読んで従ってね",
-      "sessionID": null
-    },
-    {
-      "index": 5,
-      "name": "Companion 6",
-      "icon": "Companions/companion-6",
-      "initialPrompt": ".aidea/claude/aidea.md と .aidea/claude/speech.md を読んで従ってね",
-      "sessionID": null
-    },
-    {
-      "index": 6,
-      "name": "Companion 7",
-      "icon": "Companions/companion-7",
-      "initialPrompt": ".aidea/claude/aidea.md と .aidea/claude/speech.md を読んで従ってね",
-      "sessionID": null
-    },
-    {
-      "index": 7,
-      "name": "Companion 8",
-      "icon": "Companions/companion-8",
-      "initialPrompt": ".aidea/claude/aidea.md と .aidea/claude/speech.md を読んで従ってね",
-      "sessionID": null
-    },
-    {
-      "index": 8,
-      "name": "Companion 9",
-      "icon": "Companions/companion-9",
-      "initialPrompt": ".aidea/claude/aidea.md と .aidea/claude/speech.md を読んで従ってね",
-      "sessionID": null
-    }
+    { "index": 0, "name": "Companion 1", "icon": "Companions/companion-1", "sessionID": null },
+    { "index": 1, "name": "Companion 2", "icon": "Companions/companion-2", "sessionID": null },
+    { "index": 2, "name": "Companion 3", "icon": "Companions/companion-3", "sessionID": null },
+    { "index": 3, "name": "Companion 4", "icon": "Companions/companion-4", "sessionID": null },
+    { "index": 4, "name": "Companion 5", "icon": "Companions/companion-5", "sessionID": null },
+    { "index": 5, "name": "Companion 6", "icon": "Companions/companion-6", "sessionID": null },
+    { "index": 6, "name": "Companion 7", "icon": "Companions/companion-7", "sessionID": null },
+    { "index": 7, "name": "Companion 8", "icon": "Companions/companion-8", "sessionID": null },
+    { "index": 8, "name": "Companion 9", "icon": "Companions/companion-9", "sessionID": null }
   ],
   "recommends": {
     "git:workingChanges": {

@@ -10,7 +10,7 @@ import Foundation
 /// 初期値の SSoT は Bundle 同梱 `default-workspace.json`。
 final class WorkspaceSnapshotManager {
     /// 現在のスナップショットフォーマットバージョン
-    private static let currentVersion: Int = 7
+    private static let currentVersion: Int = 8
 
     /// projectRoot から保存先 URL を導出する
     static func fileURL(for projectRoot: URL) -> URL {
@@ -148,23 +148,37 @@ final class WorkspaceSnapshotManager {
         return try? JSONDecoder().decode(WorkspaceSnapshot.self, from: data)
     }
 
-    /// データをデコードし、必要なマイグレーションを適用する
+    /// データをデコードし、必要なマイグレーションを適用する。
+    /// version フィールドを peek し、v8 → 直デコード / v7 → v8 マイグレーション / v6 以前 → v6→v7→v8 と進める。
     private func decodeAndMigrate(data: Data, projectRoot: URL) -> WorkspaceSnapshot? {
-        // 現行 (v7) 形式で直接デコードを試す
-        if let snapshot = try? JSONDecoder().decode(WorkspaceSnapshot.self, from: data) {
-            return snapshot
+        struct VersionPeek: Decodable { var version: Int }
+        let version = (try? JSONDecoder().decode(VersionPeek.self, from: data))?.version ?? 0
+
+        switch version {
+        case 8:
+            // 現行 (v8) 形式で直接デコード
+            return try? JSONDecoder().decode(WorkspaceSnapshot.self, from: data)
+        case 7:
+            // v7 を一旦 LegacyWorkspaceSnapshotV7 として読み、v8 に変換
+            if let v7 = try? JSONDecoder().decode(LegacyWorkspaceSnapshotV7.self, from: data) {
+                return migrateV7ToV8(v7, projectRoot: projectRoot)
+            }
+            return nil
+        default:
+            // v2 - v6 → v7 → v8
+            if let legacy = try? JSONDecoder().decode(LegacyWorkspaceSnapshotV6.self, from: data) {
+                let v7 = migrateLegacyToV7(legacy: legacy, projectRoot: projectRoot)
+                return migrateV7ToV8(v7, projectRoot: projectRoot)
+            }
+            return nil
         }
-        // 旧 (v2-v6) 形式で読んで v7 にマイグレーションする
-        if let legacy = try? JSONDecoder().decode(LegacyWorkspaceSnapshotV6.self, from: data) {
-            return migrateLegacyToV7(legacy: legacy, projectRoot: projectRoot)
-        }
-        return nil
     }
 
     // MARK: - Migration (v2-v6 → v7)
 
-    /// v6 までのスナップショット (フラット構造、UUID コンパニオン、bindings 別配列) を v7 に変換する
-    private func migrateLegacyToV7(legacy: LegacyWorkspaceSnapshotV6, projectRoot: URL) -> WorkspaceSnapshot {
+    /// v6 までのスナップショット (フラット構造、UUID コンパニオン、bindings 別配列) を v7 (initialPrompt フィールド残存) に変換する。
+    /// 戻り値は LegacyWorkspaceSnapshotV7 で、後段の migrateV7ToV8 が v8 に変換する。
+    private func migrateLegacyToV7(legacy: LegacyWorkspaceSnapshotV6, projectRoot: URL) -> LegacyWorkspaceSnapshotV7 {
         // v2 → v3 マイグレーション: 旧 .aidea/companions.json / recommends.json を読み込んで統合
         var legacyCompanions: [LegacyCompanionConfig] = legacy.companions ?? []
         var legacyBindings: [LegacyCompanionBinding] = legacy.companionBindings ?? []
@@ -176,14 +190,14 @@ final class WorkspaceSnapshotManager {
             if recommends.isEmpty { recommends = migrated.recommends }
         }
 
-        // 9 個固定のコンパニオン枠を Bundle テンプレで初期化
-        var companions = bundleDefaultCompanions()
+        // 9 個固定の v7 コンパニオン枠を Bundle テンプレで初期化 (initialPrompt はテンプレ既定値)
+        var companions = bundleDefaultCompanionsV7()
 
-        // 旧 companions[] を icon 名から index 推定して 9 個枠に配置
+        // 旧 companions[] を icon 名から index 推定して 9 個枠に配置 (legacy の initialPrompt を引き継ぐ)
         for legacy in legacyCompanions {
             guard let index = inferIndex(fromIcon: legacy.icon),
                   index >= 0, index < companions.count else { continue }
-            companions[index] = CompanionConfig(
+            companions[index] = LegacyCompanionConfigV7(
                 index: index,
                 name: legacy.name,
                 icon: legacy.icon,
@@ -201,8 +215,8 @@ final class WorkspaceSnapshotManager {
             companions[index].sessionID = binding.sessionID
         }
 
-        return WorkspaceSnapshot(
-            version: Self.currentVersion,
+        return LegacyWorkspaceSnapshotV7(
+            version: 7,
             layout: LayoutSnapshot(
                 tree: legacy.layoutRoot,
                 activePaneID: legacy.activePaneID
@@ -226,6 +240,46 @@ final class WorkspaceSnapshotManager {
             companions: companions,
             recommends: recommends
         )
+    }
+
+    // MARK: - Migration (v7 → v8)
+
+    /// v7 スナップショットを v8 に変換する (ADR 0022)。
+    /// 各 companion.initialPrompt を `.aidea/claude/companions/<index>/instructions.md` に書き出す。
+    /// 既存ファイルがある場合は書き出しをスキップしてユーザ編集を保護する (ハイブリッド方式)。
+    private func migrateV7ToV8(_ v7: LegacyWorkspaceSnapshotV7, projectRoot: URL) -> WorkspaceSnapshot {
+        for legacy in v7.companions {
+            writeInstructionsIfAbsent(
+                projectRoot: projectRoot,
+                index: legacy.index,
+                content: legacy.initialPrompt
+            )
+        }
+        let companions = v7.companions.map { legacy in
+            CompanionConfig(
+                index: legacy.index,
+                name: legacy.name,
+                icon: legacy.icon,
+                sessionID: legacy.sessionID
+            )
+        }
+        return WorkspaceSnapshot(
+            version: Self.currentVersion,
+            layout: v7.layout,
+            sessions: v7.sessions,
+            companions: companions,
+            recommends: v7.recommends
+        )
+    }
+
+    /// `.aidea/claude/companions/<index>/instructions.md` を書き出す (ファイル不在時のみ)。
+    /// 親ディレクトリは自動生成する。
+    private func writeInstructionsIfAbsent(projectRoot: URL, index: Int, content: String) {
+        let target = CompanionInstructions.entrypointURL(projectRoot: projectRoot, index: index)
+        if FileManager.default.fileExists(atPath: target.path) { return }
+        let dir = target.deletingLastPathComponent()
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try? content.write(to: target, atomically: true, encoding: .utf8)
     }
 
     /// 旧 .aidea/companions.json / .aidea/recommends.json を読み込んで返し、ファイルを削除する
@@ -275,7 +329,8 @@ final class WorkspaceSnapshotManager {
         return n - 1
     }
 
-    /// Bundle テンプレから 9 個固定のコンパニオン初期値を取り出す
+    /// Bundle テンプレ (`default-workspace.json`、v8) から 9 個固定のコンパニオン初期値を取り出す。
+    /// initialPrompt は v8 で削除済みのため CompanionConfig には含まれない。
     private func bundleDefaultCompanions() -> [CompanionConfig] {
         guard let template = loadBundleTemplate() else {
             // 最後の手段: 動的にミニマル 9 個生成 (本来到達しない)
@@ -284,12 +339,37 @@ final class WorkspaceSnapshotManager {
                     index: $0,
                     name: "Companion \($0 + 1)",
                     icon: "Companions/companion-\($0 + 1)",
-                    initialPrompt: "",
                     sessionID: nil
                 )
             }
         }
         return template.companions
+    }
+
+    /// v6 → v7 マイグレーション用に、initialPrompt 付きの 9 個固定枠を返す。
+    /// initialPrompt の既定文字列は Bundle 同梱 `companion-instructions.md` (v8 テンプレ本体) を使い、
+    /// v7 → v8 マイグレーションでファイル化されると Bundle テンプレと同じ内容になる。
+    private func bundleDefaultCompanionsV7() -> [LegacyCompanionConfigV7] {
+        let defaults = bundleDefaultCompanions()
+        let initialPrompt = bundleDefaultInstructionsText()
+        return defaults.map {
+            LegacyCompanionConfigV7(
+                index: $0.index,
+                name: $0.name,
+                icon: $0.icon,
+                initialPrompt: initialPrompt,
+                sessionID: nil
+            )
+        }
+    }
+
+    /// Bundle 同梱 `companion-instructions.md` の本文を返す。読み込み失敗時はミニマルな互換テキスト。
+    private func bundleDefaultInstructionsText() -> String {
+        if let url = Bundle.main.url(forResource: "companion-instructions", withExtension: "md"),
+           let text = try? String(contentsOf: url, encoding: .utf8) {
+            return text
+        }
+        return ".aidea/claude/aidea.md と .aidea/claude/speech.md を読んで従ってね"
     }
 
     // MARK: - Apply
@@ -308,12 +388,13 @@ final class WorkspaceSnapshotManager {
 
         // Claude セッションの ensureSession + companionPrompt / companionIndex 再注入
         // (sessionID != nil な companion それぞれに対して)
+        // v8 以降は CompanionInstructions.loadCommand(for:) で固定パターン文字列を生成 (ADR 0022)
         if let companionStore {
             for companion in companionStore.companions {
                 guard let sessionID = companion.sessionID else { continue }
                 let session = registry.ensureSession(for: sessionID)
                 if let state = session.state as? ClaudeSessionState {
-                    state.companionPrompt = companion.initialPrompt
+                    state.companionPrompt = CompanionInstructions.loadCommand(for: companion.index)
                     state.companionIndex = companion.index
                 }
             }

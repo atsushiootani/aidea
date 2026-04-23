@@ -12,6 +12,7 @@ struct CompanionView: View {
     @Environment(SessionRegistry.self) private var registry
     @Environment(LayoutConfig.self) private var layout
     @Environment(RecommendState.self) private var recommend
+    @Environment(WorkspaceState.self) private var workspace
 
     @State private var editingCompanion: CompanionConfig?
 
@@ -33,10 +34,23 @@ struct CompanionView: View {
             }
         }
         .sheet(item: $editingCompanion) { companion in
-            CompanionEditView(companion: companion) { updated in
-                store.update(updated)
-            }
+            CompanionEditView(
+                companion: companion,
+                onSave: { updated in store.update(updated) },
+                onOpenInstructions: { openInstructions(for: companion.index) }
+            )
         }
+    }
+
+    /// CompanionEditView の「指示書を開く」ボタンから呼ばれる。
+    /// 指示書ファイルが不在なら BackchannelSetup が Bundle テンプレから生成し、
+    /// SessionRegistry.openPreview で Preview セッションとして開く (markdown view + 編集モード対応)。
+    private func openInstructions(for index: Int) {
+        guard let projectRoot = workspace.projectRoot else { return }
+        BackchannelSetup.setup(projectRoot: projectRoot)
+        let url = CompanionInstructions.entrypointURL(projectRoot: projectRoot, index: index)
+        let title = "Companion \(index + 1) 指示書"
+        registry.openPreview(for: url, title: title)
     }
 
     /// コンパニオンアイコン 1 つ分の View
@@ -91,7 +105,7 @@ struct CompanionView: View {
         let session = registry.createSession(tool: .claude, instance: instance)
         let id = session.id
         if let state = session.state as? ClaudeSessionState {
-            state.companionPrompt = companion.initialPrompt
+            state.companionPrompt = CompanionInstructions.loadCommand(for: companion.index)
             state.companionIndex = companion.index
         }
         store.bind(index: companion.index, sessionID: id)

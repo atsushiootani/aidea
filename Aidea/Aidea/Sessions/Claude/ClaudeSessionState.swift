@@ -23,11 +23,14 @@ final class ClaudeSessionState: SessionState, FocusBridgeOwner {
 
     /// SessionRegistry への弱参照 (クリック時のアクティブ化用)
     weak var registry: SessionRegistry?
-    /// 紐付けられたコンパニオンの初期プロンプト。
+    /// 紐付けられたコンパニオンの起動時送信文字列。
     /// nil または空のときは起動時に何も送信しない。
-    /// initialPrompt 内で `.aidea/claude/{feature}.md` を参照することで Backchannel 機能を有効化する。
+    /// v8 以降は `CompanionInstructions.loadCommand(for:)` が生成する固定パターン文字列
+    /// (`.aidea/claude/companions/<index>/instructions.md を読んで従ってね`) で、
+    /// Claude が `Read` ツールで instructions.md を読み込む経路に変わった (ADR 0022)。
     var companionPrompt: String?
-    /// 紐付く Companion の index (0…8)。Scene 識別子 `claude:<index>` の解決に使う。
+    /// 紐付く Companion の index (0…8)。Scene 識別子 `claude:<index>` の解決および
+    /// `companionPrompt` 文字列の生成 (`CompanionInstructions.loadCommand(for:)`) に使う。
     /// `companionPrompt` と同じ経路で createSession / スナップショット復元時にセットされる。
     var companionIndex: Int?
 
@@ -94,7 +97,9 @@ final class ClaudeSessionState: SessionState, FocusBridgeOwner {
         return terminal
     }
 
-    /// 対話シェル準備完了後に claude を起動し、コンパニオンの initialPrompt を送る。
+    /// 対話シェル準備完了後に claude を起動し、`companionPrompt` を送る。
+    /// `companionPrompt` は v8 以降 `.aidea/claude/companions/<index>/instructions.md を読んで従ってね` の
+    /// 固定パターンで、Claude が Read ツールで本体を取りに行く (ADR 0022)。
     /// send() は PTY へのキー入力なので、ユーザーが手で打ったのと同等。
     /// (ADR 0008 の非対話シェル問題を回避)
     private func autoStartClaude(terminal: PersistentTerminalView) {
