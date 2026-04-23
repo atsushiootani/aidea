@@ -1,15 +1,17 @@
 ---
 title: Session 内部状態: Kit
-description: KitSessionState の状態 (expandedSections / expandedGroups / selection) と 4 種ローダ・FileWatcher 自動更新・workspace.json 永続化
+description: KitSessionState の状態 (expandedSections / expandedGroups / selection) と 4 種ローダ・FileWatcher 自動更新・workspace.json 永続化・Scene とレコメンドプロンプト
 derived_from:
   - docs/specs/sessions/ui-rules.md
+  - docs/specs/frontchannels/scene.md
 syncs_with:
   - docs/specs/tools/kit.md
   - docs/specs/aspects/persistence.md
+  - docs/specs/companions/recommend-mode.md
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-22
+last_updated: 2026-04-23
 ---
 
 # Session 内部状態: Kit
@@ -62,3 +64,14 @@ Kit は Window singleton で、`KitSessionState` が `FileWatcher` を 1 つ保�
 
 `expandedSections` と `expandedGroups` は `<projectRoot>/.aidea/workspace.json` に保存される。
 詳細は [../aspects/persistence.md](../aspects/persistence.md) を参照。
+
+## Scene とレコメンドプロンプト
+
+`SessionState` プロトコル ([../frontchannels/scene.md](../frontchannels/scene.md)) を実装し、Cmd+Enter でのレコメンド送信に対応する。
+
+| `currentScene()` | 場面 |
+|---|---|
+| `"kit"` | Kit ツール全体 (選択中セクションで分岐しない) |
+
+- 将来的に `selection` (選択中の項目 ID) やセクション (`agents` / `skills` / `commands` / `mcps`) で分岐させる余地あり。現時点では単一 Scene `"kit"` で開始する。
+- 初期プロンプトは空配列 (`[]`)、`defaultCompanionIndex` は `0`。

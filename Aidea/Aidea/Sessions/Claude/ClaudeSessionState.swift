@@ -27,10 +27,19 @@ final class ClaudeSessionState: SessionState, FocusBridgeOwner {
     /// nil または空のときは起動時に何も送信しない。
     /// initialPrompt 内で `.aidea/claude/{feature}.md` を参照することで Backchannel 機能を有効化する。
     var companionPrompt: String?
+    /// 紐付く Companion の index (0…8)。Scene 識別子 `claude:<index>` の解決に使う。
+    /// `companionPrompt` と同じ経路で createSession / スナップショット復元時にセットされる。
+    var companionIndex: Int?
 
     /// Frontchannel: Claude セッションにメッセージを送信する
     func sendMessage(_ message: String) {
         terminalView.send(txt: message + "\r")
+    }
+
+    /// レコメンドモード用の Scene 識別子を返す。Companion ごとに Scene を分ける。
+    /// 仕様: docs/specs/sessions/claude.md#scene-とレコメンドプロンプト
+    func currentScene() -> String? {
+        companionIndex.map { "claude:\($0)" }
     }
 
     /// 契約 C1: bridge 経由で terminalView に firstResponder を移す。

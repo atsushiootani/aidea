@@ -1,15 +1,17 @@
 ---
 title: Session 内部状態: Filer
-description: FilerSessionState の状態 (selectedFile / expandedURLs)・シングルトン制約・workspace.json 永続化
+description: FilerSessionState の状態 (selectedFile / expandedURLs)・シングルトン制約・workspace.json 永続化・Scene とレコメンドプロンプト
 derived_from:
   - docs/specs/sessions/ui-rules.md
+  - docs/specs/frontchannels/scene.md
 syncs_with:
   - docs/specs/tools/filer.md
   - docs/specs/aspects/persistence.md
+  - docs/specs/companions/recommend-mode.md
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-22
+last_updated: 2026-04-23
 ---
 
 # Session 内部状態: Filer
@@ -42,3 +44,14 @@ last_updated: 2026-04-22
 ## シングルトン制約
 
 `filer` は Window 全体で 1 つだけ。詳細は [ui-rules.md#シングルトン制約](./ui-rules.md#シングルトン制約) を参照。
+
+## Scene とレコメンドプロンプト
+
+`SessionState` プロトコル ([../frontchannels/scene.md](../frontchannels/scene.md)) を実装し、Cmd+Enter でのレコメンド送信に対応する。
+
+| `currentScene()` | 場面 |
+|---|---|
+| `"filer"` | Filer ツール全体 (mode 分岐なし) |
+
+- 初期プロンプトは空配列 (`[]`)、`defaultCompanionIndex` は `0`。
+- ユーザは FilerSessionView 下部の `ScenePromptsEditorView` から追加できる。

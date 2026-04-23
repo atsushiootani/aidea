@@ -10,15 +10,22 @@ import Observation
 /// テキストをキューに積み、VOICEVOX で順番に音声再生するキュー。
 @Observable
 final class SpeechQueue: NSObject, AVAudioPlayerDelegate {
+    /// キュー要素: 本文と (任意の) スピーカーID
+    private struct Item {
+        let text: String
+        let speakerId: Int?
+    }
+
     var isSpeaking: Bool = false
 
-    private var queue: [String] = []
+    private var queue: [Item] = []
     private var player: AVAudioPlayer?
     private var isProcessing = false
 
     /// テキストをキューに追加する。再生中でなければ即座に再生開始。
-    func enqueue(_ text: String) {
-        queue.append(text)
+    /// speakerId が nil の場合は VoicevoxService のデフォルトスピーカーを使用する。
+    func enqueue(_ text: String, speakerId: Int? = nil) {
+        queue.append(Item(text: text, speakerId: speakerId))
         processNext()
     }
 
@@ -35,11 +42,11 @@ final class SpeechQueue: NSObject, AVAudioPlayerDelegate {
         guard !isProcessing, !queue.isEmpty else { return }
         isProcessing = true
         isSpeaking = true
-        let text = queue.removeFirst()
+        let item = queue.removeFirst()
 
         Task {
             do {
-                let wavData = try await VoicevoxService.synthesize(text)
+                let wavData = try await VoicevoxService.synthesize(item.text, speaker: item.speakerId)
                 await MainActor.run {
                     playWav(wavData)
                 }

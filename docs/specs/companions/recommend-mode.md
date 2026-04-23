@@ -8,6 +8,14 @@ syncs_with:
   - docs/specs/companions/companion.md
   - docs/specs/aspects/keybindings.md
   - docs/specs/aspects/persistence.md
+  - docs/specs/sessions/claude.md
+  - docs/specs/sessions/filer.md
+  - docs/specs/sessions/git.md
+  - docs/specs/sessions/git-diff.md
+  - docs/specs/sessions/kit.md
+  - docs/specs/sessions/preview.md
+  - docs/specs/sessions/terminal.md
+  - docs/specs/sessions/web.md
 impacts: []
 conventions:
   - docs/LAYOUT.md
@@ -86,23 +94,33 @@ protocol SessionState {
 
 ### 初期定義 (Bundle 同梱の `default-workspace.json` の `recommends` に格納)
 
-| Scene | レコメンドプロンプト |
-|--------|---------------------|
-| `git:workingChanges` | `"コミットして"` `"プッシュして"` `"PRを作って"` |
-| `git:prPreview` | `"PRをマージして"` `"レビューして"` |
-| `gitDiff:workingChanges` | `"コミットして"` `"プッシュして"` `"PRを作って"` |
-| `gitDiff:prPreview` | `"PRをマージして"` `"レビューして"` |
-| 上記以外 | エントリ無し → Cmd+Enter は何もしない |
+| Scene | レコメンドプロンプト (初期値) | `defaultCompanionIndex` |
+|--------|---------------------|---|
+| `git:workingChanges` | `"コミットして"` `"プッシュして"` `"PRを作って"` | `0` |
+| `git:prPreview` | `"PRをマージして"` `"レビューして"` | `0` |
+| `gitDiff:workingChanges` | `"コミットして"` `"プッシュして"` `"PRを作って"` | `0` |
+| `gitDiff:prPreview` | `"PRをマージして"` `"レビューして"` | `0` |
+| `claude:0` … `claude:8` | `[]` (空。ユーザが各 Companion の役割に応じて追加) | Scene 識別子末尾の index と同値 (自 Companion) |
+| `filer` | `[]` | `0` |
+| `terminal` | `[]` | `0` |
+| `preview` | `[]` | `0` |
+| `kit` | `[]` | `0` |
+| `web` | `[]` | `0` |
+| 上記以外 | エントリ無し → Cmd+Enter は何もしない | — |
 
-新たな Scene へのプロンプト追加は `default-workspace.json` の `recommends` を編集する (Swift コードへのハードコードは禁止)。
+- **Claude Scene のみ `defaultCompanionIndex` が自 Companion に一致する** (`claude:5` なら `5`)。これにより Claude セッションで Cmd+Enter した際に、最初に選択されるのが「そのセッション自身が紐付く Companion」になる。
+- 他セッションの初期 `defaultCompanionIndex` は `0` (= Companion 1)。ユーザが ScenePromptsEditorView から変更できる。
+- `prompts` が空の Scene では Cmd+Enter しても吹き出しが出ない (レコメンドなし)。ユーザが ScenePromptsEditorView で追加することで有効化される。
 
-将来の拡張例:
+新たな Scene へのプロンプト追加は `default-workspace.json` の `recommends` を編集するか、実行時に ScenePromptsEditorView から編集する (Swift コードへのハードコードは禁止)。
+
+将来の拡張例 (参考):
 
 | ビュー | レコメンドプロンプト例 |
 |--------|----------------------|
 | Filer | `"このファイルをレビューして: {path}"` |
 | Preview | `"このドキュメントを翻訳して"` |
-| GitDiff | `"この差分をレビューして"` |
+| Claude (Companion 別) | テスト担当 Companion なら `"テスト実行して"`、レビュー担当なら `"差分をレビューして"` |
 
 ---
 
@@ -139,6 +157,9 @@ final class RecommendState {
 | `RecommendState` | `Services/Frontchannel/RecommendState.swift` | レコメンドモードのランタイム状態。`activate / deactivate` と `moveUp/Down/Left/Right` でプロンプト・コンパニオン選択をループ移動させる |
 | `RecommendStore` | `Services/Frontchannel/RecommendStore.swift` | Scene ごとの `SceneConfig` をインメモリで保持する `enum` の static API。永続化は `WorkspaceSnapshotManager` 経由で `workspace.json` v7 に統合される |
 | `SceneConfig` | `Services/Frontchannel/RecommendStore.swift` | Scene ごとの `prompts: [String]` と `defaultCompanionIndex: Int` を保持する Codable |
+| `ScenePromptsEditorView` | `Views/Common/ScenePromptsEditorView.swift` | 各セッションの本体 View 下部に挿入される編集 UI。表示中 Scene の `prompts` 追加/削除と `defaultCompanionIndex` の切替を行う |
+
+`SessionRegistry.view(for:)` は **Git / GitDiff 以外**の各セッション View を `VStack` で本体 + `ScenePromptsEditorView` の縦並びにラップする統一パターンを取る。GitDiff は `GitDiffSessionContainer` 側で挿入済みのため二重挿入しない。
 
 Scene キー (`"git:prPreview"` `"git:workingChanges"` 等) は各 SessionState の `currentScene()` が文脈に応じて生成し、
 `RecommendStore.prompts(for:)` で対応エントリを引く。エントリが無ければ空配列 (Cmd+Enter 無反応)。

@@ -40,4 +40,8 @@ final class PreviewSessionState: SessionState, FocusBridgeOwner {
         focusBridge.deactivate()
         isActive = false
     }
+
+    /// レコメンドモード用の Scene 識別子。Preview は現行単一 Scene。
+    /// 仕様: docs/specs/sessions/preview.md#scene-とレコメンドプロンプト
+    func currentScene() -> String? { "preview" }
 }

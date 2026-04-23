@@ -365,21 +365,47 @@ final class SessionRegistry {
 
     /// SessionID に対応する SwiftUI View を返す。
     /// AnyView でラップして @ViewBuilder の分岐数増加による SwiftUI の型推論問題を回避する。
+    /// Git / GitDiff 以外は本体 View の下部に `ScenePromptsEditorView` を挿入する統一パターン
+    /// (仕様: docs/specs/companions/recommend-mode.md)。GitDiff は `GitDiffSessionContainer` 側で挿入済。
     func view(for id: SessionID) -> AnyView {
         let session = ensureSession(for: id)
         switch id.tool {
-        case .filer:    return AnyView(FilerSessionView(state: session.state as! FilerSessionState)
-                                          .sessionFocusCleanup(session.state))
-        case .kit:      return AnyView(KitSessionView(state: session.state as! KitSessionState, sessionID: id)
-                                          .sessionFocusCleanup(session.state))
-        case .terminal: return AnyView(TerminalSessionView(state: session.state as! TerminalSessionState)
-                                          .sessionFocusCleanup(session.state))
-        case .claude:   return AnyView(ClaudeSessionView(state: session.state as! ClaudeSessionState)
-                                          .sessionFocusCleanup(session.state))
-        case .web:      return AnyView(WebSessionView(state: session.state as! WebSessionState)
-                                          .sessionFocusCleanup(session.state))
-        case .preview:  return AnyView(PreviewSessionView(state: session.state as! PreviewSessionState, sessionID: id)
-                                          .sessionFocusCleanup(session.state))
+        case .filer:
+            let state = session.state as! FilerSessionState
+            return AnyView(VStack(spacing: 0) {
+                FilerSessionView(state: state)
+                ScenePromptsEditorView(scene: state.currentScene() ?? "filer")
+            }.sessionFocusCleanup(state))
+        case .kit:
+            let state = session.state as! KitSessionState
+            return AnyView(VStack(spacing: 0) {
+                KitSessionView(state: state, sessionID: id)
+                ScenePromptsEditorView(scene: state.currentScene() ?? "kit")
+            }.sessionFocusCleanup(state))
+        case .terminal:
+            let state = session.state as! TerminalSessionState
+            return AnyView(VStack(spacing: 0) {
+                TerminalSessionView(state: state)
+                ScenePromptsEditorView(scene: state.currentScene() ?? "terminal")
+            }.sessionFocusCleanup(state))
+        case .claude:
+            let state = session.state as! ClaudeSessionState
+            return AnyView(VStack(spacing: 0) {
+                ClaudeSessionView(state: state)
+                ScenePromptsEditorView(scene: state.currentScene() ?? "claude")
+            }.sessionFocusCleanup(state))
+        case .web:
+            let state = session.state as! WebSessionState
+            return AnyView(VStack(spacing: 0) {
+                WebSessionView(state: state)
+                ScenePromptsEditorView(scene: state.currentScene() ?? "web")
+            }.sessionFocusCleanup(state))
+        case .preview:
+            let state = session.state as! PreviewSessionState
+            return AnyView(VStack(spacing: 0) {
+                PreviewSessionView(state: state, sessionID: id)
+                ScenePromptsEditorView(scene: state.currentScene() ?? "preview")
+            }.sessionFocusCleanup(state))
         case .git:
             let gitState = session.state as! GitSessionState
             return AnyView(VStack(spacing: 0) {

@@ -1,15 +1,17 @@
 ---
 title: Session 内部状態: Claude
-description: ClaudeSessionState の状態 (companionPrompt / cached)・companionPrompt のセット経路・自動起動シーケンス・コンパニオン紐付け
+description: ClaudeSessionState の状態 (companionPrompt / companionIndex / cached)・companionPrompt のセット経路・自動起動シーケンス・コンパニオン紐付け・Scene とレコメンドプロンプト
 derived_from:
   - docs/specs/sessions/ui-rules.md
   - docs/decisions/0008-no-claude-autostart.md
+  - docs/specs/frontchannels/scene.md
 syncs_with:
   - docs/specs/tools/claude.md
+  - docs/specs/companions/recommend-mode.md
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-20
+last_updated: 2026-04-23
 ---
 
 # Session 内部状態: Claude
@@ -25,8 +27,11 @@ Backchannel の詳細は [../backchannels/backchannel.md](../backchannels/backch
 | プロパティ | 型 | 用途 | ペイン移動で保持 |
 |---|---|---|---|
 | `companionPrompt` | `String?` | コンパニオンの `initialPrompt`。起動後 `send()` される | ✅ |
+| `companionIndex` | `Int?` | 紐付く Companion の index (0…8)。Scene 識別子 `claude:<index>` の解決に使う | ✅ |
 | `cached` | `PersistentTerminalView?` (ObservationIgnored) | PTY + SwiftTerm 端末 View。Terminal と共用 | ✅ |
 | `terminalView` | `PersistentTerminalView` (computed) | `cached` の lazy アクセサ | — |
+
+`companionIndex` は `companionPrompt` と同じ経路でセットされる (新規起動時の `createSession` 直後 / スナップショット復元時の `apply()`)。Companion と紐付かない Claude セッションは発生しない想定 (`CompanionStore.activeSessionMap` の逆引きで一意に定まる)。
 
 ## `companionPrompt` のセット経路
 
@@ -59,3 +64,19 @@ Backchannel の詳細は [../backchannels/backchannel.md](../backchannels/backch
 
 `CompanionStore.activeSessionMap` が UUID → SessionID を保持し、本 Session と 1:1 対応する。
 詳細は [../companions/companion.md](../companions/companion.md) を参照。
+
+## Scene とレコメンドプロンプト
+
+`SessionState` プロトコル ([../frontchannels/scene.md](../frontchannels/scene.md)) を実装し、Cmd+Enter でのレコメンド送信に対応する。
+
+| `companionIndex` | `currentScene()` |
+|---|---|
+| `0` | `"claude:0"` |
+| `1` | `"claude:1"` |
+| … | … |
+| `8` | `"claude:8"` |
+| `nil` | `nil` (レコメンド無反応) |
+
+- Scene キーは Companion ごとに分かれるため、**Companion 毎に別レコメンドプロンプトを持てる** (例: テスト担当 Companion 2 なら `"テストして"`、レビュー担当 Companion 4 なら `"差分をレビューして"`)。
+- 初期値の `defaultCompanionIndex` は自 Companion の index に一致させる (例: `claude:5` なら `5`)。これにより Cmd+Enter 起動時にそのセッション自身の Companion が最初に選択される (詳細は [../companions/recommend-mode.md](../companions/recommend-mode.md))。
+- 初期プロンプトは空配列 (`[]`)。ユーザは ClaudeSessionView 下部の `ScenePromptsEditorView` で Companion 固有のプロンプトを追加できる。

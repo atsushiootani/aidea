@@ -1,16 +1,18 @@
 ---
 title: Session 内部状態: Web
-description: WebSessionState の状態 (url / WKWebView キャッシュ) と PaneView ZStack による DOM 維持・workspace.json 永続化
+description: WebSessionState の状態 (url / WKWebView キャッシュ) と PaneView ZStack による DOM 維持・workspace.json 永続化・Scene とレコメンドプロンプト
 derived_from:
   - docs/specs/sessions/ui-rules.md
   - docs/decisions/0015-wkwebview-scope-and-chrome-coexistence.md
+  - docs/specs/frontchannels/scene.md
 syncs_with:
   - docs/specs/tools/web.md
   - docs/specs/aspects/persistence.md
+  - docs/specs/companions/recommend-mode.md
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-17
+last_updated: 2026-04-23
 ---
 
 # Session 内部状態: Web
@@ -38,3 +40,14 @@ Terminal と同様に `PaneView` の ZStack + `opacity(0)` 方式。NSView が�
 ## 永続化
 
 現在 URL は `<projectRoot>/.aidea/workspace.json` に保存される。詳細は [../aspects/persistence.md](../aspects/persistence.md) を参照。
+
+## Scene とレコメンドプロンプト
+
+`SessionState` プロトコル ([../frontchannels/scene.md](../frontchannels/scene.md)) を実装し、Cmd+Enter でのレコメンド送信に対応する。
+
+| `currentScene()` | 場面 |
+|---|---|
+| `"web"` | Web ツール全体 (URL で分岐しない) |
+
+- 初期プロンプトは空配列 (`[]`)、`defaultCompanionIndex` は `0`。
+- ユーザは WebSessionView 下部の `ScenePromptsEditorView` から追加できる。

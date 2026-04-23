@@ -79,6 +79,10 @@ final class KitSessionState: SessionState {
         isActive = false
     }
 
+    /// レコメンドモード用の Scene 識別子。Kit は単一 Scene (section 分岐なし)。
+    /// 仕様: docs/specs/sessions/kit.md#scene-とレコメンドプロンプト
+    func currentScene() -> String? { "kit" }
+
     /// 4 Loader を projectRoot で一括再読み込みする。FSEvents 通知や `onAppear` から呼ばれる。
     func reloadAll() {
         agentsLoader.reload(projectRoot: workspace.projectRoot)

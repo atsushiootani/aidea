@@ -38,6 +38,10 @@ final class TerminalSessionState: SessionState, FocusBridgeOwner {
         focusBridge.deactivate()
     }
 
+    /// レコメンドモード用の Scene 識別子。Terminal は mode 分岐なしの単一 Scene。
+    /// 仕様: docs/specs/sessions/terminal.md#scene-とレコメンドプロンプト
+    func currentScene() -> String? { "terminal" }
+
     /// View 側で参照する PersistentTerminalView (初回のみ PTY を起動)
     var terminalView: PersistentTerminalView {
         if let cached = cached { return cached }

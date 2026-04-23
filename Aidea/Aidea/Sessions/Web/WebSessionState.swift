@@ -38,6 +38,10 @@ final class WebSessionState: SessionState, FocusBridgeOwner {
         focusBridge.deactivate()
     }
 
+    /// レコメンドモード用の Scene 識別子。Web は URL で分岐しない単一 Scene。
+    /// 仕様: docs/specs/sessions/web.md#scene-とレコメンドプロンプト
+    func currentScene() -> String? { "web" }
+
     /// View 側で参照する WKWebView (初回のみ生成)
     var webView: WKWebView {
         if let cached = cached { return cached }
