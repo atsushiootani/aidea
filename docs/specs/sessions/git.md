@@ -7,10 +7,11 @@ derived_from:
 syncs_with:
   - docs/specs/tools/git.md
   - docs/specs/sessions/git-diff.md
+  - docs/specs/companions/recommend-mode.md
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-20
+last_updated: 2026-04-23
 ---
 
 # Session 内部状態: Git
@@ -37,12 +38,14 @@ Tool 仕様は [../tools/git.md](../tools/git.md) を、共通 UI ルールは [
 
 `SessionState` プロトコル ([../frontchannels/scene.md](../frontchannels/scene.md)) を実装し、Cmd+Enter でのレコメンド送信に対応する。
 
-| `mode` | `currentScene()` | `recommendedPrompts()` (デフォルト) |
-|---|---|---|
-| `.workingChanges` | `"git:workingChanges"` | `["コミットして", "プッシュして", "PRを作って"]` |
-| `.prPreview` | `"git:prPreview"` | `["PRをマージして", "レビューして"]` |
+| `mode` | `currentScene()` |
+|---|---|
+| `.workingChanges` | `"git:workingChanges"` |
+| `.prPreview` | `"git:prPreview"` |
 
-永続化は `workspace.json` v3 の `recommends` フィールド経由。GitDiff ツール ([git-diff.md](./git-diff.md)) とは Scene キーが独立しているため、両方を個別にカスタマイズできる。
+各 Scene のデフォルトプロンプトは Bundle 同梱 `Aidea/Resources/default-workspace.json` の `recommends` を SSoT とする (Swift コードへのハードコードは禁止)。詳細は [../frontchannels/scene.md](../frontchannels/scene.md) と [../companions/recommend-mode.md](../companions/recommend-mode.md) を参照。
+
+永続化は `workspace.json` v7 の `recommends` フィールド経由。GitDiff ツール ([git-diff.md](./git-diff.md)) とは Scene キーが独立しているため、両方を個別にカスタマイズできる。
 
 ## シングルトン制約
 

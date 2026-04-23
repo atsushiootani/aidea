@@ -8,6 +8,14 @@ syncs_with:
   - docs/specs/companions/companion.md
   - docs/specs/aspects/keybindings.md
   - docs/specs/aspects/persistence.md
+  - docs/specs/sessions/claude.md
+  - docs/specs/sessions/filer.md
+  - docs/specs/sessions/git.md
+  - docs/specs/sessions/git-diff.md
+  - docs/specs/sessions/kit.md
+  - docs/specs/sessions/preview.md
+  - docs/specs/sessions/terminal.md
+  - docs/specs/sessions/web.md
 impacts: []
 conventions:
   - docs/LAYOUT.md
@@ -149,6 +157,9 @@ final class RecommendState {
 | `RecommendState` | `Services/Frontchannel/RecommendState.swift` | レコメンドモードのランタイム状態。`activate / deactivate` と `moveUp/Down/Left/Right` でプロンプト・コンパニオン選択をループ移動させる |
 | `RecommendStore` | `Services/Frontchannel/RecommendStore.swift` | Scene ごとの `SceneConfig` をインメモリで保持する `enum` の static API。永続化は `WorkspaceSnapshotManager` 経由で `workspace.json` v7 に統合される |
 | `SceneConfig` | `Services/Frontchannel/RecommendStore.swift` | Scene ごとの `prompts: [String]` と `defaultCompanionIndex: Int` を保持する Codable |
+| `ScenePromptsEditorView` | `Views/Common/ScenePromptsEditorView.swift` | 各セッションの本体 View 下部に挿入される編集 UI。表示中 Scene の `prompts` 追加/削除と `defaultCompanionIndex` の切替を行う |
+
+`SessionRegistry.view(for:)` は **Git / GitDiff 以外**の各セッション View を `VStack` で本体 + `ScenePromptsEditorView` の縦並びにラップする統一パターンを取る。GitDiff は `GitDiffSessionContainer` 側で挿入済みのため二重挿入しない。
 
 Scene キー (`"git:prPreview"` `"git:workingChanges"` 等) は各 SessionState の `currentScene()` が文脈に応じて生成し、
 `RecommendStore.prompts(for:)` で対応エントリを引く。エントリが無ければ空配列 (Cmd+Enter 無反応)。

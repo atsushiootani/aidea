@@ -7,6 +7,14 @@ syncs_with:
   - docs/specs/aspects/persistence.md
 impacts:
   - docs/specs/companions/recommend-mode.md
+  - docs/specs/sessions/claude.md
+  - docs/specs/sessions/filer.md
+  - docs/specs/sessions/git.md
+  - docs/specs/sessions/git-diff.md
+  - docs/specs/sessions/kit.md
+  - docs/specs/sessions/preview.md
+  - docs/specs/sessions/terminal.md
+  - docs/specs/sessions/web.md
 conventions:
   - docs/LAYOUT.md
 last_updated: 2026-04-23
