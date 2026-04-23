@@ -11,7 +11,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-20
+last_updated: 2026-04-23
 ---
 
 # レコメンドモード
@@ -73,25 +73,30 @@ last_updated: 2026-04-20
 
 ## レコメンドプロンプトの提供
 
-各ビュー（Tool の SessionState）がレコメンドプロンプトを提供する。
+各ビュー（Tool の SessionState）が「**現在の Scene 識別子**」を提供する。Scene に紐付くプロンプト一覧自体は `RecommendStore` (起動時に `default-workspace.json` から流入する) が SSoT。
 
 ### プロトコル
 
 ```swift
-protocol RecommendProvider {
-    /// 現在の状態に応じたレコメンドプロンプトを返す（最大 3 つ）
-    func recommendedPrompts() -> [String]
+protocol SessionState {
+    /// 現在の Scene 識別子を返す
+    func currentScene() -> String?
 }
 ```
 
-### 初期実装
+### 初期定義 (Bundle 同梱の `default-workspace.json` の `recommends` に格納)
 
-| ビュー | レコメンドプロンプト |
+| Scene | レコメンドプロンプト |
 |--------|---------------------|
-| **Git** | `"コミットして"` `"プッシュして"` `"PRを作って"` |
-| **その他** | （空 = レコメンドなし、Cmd+Enter は何もしない） |
+| `git:workingChanges` | `"コミットして"` `"プッシュして"` `"PRを作って"` |
+| `git:prPreview` | `"PRをマージして"` `"レビューして"` |
+| `gitDiff:workingChanges` | `"コミットして"` `"プッシュして"` `"PRを作って"` |
+| `gitDiff:prPreview` | `"PRをマージして"` `"レビューして"` |
+| 上記以外 | エントリ無し → Cmd+Enter は何もしない |
 
-将来の拡張:
+新たな Scene へのプロンプト追加は `default-workspace.json` の `recommends` を編集する (Swift コードへのハードコードは禁止)。
+
+将来の拡張例:
 
 | ビュー | レコメンドプロンプト例 |
 |--------|----------------------|
@@ -132,12 +137,13 @@ final class RecommendState {
 | 型 | ファイル | 責務 |
 |---|---|---|
 | `RecommendState` | `Services/Frontchannel/RecommendState.swift` | レコメンドモードのランタイム状態。`activate / deactivate` と `moveUp/Down/Left/Right` でプロンプト・コンパニオン選択をループ移動させる |
-| `RecommendStore` | `Services/Frontchannel/RecommendStore.swift` | Scene ごとの `SceneConfig` をインメモリで保持する `enum` の static API。永続化は `WorkspaceSnapshotManager` 経由で `workspace.json` v3 に統合される |
+| `RecommendStore` | `Services/Frontchannel/RecommendStore.swift` | Scene ごとの `SceneConfig` をインメモリで保持する `enum` の static API。永続化は `WorkspaceSnapshotManager` 経由で `workspace.json` v7 に統合される |
 | `SceneConfig` | `Services/Frontchannel/RecommendStore.swift` | Scene ごとの `prompts: [String]` と `defaultCompanionIndex: Int` を保持する Codable |
-| `RecommendProvider` | 各 `SessionState` で準拠 | 現在の状態に応じた最大 3 つのプロンプトを返すプロトコル |
 
-Scene キー (`"git:prPreview"` `"git:workingChanges"` 等) は各 SessionState が文脈に応じて生成し、
-`RecommendStore.resolve(scene:defaults:)` で「永続化 > デフォルト > 空」の順で解決される。
+Scene キー (`"git:prPreview"` `"git:workingChanges"` 等) は各 SessionState の `currentScene()` が文脈に応じて生成し、
+`RecommendStore.prompts(for:)` で対応エントリを引く。エントリが無ければ空配列 (Cmd+Enter 無反応)。
+
+`default-workspace.json` から流入する初期エントリが SSoT。Swift コード内にデフォルトプロンプトのハードコードは置かない (詳細は [../frontchannels/scene.md](../frontchannels/scene.md))。
 
 ---
 

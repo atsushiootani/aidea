@@ -78,16 +78,12 @@ protocol SessionState: AnyObject {
 
     /// 現在の Scene 識別子を返す
     func currentScene() -> String?
-
-    /// デフォルトのレコメンドプロンプトを返す（永続化されていない場合のフォールバック）
-    func recommendedPrompts() -> [String]
 }
 
 extension SessionState {
     func didBecomeActive(session: Session) {}
     func didResignActive(session: Session) {}
     func currentScene() -> String? { nil }
-    func recommendedPrompts() -> [String] { [] }
 }
 
 /// Tab のドラッグ&ドロップのために SessionID を Transferable にする。

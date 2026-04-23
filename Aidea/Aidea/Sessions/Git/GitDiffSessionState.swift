@@ -95,12 +95,4 @@ final class GitDiffSessionState: SessionState, FocusBridgeOwner {
         case .prPreview: return "gitDiff:prPreview"
         }
     }
-
-    /// デフォルトのレコメンドプロンプト (Git ツールと同じ内容)
-    func recommendedPrompts() -> [String] {
-        switch mode {
-        case .workingChanges: return ["コミットして", "プッシュして", "PRを作って"]
-        case .prPreview: return ["PRをマージして", "レビューして"]
-        }
-    }
 }

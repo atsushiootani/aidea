@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// 8 体のコンパニオンアイコンを常時表示する View。
+/// 9 体のコンパニオンアイコンを常時表示する View。
 /// タップで Claude セッションを起動/フォーカスする。
 struct CompanionView: View {
     @Environment(CompanionStore.self) private var store
@@ -18,9 +18,8 @@ struct CompanionView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 6) {
-                ForEach(Array(CompanionIconPresets.imageIcons.enumerated()), id: \.offset) { index, icon in
-                    let companion = store.companion(forIndex: index)
-                    companionIcon(companion: companion, icon: icon, index: index)
+                ForEach(store.companions) { companion in
+                    companionIcon(companion: companion)
                 }
             }
 
@@ -35,31 +34,29 @@ struct CompanionView: View {
         }
         .sheet(item: $editingCompanion) { companion in
             CompanionEditView(companion: companion) { updated in
-                store.upsert(updated)
+                store.update(updated)
             }
         }
     }
 
     /// コンパニオンアイコン 1 つ分の View
-    private func companionIcon(companion: CompanionConfig?, icon: String, index: Int) -> some View {
-        let isActive = companion.map { store.isActive($0.id) } ?? false
+    private func companionIcon(companion: CompanionConfig) -> some View {
+        let isActive = companion.sessionID != nil
         let isActiveTab: Bool = {
-            guard let companion, let sessionID = store.activeSessionMap[companion.id] else { return false }
+            guard let sessionID = companion.sessionID else { return false }
             return registry.activeSessionID == sessionID
         }()
-        let name = companion?.name ?? "Companion \(index + 1)"
 
         return VStack(spacing: 2) {
             // メインアイコン: タップで起動/フォーカス
             Button {
-                if let companion, isActive, let sessionID = store.activeSessionMap[companion.id] {
+                if let sessionID = companion.sessionID {
                     registry.activateSession(sessionID)
                 } else {
-                    let config = companion ?? store.createDefault(forIndex: index)
-                    launchCompanion(config)
+                    launchCompanion(companion)
                 }
             } label: {
-                Image(CompanionIconPresets.thumbnailIcon(for: icon))
+                Image(CompanionIconPresets.thumbnailIcon(for: companion.icon))
                     .resizable()
                     .interpolation(.high)
                     .antialiased(true)
@@ -74,34 +71,29 @@ struct CompanionView: View {
                     .opacity(isActive ? 1.0 : 0.5)
             }
             .buttonStyle(.plain)
-            .help(name)
+            .help(companion.name)
 
             // 名前ラベル: タップで編集
-            Text(name)
+            Text(companion.name)
                 .font(.system(size: 9))
                 .foregroundStyle(isActiveTab ? Color.accentColor : (isActive ? Color.primary : Color.secondary))
                 .lineLimit(1)
                 .frame(width: 60)
                 .onTapGesture {
-                    editingCompanion = companion ?? store.createDefault(forIndex: index)
+                    editingCompanion = companion
                 }
         }
     }
 
     /// コンパニオンに紐付く Claude セッションを起動する
     private func launchCompanion(_ companion: CompanionConfig) {
-        // まだ store に登録されてなければ登録
-        if store.companions.first(where: { $0.id == companion.id }) == nil {
-            store.add(companion)
-        }
-
         let instance = layout.nextSessionInstance(of: .claude)
         let session = registry.createSession(tool: .claude, instance: instance)
         let id = session.id
         if let state = session.state as? ClaudeSessionState {
             state.companionPrompt = companion.initialPrompt
         }
-        store.bind(companionID: companion.id, sessionID: id)
+        store.bind(index: companion.index, sessionID: id)
 
         if let pane = registry.activePane ?? layout.allPanes.first {
             pane.tabs.append(id)

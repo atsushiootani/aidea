@@ -6,80 +6,52 @@
 import Foundation
 import Observation
 
-/// コンパニオン設定とセッション紐付けを管理する。
-/// データは WorkspaceSnapshotManager 経由で workspace.json に永続化される。
+/// コンパニオン (9 個固定 / index 0...8) と Claude セッション紐付けを管理する。
+/// 紐付き状態は `CompanionConfig.sessionID` に統合されている (別マップは持たない)。
+/// データは WorkspaceSnapshotManager 経由で workspace.json v7 に永続化される。
 @Observable
 final class CompanionStore {
+    /// 必ず 9 要素 (index 0...8)。空にしたり追加・削除はしない
     var companions: [CompanionConfig] = []
-    /// コンパニオン ID → 紐付けられた SessionID のマッピング
-    var activeSessionMap: [UUID: SessionID] = [:]
 
-    /// コンパニオンを追加する
-    func add(_ companion: CompanionConfig) {
-        companions.append(companion)
-    }
-
-    /// コンパニオンを更新する
+    /// 指定 index のコンパニオン設定を更新する (sessionID を含む全フィールド差し替え)
     func update(_ companion: CompanionConfig) {
-        if let index = companions.firstIndex(where: { $0.id == companion.id }) {
-            companions[index] = companion
-        }
+        guard companion.index >= 0, companion.index < companions.count else { return }
+        companions[companion.index] = companion
     }
 
-    /// コンパニオンを削除する
-    func remove(_ companion: CompanionConfig) {
-        companions.removeAll { $0.id == companion.id }
-        activeSessionMap.removeValue(forKey: companion.id)
-    }
-
-    /// コンパニオンが起動中かどうか
-    func isActive(_ companionID: UUID) -> Bool {
-        activeSessionMap[companionID] != nil
+    /// コンパニオンが起動中かどうか (sessionID != nil)
+    func isActive(_ index: Int) -> Bool {
+        guard index >= 0, index < companions.count else { return false }
+        return companions[index].sessionID != nil
     }
 
     /// コンパニオンと Claude セッションを紐付ける
-    func bind(companionID: UUID, sessionID: SessionID) {
-        activeSessionMap[companionID] = sessionID
+    func bind(index: Int, sessionID: SessionID) {
+        guard index >= 0, index < companions.count else { return }
+        companions[index].sessionID = sessionID
     }
 
     /// コンパニオンの紐付けを解除する
-    func unbind(companionID: UUID) {
-        activeSessionMap.removeValue(forKey: companionID)
+    func unbind(index: Int) {
+        guard index >= 0, index < companions.count else { return }
+        companions[index].sessionID = nil
     }
 
-    /// SessionID からコンパニオンの紐付けを解除する（セッション終了時用）
+    /// SessionID から該当コンパニオンの紐付けを解除する（セッション終了時用）
     func unbindSession(_ sessionID: SessionID) {
-        activeSessionMap = activeSessionMap.filter { $0.value != sessionID }
+        for i in companions.indices where companions[i].sessionID == sessionID {
+            companions[i].sessionID = nil
+        }
     }
 
     /// SessionID に紐付くコンパニオン名を返す（タブ表示用）
     func companionName(for sessionID: SessionID) -> String? {
-        guard let companionID = activeSessionMap.first(where: { $0.value == sessionID })?.key else { return nil }
-        return companions.first { $0.id == companionID }?.name
+        companions.first { $0.sessionID == sessionID }?.name
     }
 
-    /// アイコンインデックスに対応するコンパニオン設定を返す（未登録なら nil）
-    func companion(forIndex index: Int) -> CompanionConfig? {
-        let icon = CompanionIconPresets.imageIcons[index]
-        return companions.first { $0.icon == icon }
-    }
-
-    /// アイコンインデックスからデフォルト設定のコンパニオンを生成する（まだ store に未登録）
-    func createDefault(forIndex index: Int) -> CompanionConfig {
-        let icon = CompanionIconPresets.imageIcons[index]
-        return CompanionConfig(
-            name: "Companion \(index + 1)",
-            icon: icon,
-            initialPrompt: ".aidea/claude/aidea.md と .aidea/claude/speech.md を読んで従ってね"
-        )
-    }
-
-    /// 追加または更新する
-    func upsert(_ companion: CompanionConfig) {
-        if let index = companions.firstIndex(where: { $0.id == companion.id }) {
-            companions[index] = companion
-        } else {
-            companions.append(companion)
-        }
+    /// アイコンインデックスに対応するコンパニオン設定を返す (9 個固定なので必ず存在)
+    func companion(forIndex index: Int) -> CompanionConfig {
+        companions[index]
     }
 }

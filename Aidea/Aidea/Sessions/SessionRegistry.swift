@@ -384,7 +384,7 @@ final class SessionRegistry {
             let gitState = session.state as! GitSessionState
             return AnyView(VStack(spacing: 0) {
                 GitSessionView(state: gitState)
-                ScenePromptsEditorView(scene: gitState.currentScene() ?? "git", defaults: gitState.recommendedPrompts())
+                ScenePromptsEditorView(scene: gitState.currentScene() ?? "git")
             }.sessionFocusCleanup(gitState))
         case .gitDiff:
             let diffState = session.state as! GitDiffSessionState

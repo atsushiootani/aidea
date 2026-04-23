@@ -5,76 +5,19 @@
 
 import Foundation
 
-/// コンパニオンの設定。1 つのコンパニオンが 1 つの Claude セッションに対応する。
+/// 1 体のコンパニオン設定 + 起動状態。9 個固定 (index 0...8) で管理される。
+/// `sessionID` は紐付いた Claude セッション ID。`nil` なら未起動。
 struct CompanionConfig: Identifiable, Codable, Hashable {
-    var id: UUID
+    /// コンパニオン識別子。ヘッダ表示順とも一致 (0...8)
+    let index: Int
     var name: String
     /// アイコン名。Assets のカスタム画像名 (例: "Companions/companion-1") または SF Symbols 名
     var icon: String
     /// Claude 起動後に送信する初期プロンプト
     var initialPrompt: String
+    /// 紐付いた Claude セッション ID。nil なら未起動
+    var sessionID: SessionID?
 
-    init(
-        id: UUID = UUID(),
-        name: String = "Companion",
-        icon: String = "Companions/companion-1",
-        initialPrompt: String = ""
-    ) {
-        self.id = id
-        self.name = name
-        self.icon = icon
-        self.initialPrompt = initialPrompt
-    }
-}
-
-/// コンパニオンアイコンのプリセット一覧
-enum CompanionIconPresets {
-    /// カスタム画像アイコン（Assets.xcassets/Companions/ 配下）
-    static let imageIcons: [String] = [
-        "Companions/companion-1",
-        "Companions/companion-2",
-        "Companions/companion-3",
-        "Companions/companion-4",
-        "Companions/companion-5",
-        "Companions/companion-6",
-        "Companions/companion-7",
-        "Companions/companion-8",
-        "Companions/companion-9",
-    ]
-
-    /// サムネイル用の小サイズアイコン
-    static let smallIcons: [String: String] = [
-        "Companions/companion-1": "Companions/companion-1-small",
-        "Companions/companion-2": "Companions/companion-2-small",
-        "Companions/companion-3": "Companions/companion-3-small",
-        "Companions/companion-4": "Companions/companion-4-small",
-        "Companions/companion-5": "Companions/companion-5-small",
-        "Companions/companion-6": "Companions/companion-6-small",
-        "Companions/companion-7": "Companions/companion-7-small",
-        "Companions/companion-8": "Companions/companion-8-small",
-        "Companions/companion-9": "Companions/companion-9-small",
-    ]
-
-    /// 各コンパニオンのテーマカラー（タブアイコンの tint に使用）
-    static let themeColors: [String: (red: Double, green: Double, blue: Double)] = [
-        "Companions/companion-1": (0.3, 0.5, 1.0),    // 青
-        "Companions/companion-2": (0.95, 0.55, 0.1),   // オレンジ
-        "Companions/companion-3": (0.4, 0.7, 0.3),    // 緑
-        "Companions/companion-4": (0.95, 0.35, 0.2),   // 赤オレンジ
-        "Companions/companion-5": (0.9, 0.65, 0.15),   // 金/オレンジ
-        "Companions/companion-6": (0.85, 0.4, 0.55),   // ピンク
-        "Companions/companion-7": (0.6, 0.75, 0.85),   // 水色
-        "Companions/companion-8": (0.4, 0.2, 0.2),    // 赤黒
-        "Companions/companion-9": (0.55, 0.25, 0.75),  // 紫
-    ]
-
-    /// アイコン名がカスタム画像かどうか
-    static func isImageIcon(_ name: String) -> Bool {
-        name.hasPrefix("Companions/")
-    }
-
-    /// サムネイル用のアイコン名を返す（小サイズがあればそれを、なければ元のまま）
-    static func thumbnailIcon(for icon: String) -> String {
-        smallIcons[icon] ?? icon
-    }
+    /// Identifiable 準拠のため index を id とする
+    var id: Int { index }
 }
