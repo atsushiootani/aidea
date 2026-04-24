@@ -135,6 +135,48 @@ SwiftUI のレイアウト修飾子が期待通りに動かないケースがあ
 
 ---
 
+## `@Observable` のアクセスパターン (AttributeGraph cycle 対策)
+
+高頻度に書き換わる状態を `@Observable` プロパティとして公開する場合、View から read する経路に注意する。
+
+### 症状
+
+一つの `@Observable` オブジェクトを View 本体から走査用途 (`ForEach` 等) で読んでいるところに、同じオブジェクトの別プロパティを PTY 出力等で **毎秒数十回〜** flip させると、以下が起きる:
+
+- コンソールに `AttributeGraph: cycle detected` 相当のログが大量に出続ける (例外 / クラッシュには至らない)
+- 当該 View が描画更新されなくなる (アイコンが固まる・配置が古いまま)
+
+### 実例 (issue #45)
+
+`CompanionView` は `CompanionStore` を `@Environment` で受け、`ForEach(store.companions)` でアイコンを並べている。表情切替のため `store.busyCompanions: Set<Int>` を追加し、`ClaudeSessionState.noteTerminalOutput` (PTY 出力ハンドラ) から `store.markBusy(index, true/false)` で flip したところ、上記症状が出て Companion アイコンが描画されなくなった。
+
+### 解決パターン
+
+**高頻度 write を別の `@Observable` に切り出す**。View が走査する「コレクション状態」と、PTY 等で高頻度に flip する「フラグ状態」は、必ず別オブジェクトに置く。
+
+| 状態 | 置き場所 | 公開名 |
+|---|---|---|
+| Companion 配列 (sessionID 紐付け含む) | `CompanionStore` | `companions` |
+| 個別セッションの実行中フラグ | `ClaudeSessionState` | `isBusy` |
+| VOICEVOX 再生中の companionIndex | `SpeechQueue` | `currentlySpeakingIndex` |
+
+`CompanionView` は `store.companions` から個別 Companion を走査し、各 Companion の `sessionID` から `registry.session(for:).state as? ClaudeSessionState` を引いて `isBusy` / `isSpeaking` を読む。高頻度 write は `ClaudeSessionState` 内で閉じるため、`CompanionStore` の observation graph に影響を与えない。
+
+### アンチパターン
+
+- ❌ 1 つの `@Observable` を `ForEach` 用途と高頻度フラグ用途の**両方**に使う
+- ❌ Store が保持する配列要素 (struct) に高頻度 mutate されるフラグを足す
+  (配列書き換えとして Observable 通知が走査側にも伝播する)
+- ❌ 高頻度 write 問題の回避策として、フラグ書き込みを `DispatchQueue.main.async` で遅延させて誤魔化す
+  (描画が止まる症状は消えても、同期が取れず表情が一瞬遅れる等の二次問題が出る。素直にオブジェクトを分ける)
+
+### 迷ったときの判断基準
+
+- View body から同じ `@Observable` の **2 つ以上のプロパティ** を read しそうになったら、そのうち 1 つでも「1 秒に数回以上 write される」ものがあるか確認する
+- 該当するなら、その高頻度 write は別 Observable (Session 単位の State など) に切り出す
+
+---
+
 ## 参考
 
 - [coding-style.md](./coding-style.md) — Swift 規約全般
