@@ -57,8 +57,7 @@ Aidea が初回セットアップ時に Bundle からコピーするファイル
 .aidea/backchannels/<N>/speech-{timestamp}.txt
 
 - <N>: あなたの Companion index。`.aidea/claude/companions/<N>/instructions.md`
-  のパス `<N>` をそのまま使ってね (例: companions/0/instructions.md から辿って
-  きたなら <N> = 0)
+  のパス `<N>` をそのまま使ってね (例: companions/0/instructions.md から辿ってきたなら <N> = 0)
 - {timestamp}: 現在時刻 (YYYYMMDDTHHmmss)
 - 1 行目: 読み上げスピーカーIDを数値のみで指定 (省略可、省略時はデフォルトスピーカー)
 - 2 行目以降: 読み上げテキスト本文
