@@ -8,9 +8,10 @@ syncs_with:
   - docs/specs/aspects/persistence.md
 impacts:
   - docs/specs/tools/claude.md
+  - docs/specs/companions/companion.md
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-23
+last_updated: 2026-04-24
 ---
 
 # Backchannel: VOICEVOX 読み上げ
@@ -65,6 +66,13 @@ Aidea が初回セットアップ時に Bundle からコピーするファイル
 - 句読点ではスペースを開けて、ちゃんと区切ること
 - 書き出したファイルは削除しないでね (作業履歴として残るよ)
 
+## 読み上げ文面の指示がある場合
+
+**読み上げ文面の指示がある場合は、要点ではなく指示通りの文面を書き出してください。**
+
+instructions.md に「最初のプロンプトの読み上げ文面は "〇〇" にして」のような
+指示があるときは、要約せず指定された文面をそのまま書き出す。
+
 ## スピーカーID
 
 ファイルの1行目に読み上げスピーカーIDを数値のみで記述する。
@@ -96,6 +104,30 @@ v8 以降、読み上げ機能は各 Companion の `.aidea/claude/companions/<in
 ```
 
 デフォルトテンプレ (Bundle `Backchannels/companion-instructions.md`) にこの参照行が入っており、`BackchannelSetup.setup` が 9 Companion 分コピーする (既存ファイルは上書きしない)。読み上げを無効にしたい Companion は `instructions.md` から `speech.md` への参照行を削除すれば OK。
+
+### 読み上げ文面の指示 (Companion 別上書き、issue #110)
+
+各 Companion の `.aidea/claude/companions/<index>/instructions.md` に読み上げ文面の指示を書くと、その場面の speech は要約ではなく指定文面がそのまま書き出される。
+
+**典型的なユースケース: 起動時のあいさつ固定**
+
+```markdown
+# Companion 指示書
+
+.aidea/claude/aidea.md と .aidea/claude/speech.md を読んで従ってね。
+
+最初のプロンプトの読み上げ文面は「main-chan スタンバイです！」にしてね。
+
+## このコンパニオンの役割
+
+(ここに固有の役割を書いてね)
+```
+
+これにより、起動時に Aidea が送る `.aidea/claude/companions/N/instructions.md を読んで従ってね` への最初の応答で、Claude は要点要約ではなく `main-chan スタンバイです！` を speech ファイルに書き出す。
+
+**汎用性**: 文面指示は「最初のプロンプト」に限定されない。「特定の作業完了時」「エラー時」などユーザが場面を指定すれば Claude が従う (speech.md 側の方針「指示があれば指示通り、なければ要点要約」)。
+
+**フロー上の位置づけ**: Aidea 本体の変更は不要。speech.md と instructions.md の指示書テキストだけで成立する (Claude の解釈ベース)。
 
 ---
 
