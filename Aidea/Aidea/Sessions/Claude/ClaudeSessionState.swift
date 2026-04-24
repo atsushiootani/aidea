@@ -149,6 +149,19 @@ final class ClaudeSessionState: SessionState, FocusBridgeOwner {
         terminal.onTerminalOutput = { [weak self] in
             self?.noteTerminalOutput()
         }
+        // ターミナル上でユーザが直接入力した Enter も「プロンプト送信」として busy に反映する。
+        // 本文入力中のキーでは立てず、CR (0x0D) / LF (0x0A) を含むデータだけをトリガーにする。
+        //
+        // 除外:
+        // - Opt+Enter (SwiftTerm では `\x1b\r` = [0x1B, 0x0D] として送られる) は
+        //   Claude CLI では改行挿入 (submit しない) なので markBusy しない。
+        // - 他にも ESC を含むシーケンス (カーソル移動等) が CR を巻き込む可能性は低いが、
+        //   誤発火するよりは慎重側に倒す。
+        terminal.onKeySend = { [weak self] data in
+            guard data.contains(where: { $0 == 0x0D || $0 == 0x0A }),
+                  !data.contains(0x1B) else { return }
+            self?.markBusy()
+        }
         cached = terminal
         autoStartClaude(terminal: terminal)
         return terminal
