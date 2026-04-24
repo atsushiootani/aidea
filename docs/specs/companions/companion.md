@@ -10,6 +10,7 @@ syncs_with:
   - docs/specs/aspects/persistence.md
   - docs/specs/backchannels/backchannel.md
   - docs/specs/backchannels/voicevox.md
+  - docs/specs/sessions/claude.md
   - docs/specs/tools/claude.md
 impacts: []
 conventions:
@@ -193,9 +194,9 @@ SF Symbol オーバーレイの組み合わせで表現する。
 
 | 状態 | 発火条件 | ベース画像 | オーバーレイ | アイコン暗転 |
 |---|---|---|---|---|
-| **未起動** | `companion.sessionID == nil` | `companion-N` (normal) | なし | 彩度 0.3 / 不透明度 0.5 |
-| **アイドル** | セッション起動済み・busy でない・読み上げ中でない | `companion-N` (normal) | なし | なし |
-| **実行中** | `ClaudeSessionState.isBusy == true` | `companion-N-thinking` | `ellipsis.bubble` (無色) | なし |
+| **未起動** | `companion.sessionID == nil` | `companion-N-small` (thumbnail) | なし | 彩度 0.3 / 不透明度 0.5 |
+| **アイドル** | セッション起動済み・busy でない・読み上げ中でない | `companion-N-small` (thumbnail) | なし | なし |
+| **実行中** | `ClaudeSessionState.isBusy == true` | `companion-N-thinking` | `ellipsis.bubble` (濃いグレー) | なし |
 | **読み上げ中** | `SpeechQueue.currentlySpeakingIndex == N` | `companion-N-smile` | `heart.fill` (pink) | なし |
 
 ### 優先順位
@@ -206,10 +207,11 @@ SF Symbol オーバーレイの組み合わせで表現する。
 ### オーバーレイの詳細
 
 - **位置**: アイコン右上隅 (コーナーバッジ風)
-- **サイズ**: アイコン幅の約 1/3 (60x60 アイコンに対して 18-20pt 程度)
+- **サイズ**: アイコン幅の約 1/3 (60x60 アイコンに対して 18pt)
 - **色**:
-  - `heart.fill`: pink (`Color.pink` / SF Symbols のデフォルト pink)
-  - `ellipsis.bubble`: 無色指定 (primary に従う = light mode で黒、dark mode で白)
+  - `heart.fill`: pink (`Color.pink`)
+  - `ellipsis.bubble`: 濃いグレー (`Color(white: 0.25)`。dark/light mode に依らず同じ視認性を得るため primary に従わず固定)
+- **背景**: SF Symbol の後ろに半透明の白角丸 (`RoundedRectangle(cornerRadius: 4).fill(Color.white.opacity(0.6))`) を敷く。アイコン画像のコントラストに関係なく記号が沈まないよう視認性を確保するため
 - **描画順**: ベース画像の上にオーバーレイする (枠線・クリップ形状より前)
 
 ### 未起動時の挙動
