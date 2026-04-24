@@ -41,8 +41,8 @@ final class ClaudeSessionState: SessionState, FocusBridgeOwner {
     var isReady: Bool = false
 
     /// Claude が作業中 (= PTY 出力が続いている) かどうか。CompanionView がアイコン表情切替で参照する (issue #45)。
-    /// 判定ロジックは `noteTerminalOutput` のデバウンスに集約される。
-    var isBusy: Bool = false
+    /// 判定ロジックは `noteTerminalOutput` のデバウンスに集約され、外部書き換えは禁止。
+    private(set) var isBusy: Bool = false
 
     /// この Companion の speech が VOICEVOX で再生中かどうか (issue #45)。
     /// 状態源は `SpeechQueue.currentlySpeakingIndex` で、`companionIndex` と一致する間だけ true。
@@ -157,17 +157,26 @@ final class ClaudeSessionState: SessionState, FocusBridgeOwner {
     /// PTY からの出力を観測したときに呼ぶ。isBusy=true にし、`busyDebounceInterval` 秒の
     /// 静止タイマーをセットする。既存タイマーは invalidate してリセットするので、
     /// 出力が続く限り静止タイマーは発火せず、出力が止まった瞬間から 0.5s で false に落ちる。
-    /// Timer.scheduledTimer は RunLoop.main の default モードに載るが、スクロール等
-    /// tracking 中も確実に発火させるため RunLoop.main.add(:, forMode: .common) で登録する。
+    ///
+    /// ⚠ `isBusy` の書き込みは `DispatchQueue.main.async` で必ず次の runloop tick に遅延させる。
+    /// 呼び出し元 (SwiftTerm の `rangeChanged` デリゲート / Timer.common) は SwiftUI の
+    /// view update サイクル中に同期発火し得るため、その中で `@Observable` プロパティを書くと
+    /// `AttributeGraph: cycle detected` のログが大量に出てビューが描画されなくなる。
+    /// (詳細は [docs/conventions/swift.md#observable-のアクセスパターン-attributegraph-cycle-対策])
     private func noteTerminalOutput() {
-        if !isBusy { isBusy = true }
-        busyDebounceTimer?.invalidate()
-        let timer = Timer(timeInterval: Self.busyDebounceInterval, repeats: false) { [weak self] _ in
+        DispatchQueue.main.async { [weak self] in
             guard let self else { return }
-            if self.isBusy { self.isBusy = false }
+            if !self.isBusy { self.isBusy = true }
+            self.busyDebounceTimer?.invalidate()
+            let timer = Timer(timeInterval: Self.busyDebounceInterval, repeats: false) { [weak self] _ in
+                DispatchQueue.main.async { [weak self] in
+                    guard let self else { return }
+                    if self.isBusy { self.isBusy = false }
+                }
+            }
+            RunLoop.main.add(timer, forMode: .common)
+            self.busyDebounceTimer = timer
         }
-        RunLoop.main.add(timer, forMode: .common)
-        busyDebounceTimer = timer
     }
 
     /// 対話シェル準備完了後に claude を起動し、`companionPrompt` を送る。

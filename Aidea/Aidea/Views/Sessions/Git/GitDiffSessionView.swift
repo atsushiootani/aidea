@@ -87,8 +87,15 @@ struct GitDiffSessionView: NSViewRepresentable {
             state.focusBridge.setView(webView)
         }
         context.coordinator.state = state
-        state.reload()
-        loadDiff(into: webView)
+        // state.reload() は @Observable な diffOutput を write する。makeNSView は
+        // SwiftUI の view update サイクルの中で呼ばれるため、ここで同期実行すると
+        // AttributeGraph cycle detected が発生し、同じウィンドウの他 View
+        // (CompanionView 等) も描画されなくなる。次 runloop tick に遅延させる。
+        DispatchQueue.main.async { [state, weak webView] in
+            state.reload()
+            guard let webView else { return }
+            self.loadDiff(into: webView)
+        }
         // Tab で Git ツールにフォーカス移動。
         // SwiftUI の focus nav で他 Session から漏れて firstResponder が奪われたケースを弾くため、
         // activeSessionID が GitDiff 自身かを確認してから発火する。

@@ -137,22 +137,22 @@ SwiftUI のレイアウト修飾子が期待通りに動かないケースがあ
 
 ## `@Observable` のアクセスパターン (AttributeGraph cycle 対策)
 
-高頻度に書き換わる状態を `@Observable` プロパティとして公開する場合、View から read する経路に注意する。
+`@Observable` プロパティへの書き込みは **誰が・いつ・どの Observable に書くか** に注意する。ルールを外すと `AttributeGraph: cycle detected` のログが大量に出て、同一ウィンドウの全 View が描画更新されなくなる (例外 / クラッシュには至らない)。
 
-### 症状
+### 共通の症状
 
-一つの `@Observable` オブジェクトを View 本体から走査用途 (`ForEach` 等) で読んでいるところに、同じオブジェクトの別プロパティを PTY 出力等で **毎秒数十回〜** flip させると、以下が起きる:
+- Xcode コンソールに `=== AttributeGraph: cycle detected through attribute ... ===` のログが数十〜数百行出続ける
+- 当該ウィンドウの **関係ない View まで** 描画が止まる (一度 cycle した AttributeGraph はウィンドウ全体の更新が壊れるため、cycle 発生元と症状が出る View は一致しない)
 
-- コンソールに `AttributeGraph: cycle detected` 相当のログが大量に出続ける (例外 / クラッシュには至らない)
-- 当該 View が描画更新されなくなる (アイコンが固まる・配置が古いまま)
+### 原因 A: 1 つの `@Observable` に「走査対象」と「高頻度 write」を同居
 
-### 実例 (issue #45)
+#### 実例 (issue #45, 初期実装)
 
-`CompanionView` は `CompanionStore` を `@Environment` で受け、`ForEach(store.companions)` でアイコンを並べている。表情切替のため `store.busyCompanions: Set<Int>` を追加し、`ClaudeSessionState.noteTerminalOutput` (PTY 出力ハンドラ) から `store.markBusy(index, true/false)` で flip したところ、上記症状が出て Companion アイコンが描画されなくなった。
+`CompanionView` が `@Environment(CompanionStore.self)` で受けた `store` について、`ForEach(store.companions)` でアイコンを並べつつ、表情切替のため `store.busyCompanions: Set<Int>` を `ClaudeSessionState.noteTerminalOutput` (PTY 出力ハンドラ) から `store.markBusy(index, true/false)` で flip した。結果、Companion アイコンが描画されなくなった。
 
-### 解決パターン
+#### 解決: 別の `@Observable` に切り出す
 
-**高頻度 write を別の `@Observable` に切り出す**。View が走査する「コレクション状態」と、PTY 等で高頻度に flip する「フラグ状態」は、必ず別オブジェクトに置く。
+走査する「コレクション状態」と、PTY 等で高頻度に flip する「フラグ状態」は、必ず別オブジェクトに置く。
 
 | 状態 | 置き場所 | 公開名 |
 |---|---|---|
@@ -162,18 +162,57 @@ SwiftUI のレイアウト修飾子が期待通りに動かないケースがあ
 
 `CompanionView` は `store.companions` から個別 Companion を走査し、各 Companion の `sessionID` から `registry.session(for:).state as? ClaudeSessionState` を引いて `isBusy` / `isSpeaking` を読む。高頻度 write は `ClaudeSessionState` 内で閉じるため、`CompanionStore` の observation graph に影響を与えない。
 
+### 原因 B: View update サイクルの中で `@Observable` を write
+
+SwiftUI が view body を評価している最中に `@Observable` プロパティを同期 write すると、書いた側・読んだ側関係なく AttributeGraph がループ判定する。write の呼び出し元が **SwiftUI の描画パスから同期的に呼ばれるコールバック** になっているときに起きやすい。
+
+要注意の呼び出し元:
+
+- `NSViewRepresentable.makeNSView` / `updateNSView` の内側 (SwiftUI から同期呼び出しされる)
+- SwiftTerm の `TerminalViewDelegate.rangeChanged` など、AppKit の draw サイクルから同期的に呼ばれるデリゲート
+- `Timer` の `.common` モード (スクロール等の tracking 中も含めて描画フレーム境界で発火しうる)
+
+#### 実例 (issue #45, GitDiff 再発)
+
+`GitDiffSessionView.makeNSView` で同期的に `state.reload()` を呼び、`@Observable` な `diffOutput` を write していた。GitDiff タブが前回終了時に残っていたときだけ、起動直後の view 初回生成が update サイクル内で走り、cycle detected → 同ウィンドウの `CompanionView` 等が描画されなくなった。
+
+同様に `ClaudeSessionState.noteTerminalOutput` は SwiftTerm の `rangeChanged` から同期呼び出しされるため、そのまま `isBusy = true` と書くと cycle の起点になりうる。
+
+#### 解決: write を `DispatchQueue.main.async` で次 runloop tick に回す
+
+view update サイクルを抜けた後の tick で書くことで、AttributeGraph への影響が分離できる。
+
+```swift
+// GitDiffSessionView.makeNSView 内
+DispatchQueue.main.async { [state, weak webView] in
+    state.reload()                       // diffOutput への write はここで
+    guard let webView else { return }
+    self.loadDiff(into: webView)
+}
+
+// ClaudeSessionState.noteTerminalOutput
+private func noteTerminalOutput() {
+    DispatchQueue.main.async { [weak self] in
+        guard let self else { return }
+        if !self.isBusy { self.isBusy = true }
+        // debounce timer の再セットもここに入れる
+    }
+}
+```
+
+`main.async` で 1 tick 遅らせても UX 上の遅延は知覚できない。UI state の即時性を優先して view update サイクル内で書くのは割に合わない。
+
 ### アンチパターン
 
-- ❌ 1 つの `@Observable` を `ForEach` 用途と高頻度フラグ用途の**両方**に使う
-- ❌ Store が保持する配列要素 (struct) に高頻度 mutate されるフラグを足す
-  (配列書き換えとして Observable 通知が走査側にも伝播する)
-- ❌ 高頻度 write 問題の回避策として、フラグ書き込みを `DispatchQueue.main.async` で遅延させて誤魔化す
-  (描画が止まる症状は消えても、同期が取れず表情が一瞬遅れる等の二次問題が出る。素直にオブジェクトを分ける)
+- ❌ 1 つの `@Observable` を `ForEach` 用途と高頻度フラグ用途の**両方**に使う (原因 A)
+- ❌ Store が保持する配列要素 (struct) に高頻度 mutate されるフラグを足す (配列書き換えとして Observable 通知が走査側にも伝播)
+- ❌ `makeNSView` / `updateNSView` / AppKit デリゲートの中で `@Observable` プロパティを同期 write する (原因 B)
+- ❌ 原因 A への回避策として `DispatchQueue.main.async` で誤魔化す (分離が本筋。async は原因 B のための手段であり、A の根本解ではない)
 
-### 迷ったときの判断基準
+### 判断基準
 
-- View body から同じ `@Observable` の **2 つ以上のプロパティ** を read しそうになったら、そのうち 1 つでも「1 秒に数回以上 write される」ものがあるか確認する
-- 該当するなら、その高頻度 write は別 Observable (Session 単位の State など) に切り出す
+- **View 側**: body から同じ `@Observable` の 2 つ以上のプロパティを read しそうになったら、そのうち 1 つでも「1 秒に数回以上 write される」ものがあるか確認し、該当するなら write 側を別 Observable に切り出す (原因 A 対策)
+- **write 側**: `@Observable` に write する関数が **SwiftUI / AppKit のコールバックから同期呼び出しされる** 可能性があるか確認する。該当する (makeNSView / Representable コールバック / delegate メソッド / Timer 等) なら `DispatchQueue.main.async` で次 tick に回す (原因 B 対策)
 
 ---
 
