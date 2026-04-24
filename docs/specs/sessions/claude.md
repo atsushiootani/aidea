@@ -13,7 +13,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-23
+last_updated: 2026-04-24
 ---
 
 # Session 内部状態: Claude
@@ -31,6 +31,7 @@ Backchannel の詳細は [../backchannels/backchannel.md](../backchannels/backch
 | `companionPrompt` | `String?` | 起動後 PTY に `send()` される文字列。v8 以降は `CompanionInstructions.loadCommand(for:)` で生成される固定パターン (`.aidea/claude/companions/<index>/instructions.md を読んで従ってね`) | ✅ |
 | `companionIndex` | `Int?` | 紐付く Companion の index (0…8)。Scene 識別子 `claude:<index>` および `companionPrompt` 文字列の解決に使う | ✅ |
 | `isReady` | `Bool` | `autoStartClaude` のシーケンス完了 (claude 起動 + companionPrompt 送信 + Enter) を経て Frontchannel (`sendMessage`) を受け付け可能になったかどうか。`sendMessageWhenReady` が判定に使う | — |
+| `isBusy` | `Bool` | PTY 出力が続いている (Claude がプロンプト処理中) 状態。Companion アイコンの実行中表示で参照 (issue #45)。判定ロジックは [../tools/claude.md#実行中判定-isbusy-issue-45](../tools/claude.md#実行中判定-isbusy-issue-45) を参照 | — |
 | `cached` | `PersistentTerminalView?` (ObservationIgnored) | PTY + SwiftTerm 端末 View。Terminal と共用 | ✅ |
 | `terminalView` | `PersistentTerminalView` (computed) | `cached` の lazy アクセサ | — |
 

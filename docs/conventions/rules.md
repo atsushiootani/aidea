@@ -15,6 +15,8 @@ CLAUDE.md やコードレビュー時のチェックリストとして機能す�
 - 新しい設計判断は `docs/decisions/` に ADR として追記する
 - SessionState はペイン移動で失われないよう、状態オブジェクトとして切り出す
 - レイアウトツリーのミューテーション (`splitLeaf` / `removeLeaf` 等) は `DispatchQueue.main.async` で次 runloop に遅延させる (SwiftUI update サイクル内で実行すると `AttributeGraph precondition failure` でクラッシュする)
+- 高頻度に write される `@Observable` プロパティ (PTY 出力ごとの busy フラグ等) は、View が `ForEach` 等の走査で read する Observable とは別オブジェクトに置く (詳細は [swift.md](./swift.md#observable-のアクセスパターン-attributegraph-cycle-対策))
+- SwiftUI / AppKit のコールバック (`NSViewRepresentable.makeNSView` / `updateNSView` / SwiftTerm 等のデリゲート / Timer.common) から `@Observable` プロパティを同期 write しない。必ず `DispatchQueue.main.async` で次 runloop tick に遅延させる (view update サイクル内で書くと AttributeGraph cycle が発生し、同一ウィンドウの全 View が描画されなくなる)
 
 ---
 

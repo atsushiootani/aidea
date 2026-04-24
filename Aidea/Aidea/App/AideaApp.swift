@@ -37,7 +37,7 @@ struct AideaApp: App {
         // 起動時に snapshot を読み込んで適用する。読み込めない場合 (Bundle テンプレも失敗) は
         // 緊急フォールバックとして最小レイアウト + ミニマルコンパニオン枠で継続起動する。
         if let snapshot = manager.load(projectRoot: ws.projectRoot) {
-            manager.apply(snapshot, to: lay, registry: reg, companionStore: companions)
+            manager.apply(snapshot, to: lay, registry: reg, companionStore: companions, speechQueue: speech.queue)
         } else {
             NSLog("[Aidea] Bundle default-workspace.json も読込失敗。緊急フォールバックを適用")
             lay.root = LayoutConfig.fallbackRoot()
@@ -244,6 +244,7 @@ struct AideaApp: App {
             if let state = session.state as? ClaudeSessionState {
                 state.companionPrompt = CompanionInstructions.loadCommand(for: index)
                 state.companionIndex = index
+                state.speechQueue = speechState.queue
             }
             companionStore.bind(index: index, sessionID: session.id)
             if let pane = registry.activePane ?? layout.allPanes.first {
@@ -296,6 +297,7 @@ struct AideaApp: App {
         let registry = self.registry
         let companionStore = self.companionStore
         let recommend = self.recommendState
+        let speechState = self.speechState
         NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
             // レコメンドモード中のキー操作
             if recommend.isActive {
@@ -305,7 +307,7 @@ struct AideaApp: App {
                 case 123: recommend.moveLeft(); return nil      // ←
                 case 124: recommend.moveRight(); return nil     // →
                 case 36:  // Enter - 送信
-                    Self.sendRecommendedPrompt(recommend: recommend, companionStore: companionStore, registry: registry, layout: layout)
+                    Self.sendRecommendedPrompt(recommend: recommend, companionStore: companionStore, registry: registry, layout: layout, speechState: speechState)
                     return nil
                 case 53:  // Esc - キャンセル
                     recommend.deactivate()
@@ -368,7 +370,7 @@ struct AideaApp: App {
     }
 
     /// レコメンドモードで選択されたプロンプトをコンパニオンに送信する
-    private static func sendRecommendedPrompt(recommend: RecommendState, companionStore: CompanionStore, registry: SessionRegistry, layout: LayoutConfig) {
+    private static func sendRecommendedPrompt(recommend: RecommendState, companionStore: CompanionStore, registry: SessionRegistry, layout: LayoutConfig, speechState: SpeechState) {
         guard let prompt = recommend.selectedPrompt else {
             recommend.deactivate()
             return
@@ -393,6 +395,7 @@ struct AideaApp: App {
         if let claudeState = session.state as? ClaudeSessionState {
             claudeState.companionPrompt = CompanionInstructions.loadCommand(for: index)
             claudeState.companionIndex = index
+            claudeState.speechQueue = speechState.queue
         }
         companionStore.bind(index: index, sessionID: session.id)
         if let pane = registry.activePane ?? layout.allPanes.first {
@@ -415,8 +418,9 @@ struct AideaApp: App {
         let reg = registry
         let lay = layout
         let state = handoffState
+        let speech = speechState
         handoffState.start(projectRoot: projectRoot) { message, url, fromIndex in
-            Self.dispatchHandoff(message, handoffURL: url, fromIndex: fromIndex, companionStore: store, registry: reg, layout: lay, handoffState: state)
+            Self.dispatchHandoff(message, handoffURL: url, fromIndex: fromIndex, companionStore: store, registry: reg, layout: lay, handoffState: state, speechState: speech)
         }
     }
 
@@ -434,7 +438,8 @@ struct AideaApp: App {
         companionStore: CompanionStore,
         registry: SessionRegistry,
         layout: LayoutConfig,
-        handoffState: HandoffState
+        handoffState: HandoffState,
+        speechState: SpeechState
     ) {
         guard let index = resolveHandoffTarget(message.to, in: companionStore) else {
             handoffState.reportError("ハンドオフ先が解決できません: \(describeTarget(message.to))")
@@ -459,6 +464,7 @@ struct AideaApp: App {
         if let claudeState = session.state as? ClaudeSessionState {
             claudeState.companionPrompt = CompanionInstructions.loadCommand(for: index)
             claudeState.companionIndex = index
+            claudeState.speechQueue = speechState.queue
         }
         companionStore.bind(index: index, sessionID: session.id)
         if let pane = registry.activePane ?? layout.allPanes.first {

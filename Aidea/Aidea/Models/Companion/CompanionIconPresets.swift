@@ -35,6 +35,32 @@ enum CompanionIconPresets {
         "Companions/companion-9": "Companions/companion-9-small",
     ]
 
+    /// 読み上げ中 (笑顔) の表情アイコン (issue #45)
+    static let smileIcons: [String: String] = [
+        "Companions/companion-1": "Companions/companion-1-smile",
+        "Companions/companion-2": "Companions/companion-2-smile",
+        "Companions/companion-3": "Companions/companion-3-smile",
+        "Companions/companion-4": "Companions/companion-4-smile",
+        "Companions/companion-5": "Companions/companion-5-smile",
+        "Companions/companion-6": "Companions/companion-6-smile",
+        "Companions/companion-7": "Companions/companion-7-smile",
+        "Companions/companion-8": "Companions/companion-8-smile",
+        "Companions/companion-9": "Companions/companion-9-smile",
+    ]
+
+    /// Claude 実行中 (考え中) の表情アイコン (issue #45)
+    static let thinkingIcons: [String: String] = [
+        "Companions/companion-1": "Companions/companion-1-thinking",
+        "Companions/companion-2": "Companions/companion-2-thinking",
+        "Companions/companion-3": "Companions/companion-3-thinking",
+        "Companions/companion-4": "Companions/companion-4-thinking",
+        "Companions/companion-5": "Companions/companion-5-thinking",
+        "Companions/companion-6": "Companions/companion-6-thinking",
+        "Companions/companion-7": "Companions/companion-7-thinking",
+        "Companions/companion-8": "Companions/companion-8-thinking",
+        "Companions/companion-9": "Companions/companion-9-thinking",
+    ]
+
     /// 各コンパニオンのテーマカラー（タブアイコンの tint に使用）
     static let themeColors: [String: (red: Double, green: Double, blue: Double)] = [
         "Companions/companion-1": (0.3, 0.5, 1.0),    // 青
@@ -56,5 +82,15 @@ enum CompanionIconPresets {
     /// サムネイル用のアイコン名を返す（小サイズがあればそれを、なければ元のまま）
     static func thumbnailIcon(for icon: String) -> String {
         smallIcons[icon] ?? icon
+    }
+
+    /// 読み上げ中 (笑顔) のアイコン名を返す。マップに無ければ元のまま (issue #45)
+    static func smileIcon(for icon: String) -> String {
+        smileIcons[icon] ?? icon
+    }
+
+    /// Claude 実行中 (考え中) のアイコン名を返す。マップに無ければ元のまま (issue #45)
+    static func thinkingIcon(for icon: String) -> String {
+        thinkingIcons[icon] ?? icon
     }
 }

@@ -40,6 +40,30 @@ final class ClaudeSessionState: SessionState, FocusBridgeOwner {
     /// 呼び出し側は `sendMessageWhenReady` を使えば ready まで自動で待機する。
     var isReady: Bool = false
 
+    /// Claude が作業中 (= PTY 出力が続いている) かどうか。CompanionView がアイコン表情切替で参照する (issue #45)。
+    /// 判定ロジックは `noteTerminalOutput` のデバウンスに集約され、外部書き換えは禁止。
+    private(set) var isBusy: Bool = false
+
+    /// この Companion の speech が VOICEVOX で再生中かどうか (issue #45)。
+    /// 状態源は `SpeechQueue.currentlySpeakingIndex` で、`companionIndex` と一致する間だけ true。
+    /// ClaudeSessionState 側を facade として返すことで、CompanionView は isBusy と対称に read できる。
+    var isSpeaking: Bool {
+        guard let index = companionIndex else { return false }
+        return speechQueue?.currentlySpeakingIndex == index
+    }
+
+    /// 読み上げ中判定 (`isSpeaking`) の参照先。AideaApp / CompanionView / WorkspaceSnapshotManager が
+    /// Claude セッション生成・復元時に注入する。SpeechQueue 自身は @Observable なので、
+    /// `isSpeaking` を読むスコープに tracking が伝播する。
+    @ObservationIgnored weak var speechQueue: SpeechQueue?
+
+    /// busy 静止判定の閾値。`claude` CLI が tool 実行中やストリーミング中に
+    /// 細切れに出力することを踏まえた体感値 (詳細は tools/claude.md#実行中判定-isbusy-issue-45)
+    @ObservationIgnored private static let busyDebounceInterval: TimeInterval = 0.5
+
+    /// 出力が途切れて `busyDebounceInterval` 経過したら busy=false に戻すためのタイマー
+    @ObservationIgnored private var busyDebounceTimer: Timer?
+
     /// 保留中の送信メッセージ (isReady=false の間に `sendMessageWhenReady` で積まれる)
     @ObservationIgnored private var pendingMessages: [String] = []
 
@@ -48,6 +72,9 @@ final class ClaudeSessionState: SessionState, FocusBridgeOwner {
     /// 待ってから送りたい場合は `sendMessageWhenReady` を使う。
     func sendMessage(_ message: String) {
         terminalView.send(txt: message + "\r")
+        // 出力が返る前に即座に「実行中」表示へ (issue #45)。以降は出力が続く限り
+        // noteTerminalOutput のデバウンスで isBusy=true が維持され、0.5s 無出力で false。
+        markBusy()
     }
 
     /// Claude 起動シーケンス完了 (isReady=true) を待ってから `sendMessage` を呼ぶ。
@@ -115,9 +142,71 @@ final class ClaudeSessionState: SessionState, FocusBridgeOwner {
             environment: env
         )
         terminal.installLinkGuard(isClaudeSession: true)
+        // PTY 出力で busy 状態追跡する (issue #45)。rangeChanged 経由で呼ばれる。
+        // SwiftTerm の `notifyUpdateChanges` はデフォルト false で、true にしないと
+        // `rangeChanged` デリゲートが一切発火しない。Claude セッションだけ有効化する。
+        terminal.notifyUpdateChanges = true
+        terminal.onTerminalOutput = { [weak self] in
+            self?.noteTerminalOutput()
+        }
+        // ターミナル上でユーザが直接入力した Enter も「プロンプト送信」として busy に反映する。
+        // 本文入力中のキーでは立てず、CR (0x0D) / LF (0x0A) を含むデータだけをトリガーにする。
+        //
+        // 除外:
+        // - Opt+Enter (SwiftTerm では `\x1b\r` = [0x1B, 0x0D] として送られる) は
+        //   Claude CLI では改行挿入 (submit しない) なので markBusy しない。
+        // - 他にも ESC を含むシーケンス (カーソル移動等) が CR を巻き込む可能性は低いが、
+        //   誤発火するよりは慎重側に倒す。
+        terminal.onKeySend = { [weak self] data in
+            guard data.contains(where: { $0 == 0x0D || $0 == 0x0A }),
+                  !data.contains(0x1B) else { return }
+            self?.markBusy()
+        }
         cached = terminal
         autoStartClaude(terminal: terminal)
         return terminal
+    }
+
+    /// PTY に send したタイミングで明示的に busy にし、0.5s の静止タイマーを仕込む (issue #45)。
+    /// 応答ストリーミング中は `noteTerminalOutput` 経由で静止タイマーが延長され続けるため、
+    /// 出力が 0.5s 途切れたタイミングで自然に false に戻る。
+    ///
+    /// ⚠ `isBusy` の書き込みは `DispatchQueue.main.async` で必ず次の runloop tick に遅延させる。
+    /// 呼び出し元が SwiftUI の view update サイクル中に同期発火する経路 (Timer.common / delegate)
+    /// を含む可能性があるため、その中で `@Observable` プロパティを書くと
+    /// `AttributeGraph: cycle detected` のログが大量に出てビューが描画されなくなる。
+    /// (詳細は [docs/conventions/swift.md#observable-のアクセスパターン-attributegraph-cycle-対策])
+    private func markBusy() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            if !self.isBusy { self.isBusy = true }
+            self.scheduleBusyDebounce()
+        }
+    }
+
+    /// PTY からの出力を観測したときに呼ぶ。**busy 状態のときのみ**静止タイマーを延長する。
+    /// busy でない状態 (send 前のカーソル点滅等) で出力が来ても何もしないので、
+    /// 「プロンプト送信 → 応答継続 → 0.5s 無出力で自動解除」という実 busy に沿った判定になる。
+    private func noteTerminalOutput() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self, self.isBusy else { return }
+            self.scheduleBusyDebounce()
+        }
+    }
+
+    /// busy の静止タイマーを (再) セットする。呼び出し元は必ず main thread から呼ぶ前提。
+    /// 既存タイマーは invalidate → 0.5s 後に isBusy=false を書く新規タイマーで置き換え。
+    /// 0.5s 以内に再度 `markBusy` / `noteTerminalOutput` が呼ばれると延長される。
+    private func scheduleBusyDebounce() {
+        busyDebounceTimer?.invalidate()
+        let timer = Timer(timeInterval: Self.busyDebounceInterval, repeats: false) { [weak self] _ in
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                if self.isBusy { self.isBusy = false }
+            }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        busyDebounceTimer = timer
     }
 
     /// 対話シェル準備完了後に claude を起動し、`companionPrompt` を送る。
@@ -128,8 +217,9 @@ final class ClaudeSessionState: SessionState, FocusBridgeOwner {
     /// 起動シーケンス完了時に `isReady = true` にし、`pendingMessages` を flush する。
     private func autoStartClaude(terminal: PersistentTerminalView) {
         let prompt = companionPrompt
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
             terminal.send(txt: "claude\n")
+            self?.markBusy()
         }
         guard let prompt, !prompt.isEmpty else {
             // companionPrompt が無い場合は claude コマンド送信後すぐ ready とみなす。
@@ -143,11 +233,13 @@ final class ClaudeSessionState: SessionState, FocusBridgeOwner {
         // Claude Code (Ink 製 TUI) は bracketed paste を有効にしており、
         // 本文と \r を一度に送ると \r も paste の一部とみなされ submit されないため、
         // 本文の入力処理が終わる間 (≈0.3s) を挟んでから \r を送って submit させる。
-        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) { [weak self] in
             terminal.send(txt: prompt)
+            self?.markBusy()
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 5.3) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5.3) { [weak self] in
             terminal.send(txt: "\r")
+            self?.markBusy()
         }
         // Enter 送信後 0.7s で ready とみなし、待機中の sendMessage を flush する。
         // 0.7s は従来 dispatchHandoff / sendRecommendedPrompt が使っていた固定遅延 6.0s と

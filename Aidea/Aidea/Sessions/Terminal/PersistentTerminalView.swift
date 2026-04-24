@@ -23,6 +23,17 @@ final class PersistentTerminalView: LocalProcessTerminalView {
     /// クリック時にこのセッションをアクティブにするためのコールバック
     var onInteraction: (() -> Void)?
 
+    /// PTY からの出力でターミナルバッファが更新された時に呼ばれるコールバック (issue #45)。
+    /// Claude セッションで `isBusy` デバウンス判定に利用する。TerminalLinkGuard.rangeChanged
+    /// が経由して呼び出す (installLinkGuard 済みのセッションのみ発火する)。
+    var onTerminalOutput: (() -> Void)?
+
+    /// ユーザのキー入力が PTY に送出される直前に呼ばれるコールバック (issue #45)。
+    /// `TerminalLinkGuard.send` が経由して呼び出す。Claude セッションで「ターミナル上で
+    /// 直接 Enter を打った = プロンプト送信」を検知して `markBusy` を発火させる用途。
+    /// `Aidea.sendMessage` 経由の送信でもここを通るが、markBusy が重複しても害はない。
+    var onKeySend: ((ArraySlice<UInt8>) -> Void)?
+
     override func layout() {
         if bounds.width < Self.minimumLayoutSize || bounds.height < Self.minimumLayoutSize {
             return
@@ -145,6 +156,8 @@ final class TerminalLinkGuard: NSObject, TerminalViewDelegate {
 
     func send(source: TerminalView, data: ArraySlice<UInt8>) {
         original?.send(source: source, data: data)
+        // PTY へのキー入力を Claude セッションに通知 (issue #45)。Enter 検知で markBusy するため。
+        (source as? PersistentTerminalView)?.onKeySend?(data)
     }
 
     func scrolled(source: TerminalView, position: Double) {
@@ -177,5 +190,8 @@ final class TerminalLinkGuard: NSObject, TerminalViewDelegate {
 
     func rangeChanged(source: TerminalView, startY: Int, endY: Int) {
         original?.rangeChanged(source: source, startY: startY, endY: endY)
+        // PTY 出力によりバッファが更新されたとき Claude セッションの isBusy 追跡に通知する (issue #45)。
+        // スクロール操作でも発火するが、issue #45 の実運用上は 0.5s デバウンスで無害と判断。
+        (source as? PersistentTerminalView)?.onTerminalOutput?()
     }
 }
