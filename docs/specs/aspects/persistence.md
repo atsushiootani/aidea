@@ -23,7 +23,7 @@ impacts: []
 conventions:
   - docs/LAYOUT.md
   - docs/specs/aspects/README.md
-last_updated: 2026-04-23
+last_updated: 2026-04-24
 ---
 
 # Persistence (データ永続化)
@@ -229,10 +229,13 @@ Claude → Aidea 方向の通信は**ファイル経由**で行う。詳細は [
    └─ Claude が instructions.md を読み、さらに参照先の .aidea/claude/aidea.md /
       speech.md / handoff.md を段階的に読み込む
 
-2. Claude がレスポンス末尾で以下を実行:
-   └─ .aidea/backchannels/<companion-index>/speech-{timestamp}.txt に要約テキストを
-      書き出す (100 文字以内の日本語、英単語はカタカナ化、記号省略)
-   └─ ディレクトリがなければ Claude 側で mkdir -p 相当で作成
+2. Claude が「作業開始時」と「レスポンス末尾」の 2 回、以下を実行:
+   ├─ 作業開始時: .aidea/backchannels/<companion-index>/speech-{timestamp}.txt に
+   │  作業開始の ack (「了解 やっていくね」等) を書き出す (issue #113)
+   └─ レスポンス末尾: 同ディレクトリに要約テキストを書き出す
+      (100 文字以内の日本語、英単語はカタカナ化、記号省略)
+   ※ ディレクトリがなければ Claude 側で mkdir -p 相当で作成
+   ※ 1 プロンプトで複数の speech ファイルが出るため timestamp 順で再生される
 
 3. SpeechWatcher (FSEvents) が .aidea/backchannels/ を再帰監視
    ├─ 親ディレクトリが 0..8 の整数である speech-*.txt を検知 (それ以外は警告ログのみで無視)
