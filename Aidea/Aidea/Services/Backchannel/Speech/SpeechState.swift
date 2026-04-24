@@ -11,8 +11,16 @@ import Observation
 final class SpeechState {
     var isEnabled: Bool = true
     var statusMessage: String = ""
+    /// 再代入されない let なので SpeechState 自身の Observation tracking 対象から外す。
+    /// CompanionView は `speech.queue.currentlySpeakingIndex` を読むが、tracking は
+    /// SpeechQueue 側 (= queue 内部の Observable プロパティ) のみで成立すれば十分。
+    /// これを付けないと SwiftUI の attribute graph で多重 dependency が組まれ、
+    /// `AttributeGraph: cycle detected` で描画が壊れることがある (ネスト Observable の pitfall)。
+    @ObservationIgnored
     let queue = SpeechQueue()
+    @ObservationIgnored
     private let watcher = SpeechWatcher()
+    @ObservationIgnored
     private var projectRoot: URL?
 
     /// プロジェクトルートを設定し、Backchannel のセットアップとファイル監視を開始する

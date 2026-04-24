@@ -23,6 +23,11 @@ final class PersistentTerminalView: LocalProcessTerminalView {
     /// クリック時にこのセッションをアクティブにするためのコールバック
     var onInteraction: (() -> Void)?
 
+    /// PTY からの出力でターミナルバッファが更新された時に呼ばれるコールバック (issue #45)。
+    /// Claude セッションで `isBusy` デバウンス判定に利用する。TerminalLinkGuard.rangeChanged
+    /// が経由して呼び出す (installLinkGuard 済みのセッションのみ発火する)。
+    var onTerminalOutput: (() -> Void)?
+
     override func layout() {
         if bounds.width < Self.minimumLayoutSize || bounds.height < Self.minimumLayoutSize {
             return
@@ -177,5 +182,8 @@ final class TerminalLinkGuard: NSObject, TerminalViewDelegate {
 
     func rangeChanged(source: TerminalView, startY: Int, endY: Int) {
         original?.rangeChanged(source: source, startY: startY, endY: endY)
+        // PTY 出力によりバッファが更新されたとき Claude セッションの isBusy 追跡に通知する (issue #45)。
+        // スクロール操作でも発火するが、issue #45 の実運用上は 0.5s デバウンスで無害と判断。
+        (source as? PersistentTerminalView)?.onTerminalOutput?()
     }
 }

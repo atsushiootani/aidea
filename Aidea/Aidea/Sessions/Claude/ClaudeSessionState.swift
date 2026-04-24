@@ -40,6 +40,30 @@ final class ClaudeSessionState: SessionState, FocusBridgeOwner {
     /// 呼び出し側は `sendMessageWhenReady` を使えば ready まで自動で待機する。
     var isReady: Bool = false
 
+    /// Claude が作業中 (= PTY 出力が続いている) かどうか。CompanionView がアイコン表情切替で参照する (issue #45)。
+    /// 判定ロジックは `noteTerminalOutput` のデバウンスに集約される。
+    var isBusy: Bool = false
+
+    /// この Companion の speech が VOICEVOX で再生中かどうか (issue #45)。
+    /// 状態源は `SpeechQueue.currentlySpeakingIndex` で、`companionIndex` と一致する間だけ true。
+    /// ClaudeSessionState 側を facade として返すことで、CompanionView は isBusy と対称に read できる。
+    var isSpeaking: Bool {
+        guard let index = companionIndex else { return false }
+        return speechQueue?.currentlySpeakingIndex == index
+    }
+
+    /// 読み上げ中判定 (`isSpeaking`) の参照先。AideaApp / CompanionView / WorkspaceSnapshotManager が
+    /// Claude セッション生成・復元時に注入する。SpeechQueue 自身は @Observable なので、
+    /// `isSpeaking` を読むスコープに tracking が伝播する。
+    @ObservationIgnored weak var speechQueue: SpeechQueue?
+
+    /// busy 静止判定の閾値。`claude` CLI が tool 実行中やストリーミング中に
+    /// 細切れに出力することを踏まえた体感値 (詳細は tools/claude.md#実行中判定-isbusy-issue-45)
+    @ObservationIgnored private static let busyDebounceInterval: TimeInterval = 0.5
+
+    /// 出力が途切れて `busyDebounceInterval` 経過したら busy=false に戻すためのタイマー
+    @ObservationIgnored private var busyDebounceTimer: Timer?
+
     /// 保留中の送信メッセージ (isReady=false の間に `sendMessageWhenReady` で積まれる)
     @ObservationIgnored private var pendingMessages: [String] = []
 
@@ -48,6 +72,9 @@ final class ClaudeSessionState: SessionState, FocusBridgeOwner {
     /// 待ってから送りたい場合は `sendMessageWhenReady` を使う。
     func sendMessage(_ message: String) {
         terminalView.send(txt: message + "\r")
+        // 出力が返る前に即座に「実行中」表示へ (issue #45)。PTY 出力が続く間は
+        // noteTerminalOutput のデバウンスで isBusy=true が維持される。
+        noteTerminalOutput()
     }
 
     /// Claude 起動シーケンス完了 (isReady=true) を待ってから `sendMessage` を呼ぶ。
@@ -115,9 +142,32 @@ final class ClaudeSessionState: SessionState, FocusBridgeOwner {
             environment: env
         )
         terminal.installLinkGuard(isClaudeSession: true)
+        // PTY 出力で busy 状態追跡する (issue #45)。rangeChanged 経由で呼ばれる。
+        // SwiftTerm の `notifyUpdateChanges` はデフォルト false で、true にしないと
+        // `rangeChanged` デリゲートが一切発火しない。Claude セッションだけ有効化する。
+        terminal.notifyUpdateChanges = true
+        terminal.onTerminalOutput = { [weak self] in
+            self?.noteTerminalOutput()
+        }
         cached = terminal
         autoStartClaude(terminal: terminal)
         return terminal
+    }
+
+    /// PTY からの出力を観測したときに呼ぶ。isBusy=true にし、`busyDebounceInterval` 秒の
+    /// 静止タイマーをセットする。既存タイマーは invalidate してリセットするので、
+    /// 出力が続く限り静止タイマーは発火せず、出力が止まった瞬間から 0.5s で false に落ちる。
+    /// Timer.scheduledTimer は RunLoop.main の default モードに載るが、スクロール等
+    /// tracking 中も確実に発火させるため RunLoop.main.add(:, forMode: .common) で登録する。
+    private func noteTerminalOutput() {
+        if !isBusy { isBusy = true }
+        busyDebounceTimer?.invalidate()
+        let timer = Timer(timeInterval: Self.busyDebounceInterval, repeats: false) { [weak self] _ in
+            guard let self else { return }
+            if self.isBusy { self.isBusy = false }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        busyDebounceTimer = timer
     }
 
     /// 対話シェル準備完了後に claude を起動し、`companionPrompt` を送る。

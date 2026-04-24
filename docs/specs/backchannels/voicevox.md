@@ -6,9 +6,9 @@ derived_from:
 syncs_with:
   - docs/specs/backchannels/backchannel.md
   - docs/specs/aspects/persistence.md
+  - docs/specs/companions/companion.md
 impacts:
   - docs/specs/tools/claude.md
-  - docs/specs/companions/companion.md
 conventions:
   - docs/LAYOUT.md
 last_updated: 2026-04-24
@@ -156,6 +156,22 @@ v8 以降、読み上げ機能は各 Companion の `.aidea/claude/companions/<in
 
 **フロー上の位置づけ**: Aidea 本体の変更は不要。speech.md に「作業開始時」節を追加するだけで成立する (Claude の解釈ベース)。
 
+### 読み上げ中 Companion の UI 反映 (issue #45)
+
+`SpeechQueue` に `@Observable` な `currentlySpeakingIndex: Int?` を持たせ、**現在 VOICEVOX で再生中の speech の送信元 companionIndex** を公開する。
+
+| タイミング | `currentlySpeakingIndex` |
+|---|---|
+| キューが空 | `nil` |
+| 次のエントリの再生開始直前 | そのエントリの `companionIndex` |
+| `AVAudioPlayer` 再生完了 (または VOICEVOX API エラーでスキップ) | `nil` に戻す |
+
+`CompanionView` はこの値を監視し、`companions[N].index == currentlySpeakingIndex` な Companion を「読み上げ中」表示 (笑顔 + heart.fill) に切り替える。詳細は [../companions/companion.md#表情・状態表示-issue-45](../companions/companion.md#表情・状態表示-issue-45) を参照。
+
+**Always**: `currentlySpeakingIndex` は単一値 (同時再生しない = キューは 1 つずつ逐次処理)。複数 Companion の speech が重なった場合、タイムスタンプ順で 1 体ずつ切り替わる。
+
+**Never**: `SpeechState.isEnabled` が OFF のときでも `currentlySpeakingIndex` を false 立てしない (キューそのものがスキップされるため自然に `nil` のまま)。
+
 ---
 
 ## VOICEVOX REST API
@@ -181,8 +197,8 @@ v8 以降、読み上げ機能は各 Companion の `.aidea/claude/companions/<in
 |---------------|------|
 | **SpeechWatcher** | FSEvents で `.aidea/backchannels/<0..8>/speech-*.txt` を再帰監視。親ディレクトリが 0..8 の整数であること (不一致は警告ログのみで無視) を検証してから、ファイル読み取り → 1 行目のスピーカーIDをパース → `(speakerId?, companionIndex, text)` を SpeechQueue に投入。読み上げ後もファイルは残す |
 | **VoicevoxService** | VOICEVOX REST API クライアント (audio_query → synthesis)。`speaker` 引数でスピーカー指定 |
-| **SpeechQueue** | `(speakerId?, companionIndex, text)` をキューに積み、VOICEVOX → AVAudioPlayer で順番に再生 |
-| **SpeechState** | 読み上げ ON/OFF 状態管理 (@Observable)、ヘッダ UI と接続。`companionIndex` は将来の UI 拡張 (発言 Companion バッジ等) のために受け取っておく |
+| **SpeechQueue** | `(speakerId?, companionIndex, text)` をキューに積み、VOICEVOX → AVAudioPlayer で順番に再生。再生中エントリの `companionIndex` を `@Observable currentlySpeakingIndex: Int?` として外部公開 (issue #45) |
+| **SpeechState** | 読み上げ ON/OFF 状態管理 (@Observable)、ヘッダ UI と接続 |
 
 ---
 

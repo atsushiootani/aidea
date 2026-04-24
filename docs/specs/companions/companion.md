@@ -9,11 +9,12 @@ syncs_with:
   - docs/specs/companions/recommend-mode.md
   - docs/specs/aspects/persistence.md
   - docs/specs/backchannels/backchannel.md
-impacts:
+  - docs/specs/backchannels/voicevox.md
   - docs/specs/tools/claude.md
+impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-23
+last_updated: 2026-04-24
 ---
 
 # コンパニオン
@@ -72,7 +73,16 @@ Aidea が起動時に PTY へ送る文字列は `companionIndex` から派生す
 
 ### `CompanionIconPresets`
 
-アイコン画像の静的プリセット。9 枚のカスタム画像 (`Assets.xcassets/Companions/companion-1..9`) を定義する。小サイズ版 (`companion-N-small`) とテーマカラーも併せて保持する。
+アイコン画像の静的プリセット。各コンパニオンに対し以下 4 種のバリアントを `Assets.xcassets/Companions/` に持つ。
+
+| サフィックス | 用途 | 画像名例 |
+|---|---|---|
+| (なし) | 通常表情 (normal) | `companion-1.jpg` |
+| `-small` | 小サイズ版 (リスト等) | `companion-1-small.jpg` |
+| `-smile` | 笑顔表情 (読み上げ中) | `companion-1-smile.jpg` |
+| `-thinking` | 考え中表情 (Claude 実行中) | `companion-1-thinking.jpg` |
+
+`-smile` / `-thinking` は issue #45 で追加された表情セット。読み上げ中と実行中の表示切替に使う (詳細は後述の「表情・状態表示」節)。
 
 ただし **コンパニオンのデフォルト名 / icon の値そのもの** は `Aidea/Resources/default-workspace.json` (Bundle 同梱) の `companions[]` が SSoT。`CompanionIconPresets` は Assets 上のアイコンリソース対応表のみを担う。デフォルトの instructions.md 本文は `Aidea/Resources/Backchannels/companion-instructions.md` (Bundle 同梱、1 ファイルを 9 個に複製) が SSoT。
 
@@ -171,6 +181,63 @@ Aidea 起動時、`workspace.json` から Claude タブが復元されるケー�
 
 この再注入がないと、復元された Claude セッションは `companionPrompt == nil` のままで
 `claude` CLI は起動するが initialPrompt が送られない (Issue #69 の挙動)。
+
+---
+
+## 表情・状態表示 (issue #45)
+
+Companion アイコンは 4 つの状態を持ち、ベース画像 (normal / smile / thinking) と
+SF Symbol オーバーレイの組み合わせで表現する。
+
+### 状態と表示
+
+| 状態 | 発火条件 | ベース画像 | オーバーレイ | アイコン暗転 |
+|---|---|---|---|---|
+| **未起動** | `companion.sessionID == nil` | `companion-N` (normal) | なし | 彩度 0.3 / 不透明度 0.5 |
+| **アイドル** | セッション起動済み・busy でない・読み上げ中でない | `companion-N` (normal) | なし | なし |
+| **実行中** | `ClaudeSessionState.isBusy == true` | `companion-N-thinking` | `ellipsis.bubble` (無色) | なし |
+| **読み上げ中** | `SpeechQueue.currentlySpeakingIndex == N` | `companion-N-smile` | `heart.fill` (pink) | なし |
+
+### 優先順位
+
+同時に複数の条件が成立した場合、**読み上げ中 > 実行中 > アイドル > 未起動** の順で上位を採用する。
+通常のフローでは「プロンプト送信 → 実行中 → (要約 speech 書き出しで) 読み上げ中」と遷移するため、実行中と読み上げ中が長時間同時成立することはないが、両方成立した瞬間は読み上げ中を優先する。
+
+### オーバーレイの詳細
+
+- **位置**: アイコン右上隅 (コーナーバッジ風)
+- **サイズ**: アイコン幅の約 1/3 (60x60 アイコンに対して 18-20pt 程度)
+- **色**:
+  - `heart.fill`: pink (`Color.pink` / SF Symbols のデフォルト pink)
+  - `ellipsis.bubble`: 無色指定 (primary に従う = light mode で黒、dark mode で白)
+- **描画順**: ベース画像の上にオーバーレイする (枠線・クリップ形状より前)
+
+### 未起動時の挙動
+
+本文中「アイコンは暗くなっている」= 既存実装の `saturation(0.3) + opacity(0.5)` を踏襲する (彩度と不透明度の両方を下げる)。この暗転は未起動状態でのみ適用し、他の 3 状態では通常表示 (`saturation(1.0) + opacity(1.0)`)。
+
+### 依存する状態源
+
+| 状態 | 参照する `@Observable` | 新規/既存 |
+|---|---|---|
+| `sessionID == nil` | `CompanionStore.companions[N].sessionID` | 既存 |
+| `isBusy` | `ClaudeSessionState.isBusy` | **新規** (issue #45 で追加) |
+| `isSpeaking` | `ClaudeSessionState.isSpeaking` (facade) → `SpeechQueue.currentlySpeakingIndex` | **新規** (issue #45 で追加、voicevox.md の将来拡張枠を具体化) |
+
+- `ClaudeSessionState.isBusy`: PTY 出力が続いている間 true。静止を検知したら false。詳細は [../tools/claude.md](../tools/claude.md) を参照
+- `ClaudeSessionState.isSpeaking`: `SpeechQueue.currentlySpeakingIndex == companionIndex` を返す computed facade。`CompanionView` は `isBusy` と対称に ClaudeSessionState から read し、SpeechQueue の Observable tracking が自動で伝播する。詳細は [../backchannels/voicevox.md](../backchannels/voicevox.md) を参照
+
+### 実装箇所
+
+| コンポーネント | 役割 |
+|---|---|
+| `CompanionView.companionIcon(_:)` | 状態を判定してベース画像を差し替え + オーバーレイ描画 |
+| `CompanionIconPresets` | `thumbnailIcon(for:)` に加えて `smileIcon(for:)` / `thinkingIcon(for:)` を追加 |
+
+### 境界
+
+- **Always**: 状態は `@Observable` の変化に駆動される Pure SwiftUI (タイマー polling しない)。優先順位判定は `CompanionView` の 1 箇所に集約
+- **Never**: 表情切替のために companion の永続状態 (`workspace.json`) を書き換えない。`isBusy` / `currentlySpeakingIndex` はランタイム情報のみ
 
 ---
 

@@ -376,7 +376,7 @@ final class WorkspaceSnapshotManager {
 
     /// スナップショットを layout / registry に適用する
     func apply(_ snapshot: WorkspaceSnapshot, to layout: LayoutConfig, registry: SessionRegistry,
-                companionStore: CompanionStore? = nil) {
+                companionStore: CompanionStore? = nil, speechQueue: SpeechQueue? = nil) {
         // レイアウトツリーを復元
         layout.root = buildLayoutNode(from: snapshot.layout.tree)
 
@@ -396,6 +396,7 @@ final class WorkspaceSnapshotManager {
                 if let state = session.state as? ClaudeSessionState {
                     state.companionPrompt = CompanionInstructions.loadCommand(for: companion.index)
                     state.companionIndex = companion.index
+                    state.speechQueue = speechQueue
                 }
             }
         }
