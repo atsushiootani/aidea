@@ -147,6 +147,7 @@ struct CompanionView: View {
     }
 
     /// 状態オーバーレイ (コーナーバッジ風 SF Symbol)。idle / inactive は何も描かない。
+    /// アイコンが背景画像に沈まないよう、SF Symbol の後ろに半透明の白角丸を敷いて視認性を上げる。
     @ViewBuilder
     private func stateOverlay(for state: IconState) -> some View {
         switch state {
@@ -154,10 +155,20 @@ struct CompanionView: View {
             Image(systemName: "heart.fill")
                 .font(.system(size: 18))
                 .foregroundStyle(Color.pink)
+                .padding(2)
+                .background(
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(Color.white.opacity(0.6))
+                )
         case .busy:
             Image(systemName: "ellipsis.bubble")
                 .font(.system(size: 18))
-                .foregroundStyle(Color.primary)
+                .foregroundStyle(Color(white: 0.25))
+                .padding(2)
+                .background(
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(Color.white.opacity(0.6))
+                )
         case .idle, .inactive:
             EmptyView()
         }
