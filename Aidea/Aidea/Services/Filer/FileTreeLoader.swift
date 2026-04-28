@@ -23,10 +23,9 @@ enum FileTreeLoader {
             let isDir = (try? entry.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false
             return FileTreeNode(url: entry, isDirectory: isDir, parent: parent)
         }
-        // ディレクトリ優先、その後名前順
+        // ファイル/ディレクトリを区別せず名前順 (Finder 互換の自然順、issue #122)
         return nodes.sorted { lhs, rhs in
-            if lhs.isDirectory != rhs.isDirectory { return lhs.isDirectory }
-            return lhs.name.localizedStandardCompare(rhs.name) == .orderedAscending
+            lhs.name.localizedStandardCompare(rhs.name) == .orderedAscending
         }
     }
 

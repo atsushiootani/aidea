@@ -11,7 +11,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-22
+last_updated: 2026-04-28
 ---
 
 # Tool 仕様: Filer
@@ -32,8 +32,34 @@ Session 内部状態は [sessions/filer.md](../sessions/filer.md) を参照。
 - `WorkspaceState.projectRoot` をルートとして走査
 - FSEvents による外部変更の自動反映 (デバウンス 200ms)
 - SF Symbols で種類別アイコン
+- **ソート順**: ファイル/ディレクトリを区別せず名前のアルファベット順で混在表示 (詳細は [ソート順](#ソート順) 節)
 - **除外ルール**: デフォルト + ユーザ定義のパターンでファイル/ディレクトリを表示から除外 (詳細は [除外ルール](#除外ルール) 節)
 - **複数選択対応** (Shift+クリック / Shift+↑↓) — `allowsMultipleSelection = true`
+
+---
+
+## ソート順
+
+各ディレクトリ直下のエントリは、**ファイル/ディレクトリを区別せず名前順で混在表示する** (issue #122)。
+
+### ルール
+
+- 比較関数: `String.localizedStandardCompare` (Finder と同じ自然順比較)
+  - 大文字小文字を区別しない
+  - 数字を含む名前を数値として扱う (例: `file2` < `file10`)
+  - ロケール依存の自然順 (日本語の濁点・半濁点や記号も Finder と同等の並び)
+- 昇順固定 (降順切替は持たない)
+- ファイル/ディレクトリの種別はソートキーに含めない (混在配置)
+
+### 適用範囲
+
+- ルート展開時・ディレクトリ展開時の通常表示
+- [searchByName](#searchbyname--ファイル名ディレクトリ名のインクリメンタル検索) のフィルタ結果も同じ比較で並べる
+- アンドゥ後の再描画・FSEvents による自動再読み込み後も同じ規則を適用
+
+### 実装箇所
+
+- `Services/Filer/FileTreeLoader.swift` の `load(directory:parent:)` — 子エントリ取得直後に `localizedStandardCompare` でソート
 
 ---
 
