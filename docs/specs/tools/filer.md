@@ -163,6 +163,15 @@ Session 内部状態は [sessions/filer.md](../sessions/filer.md) を参照。
 - 検索中に Enter → [openSelectedInPreview](#openselectedinpreview--プレビューで開く) 相当
 - 再度 Cmd+F で検索バーの表示トグル
 
+### pageMoveSelection — ページ単位の選択移動 (issue #121)
+- **キー**: `Page Up` / `Ctrl + Z` (上方向) / `Page Down` / `Ctrl + V` (下方向)
+- **動作**: 1 ページ分 (= ビュー高さ ÷ 行高さ で切り捨てた行数。最低 1) だけ選択行を進める/戻す。スクロールも合わせて追従する
+- **端の処理**: 端を超える場合は先頭/末尾の行で停止 (循環しない)
+- **選択がない状態**: PageDown は先頭行、PageUp は末尾行を選択 (`Ctrl + N` / `Ctrl + P` の初期動作と同じ)
+- **複数選択中**: 単一選択にリセットしてからページ移動 (アンカーは保持しない)
+- **検索バー (searchByName) でフィルタ中**: 表示中 (フィルタ後) の行集合を対象に同じロジック
+- **共通 Emacs ライクナビゲーションとの違い**: [共通ルール](../sessions/ui-rules.md#キーボードナビゲーション-emacs-ライク) の Ctrl+V/Z は「スクロールのみ」だが、Filer は選択カーソルも追従する独自拡張 (リスト/ツリーで選択カーソル概念を持つため)
+
 ### applyDecorations — ファイル/ディレクトリの装飾を適用
 - 各エントリのアイコン (SF Symbol) と **行全体の背景色** を [デコレーション](#デコレーション) 節のルールに従って装飾する
 - マッチングは「デフォルトデコレーション → ユーザデコレーション」を順に評価し、**後勝ち** (リスト後方ほど高優先) で `icon` と `color` を合成する
@@ -275,7 +284,9 @@ Session 内部状態は [sessions/filer.md](../sessions/filer.md) を参照。
 | **Cmd + Shift + Z** | [undoLastOperation](#undolastoperation--直前の-filer-操作を取り消す--やり直す) (リドゥ) |
 | **Esc** | 検索バーが開いていれば閉じる (`searchByName` のキャンセル) |
 | **Shift + ↑ / ↓** | 選択範囲の拡張 (NSOutlineView 標準) |
-| **Ctrl + P / N / F / B** | Emacs ライクナビゲーション ([共通ルール](../sessions/ui-rules.md#キーボードナビゲーション-emacs-ライク) を参照)。Ctrl+V/Z (ページ送り) は Filer では無効 |
+| **Page Up** / **Ctrl + Z** | [pageMoveSelection](#pagemoveselection--ページ単位の選択移動-issue-121) (上方向) |
+| **Page Down** / **Ctrl + V** | [pageMoveSelection](#pagemoveselection--ページ単位の選択移動-issue-121) (下方向) |
+| **Ctrl + P / N / F / B** | Emacs ライクナビゲーション ([共通ルール](../sessions/ui-rules.md#キーボードナビゲーション-emacs-ライク) を参照) |
 
 ---
 
@@ -460,6 +471,8 @@ DerivedData
 - 行内のアイコン / 色 ポップアップは NSAlert モーダル中でも selection event が届くよう `NSMenu.popUpContextMenu(_:with:for:)` (NSEvent ベース) で表示する。`menu.popUp(positioning:at:in:)` 経路は NSAlert モーダル下では target/action 配信が走らず handler が呼ばれないため不可
 - アンドゥは `FilerSessionState.undoManager: UndoManager` で管理。各操作 (rename / move / delete / create / paste) が成功した時点で `registerUndo(withTarget:handler:)` で逆操作を登録する。複数選択操作は `beginUndoGrouping` / `endUndoGrouping` で 1 グループにまとめる
 - Cmd+Z / Cmd+Shift+Z は **`AideaApp.registerKeyEventMonitor` の `NSEvent.addLocalMonitorForEvents` で先取り**し、active session が `filer` のときだけ `FilerSessionState.undoManager.undo()` / `redo()` を呼ぶ。SwiftUI の Edit メニューは `@Environment(\.undoManager)` を見て AppKit 側 `NSResponder.undoManager` を見ないため、`performKeyEquivalent` 段階で disabled 判定 → beep を起こされる前にイベントを横取りする必要がある
+- ページ移動 ([pageMoveSelection](#pagemoveselection--ページ単位の選択移動-issue-121)) は `FilerOutlineView.keyDown(with:)` 内で **PageUp / PageDown / Ctrl+V / Ctrl+Z** を捕捉する。1 ページの行数は `enclosingScrollView?.contentView.bounds.height / rowHeight` を Int 化 (最低 1) して算出し、`max(0, min(numberOfRows - 1, current ± pageRows))` でクランプして `selectRowIndexes(_:byExtendingSelection: false)` + `scrollRowToVisible(_:)` を呼ぶ
+- 共通の `EmacsNavigation.handle` は `allowPageNav: false` のままとし、Ctrl+V/Z は Filer 側で独自処理する (共通ヘルパは selection 追従の概念を持たないため、Filer 拡張版として上書きする方針)
 
 ---
 

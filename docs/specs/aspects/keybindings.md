@@ -20,7 +20,7 @@ impacts: []
 conventions:
   - docs/LAYOUT.md
   - docs/specs/aspects/README.md
-last_updated: 2026-04-23
+last_updated: 2026-04-28
 ---
 
 # キー操作・マウス操作一覧
@@ -105,6 +105,8 @@ Aidea の全キーボードショートカットとマウス操作のリファ�
 | ⇧ ↑/↓ | 選択範囲を拡張 |
 | Ctrl+P/N | Emacs 風上下移動 |
 | Ctrl+F/B | Emacs 風左右移動 |
+| Page Up / Ctrl+Z | ページ単位の上方向移動（カーソル追従） |
+| Page Down / Ctrl+V | ページ単位の下方向移動（カーソル追従） |
 
 ### マウス
 
