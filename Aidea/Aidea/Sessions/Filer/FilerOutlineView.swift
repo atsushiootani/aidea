@@ -84,6 +84,7 @@ final class FilerOutlineView: NSOutlineView {
         }
 
         // Ctrl+O: Finder で開く / Ctrl+A: 指定のアプリで開く
+        // Ctrl+V: ページ下移動 / Ctrl+Z: ページ上移動 (issue #121、selection 追従)
         // (Emacs ナビゲーションより先に判定。Ctrl 単独修飾のときのみ反応させ、
         //  Ctrl+Cmd / Ctrl+Shift / Ctrl+Opt 等の組み合わせは super に委ねる)
         if ctrl, !cmd, !shift, !opt {
@@ -95,15 +96,54 @@ final class FilerOutlineView: NSOutlineView {
                 controller.openWithAction()
                 return
             }
+            if chars == "v" {
+                pageMoveSelection(direction: 1)
+                return
+            }
+            if chars == "z" {
+                pageMoveSelection(direction: -1)
+                return
+            }
+        }
+
+        // PageDown (keyCode 121) / PageUp (keyCode 116): ページ単位の選択移動 (issue #121)
+        if event.keyCode == 121 {
+            pageMoveSelection(direction: 1)
+            return
+        }
+        if event.keyCode == 116 {
+            pageMoveSelection(direction: -1)
+            return
         }
 
         // Emacs ライクナビゲーション (Ctrl+P/N/F/B)
-        // Ctrl+V/Z のページ送りは Filer では使わない (他の Tool で検討)
+        // Ctrl+V/Z は Filer 独自拡張 (selection 追従) として上で処理済みのため、
+        // EmacsNavigation 側のページ送りは無効化したまま委譲する
         if EmacsNavigation.handle(event: event, table: self, allowPageNav: false) {
             return
         }
 
         super.keyDown(with: event)
+    }
+
+    /// PageUp/PageDown または Ctrl+Z/V によるページ単位の選択移動 (issue #121)
+    /// 1 ページ分の行数 (ビュー高さ ÷ 行高さ、最低 1) だけ選択行を進めて scrollRowToVisible する。
+    /// 端を超える場合は先頭/末尾で停止し、選択がない状態では PageDown=先頭 / PageUp=末尾を選ぶ。
+    /// - Parameter direction: +1 = 下方向、-1 = 上方向
+    private func pageMoveSelection(direction: Int) {
+        let total = numberOfRows
+        guard total > 0 else { return }
+        let viewHeight = enclosingScrollView?.contentView.bounds.height ?? bounds.height
+        let pageRows = max(1, Int(viewHeight / rowHeight))
+        let current = selectedRow
+        let next: Int
+        if current < 0 {
+            next = direction > 0 ? 0 : total - 1
+        } else {
+            next = max(0, min(total - 1, current + direction * pageRows))
+        }
+        selectRowIndexes(IndexSet(integer: next), byExtendingSelection: false)
+        scrollRowToVisible(next)
     }
 
     /// 右クリック時にコンテキストメニューを返す。クリックされた行がまだ選択されていなければ選択する。
