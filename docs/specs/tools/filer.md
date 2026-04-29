@@ -11,7 +11,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-28
+last_updated: 2026-04-29
 ---
 
 # Tool 仕様: Filer
@@ -34,6 +34,7 @@ Session 内部状態は [sessions/filer.md](../sessions/filer.md) を参照。
 - SF Symbols で種類別アイコン
 - **ソート順**: ファイル/ディレクトリを区別せず名前のアルファベット順で混在表示 (詳細は [ソート順](#ソート順) 節)
 - **除外ルール**: デフォルト + ユーザ定義のパターンでファイル/ディレクトリを表示から除外 (詳細は [除外ルール](#除外ルール) 節)
+- **シンボリックリンク**: ディレクトリへのリンクも展開可能 (詳細は [シンボリックリンク](#シンボリックリンク-issue-119) 節)
 - **複数選択対応** (Shift+クリック / Shift+↑↓) — `allowsMultipleSelection = true`
 
 ---
@@ -60,6 +61,62 @@ Session 内部状態は [sessions/filer.md](../sessions/filer.md) を参照。
 ### 実装箇所
 
 - `Services/Filer/FileTreeLoader.swift` の `load(directory:parent:)` — 子エントリ取得直後に `localizedStandardCompare` でソート
+
+---
+
+## シンボリックリンク (issue #119)
+
+ディレクトリへのシンボリックリンクを **通常のディレクトリと同じように展開・操作できる**。
+主な用途は `quickmemo/` のような外部ディレクトリへのリンクをプロジェクトルート直下に置き、Filer から扱うこと。
+
+### 判定
+
+- `FileTreeLoader.load(directory:parent:)` は各エントリ取得時に `URLResourceKey.isSymbolicLinkKey` も合わせて取得する
+- **シンボリックリンクの場合**: リンクの解決先 (`URL.resolvingSymlinksInPath()`) に対して `URLResourceKey.isDirectoryKey` を再評価し、解決先がディレクトリなら `FileTreeNode.isDirectory = true` とする
+- **解決先がファイル**: `isDirectory = false` (= 通常のファイルとして扱う)
+- **broken link (解決先が存在しない)**: `isDirectory = false` の通常ファイル扱い (展開不可)
+- **通常のファイル/ディレクトリ**: 従来どおり `isDirectoryKey` のみで判定
+
+### UI
+
+- アイコン・装飾は **通常のディレクトリ/ファイルと同じ** (リンクを示す badge / 装飾は付けない)
+- ディレクトリリンクならディスクロージャ三角形が表示され、展開操作で配下を読み込める
+- ソート・検索・除外ルール・デコレーションも通常のディレクトリ/ファイルと同じ規則を適用
+
+### 展開時の挙動
+
+- リンクの URL をそのまま `contentsOfDirectory(at:)` に渡すと `ENOTDIR (NSPOSIXError 20)` で空配列になるため、
+  **`FileTreeLoader.load(directory:parent:)` 内でディレクトリ URL がシンボリックリンクのときは解決先パスへ切り替えて読み込む**
+- 取得した各エントリは **リンク経由のパス** に付け替えて `FileTreeNode.url` を生成する (例: 親が `<projectRoot>/quickmemo` のリンクなら子は `<projectRoot>/quickmemo/foo.md`)
+- これにより `expandedURLs: Set<URL>` にもリンク経由のパスが保存され、再起動後の永続化と整合する
+
+### 循環リンクの防止
+
+- 展開時に「リンクの解決先 (`url.resolvingSymlinksInPath().standardizedFileURL`)」を計算し、**祖先チェーン内に同一の解決先パスがあれば展開を no-op とする** (beep もしない)
+- 自分自身を含む先祖を指すリンクや、`a → b → a` のような相互リンクを安全にスキップする
+- 判定対象は「自ノード自身がシンボリックリンク」のときのみ (通常ディレクトリは循環し得ないため毎回チェックは不要)
+
+### 操作系
+
+- **rename / delete / move (D&D) / copy / paste**: いずれも **リンクそのもの** を対象に動作する (実体には影響しない)
+- `FileManager.default.moveItem` / `trashItem` / `copyItem` のいずれもデフォルトでリンクを link として扱うので追加実装は不要
+- ユーザは「普通のディレクトリと同じ感覚で操作する。実体に波及しないことだけが違う」位置づけ
+
+### Finder / 外部アプリで開く
+
+- `openInFinder` / `openWith` は `NSWorkspace.shared.activateFileViewerSelecting([url])` / `NSWorkspace.shared.open(url)` をそのまま使う (OS がリンクを解決して挙動を決める)
+
+### 境界
+
+- **Always**: ディレクトリへのシンボリックリンクは展開可能なディレクトリとして扱う
+- **Always**: 操作系 (rename / delete / move / copy) はリンク自体を対象とする (実体には触れない)
+- **Never**: ディレクトリリンクの祖先チェーン内に同一解決先がある場合は展開しない (循環防止)
+- **Never**: リンクであることをアイコン・色・badge で区別表示しない (issue #119 の方針「区別せず扱いたい」)
+
+### 実装箇所
+
+- `Services/Filer/FileTreeLoader.swift` — `isSymbolicLinkKey` 取得 + 解決先の `isDirectoryKey` 再評価
+- `Views/Sessions/Filer/FileTreeViewController.swift` (展開系) — シンボリックリンク自身についてのみ祖先解決先チェックを実施し、循環時は展開を抑止
 
 ---
 
