@@ -12,8 +12,9 @@ struct AppHeaderView: View {
     @Environment(CompanionStore.self) private var store
 
     var body: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: 8) {
             CompanionView()
+            speechToggleButton
             Spacer()
         }
         .padding(.horizontal, 10)
@@ -24,5 +25,22 @@ struct AppHeaderView: View {
                 speech.start(projectRoot: root)
             }
         }
+    }
+
+    /// 読み上げ ON/OFF トグル (issue #128)。コンパニオンビューの直右に配置し、
+    /// クリックで `SpeechState.toggle()` を呼ぶ。アイコンは `isEnabled` を見て
+    /// `speaker.wave.2.fill` / `speaker.slash.fill` を切り替える。
+    private var speechToggleButton: some View {
+        Button {
+            speech.toggle()
+        } label: {
+            Image(systemName: speech.isEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill")
+                .font(.system(size: 18))
+                .foregroundStyle(speech.isEnabled ? Color.accentColor : Color.secondary)
+                .frame(width: 32, height: 32)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(speech.isEnabled ? "読み上げ ON (クリックで OFF)" : "読み上げ OFF (クリックで ON)")
     }
 }

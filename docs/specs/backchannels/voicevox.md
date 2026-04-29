@@ -11,7 +11,7 @@ impacts:
   - docs/specs/tools/claude.md
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-24
+last_updated: 2026-04-29
 ---
 
 # Backchannel: VOICEVOX 読み上げ
@@ -206,14 +206,46 @@ v8 以降、読み上げ機能は各 Companion の `.aidea/claude/companions/<in
 
 アプリ上部に常時表示されるヘッダバー。
 
-| 要素 | 説明 |
-|------|------|
-| アプリアイコン | Aidea のアプリアイコン (36x36) |
-| 声アイコン | `speaker.wave.2.fill` / `speaker.slash.fill` トグル |
-| 再生中インジケータ | `waveform` シンボル（再生中のみ表示） |
-| ステータス | エラーメッセージ（VOICEVOX 未起動等） |
+| 要素 | 配置 | 説明 |
+|------|------|------|
+| コンパニオンビュー | 左 | 9 体のコンパニオンアイコン (`CompanionView`) |
+| 読み上げトグル | コンパニオンビューの直右 | 読み上げ ON/OFF ボタン (issue #128) |
+| 再生中インジケータ | 右 | `waveform` シンボル（再生中のみ表示、将来拡張） |
+| ステータス | 右 | エラーメッセージ（VOICEVOX 未起動等） |
 
 デフォルト: **ON**
+
+### 読み上げトグル (issue #128)
+
+ヘッダ上で **読み上げ機能を一時的に OFF にできる** ボタン。コンパニオンビューの右隣に配置する。
+
+| 状態 | アイコン | 説明 |
+|------|---------|------|
+| ON (読み上げ有効) | `speaker.wave.2.fill` | クリックで OFF へトグル |
+| OFF (読み上げ無効) | `speaker.slash.fill` | クリックで ON へトグル |
+
+#### 動作
+
+- クリック時に `SpeechState.toggle()` を呼び、`isEnabled` を反転する
+- アイコンは `SpeechState.isEnabled` を見て切り替える (`@Observable` 駆動)
+- ツールチップで `読み上げ ON/OFF` を提示する
+
+#### OFF 中の挙動
+
+- **Aidea 側**: `SpeechWatcher` を停止し、`SpeechQueue` をクリアする (= VOICEVOX 再生は行わない)
+- **Claude 側**: 通常どおり `.aidea/backchannels/<N>/speech-{timestamp}.txt` を書き出す。speech.md の指示に変更は無く、プロンプトや CLI 動作も変わらない (= 履歴ファイルは残る)
+- **ON 切替時**: `SpeechWatcher` を再開し、`checkVoicevox()` を再実行する。**OFF 中に作成された speech ファイルは再生対象に含めない** (差分検知ではなく FSEvents の即時通知に依存しているため)。「一時的にオフ」用途として割り切る
+
+#### 永続化
+
+- **永続化しない** (`workspace.json` には保存しない)
+- アプリ再起動時は常に ON に戻る ("一時的にオフ" 用途)
+
+#### 境界
+
+- **Always**: トグル UI からの状態変更は `SpeechState.toggle()` を経由する (直接 `isEnabled` を書き換えない)
+- **Never**: トグル状態を `workspace.json` に保存しない (ON/OFF はランタイム情報のみ)
+- **Never**: OFF 中も `currentlySpeakingIndex` は false 立てしない (キュー自体がスキップされるため自然に `nil` のまま、companion.md の Never 規約と整合)
 
 ---
 
