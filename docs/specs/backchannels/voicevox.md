@@ -230,6 +230,13 @@ v8 以降、読み上げ機能は各 Companion の `.aidea/claude/companions/<in
 - アイコンは `SpeechState.isEnabled` を見て切り替える (`@Observable` 駆動)
 - ツールチップで `読み上げ ON/OFF` を提示する
 
+#### ショートカット
+
+- **`⌥⌘M`** で読み上げを ON/OFF トグルする (M = Mute)
+- `AideaApp.swift` の「Aidea」`CommandMenu` に **「読み上げ ON/OFF」** 項目を追加し、`.keyboardShortcut("m", modifiers: [.command, .option])` を付与する
+- メニュー項目のラベルは状態に応じて切り替えず固定 (`読み上げ ON/OFF`)。状態はヘッダのアイコンで提示する
+- アクションは `SpeechState.toggle()` を呼ぶ (UI ボタンと同じ経路)
+
 #### OFF 中の挙動
 
 - **Aidea 側**: `SpeechWatcher` を停止し、`SpeechQueue` をクリアする (= VOICEVOX 再生は行わない)
