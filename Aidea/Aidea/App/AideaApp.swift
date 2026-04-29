@@ -92,6 +92,11 @@ struct AideaApp: App {
             tabMenu
             toolMenu
             CommandMenu("Aidea") {
+                Button("読み上げ ON/OFF") {
+                    speechState.toggle()
+                }
+                .keyboardShortcut("m", modifiers: [.command, .option])
+                Divider()
                 Button("API キー設定...") {
                     TranslationService.showApiKeyDialog()
                 }
