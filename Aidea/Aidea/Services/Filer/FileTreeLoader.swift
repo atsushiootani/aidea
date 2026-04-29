@@ -10,18 +10,43 @@ enum FileTreeLoader {
 
     /// 指定ディレクトリの直下を読み込む。エラー時は空配列。
     /// 除外ルールは適用しない (呼び出し側の `FileTreeViewController` が `ExcludeMatcher` で除外する)。
+    /// シンボリックリンクは解決先の種別で `isDirectory` を判定し、リンクであることを `isSymbolicLink` に保持する (issue #119)。
+    /// `url` 自体がディレクトリへのシンボリックリンクの場合、`contentsOfDirectory` が ENOTDIR を返すので
+    /// 解決先のパスで読み込み、子の URL はリンク経由のパスに付け替える (永続化キーをリンク経由で揃えるため)。
     static func load(directory url: URL, parent: FileTreeNode? = nil) -> [FileTreeNode] {
         let fm = FileManager.default
+        let resourceKeys: [URLResourceKey] = [.isDirectoryKey, .isSymbolicLinkKey]
+        // url 自体が symlink ならその解決先で contentsOfDirectory を呼ぶ
+        let scanURL: URL = {
+            let values = try? url.resourceValues(forKeys: [.isSymbolicLinkKey])
+            if values?.isSymbolicLink == true {
+                return url.resolvingSymlinksInPath()
+            }
+            return url
+        }()
         guard let entries = try? fm.contentsOfDirectory(
-            at: url,
-            includingPropertiesForKeys: [.isDirectoryKey],
+            at: scanURL,
+            includingPropertiesForKeys: resourceKeys,
             options: []
         ) else {
             return []
         }
         let nodes = entries.compactMap { entry -> FileTreeNode? in
-            let isDir = (try? entry.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false
-            return FileTreeNode(url: entry, isDirectory: isDir, parent: parent)
+            // 子の URL はリンク経由のパス (親が link なら link 配下) を維持する
+            let childURL = url.appendingPathComponent(entry.lastPathComponent)
+            let values = try? entry.resourceValues(forKeys: Set(resourceKeys))
+            let isSymlink = values?.isSymbolicLink ?? false
+            let isDir: Bool
+            if isSymlink {
+                // シンボリックリンクは解決先の種別で再評価する (issue #119)。
+                // broken link の場合は resolved 側の isDirectoryKey が取得できず false 扱い。
+                let resolved = entry.resolvingSymlinksInPath()
+                let resolvedValues = try? resolved.resourceValues(forKeys: [.isDirectoryKey])
+                isDir = resolvedValues?.isDirectory ?? false
+            } else {
+                isDir = values?.isDirectory ?? false
+            }
+            return FileTreeNode(url: childURL, isDirectory: isDir, parent: parent, isSymbolicLink: isSymlink)
         }
         // ファイル/ディレクトリを区別せず名前順 (Finder 互換の自然順、issue #122)
         return nodes.sorted { lhs, rhs in

@@ -55,7 +55,11 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
     }
 
     /// 指定ディレクトリの直下をロードし、除外ルールに該当するエントリをフィルタする。
+    /// 親がシンボリックリンクで、解決先が祖先チェーン内に既に出現する場合は循環とみなして空配列を返す (issue #119)。
     private func loadAndFilter(directory url: URL, parent: FileTreeNode? = nil) -> [FileTreeNode] {
+        if let parent, parent.isSymbolicLink, Self.formsSymlinkCycle(at: parent) {
+            return []
+        }
         let nodes = FileTreeLoader.load(directory: url, parent: parent)
         guard let root = currentRoot else { return nodes }
         let matcher = excludeMatcher()
@@ -63,6 +67,19 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
             let relative = Self.relativePath(of: node.url, from: root)
             return !matcher.matches(relativePath: relative)
         }
+    }
+
+    /// シンボリックリンクの循環判定 (issue #119)。
+    /// `node` の解決先パスが、自身の祖先チェーン内のいずれかのノードの解決先と一致したら循環。
+    private static func formsSymlinkCycle(at node: FileTreeNode) -> Bool {
+        let target = node.url.resolvingSymlinksInPath().standardizedFileURL.path
+        var ancestor = node.parent
+        while let current = ancestor {
+            let ancestorPath = current.url.resolvingSymlinksInPath().standardizedFileURL.path
+            if ancestorPath == target { return true }
+            ancestor = current.parent
+        }
+        return false
     }
 
     /// projectRoot からの相対パスを返す (先頭スラッシュ無し)。root 配下でない場合は basename にフォールバック。

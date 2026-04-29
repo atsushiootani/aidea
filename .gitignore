@@ -15,4 +15,5 @@ node_modules/
 # 永続的な判断は docs/decisions/ に ADR として昇格させる。
 docs/plans/
 
-quickmemo/
+/quickmemo
+/quickmemo/
