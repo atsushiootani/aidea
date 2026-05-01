@@ -12,7 +12,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-23
+last_updated: 2026-05-01
 ---
 
 # Session 内部状態: GitDiff
@@ -46,6 +46,15 @@ diff2html の採用理由は [ADR 0004](../../decisions/0004-git-diff-with-diff2
 各 Scene のデフォルトプロンプトは Bundle 同梱 `Aidea/Resources/default-workspace.json` の `recommends` を SSoT とする (Swift コードへのハードコードは禁止)。詳細は [../frontchannels/scene.md](../frontchannels/scene.md) と [../companions/recommend-mode.md](../companions/recommend-mode.md) を参照。
 
 Scene キー (`gitDiff:*`) が Git ツール (`git:*`) と別のため、`workspace.json` v7 の `recommends` では**独立した 2 エントリ**として永続化される。ユーザは Git / GitDiff それぞれでプロンプトをカスタマイズする必要がある (Issue #74 の方針)。
+
+## ファイル表示順序
+
+Working Changes モードで全ファイルを表示するとき、**Git パネル (GitSessionState) のツリーと同じアルファベット順**でファイルを並べる。
+`git diff --cached` (staged) → `git diff` (unstaged) → untracked の順に diff を収集した後、
+ファイルパスでアルファベット順に並び替えてから diff2html に渡す。
+同一ファイルに staged と unstaged の両セクションがある場合は staged を先に表示する。
+
+PR Preview モードは `git diff main...HEAD` が既にアルファベット順で返すため並び替え不要。
 
 ## 追加制約
 
