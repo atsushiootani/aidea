@@ -57,9 +57,14 @@ final class ClaudeSessionState: SessionState, FocusBridgeOwner {
     /// `isSpeaking` を読むスコープに tracking が伝播する。
     @ObservationIgnored weak var speechQueue: SpeechQueue?
 
-    /// busy 静止判定の閾値。`claude` CLI が tool 実行中やストリーミング中に
+    /// 出力ベースの静止判定閾値 (0.5s)。`claude` CLI が tool 実行中やストリーミング中に
     /// 細切れに出力することを踏まえた体感値 (詳細は tools/claude.md#実行中判定-isbusy-issue-45)
     @ObservationIgnored private static let busyDebounceInterval: TimeInterval = 0.5
+
+    /// send ベースの初期 busy 保持時間 (3.0s)。Claude の API 応答レイテンシを考慮し、
+    /// プロンプト送信後 → 最初の出力が来るまでの間も busy=true を維持するための猶予期間。
+    /// 3s 以内に PTY 出力が来れば `noteTerminalOutput` の 0.5s デバウンスに切り替わる。
+    @ObservationIgnored private static let busySendDebounceInterval: TimeInterval = 3.0
 
     /// 出力が途切れて `busyDebounceInterval` 経過したら busy=false に戻すためのタイマー
     @ObservationIgnored private var busyDebounceTimer: Timer?
@@ -72,8 +77,8 @@ final class ClaudeSessionState: SessionState, FocusBridgeOwner {
     /// 待ってから送りたい場合は `sendMessageWhenReady` を使う。
     func sendMessage(_ message: String) {
         terminalView.send(txt: message + "\r")
-        // 出力が返る前に即座に「実行中」表示へ (issue #45)。以降は出力が続く限り
-        // noteTerminalOutput のデバウンスで isBusy=true が維持され、0.5s 無出力で false。
+        // 出力が返る前に即座に「実行中」表示へ (issue #45)。3.0s の初期タイマー内に
+        // 出力が来れば 0.5s デバウンスに切り替わり、以降は出力が続く限り busy を維持する。
         markBusy()
     }
 
@@ -167,9 +172,9 @@ final class ClaudeSessionState: SessionState, FocusBridgeOwner {
         return terminal
     }
 
-    /// PTY に send したタイミングで明示的に busy にし、0.5s の静止タイマーを仕込む (issue #45)。
-    /// 応答ストリーミング中は `noteTerminalOutput` 経由で静止タイマーが延長され続けるため、
-    /// 出力が 0.5s 途切れたタイミングで自然に false に戻る。
+    /// PTY に send したタイミングで明示的に busy にし、3.0s の初期タイマーを仕込む (issue #45)。
+    /// 3.0s は Claude API のレイテンシ猶予期間で、この間に PTY 出力が来れば `noteTerminalOutput`
+    /// の 0.5s デバウンスに切り替わり、以降は出力が続く限り busy が維持される。
     ///
     /// ⚠ `isBusy` の書き込みは `DispatchQueue.main.async` で必ず次の runloop tick に遅延させる。
     /// 呼び出し元が SwiftUI の view update サイクル中に同期発火する経路 (Timer.common / delegate)
@@ -180,11 +185,11 @@ final class ClaudeSessionState: SessionState, FocusBridgeOwner {
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
             if !self.isBusy { self.isBusy = true }
-            self.scheduleBusyDebounce()
+            self.scheduleBusyDebounce(interval: Self.busySendDebounceInterval)
         }
     }
 
-    /// PTY からの出力を観測したときに呼ぶ。**busy 状態のときのみ**静止タイマーを延長する。
+    /// PTY からの出力を観測したときに呼ぶ。**busy 状態のときのみ**静止タイマーを 0.5s に再セットする。
     /// busy でない状態 (send 前のカーソル点滅等) で出力が来ても何もしないので、
     /// 「プロンプト送信 → 応答継続 → 0.5s 無出力で自動解除」という実 busy に沿った判定になる。
     private func noteTerminalOutput() {
@@ -195,11 +200,12 @@ final class ClaudeSessionState: SessionState, FocusBridgeOwner {
     }
 
     /// busy の静止タイマーを (再) セットする。呼び出し元は必ず main thread から呼ぶ前提。
-    /// 既存タイマーは invalidate → 0.5s 後に isBusy=false を書く新規タイマーで置き換え。
-    /// 0.5s 以内に再度 `markBusy` / `noteTerminalOutput` が呼ばれると延長される。
-    private func scheduleBusyDebounce() {
+    /// 既存タイマーは invalidate → `interval` 秒後に isBusy=false を書く新規タイマーで置き換え。
+    /// - `markBusy` (send 契機) は `busySendDebounceInterval` (3.0s) で呼ぶ
+    /// - `noteTerminalOutput` (出力契機) はデフォルト `busyDebounceInterval` (0.5s) で呼ぶ
+    private func scheduleBusyDebounce(interval: TimeInterval = Self.busyDebounceInterval) {
         busyDebounceTimer?.invalidate()
-        let timer = Timer(timeInterval: Self.busyDebounceInterval, repeats: false) { [weak self] _ in
+        let timer = Timer(timeInterval: interval, repeats: false) { [weak self] _ in
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
                 if self.isBusy { self.isBusy = false }
