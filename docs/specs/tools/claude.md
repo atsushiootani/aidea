@@ -14,7 +14,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-24
+last_updated: 2026-05-01
 ---
 
 # Tool 仕様: Claude
@@ -108,23 +108,25 @@ Backchannel の詳細は [backchannels/backchannel.md](../backchannels/backchann
 ### 判定ロジック
 
 - **true にする**: PTY に `send` したタイミング。`Frontchannel.sendMessage` / `autoStartClaude` が PTY に書き込んだ直後に `markBusy()` で明示的にセットする (出力を待たずに UI を考え中表示に切り替えるため)
-- **タイマー延長**: busy 中に PTY 出力が来たらデバウンスタイマーを 0.5s に再セットする (応答ストリーミング中は延長され続けて busy 維持)
-- **false にする**: busy 中に PTY 出力が **0.5 秒** 途切れたら `isBusy = false` に戻す
+- **初期タイマー (3.0s)**: `markBusy()` は `busySendDebounceInterval` (3.0s) のタイマーをセットする。Claude API のレイテンシで最初の出力が来るまでの間も busy=true を維持するための猶予期間
+- **タイマー延長 (0.5s)**: busy 中に PTY 出力が来たらデバウンスタイマーを `busyDebounceInterval` (0.5s) に再セットする (応答ストリーミング中は延長され続けて busy 維持)
+- **false にする**: busy 中に PTY 出力が **0.5 秒** 途切れたら `isBusy = false` に戻す。send から 3.0s 以内に出力が来なかった場合も同様
 
 > **Never**: PTY 出力を観測しただけで `isBusy = true` にはしない。Claude CLI はアイドル時もカーソル点滅 / 定期再描画で出力を出すため、「出力観測 = busy」にすると常時 busy になる。send ベースで true にすることで「ユーザ/Aidea が Claude に仕事を投げた期間」のみを busy と判定する。
 
-静止期間 0.5s は **体感に合う閾値** として MVP で採用する (`claude` CLI が tool 実行中やテキストストリーミング中に細かく出力することを考慮)。実運用で短すぎ/長すぎる場合はここを調整する。
+- 出力静止判定の 0.5s は `claude` CLI が tool 実行中やテキストストリーミング中に細かく出力することを考慮した体感値
+- 初期猶予の 3.0s は Claude API のレイテンシ (通常 1〜3s 程度) をカバーする体感値。実運用で調整が必要な場合は `busySendDebounceInterval` を変更する
 
 ### ライフサイクル
 
 | タイミング | `isBusy` | 遷移理由 |
 |---|---|---|
 | `ClaudeSessionState` 初期化直後 | `false` | send 未実施 |
-| 自動起動シーケンス (claude / companionPrompt / Enter send) | 各 send 直後に `true` | `markBusy()` |
-| TUI 初期描画中〜 isReady | `true` 維持 | 応答出力で静止タイマー延長 |
+| 自動起動シーケンス (claude / companionPrompt / Enter send) | 各 send 直後に `true` | `markBusy()` (3.0s タイマー) |
+| TUI 初期描画中〜 isReady | `true` 維持 | 応答出力で 0.5s タイマーに切り替え延長 |
 | 入力待ちプロンプト表示 (起動後の初回アイドル) | 0.5s 静止後 `false` | タイマー満了 |
-| ユーザが `Cmd+Enter` でプロンプト送信 | 送信直後 `true` | `markBusy()` |
-| Claude の応答ストリーミング中 | `true` 維持 | 応答出力で静止タイマー延長 |
+| ユーザが `Cmd+Enter` でプロンプト送信 | 送信直後 `true` | `markBusy()` (3.0s タイマー) |
+| Claude の応答ストリーミング中 | `true` 維持 | 応答出力で 0.5s タイマーに切り替え延長 |
 | 応答完了 → 入力待ちプロンプト表示 | 0.5s 静止後 `false` | タイマー満了 |
 | PTY 終了時 (`exitCode != nil`) | `false` | (アイドル扱い) |
 
