@@ -15,6 +15,7 @@ struct PaneView: View {
     @Environment(LayoutConfig.self) private var layout
     @Environment(CompanionStore.self) private var companionStore
     @Environment(TabPickerAnchor.self) private var tabPickerAnchor
+    @Environment(WorkspaceState.self) private var workspace
 
     var body: some View {
         VStack(spacing: 0) {
@@ -147,6 +148,25 @@ struct PaneView: View {
             registry.setActiveTab(paneID: pane.id, tabIndex: index)
         }
         .draggable(sessionID)
+        .help(previewTooltip(for: sessionID))
+    }
+
+    /// Preview タブのツールチップテキスト。projectRoot 相対パスを返す。
+    /// Preview 以外のタブや URL が nil の場合は空文字 (ツールチップなし)。
+    private func previewTooltip(for sessionID: SessionID) -> String {
+        guard sessionID.tool == .preview,
+              let s = registry.session(for: sessionID),
+              let preview = s.state as? PreviewSessionState,
+              let url = preview.url else { return "" }
+        if let root = workspace.projectRoot {
+            let rootPath = root.standardizedFileURL.path
+            let filePath = url.standardizedFileURL.path
+            if filePath.hasPrefix(rootPath) {
+                let relative = String(filePath.dropFirst(rootPath.count))
+                return relative.hasPrefix("/") ? String(relative.dropFirst()) : relative
+            }
+        }
+        return url.path
     }
 
     /// タブアイコン。Claude ツールは猫耳画像、それ以外は SF Symbol。

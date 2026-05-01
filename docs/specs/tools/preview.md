@@ -13,7 +13,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-22
+last_updated: 2026-05-01
 ---
 
 # Tool 仕様: Preview
@@ -110,6 +110,14 @@ Markdown は `MarkdownContainer` で **view / edit の 2 モード**を扱う。
 
 - `MarkdownContainer` — Markdown 表示時の右上フローティングボタン
 - `PreviewSessionView` — テキストファイル表示時の翻訳ボタン
+
+### tabHoverTooltip — タブホバー時のフルパス表示
+
+Preview タブにマウスカーソルを合わせると、ツールチップでファイルのパスを表示する。
+
+- `workspace.projectRoot` が設定されており `preview.url` がその配下にある場合: プロジェクトルートからの相対パスを表示 (例: `docs/specs/tools/preview.md`)
+- `preview.url` が projectRoot 配下にない場合、または projectRoot 未設定の場合: 絶対パスを表示
+- `preview.url` が nil の場合: ツールチップなし
 
 ### renderImage — 画像表示
 - 対応拡張子を `NSImage` でロードして `ScrollView` + `Image(nsImage:)` で表示
