@@ -46,7 +46,7 @@ enum GitService {
         try run(["diff", "main...HEAD", "--numstat"], cwd: cwd)
     }
 
-    /// ワーキングツリーの全 diff (staged + unstaged + untracked)
+    /// ワーキングツリーの全 diff (staged + unstaged + untracked)。Git パネルと同じアルファベット順で返す。
     static func diffAll(cwd: URL) throws -> String {
         var result = ""
         // staged
@@ -62,6 +62,47 @@ enum GitService {
             let diff = try run(["diff", "--no-index", "--", "/dev/null", file], cwd: cwd)
             if !diff.isEmpty { result += diff }
         }
+        return sortDiffByPath(result)
+    }
+
+    /// diff 文字列内のファイルセクションをパスのアルファベット順に並び替える。
+    /// Git パネル (GitSessionState) のツリーと表示順を揃えるために使う。
+    /// 同一パスに staged/unstaged の 2 セクションがある場合は staged を先に保つ (安定ソート)。
+    private static func sortDiffByPath(_ diff: String) -> String {
+        guard diff.contains("diff --git ") else { return diff }
+
+        var sections: [(path: String, lines: [String])] = []
+        var currentPath = ""
+        var currentLines: [String] = []
+
+        for line in diff.components(separatedBy: "\n") {
+            if line.hasPrefix("diff --git ") {
+                if !currentPath.isEmpty {
+                    var trimmed = currentLines
+                    while trimmed.last == "" { trimmed.removeLast() }
+                    sections.append((currentPath, trimmed))
+                }
+                // "diff --git a/... b/<path>" の b/ 以降をソートキーに (最後の " b/" を使う)
+                if let range = line.range(of: " b/", options: .backwards) {
+                    currentPath = String(line[range.upperBound...])
+                } else {
+                    currentPath = line
+                }
+                currentLines = [line]
+            } else {
+                currentLines.append(line)
+            }
+        }
+        if !currentPath.isEmpty {
+            var trimmed = currentLines
+            while trimmed.last == "" { trimmed.removeLast() }
+            sections.append((currentPath, trimmed))
+        }
+
+        sections.sort { $0.path < $1.path }
+
+        var result = sections.map { $0.lines.joined(separator: "\n") }.joined(separator: "\n")
+        result += "\n"
         return result
     }
 
