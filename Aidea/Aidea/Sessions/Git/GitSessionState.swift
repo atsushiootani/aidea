@@ -35,8 +35,10 @@ final class GitSessionState: SessionState, FocusBridgeOwner {
     @ObservationIgnored var onViewedChanged: (() -> Void)?
     var currentBranch: String = ""
     let baseBranch: String = "main"
-    /// ファイルパス → (追加行数, 削除行数) のキャッシュ
+    /// ファイルパス → (追加行数, 削除行数) — 未ステージ差分 / PR Preview では全体差分
     var fileStats: [String: (added: Int, deleted: Int)] = [:]
+    /// ファイルパス → (追加行数, 削除行数) — ステージ済み差分のみ (Working Changes 専用)
+    var stagedFileStats: [String: (added: Int, deleted: Int)] = [:]
 
     init(workspace: WorkspaceState) {
         self.workspace = workspace
@@ -68,12 +70,16 @@ final class GitSessionState: SessionState, FocusBridgeOwner {
             }
             treeNodes = GitFileTreeNode.buildTree(from: files)
             // numstat でファイルごとの追加/削除行数を取得
-            let numstatOutput: String
             switch mode {
-            case .workingChanges: numstatOutput = (try? GitService.numstat(cwd: root)) ?? ""
-            case .prPreview: numstatOutput = (try? GitService.numstatMain(cwd: root)) ?? ""
+            case .workingChanges:
+                let staged = (try? GitService.numstatStaged(cwd: root)) ?? ""
+                let unstaged = (try? GitService.numstatUnstaged(cwd: root)) ?? ""
+                stagedFileStats = parseNumstat(staged)
+                fileStats = parseNumstat(unstaged)
+            case .prPreview:
+                stagedFileStats = [:]
+                fileStats = parseNumstat((try? GitService.numstatMain(cwd: root)) ?? "")
             }
-            fileStats = parseNumstat(numstatOutput)
         } catch {
             treeNodes = []
         }

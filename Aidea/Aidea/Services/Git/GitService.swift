@@ -23,12 +23,22 @@ enum GitService {
         return String(data: data, encoding: .utf8) ?? ""
     }
 
-    /// ワーキングツリーの変更行数統計 (numstat)
+    /// ワーキングツリーの変更行数統計 (numstat) — staged + unstaged 合算
     static func numstat(cwd: URL) throws -> String {
         var result = ""
         result += try run(["diff", "--numstat"], cwd: cwd)
         result += try run(["diff", "--cached", "--numstat"], cwd: cwd)
         return result
+    }
+
+    /// ステージ済みの変更行数統計 (numstat)
+    static func numstatStaged(cwd: URL) throws -> String {
+        try run(["diff", "--cached", "--numstat"], cwd: cwd)
+    }
+
+    /// 未ステージの変更行数統計 (numstat)
+    static func numstatUnstaged(cwd: URL) throws -> String {
+        try run(["diff", "--numstat"], cwd: cwd)
     }
 
     /// main との変更行数統計 (numstat)
