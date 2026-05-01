@@ -11,7 +11,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-23
+last_updated: 2026-05-01
 ---
 
 # Session 内部状態: Git
@@ -29,7 +29,8 @@ Tool 仕様は [../tools/git.md](../tools/git.md) を、共通 UI ルールは [
 | `treeNodes` | `[GitFileTreeNode]` | 変更ファイルのツリー表現 | ✅ |
 | `selectedPath` | `String?` | 選択中のファイルパス (変更時に `onSelectedPathChanged` を発火) | ✅ |
 | `currentBranch` | `String` | 現在のブランチ名 | ✅ |
-| `fileStats` | `[String: (added: Int, deleted: Int)]` | ファイルごとの追加/削除行数 | ✅ |
+| `fileStats` | `[String: (added: Int, deleted: Int)]` | ファイルごとの追加/削除行数 (未ステージ差分。PR Preview では main との全差分) | ✅ |
+| `stagedFileStats` | `[String: (added: Int, deleted: Int)]` | ステージ済みファイルごとの追加/削除行数 (Working Changes 専用。staged 差分のみ) | ✅ |
 | `registry` | `weak var SessionRegistry?` | Diff ビュー連携用 | — |
 | `onSelectedPathChanged` | `((String?) -> Void)?` (ObservationIgnored) | 選択変更コールバック | — |
 | `onViewedChanged` | `(() -> Void)?` (ObservationIgnored) | 既読状態変更コールバック | — |

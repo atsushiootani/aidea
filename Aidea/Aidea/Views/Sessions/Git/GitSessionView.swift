@@ -172,12 +172,19 @@ final class GitFileListViewController: NSViewController, NSOutlineViewDataSource
     /// モードに応じてブランチラベルと合計行数を更新する
     private func updateBranchLabel() {
         guard let state else { return }
-        let totalAdded = state.fileStats.values.reduce(0) { $0 + $1.added }
-        let totalDeleted = state.fileStats.values.reduce(0) { $0 + $1.deleted }
+        let totalAdded: Int
+        let totalDeleted: Int
         switch state.mode {
         case .workingChanges:
+            // staged + unstaged の合算 (同一ファイルが両方にある場合は両方をカウント)
+            totalAdded = state.fileStats.values.reduce(0) { $0 + $1.added }
+                + state.stagedFileStats.values.reduce(0) { $0 + $1.added }
+            totalDeleted = state.fileStats.values.reduce(0) { $0 + $1.deleted }
+                + state.stagedFileStats.values.reduce(0) { $0 + $1.deleted }
             branchBadge.setBranches([state.currentBranch], added: totalAdded, deleted: totalDeleted)
         case .prPreview:
+            totalAdded = state.fileStats.values.reduce(0) { $0 + $1.added }
+            totalDeleted = state.fileStats.values.reduce(0) { $0 + $1.deleted }
             branchBadge.setBranches([state.baseBranch, state.currentBranch], added: totalAdded, deleted: totalDeleted)
         }
     }
@@ -234,7 +241,7 @@ final class GitFileListViewController: NSViewController, NSOutlineViewDataSource
             cell.identifier = id
         }
         let isViewed = !node.isDirectory && isFileViewed(node.relativePath)
-        let stat = node.isDirectory ? nil : fileStat(for: node.relativePath)
+        let stat = node.isDirectory ? nil : fileStat(for: node.relativePath, isStaged: node.isStaged)
         cell.configure(node: node, isViewed: isViewed, stat: stat)
         return cell
     }
@@ -249,8 +256,13 @@ final class GitFileListViewController: NSViewController, NSOutlineViewDataSource
     }
 
     /// ファイルの追加/削除行数を返す
-    private func fileStat(for path: String) -> (added: Int, deleted: Int)? {
-        state?.fileStats[path]
+    /// Working Changes: staged ノードは stagedFileStats、unstaged ノードは fileStats を参照
+    private func fileStat(for path: String, isStaged: Bool) -> (added: Int, deleted: Int)? {
+        guard let state else { return nil }
+        if isStaged && state.mode == .workingChanges {
+            return state.stagedFileStats[path]
+        }
+        return state.fileStats[path]
     }
 
     /// ファイルが Viewed かどうかを GitDiff の viewedFiles から判定する

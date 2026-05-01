@@ -13,7 +13,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-22
+last_updated: 2026-05-01
 ---
 
 # Tool 仕様: Git
@@ -66,6 +66,10 @@ Session 内部状態は [sessions/git.md](../sessions/git.md) / [sessions/git-di
   - Added: `plus.circle` (緑)
   - Deleted: `minus.circle` (赤)
   - Renamed: `arrow.right.circle` (青)
+- ファイルごとに変更行数 `+N -M` を右端に表示する:
+  - ステージ済みファイル: ステージ差分のみの行数 (`git diff --cached --numstat`)
+  - 未ステージファイル: 未ステージ差分のみの行数 (`git diff --numstat`)
+  - PR Preview: main との合計差分 (`git diff main...HEAD --numstat`)
 
 ### データ取得
 
