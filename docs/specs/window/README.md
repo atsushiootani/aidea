@@ -8,7 +8,7 @@ impacts:
   - docs/specs/window/*
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-22
+last_updated: 2026-05-02
 ---
 
 # Window インデックス
