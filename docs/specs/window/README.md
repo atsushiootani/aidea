@@ -23,3 +23,4 @@ Session 単位のルールは [../sessions/](../sessions/README.md) を参照。
 | [dialogs.md](./dialogs.md) | モーダルダイアログのキー割当・破壊操作確認・バリデーション |
 | [shortcuts.md](./shortcuts.md) | グローバルショートカット (タブ・ペイン操作、ツール切替) |
 | [active-session-switcher.md](./active-session-switcher.md) | Ctrl+Tab で表示する Session 履歴切替ウィンドウ |
+| [tab-bar.md](./tab-bar.md) | タブバー UI 振る舞い (自動スクロール・ドラッグ&ドロップ・追加/クローズ) |

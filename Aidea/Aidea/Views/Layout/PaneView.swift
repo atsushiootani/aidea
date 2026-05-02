@@ -51,17 +51,26 @@ struct PaneView: View {
     /// タブバー: 左側はスクロール可能な Tab 領域、右端に分割ボタンを固定配置する
     private var tabBar: some View {
         HStack(spacing: 0) {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 0) {
-                    TabSlotView(pane: pane, index: 0)
-                    ForEach(Array(pane.tabs.enumerated()), id: \.element) { index, sessionID in
-                        tabItem(sessionID: sessionID, index: index)
-                        TabSlotView(pane: pane, index: index + 1)
+            ScrollViewReader { proxy in
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 0) {
+                        TabSlotView(pane: pane, index: 0)
+                        ForEach(Array(pane.tabs.enumerated()), id: \.element) { index, sessionID in
+                            tabItem(sessionID: sessionID, index: index)
+                                .id(sessionID)
+                            TabSlotView(pane: pane, index: index + 1)
+                        }
+                        addButton
                     }
-                    addButton
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
                 }
-                .padding(.horizontal, 6)
-                .padding(.vertical, 3)
+                .onChange(of: pane.activeIndex) { _, newIndex in
+                    guard newIndex < pane.tabs.count else { return }
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        proxy.scrollTo(pane.tabs[newIndex], anchor: .center)
+                    }
+                }
             }
             splitButtons
                 .padding(.trailing, 6)
