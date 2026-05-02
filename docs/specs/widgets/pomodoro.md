@@ -66,15 +66,23 @@ popover や展開パネルでの開閉はせず、すべての操作要素を横
 ## 状態モデル
 
 ```swift
+enum PomodoroPhase {
+    case focus
+    case rest
+}
+
 @Observable
 final class PomodoroState {
-    enum Phase { case focus, rest }
-    var phase: Phase             // 現在のフェーズ
+    var phase: PomodoroPhase     // 現在のフェーズ
     var remainingSeconds: Int    // 現在のフェーズの残り秒数
     var isRunning: Bool          // 計測中なら true
     var isEditing: Bool          // 残り時間編集中フラグ
 }
 ```
+
+`PomodoroPhase` は `PomodoroState` のネスト型ではなく **独立した enum** として
+別ファイル (`Aidea/Aidea/Widgets/Pomodoro/PomodoroPhase.swift`) に置く
+([conventions/coding-style.md](../../conventions/coding-style.md) の「1 ファイル 1 型」原則)。
 
 各フェーズの初期残り秒数:
 

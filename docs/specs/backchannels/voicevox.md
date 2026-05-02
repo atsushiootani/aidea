@@ -7,11 +7,12 @@ syncs_with:
   - docs/specs/backchannels/backchannel.md
   - docs/specs/aspects/persistence.md
   - docs/specs/companions/companion.md
+  - docs/specs/widgets/pomodoro.md
 impacts:
   - docs/specs/tools/claude.md
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-29
+last_updated: 2026-05-02
 ---
 
 # Backchannel: VOICEVOX 読み上げ

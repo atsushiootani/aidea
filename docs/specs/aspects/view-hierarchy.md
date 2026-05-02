@@ -9,6 +9,7 @@ syncs_with:
   - docs/specs/sessions/ui-rules.md
   - docs/specs/companions/companion.md
   - docs/specs/companions/recommend-mode.md
+  - docs/specs/widgets/*
   - docs/specs/window/active-session-switcher.md
 impacts: []
 conventions:
