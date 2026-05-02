@@ -7,7 +7,7 @@ impacts:
   - docs/README.md
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-20
+last_updated: 2026-05-02
 ---
 
 # docs ディレクトリ構成とファイル配置ルール
@@ -35,7 +35,7 @@ docs/
 │   ├── architecture.md
 │   ├── aspects/
 │   ├── glossary.md
-│   └── <機能群>/       # backchannels / frontchannels / companions / sessions / tools / window など (→ README.md 参照)
+│   └── <機能群>/       # backchannels / frontchannels / companions / sessions / tools / widgets / window など (→ README.md 参照)
 │
 ├── plans/             # タイムスタンプ付きの実装計画書アーカイブ (git 管理外)
 │   └── plan_YYYYMMDDHHmmss.md

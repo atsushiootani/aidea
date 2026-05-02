@@ -8,7 +8,7 @@ impacts:
   - docs/specs/*
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-20
+last_updated: 2026-05-02
 ---
 
 # Aidea Specs
@@ -21,12 +21,13 @@ Aidea の**プロダクト仕様 (設計ストック)**。コードベースと 
 | ファイル | 変化頻度 | 内容 |
 |---|---|---|
 | [architecture.md](./architecture.md) | **中** | 技術スタック / プロジェクト構造 / レイヤー・主要コンポーネント |
-| [aspects/](./aspects/) | **中** | 横断的関心事 (キー操作一覧 / 永続化仕様) |
+| [aspects/](./aspects/) | **中** | 横断的関心事 (キー操作一覧 / 永続化仕様 / View 階層) |
 | [tools/](./tools/) | **中** | 各ツールの実装仕様 (Terminal / Git / Kit / Preview / Obsidian など) |
 | [frontchannels/](./frontchannels/) | **中** | 会話 UI (Scene / 発話フロー) |
 | [companions/](./companions/) | **中** | コンパニオン (9 体のアイコン) とレコメンドモード |
 | [backchannels/](./backchannels/) | **中** | 裏側処理 (読み上げ / VOICEVOX 連携など) |
 | [sessions/](./sessions/) | **中** | Session 概念の詳細 (概念モデル・アクティブ切替・UI ルール) |
+| [widgets/](./widgets/) | **中** | ヘッダ常駐型の小さな補助機能 (ポモドーロ / TODO 等) |
 | [window/](./window/) | **中低** | Window 全体の振る舞い (ダイアログ・グローバルショートカット) |
 | [glossary.md](./glossary.md) | **低中** | 用語集 |
 
