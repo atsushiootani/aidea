@@ -8,7 +8,7 @@ impacts:
   - docs/decisions/*
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-23
+last_updated: 2026-05-02
 ---
 
 # Architecture Decision Records
@@ -43,6 +43,7 @@ Aidea の設計判断を 1 件ずつ記録する。フォーマットは [Michae
 | [0022](./0022-companion-instructions-as-files.md) | コンパニオン初期指示を外部 Markdown ファイルに分離する | 採用 |
 | [0023](./0023-companion-handoff.md) | コンパニオン間ハンドオフは Aidea オーケストレータ方式で実装する | 提案 |
 | [0024](./0024-backchannel-per-companion-archive.md) | Backchannel メッセージは Companion 別ディレクトリに保存し削除しない | 提案 |
+| [0025](./0025-github-actions-ci.md) | GitHub Actions で xcodebuild CI を構築する | 採用 |
 
 ## 状態の値
 
