@@ -49,8 +49,7 @@ AppHeaderView
 ```
 
 - `WidgetView` は `CompanionView` と兄弟。`Spacer` の後ろ (= 右端) に置く
-- 各 widget は `WidgetView` の子としてアイコン形状で常駐する
-- アイコンを押すと **展開パネル** (popover) が下方向に出てきて、操作 UI が現れる
+- 各 widget は `WidgetView` の子としてヘッダ右端にインライン表示する。操作 UI は popover ではなくヘッダ上に常時並べる
 - 個別 widget を追加 / 削除したら [../aspects/view-hierarchy.md](../aspects/view-hierarchy.md) の AppHeaderView 階層図も同時に更新する
 
 ヘッダ全体の構成は [../backchannels/voicevox.md#ui-appheaderview](../backchannels/voicevox.md#ui-appheaderview) も参照。

@@ -32,7 +32,7 @@ AppHeaderView
    ├─ speechToggleButton             ※既存 (読み上げ ON/OFF)
    ├─ Spacer                         ※既存
    └─ WidgetView                     ★新規 (右端の widget 集約コンテナ)
-      └─ TimerView                   ★新規 (ポモドーロのトマトアイコン + 展開パネル)
+      └─ TimerView                   ★新規 (ポモドーロタイマーのインライン表示)
 ```
 
 - **`WidgetView`** は `CompanionView` と兄弟の集約コンテナ。`Spacer` の後ろ (= 右端) に配置する
@@ -42,26 +42,26 @@ AppHeaderView
 
 ### TimerView の構成
 
-| 要素 | 役割 |
-|---|---|
-| トマトアイコン | `WidgetView` 内に常時表示。クリックで展開パネルをトグル。アイコン色はフェーズに応じて変える (focus=赤、rest=緑) |
-| 展開パネル | アイコンの下に popover で表示。下記コントロール群を含む |
-
-### 展開パネルの内容
+`TimerView` は `WidgetView` の子としてヘッダに常時表示される。
+popover や展開パネルでの開閉はせず、すべての操作要素を横並びでインライン表示する。
 
 ```
-┌────────────────────────────┐
-│ ▶︎ / ⏸  ⟲   25:00            │ ← Start/Pause、Reset、残り時間 (編集可)
-│ ▰▰▰▰▱▱▱▱▱▱▱▱▱▱▱▱▱▱        │ ← 残り時間ゲージ
-└────────────────────────────┘
+┌──────────────────────────────────────────────┐
+│ ⏱  25:00  ▶︎  ⟲                              │
+│ ▰▰▰▰▱▱▱▱▱▱▱▱▱▱▱▱▱▱▱▱▱▱▱▱▱▱▱▱                 │
+└──────────────────────────────────────────────┘
 ```
+
+- 上段: フェーズアイコン / 残り時間 / Start・Pause / Reset を `HStack` で横並び
+- 下段: 進捗ゲージを上段の幅いっぱいに横長で配置 (`VStack` で 2 段構成)
 
 | 要素 | 役割 |
 |---|---|
+| フェーズアイコン | `timer` シンボル。フェーズに応じて色が変わる (focus=赤、rest=緑) |
+| 残り時間表示 | `MM:SS` 形式のテキストフィールド。クリックで編集モードに入る |
 | Start / Pause ボタン | タイマー開始 / 一時停止のトグル。アイコンは `▶︎` / `⏸` で切替 |
 | Reset ボタン | 集中フェーズの初期状態に戻す |
-| 残り時間表示 | `MM:SS` 形式のテキスト。クリックで編集モードに入る |
-| 進捗ゲージ | パネル下部のプログレスバー。`(phaseDuration - remainingSeconds) / phaseDuration` で塗る |
+| 進捗ゲージ | 上段コントロールの下に配置する横長プログレスバー。`(phaseDuration - remainingSeconds) / phaseDuration` で塗る。色はフェーズに連動 |
 
 ## 状態モデル
 
@@ -150,7 +150,8 @@ final class PomodoroState {
 
 ## ゲージ表示
 
-- パネル下部に進捗バー (`ProgressView` ベース)
+- `TimerView` の **下段**に横長の進捗バー (`ProgressView` ベース) を配置する
+- 上段の操作 HStack と `VStack` で縦に並べ、ゲージは上段の幅いっぱいに伸ばす (固定幅にしない)
 - 値: `Double(phaseDuration - remainingSeconds) / Double(phaseDuration)` (0.0 → 1.0)
 - 色:
   - `.focus` フェーズ: 赤系 (Aidea のアクセント色)
@@ -180,7 +181,7 @@ final class PomodoroState {
 
 - `WidgetView` は `CompanionView` と同列で `AppHeaderView` 直下に置く新規コンテナ
 - `PomodoroState` は `AppHeaderView` の親 (Window/App レベル) に環境オブジェクトとして 1 つだけ持つ
-- 展開パネルは SwiftUI の `.popover` で実装する想定 (詳細は実装 PR で確定)
+- 操作 UI は popover ではなく、`WidgetView` 内に `HStack` で並べてヘッダに常時表示する
 - ヘッダ全体構成は [../backchannels/voicevox.md#ui-appheaderview](../backchannels/voicevox.md#ui-appheaderview) の現行図を `WidgetView` 追加に合わせて更新する
 
 ## 関連

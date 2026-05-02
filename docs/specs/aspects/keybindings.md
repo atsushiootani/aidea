@@ -13,6 +13,7 @@ syncs_with:
   - docs/specs/tools/preview.md
   - docs/specs/tools/terminal.md
   - docs/specs/tools/web.md
+  - docs/specs/widgets/pomodoro.md
   - docs/specs/window/shortcuts.md
   - docs/specs/window/active-session-switcher.md
   - docs/specs/companions/recommend-mode.md
@@ -20,7 +21,7 @@ impacts: []
 conventions:
   - docs/LAYOUT.md
   - docs/specs/aspects/README.md
-last_updated: 2026-04-28
+last_updated: 2026-05-02
 ---
 
 # キー操作・マウス操作一覧
@@ -74,6 +75,13 @@ Aidea の全キーボードショートカットとマウス操作のリファ�
 | ← / → | コンパニオンを選択（吹き出し移動） |
 | Enter | 選択したプロンプトを送信 |
 | Esc | キャンセル |
+
+### Widgets / ポモドーロ
+
+| キー | アクション |
+|------|-----------|
+| ⌘ ⌥ P | ポモドーロタイマー 開始 / 一時停止 |
+| ⌘ ⌥ ⇧ P | ポモドーロタイマー リセット (集中フェーズ 25 分に戻す) |
 
 ### その他
 

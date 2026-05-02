@@ -16,6 +16,7 @@ struct AppHeaderView: View {
             CompanionView()
             speechToggleButton
             Spacer()
+            WidgetView()
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 4)

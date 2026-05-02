@@ -6,11 +6,12 @@ derived_from:
   - docs/decisions/0014-no-ctrl-number-shortcuts.md
 syncs_with:
   - docs/specs/aspects/keybindings.md
+  - docs/specs/widgets/pomodoro.md
   - docs/specs/window/active-session-switcher.md
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-22
+last_updated: 2026-05-02
 ---
 
 # グローバルショートカット
@@ -53,3 +54,12 @@ Window 全体で有効なキーボードショートカット。
 | キー | 動作 |
 |---|---|
 | **⌘ 1** 〜 **⌘ 8** | 対応するコンパニオンを起動 / アクティブ化 |
+
+## ポモドーロ
+
+`AideaApp.body.commands` の `CommandMenu("ポモドーロ")` で実装する。詳細は [../widgets/pomodoro.md](../widgets/pomodoro.md)。
+
+| キー | 動作 |
+|---|---|
+| **⌘ ⌥ P** | ポモドーロタイマー 開始 / 一時停止 |
+| **⌘ ⌥ ⇧ P** | ポモドーロタイマー リセット |
