@@ -14,9 +14,7 @@ last_updated: 2026-05-02
 
 # GitHub Actions で xcodebuild CI を構築する
 
-## 状態
-
-採用
+**日付**: 2026-05-02
 
 ## 背景
 
