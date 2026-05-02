@@ -18,8 +18,8 @@ struct PreviewSessionView: View {
     @State private var isTranslating: Bool = false
     @State private var hasCachedTranslation: Bool = false
 
-    private static let maxFileSize: Int = 1_000_000
-    private static let binarySniffSize: Int = 8192
+    nonisolated private static let maxFileSize: Int = 1_000_000
+    nonisolated private static let binarySniffSize: Int = 8192
 
     var body: some View {
         Group {
@@ -201,7 +201,7 @@ struct PreviewSessionView: View {
     }
 
     /// 先頭 8KB に NUL バイトが含まれていればバイナリとみなす
-    private static func isBinary(url: URL) -> Bool {
+    nonisolated private static func isBinary(url: URL) -> Bool {
         guard let handle = try? FileHandle(forReadingFrom: url) else { return true }
         defer { try? handle.close() }
         let data = (try? handle.read(upToCount: binarySniffSize)) ?? Data()

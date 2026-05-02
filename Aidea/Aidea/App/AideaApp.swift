@@ -190,7 +190,6 @@ struct AideaApp: App {
 
     /// Cmd+Shift+[ / ] : 現在ペイン内でタブを左右に移動 (ラップ)。
     private func moveTab(offset: Int) {
-        let lay = layout
         let reg = registry
         DispatchQueue.main.async {
             guard let pane = reg.activePane, !pane.tabs.isEmpty else { return }

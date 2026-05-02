@@ -41,6 +41,7 @@ enum TranslationService {
 
     /// API キー設定ダイアログを表示する。設定されたら true を返す。
     @MainActor
+    @discardableResult
     static func showApiKeyDialog() -> Bool {
         let alert = NSAlert()
         alert.messageText = "Anthropic API キーの設定"

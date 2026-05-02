@@ -116,7 +116,6 @@ final class ClaudeSessionState: SessionState, FocusBridgeOwner {
     var terminalView: PersistentTerminalView {
         if let cached = cached { return cached }
         let terminal = PersistentTerminalView(frame: .zero)
-        let reg = registry
         NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak terminal, weak self] event in
             if let tv = terminal,
                let reg = self?.registry,
@@ -203,7 +202,7 @@ final class ClaudeSessionState: SessionState, FocusBridgeOwner {
     /// 既存タイマーは invalidate → `interval` 秒後に isBusy=false を書く新規タイマーで置き換え。
     /// - `markBusy` (send 契機) は `busySendDebounceInterval` (3.0s) で呼ぶ
     /// - `noteTerminalOutput` (出力契機) はデフォルト `busyDebounceInterval` (0.5s) で呼ぶ
-    private func scheduleBusyDebounce(interval: TimeInterval = Self.busyDebounceInterval) {
+    private func scheduleBusyDebounce(interval: TimeInterval = ClaudeSessionState.busyDebounceInterval) {
         busyDebounceTimer?.invalidate()
         let timer = Timer(timeInterval: interval, repeats: false) { [weak self] _ in
             DispatchQueue.main.async { [weak self] in
