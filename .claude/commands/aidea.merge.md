@@ -24,10 +24,21 @@ Aidea プロジェクトでプルリクエストをマージし、ローカル�
 - `state` が `OPEN`
 - `mergeable` が `MERGEABLE`
 - `mergeStateStatus` が `CLEAN` もしくは `UNSTABLE` (要ユーザ確認)
-- `statusCheckRollup` の失敗がない (必須チェックが PENDING / FAILURE でない)
 - `reviewDecision` が `APPROVED` もしくは 不要 (Aidea は個人プロジェクトなので基本的に不要だが、Required レビューが設定されていれば従う)
 
-**条件を満たさない場合**: 何が原因でマージできないかをユーザに伝え、「このままマージしてよいか / 中止するか」を確認する。ユーザの返答が得られるまで次に進まない。
+#### CI/CD ステータスの確認 (必須)
+
+`statusCheckRollup` および `gh pr checks <番号>` の出力を確認し、CI/CD の各チェック結果を必ずチェックする。
+
+- **エラーがある場合** (`conclusion` が `FAILURE` / `CANCELLED` / `TIMED_OUT` / `ACTION_REQUIRED` / `STARTUP_FAILURE` のいずれか): **マージは行わない**。以下を整理してユーザに報告し、指示を仰ぐ:
+  - 失敗したワークフロー / チェック名と conclusion
+  - `gh pr checks <番号>` の関連行 (URL 含む)
+  - 失敗ログを掘りたい場合は `gh run view <run-id> --log-failed` の実行を提案
+  - ユーザから「失敗を承知でマージする」「修正して再 push する」「中止する」のいずれかの明示指示を受けるまで次のステップに進まない
+- **進行中の場合** (`PENDING` / `IN_PROGRESS` / `QUEUED`): 完了を待つか、待たずに進めるかをユーザに確認する。返答が得られるまで次に進まない
+- **すべて成功** (`SUCCESS` / `NEUTRAL` / `SKIPPED`) の場合のみ次のステップへ進む
+
+**その他の条件を満たさない場合**: 何が原因でマージできないかをユーザに伝え、「このままマージしてよいか / 中止するか」を確認する。ユーザの返答が得られるまで次に進まない。
 
 ### 3. PR のマージ
 
