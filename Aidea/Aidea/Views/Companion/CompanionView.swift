@@ -45,7 +45,17 @@ struct CompanionView: View {
         .sheet(item: $editingCompanion) { companion in
             CompanionEditView(
                 companion: companion,
-                onSave: { updated in store.update(updated) },
+                onSave: { updated in
+                    store.update(updated)
+                    // .aidea/claude/aidea.md のコンパニオン名簿セクションを最新の name に追従させる
+                    // (詳細: docs/specs/backchannels/companion-roster.md)
+                    if let projectRoot = workspace.projectRoot {
+                        CompanionRosterWriter.writeRoster(
+                            projectRoot: projectRoot,
+                            companions: store.companions
+                        )
+                    }
+                },
                 onOpenInstructions: { openInstructions(for: companion.index) }
             )
         }

@@ -9,10 +9,11 @@ derived_from:
 syncs_with:
   - docs/specs/backchannels/backchannel.md
   - docs/specs/aspects/persistence.md
-impacts: []
+impacts:
+  - docs/specs/backchannels/companion-roster.md
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-23
+last_updated: 2026-05-03
 ---
 
 # Backchannel: コンパニオン間ハンドオフ
@@ -130,6 +131,8 @@ Aidea 側の実装変更は **不要**。完全に `.aidea/claude/handoff.md` �
 | 文字列 (空でない) | `CompanionStore.companions` を先頭から走査し、`name` を前後空白除去・大文字小文字無視で比較。最初にマッチした `index` を使う |
 | 文字列 (マッチなし) | エラー: ファイル削除 + ログ出力 |
 | 文字列 (空) / null | エラー: ファイル削除 + ログ出力 |
+
+送信元 Claude が宛先 Companion の name を知るための一覧は `.aidea/claude/aidea.md` 内の自動管理セクション (`<!-- aidea:companions:start --> ... <!-- aidea:companions:end -->`) に常駐する。Aidea が `CompanionStore.companions[].name` の変更に追従して書き換えるため、Claude は aidea.md を読むだけで最新の index ↔ name 対応表を得られる。詳細は [companion-roster.md](./companion-roster.md) を参照。
 
 name 検索のマッチ例:
 

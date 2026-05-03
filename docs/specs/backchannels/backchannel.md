@@ -8,13 +8,14 @@ derived_from:
 syncs_with:
   - docs/specs/backchannels/voicevox.md
   - docs/specs/backchannels/handoff.md
+  - docs/specs/backchannels/companion-roster.md
   - docs/specs/aspects/persistence.md
   - docs/specs/companions/companion.md
 impacts:
   - docs/specs/tools/claude.md
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-23
+last_updated: 2026-05-03
 ---
 
 # Backchannel 仕様
@@ -130,6 +131,8 @@ instructions.md 内から相対参照 (`./persona.md` など) で他ファイル
 | `companions/<index>/*.md` | 段階的開示用の補助ファイル (persona / workflow など) | 同上 |
 
 `BackchannelSetup.setup()` が初回セットアップ時に Bundle 内の既知ファイルを `.aidea/claude/` にコピーする (`aidea.md` / `speech.md` / `handoff.md` / `companions/<0..8>/instructions.md` を `Backchannels/companion-instructions.md` から複製)。**既存ファイルは上書きしない** (ユーザ編集の保護)。
+
+`aidea.md` 内には Aidea が自動管理するコンパニオン名簿セクション (`<!-- aidea:companions:start -->` / `<!-- aidea:companions:end -->` で囲まれた領域) が含まれる。`BackchannelSetup.setup()` が aidea.md を初回コピーした後、`WorkspaceSnapshotManager.apply()` の末尾と `CompanionEditView` のリネーム確定時に `CompanionRosterWriter.writeRoster(...)` が呼ばれ、最新の `CompanionStore.companions[].name` でこの領域が書き換えられる。詳細は [companion-roster.md](./companion-roster.md) を参照。
 
 ---
 

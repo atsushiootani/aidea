@@ -9,13 +9,14 @@ syncs_with:
   - docs/specs/companions/recommend-mode.md
   - docs/specs/aspects/persistence.md
   - docs/specs/backchannels/backchannel.md
+  - docs/specs/backchannels/companion-roster.md
   - docs/specs/backchannels/voicevox.md
   - docs/specs/sessions/claude.md
   - docs/specs/tools/claude.md
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-24
+last_updated: 2026-05-03
 ---
 
 # コンパニオン
@@ -106,7 +107,7 @@ Aidea が起動時に PTY へ送る文字列は `companionIndex` から派生す
 
 | メソッド | 役割 |
 |---|---|
-| `update(_ companion: CompanionConfig)` | 指定 index のコンパニオン設定を更新 (`name` / `icon` / `sessionID` を差し替え) |
+| `update(_ companion: CompanionConfig)` | 指定 index のコンパニオン設定を更新 (`name` / `icon` / `sessionID` を差し替え)。`name` を変更する経路 (主に `CompanionEditView` の OK ハンドラ) では呼び出し側で直後に `CompanionRosterWriter.writeRoster(...)` を呼び、`.aidea/claude/aidea.md` のコンパニオン名簿セクションを更新する ([companion-roster.md](../backchannels/companion-roster.md)) |
 | `bind(index: Int, sessionID: SessionID)` | コンパニオンと Claude セッションを紐付け (`companions[index].sessionID = sessionID`) |
 | `unbind(index: Int)` | 紐付け解除 (`companions[index].sessionID = nil`) |
 | `unbindSession(_ sessionID: SessionID)` | 該当 sessionID を持つ index の `sessionID` を nil にする (タブを閉じたとき用) |
@@ -248,6 +249,7 @@ SF Symbol オーバーレイの組み合わせで表現する。
 - [../frontchannels/frontchannel.md](../frontchannels/frontchannel.md) — 送信メカニズム (PTY `send(txt:)`)
 - [recommend-mode.md](./recommend-mode.md) — Cmd+Enter によるレコメンド選択 UI
 - [../backchannels/handoff.md](../backchannels/handoff.md) — Companion 間ハンドオフ ([ADR 0023](../../decisions/0023-companion-handoff.md))
+- [../backchannels/companion-roster.md](../backchannels/companion-roster.md) — `aidea.md` 内のコンパニオン名簿自動同期
 - [../tools/claude.md](../tools/claude.md) — Claude セッション側の挙動
 - [../aspects/persistence.md](../aspects/persistence.md) — `workspace.json` v7 保存・Bundle テンプレ
 - [../sessions/ui-rules.md#概念モデル](../sessions/ui-rules.md#概念モデル) — SessionID / 5 概念
