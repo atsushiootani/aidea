@@ -7,10 +7,11 @@ derived_from:
 syncs_with:
   - docs/specs/sessions/kit.md
   - docs/specs/aspects/keybindings.md
+  - docs/specs/aspects/sort-order.md
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-22
+last_updated: 2026-05-03
 ---
 
 # Tool 仕様: Kit
@@ -55,6 +56,11 @@ Session 内部状態は [sessions/kit.md](../sessions/kit.md) を参照。
 | **MCP SERVERS** | `~/.claude.json` の `mcpServers` | USER | `configured` (全件) |
 
 セクション順は上記表の通り (AGENTS → SKILLS → COMMANDS → MCP SERVERS)。
+
+各セクション内のエントリ並び順、および Skills / Commands の名前グループキーの並び順は
+**Filer と同じ Finder 互換自然順** (`String.naturalAscending`) を使う。
+同名で USER / PROJECT が両方存在する場合は **PROJECT を前に置く** (PROJECT が USER を上書きする関係性を可視化)。
+詳細は [aspects/sort-order.md](../aspects/sort-order.md) を参照。
 
 ---
 

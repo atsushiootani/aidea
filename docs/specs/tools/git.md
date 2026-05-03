@@ -10,10 +10,11 @@ syncs_with:
   - docs/specs/sessions/git.md
   - docs/specs/sessions/git-diff.md
   - docs/specs/aspects/keybindings.md
+  - docs/specs/aspects/sort-order.md
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-01
+last_updated: 2026-05-03
 ---
 
 # Tool 仕様: Git
@@ -56,6 +57,7 @@ Session 内部状態は [sessions/git.md](../sessions/git.md) / [sessions/git-di
 - NSOutlineView ベースのディレクトリツリー (Filer と同じ表示パターン)
 - **変更のあるファイルだけ**を表示 (変更のないファイル/ディレクトリは非表示)
 - 変更ディレクトリは変更ファイルを祖先に持つものだけ展開可能
+- **並び順**: 各階層は Filer と同じ Finder 互換自然順 (ファイル/ディレクトリを区別せず混在)。詳細は [aspects/sort-order.md](../aspects/sort-order.md) を参照
 - 各ファイルにステータスアイコン/バッジ:
   - `M` (Modified) — 変更
   - `A` (Added) — 新規

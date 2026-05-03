@@ -65,9 +65,10 @@ enum GitService {
         return sortDiffByPath(result)
     }
 
-    /// diff 文字列内のファイルセクションをパスのアルファベット順に並び替える。
+    /// diff 文字列内のファイルセクションをパスの自然順 (Finder 互換) に並び替える。
     /// Git パネル (GitSessionState) のツリーと表示順を揃えるために使う。
     /// 同一パスに staged/unstaged の 2 セクションがある場合は staged を先に保つ (安定ソート)。
+    /// 共通ソート規約: docs/specs/aspects/sort-order.md
     private static func sortDiffByPath(_ diff: String) -> String {
         guard diff.contains("diff --git ") else { return diff }
 
@@ -99,7 +100,7 @@ enum GitService {
             sections.append((currentPath, trimmed))
         }
 
-        sections.sort { $0.path < $1.path }
+        sections.sort { $0.path.naturalAscending($1.path) }
 
         var result = sections.map { $0.lines.joined(separator: "\n") }.joined(separator: "\n")
         result += "\n"

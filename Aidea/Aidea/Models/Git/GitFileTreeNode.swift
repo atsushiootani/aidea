@@ -52,22 +52,18 @@ final class GitFileTreeNode: Identifiable, Hashable {
             }
         }
 
-        var result: [GitFileTreeNode] = []
-
-        // ディレクトリを先に
-        for (dirName, children) in dirs.sorted(by: { $0.key < $1.key }) {
+        // ディレクトリ・ファイルを区別せず名前で混在ソート (Filer と同じ規約)
+        // 共通ソート規約: docs/specs/aspects/sort-order.md
+        let dirNodes: [GitFileTreeNode] = dirs.map { (dirName, children) in
             let dirPath = prefix.isEmpty ? dirName : prefix + "/" + dirName
             let node = GitFileTreeNode(name: dirName, isDirectory: true, status: nil, relativePath: dirPath)
             node.children = buildTreeRecursive(from: children, prefix: dirPath)
-            result.append(node)
+            return node
         }
-
-        // ファイル
-        for file in leaves.sorted(by: { $0.path < $1.path }) {
+        let fileNodes: [GitFileTreeNode] = leaves.map { file in
             let name = file.path.split(separator: "/").last.map(String.init) ?? file.path
-            result.append(GitFileTreeNode(name: name, isDirectory: false, status: file.status, isStaged: file.isStaged, relativePath: file.path))
+            return GitFileTreeNode(name: name, isDirectory: false, status: file.status, isStaged: file.isStaged, relativePath: file.path)
         }
-
-        return result
+        return (dirNodes + fileNodes).sorted { $0.name.naturalAscending($1.name) }
     }
 }

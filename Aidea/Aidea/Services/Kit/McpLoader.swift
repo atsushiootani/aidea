@@ -31,6 +31,7 @@ final class McpLoader {
             let args = entry["args"] as? [String] ?? []
             loaded.append(McpServer(id: name, name: name, command: command, args: args))
         }
-        self.servers = loaded.sorted { $0.name < $1.name }
+        // 共通ソート規約: docs/specs/aspects/sort-order.md
+        self.servers = loaded.sorted { $0.name.naturalAscending($1.name) }
     }
 }

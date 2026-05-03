@@ -370,7 +370,8 @@ struct KitSessionView: View {
             }
             return n
         }
-        return dict.map { ($0.key, $0.value) }.sorted { $0.key < $1.key }
+        // 共通ソート規約: docs/specs/aspects/sort-order.md
+        return dict.map { ($0.key, $0.value) }.sorted { $0.key.naturalAscending($1.key) }
     }
 
     // MARK: - Section header (sticky)
