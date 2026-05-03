@@ -22,9 +22,11 @@ final class CommandsLoader {
             let projectClaude = projectRoot.appending(path: ".claude", directoryHint: .isDirectory)
             loaded.append(contentsOf: load(from: projectClaude, scope: .project))
         }
+        // 共通ソート規約: docs/specs/aspects/sort-order.md
+        // 同名タイブレークでは PROJECT を前に置く (PROJECT が USER を上書きする関係性を可視化)
         self.commands = loaded.sorted {
             if $0.name == $1.name { return $0.scope == .project }
-            return $0.name < $1.name
+            return $0.name.naturalAscending($1.name)
         }
     }
 

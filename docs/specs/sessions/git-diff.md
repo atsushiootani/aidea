@@ -9,6 +9,7 @@ syncs_with:
   - docs/specs/tools/git.md
   - docs/specs/sessions/git.md
   - docs/specs/companions/recommend-mode.md
+  - docs/specs/aspects/sort-order.md
 impacts: []
 conventions:
   - docs/LAYOUT.md
@@ -49,12 +50,14 @@ Scene キー (`gitDiff:*`) が Git ツール (`git:*`) と別のため、`worksp
 
 ## ファイル表示順序
 
-Working Changes モードで全ファイルを表示するとき、**Git パネル (GitSessionState) のツリーと同じアルファベット順**でファイルを並べる。
+Working Changes モードで全ファイルを表示するとき、**Git パネル (GitSessionState) のツリーと同じ Finder 互換自然順**でファイルを並べる。
 `git diff --cached` (staged) → `git diff` (unstaged) → untracked の順に diff を収集した後、
-ファイルパスでアルファベット順に並び替えてから diff2html に渡す。
-同一ファイルに staged と unstaged の両セクションがある場合は staged を先に表示する。
+ファイルパスを `String.naturalAscending` で並び替えてから diff2html に渡す。
+同一ファイルに staged と unstaged の両セクションがある場合は staged を先に表示する (安定ソート)。
 
-PR Preview モードも同様に、`git diff main...HEAD` の出力をファイルパスでアルファベット順に並び替えてから diff2html に渡す。
+PR Preview モードも同様に、`git diff main...HEAD` の出力をファイルパスで自然順に並び替えてから diff2html に渡す。
+
+比較ルール・共通ヘルパは [../aspects/sort-order.md](../aspects/sort-order.md) を参照。
 
 ## 追加制約
 

@@ -8,10 +8,11 @@ derived_from:
 syncs_with:
   - docs/specs/sessions/filer.md
   - docs/specs/aspects/keybindings.md
+  - docs/specs/aspects/sort-order.md
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-29
+last_updated: 2026-05-03
 ---
 
 # Tool 仕様: Filer
@@ -43,16 +44,10 @@ Session 内部状態は [sessions/filer.md](../sessions/filer.md) を参照。
 
 各ディレクトリ直下のエントリは、**ファイル/ディレクトリを区別せず名前順で混在表示する** (issue #122)。
 
-### ルール
+比較ルール・共通ヘルパは [aspects/sort-order.md](../aspects/sort-order.md) に集約 (Finder 互換の `String.localizedStandardCompare`)。
+Filer の表示順がワークスペース全体 (Git / Kit 等) の List UI のソート基準となる。
 
-- 比較関数: `String.localizedStandardCompare` (Finder と同じ自然順比較)
-  - 大文字小文字を区別しない
-  - 数字を含む名前を数値として扱う (例: `file2` < `file10`)
-  - ロケール依存の自然順 (日本語の濁点・半濁点や記号も Finder と同等の並び)
-- 昇順固定 (降順切替は持たない)
-- ファイル/ディレクトリの種別はソートキーに含めない (混在配置)
-
-### 適用範囲
+### Filer 固有の適用範囲
 
 - ルート展開時・ディレクトリ展開時の通常表示
 - [searchByName](#searchbyname--ファイル名ディレクトリ名のインクリメンタル検索) のフィルタ結果も同じ比較で並べる
@@ -60,7 +55,7 @@ Session 内部状態は [sessions/filer.md](../sessions/filer.md) を参照。
 
 ### 実装箇所
 
-- `Services/Filer/FileTreeLoader.swift` の `load(directory:parent:)` — 子エントリ取得直後に `localizedStandardCompare` でソート
+- `Services/Filer/FileTreeLoader.swift` の `load(directory:parent:)` — 子エントリ取得直後に `String.naturalAscending` でソート
 
 ---
 

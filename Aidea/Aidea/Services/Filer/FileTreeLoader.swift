@@ -49,9 +49,8 @@ enum FileTreeLoader {
             return FileTreeNode(url: childURL, isDirectory: isDir, parent: parent, isSymbolicLink: isSymlink)
         }
         // ファイル/ディレクトリを区別せず名前順 (Finder 互換の自然順、issue #122)
-        return nodes.sorted { lhs, rhs in
-            lhs.name.localizedStandardCompare(rhs.name) == .orderedAscending
-        }
+        // 共通ソート規約: docs/specs/aspects/sort-order.md
+        return nodes.sorted { $0.name.naturalAscending($1.name) }
     }
 
     /// FileTreeNode に対応する SF Symbols 名を返す
