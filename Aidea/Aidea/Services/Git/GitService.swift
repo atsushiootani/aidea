@@ -106,9 +106,10 @@ enum GitService {
         return result
     }
 
-    /// main との全 diff
+    /// main との全 diff。Git パネルと同じアルファベット順で返す。
     static func diffMain(cwd: URL) throws -> String {
-        try run(["diff", "main...HEAD"], cwd: cwd)
+        let diff = try run(["diff", "main...HEAD"], cwd: cwd)
+        return sortDiffByPath(diff)
     }
 
     /// ワーキングツリーの変更ファイル一覧 (unstaged)

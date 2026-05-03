@@ -12,7 +12,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-01
+last_updated: 2026-05-03
 ---
 
 # Session 内部状態: GitDiff
@@ -54,7 +54,7 @@ Working Changes モードで全ファイルを表示するとき、**Git パネ�
 ファイルパスでアルファベット順に並び替えてから diff2html に渡す。
 同一ファイルに staged と unstaged の両セクションがある場合は staged を先に表示する。
 
-PR Preview モードは `git diff main...HEAD` が既にアルファベット順で返すため並び替え不要。
+PR Preview モードも同様に、`git diff main...HEAD` の出力をファイルパスでアルファベット順に並び替えてから diff2html に渡す。
 
 ## 追加制約
 
