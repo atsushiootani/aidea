@@ -38,7 +38,7 @@ struct AideaApp: App {
         // 起動時に snapshot を読み込んで適用する。読み込めない場合 (Bundle テンプレも失敗) は
         // 緊急フォールバックとして最小レイアウト + ミニマルコンパニオン枠で継続起動する。
         if let snapshot = manager.load(projectRoot: ws.projectRoot) {
-            manager.apply(snapshot, to: lay, registry: reg, companionStore: companions, speechQueue: speech.queue)
+            manager.apply(snapshot, to: lay, registry: reg, companionStore: companions, speechQueue: speech.queue, projectRoot: ws.projectRoot)
         } else {
             NSLog("[Aidea] Bundle default-workspace.json も読込失敗。緊急フォールバックを適用")
             lay.root = LayoutConfig.fallbackRoot()

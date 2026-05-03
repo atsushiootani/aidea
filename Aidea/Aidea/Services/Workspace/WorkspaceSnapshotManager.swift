@@ -374,9 +374,13 @@ final class WorkspaceSnapshotManager {
 
     // MARK: - Apply
 
-    /// スナップショットを layout / registry に適用する
+    /// スナップショットを layout / registry に適用する。
+    /// `projectRoot` が渡された場合、最後に `CompanionRosterWriter.writeRoster` で
+    /// `.aidea/claude/aidea.md` のコンパニオン名簿セクションを最新の name で書き換える
+    /// (詳細: docs/specs/backchannels/companion-roster.md)。
     func apply(_ snapshot: WorkspaceSnapshot, to layout: LayoutConfig, registry: SessionRegistry,
-                companionStore: CompanionStore? = nil, speechQueue: SpeechQueue? = nil) {
+                companionStore: CompanionStore? = nil, speechQueue: SpeechQueue? = nil,
+                projectRoot: URL? = nil) {
         // レイアウトツリーを復元
         layout.root = buildLayoutNode(from: snapshot.layout.tree)
 
@@ -435,6 +439,12 @@ final class WorkspaceSnapshotManager {
             registry.setActiveTab(paneID: activePID)
         } else if let firstPane = layout.allPanes.first {
             registry.setActiveTab(paneID: firstPane.id)
+        }
+
+        // .aidea/claude/aidea.md のコンパニオン名簿セクションを最新の name に同期する
+        // (aidea.md が不在なら no-op、内容が同一なら書き込みスキップ)
+        if let projectRoot, let companions = companionStore?.companions {
+            CompanionRosterWriter.writeRoster(projectRoot: projectRoot, companions: companions)
         }
     }
 
