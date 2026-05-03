@@ -19,6 +19,7 @@ struct AideaApp: App {
     @State private var companionStore: CompanionStore
     @State private var recommendState: RecommendState
     @State private var handoffState: HandoffState
+    @State private var pomodoroState: PomodoroState
     /// Ctrl+Tab で起動する Active Session Switcher (Window レベル singleton)
     @State private var sessionSwitcher = ActiveSessionSwitcher()
     /// Cmd+T のツール選択メニューを各ペインの「+」ボタン直下に表示するためのアンカー管理
@@ -54,6 +55,22 @@ struct AideaApp: App {
             }
         }
 
+        // ポモドーロタイマーは init 時点で onPhaseTransition を組み立てて
+        // 自動フェーズ遷移時に concier 役 (companionIndex = 6) で読み上げる。
+        // SpeechState が OFF / VOICEVOX 未起動なら voicevox.md のルールに従いスキップ。
+        let pomodoro = PomodoroState()
+        pomodoro.onPhaseTransition = { newPhase in
+            guard speech.isEnabled else { return }
+            let text: String
+            switch newPhase {
+            case .focus:
+                text = "休憩終わりです。次の集中タイム始めましょう"
+            case .rest:
+                text = "集中タイム終わりです。5 分休憩しましょう"
+            }
+            speech.queue.enqueue(text, speakerId: nil, companionIndex: 6)
+        }
+
         _workspace = State(initialValue: ws)
         _layout = State(initialValue: lay)
         _registry = State(initialValue: reg)
@@ -62,6 +79,7 @@ struct AideaApp: App {
         _companionStore = State(initialValue: companions)
         _recommendState = State(initialValue: recommend)
         _handoffState = State(initialValue: handoff)
+        _pomodoroState = State(initialValue: pomodoro)
     }
 
     var body: some Scene {
@@ -74,6 +92,7 @@ struct AideaApp: App {
                 .environment(companionStore)
                 .environment(recommendState)
                 .environment(handoffState)
+                .environment(pomodoroState)
                 .environment(tabPickerAnchor)
                 .onAppear {
                     registerTerminationObserver()
@@ -91,6 +110,7 @@ struct AideaApp: App {
             }
             tabMenu
             toolMenu
+            pomodoroMenu
             CommandMenu("Aidea") {
                 Button("読み上げ ON/OFF") {
                     speechState.toggle()
@@ -156,6 +176,17 @@ struct AideaApp: App {
                 Button("Companion \(index + 1)") { activateCompanion(index: index) }
                     .keyboardShortcut(KeyEquivalent(Character(String(index + 1))), modifiers: [.command])
             }
+        }
+    }
+
+    /// ポモドーロタイマーメニュー (docs/specs/widgets/pomodoro.md)
+    @CommandsBuilder
+    private var pomodoroMenu: some Commands {
+        CommandMenu("ポモドーロ") {
+            Button("開始 / 一時停止") { pomodoroState.toggleRun() }
+                .keyboardShortcut("p", modifiers: [.command, .option])
+            Button("リセット") { pomodoroState.reset() }
+                .keyboardShortcut("p", modifiers: [.command, .option, .shift])
         }
     }
 
