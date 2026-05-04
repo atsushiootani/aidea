@@ -13,7 +13,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-01
+last_updated: 2026-05-04
 ---
 
 # Tool 仕様: Preview
@@ -110,6 +110,16 @@ Markdown は `MarkdownContainer` で **view / edit の 2 モード**を扱う。
 
 - `MarkdownContainer` — Markdown 表示時の右上フローティングボタン
 - `PreviewSessionView` — テキストファイル表示時の翻訳ボタン
+
+### autoReload — 外部変更の自動再読み込み
+
+プレビュー表示中のファイルが外部 (Claude など) によって変更されたとき、プレビュー表示を自動的に更新する。
+
+- ファイルの変更は **FSEvents** で検知する (実装: 既存の `FileWatcher` を流用)
+- 変更を検知したら直ちにファイルを再読み込みしてプレビューを更新する
+- **編集モード中は更新しない**: `MarkdownContainer` が edit モードのときはスキップし、view モードに戻ったタイミングで反映される
+- 対象: Markdown (`MarkdownContainer` の view モード) とテキスト / 画像ファイル (`NSTextPreview` / `NSImage`)
+- Drawio ファイルは対象外 (embed.diagrams.net のエディタが外部状態を持つため)
 
 ### tabHoverTooltip — タブホバー時のフルパス表示
 

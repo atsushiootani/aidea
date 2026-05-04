@@ -26,6 +26,10 @@ struct MarkdownContainer: View {
     @State private var isTranslating: Bool = false
     @State private var isEnglish: Bool = false
     @State private var hasCachedTranslation: Bool = false
+    @State private var fileWatcher = FileWatcher()
+    /// FSEvents で外部変更が検知されるたびにインクリメントされるカウンタ。
+    /// .onChange でトリガーし、view モードのときだけ再読み込みする。
+    @State private var fileChangedTick: Int = 0
     /// view モード (純 SwiftUI MarkdownPreview) がアクティブなときに SwiftUI から firstResponder を取るためのフラグ。
     /// state.isActive と onChange で同期する。
     @FocusState private var isFocused: Bool
@@ -50,7 +54,18 @@ struct MarkdownContainer: View {
             toolbar
         }
         .task(id: url) {
+            fileWatcher.stop()
+            let watchedURL = url
+            fileWatcher.start(path: url.deletingLastPathComponent().path) { paths in
+                if paths.contains(watchedURL.path) {
+                    fileChangedTick += 1
+                }
+            }
             await reload()
+        }
+        .onChange(of: fileChangedTick) { _, _ in
+            guard mode == .view else { return }
+            Task { await reload() }
         }
         // Session アクティブ状態を SwiftUI の @FocusState に同期する (view モード用)。
         // Kit と同じく「active のときだけ true を立てる」片方向同期にする (false 代入は SwiftUI に任せる)。
