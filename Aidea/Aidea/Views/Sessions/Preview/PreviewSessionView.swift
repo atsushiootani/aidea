@@ -17,6 +17,10 @@ struct PreviewSessionView: View {
     @State private var isEnglishText: Bool = false
     @State private var isTranslating: Bool = false
     @State private var hasCachedTranslation: Bool = false
+    @State private var fileWatcher = FileWatcher()
+    /// FSEvents で外部変更が検知されるたびにインクリメントされるカウンタ。
+    /// テキスト / 画像ファイル表示時のみ使用 (Markdown / drawio は各コンテナが管理)。
+    @State private var fileChangedTick: Int = 0
 
     nonisolated private static let maxFileSize: Int = 1_000_000
     nonisolated private static let binarySniffSize: Int = 8192
@@ -73,6 +77,15 @@ struct PreviewSessionView: View {
             // weak ref が自動で nil になる。
             // 純 SwiftUI コンテンツ (markdown view / image) は @FocusState + state.isActive で
             // 独立にフォーカスを取るため、bridge の状態は影響しない。
+            fileWatcher.stop()
+            if let url = state.url, !isMarkdownURL(url), !isDrawioURL(url) {
+                let watchedURL = url
+                fileWatcher.start(path: url.deletingLastPathComponent().path) { paths in
+                    if paths.contains(watchedURL.path) {
+                        fileChangedTick += 1
+                    }
+                }
+            }
             isEnglishText = false
             await loadPreview(for: state.url)
             // テキストの場合は英語判定 + キャッシュ確認
@@ -89,6 +102,9 @@ struct PreviewSessionView: View {
             if registry.activeSessionID == sessionID {
                 registry.reactivateCurrentSession()
             }
+        }
+        .onChange(of: fileChangedTick) { _, _ in
+            Task { await loadPreview(for: state.url, forceReload: true) }
         }
     }
 
@@ -155,14 +171,15 @@ struct PreviewSessionView: View {
         }
     }
 
-    /// 非同期でファイルを読み込んで preview を更新する
-    private func loadPreview(for url: URL?) async {
+    /// 非同期でファイルを読み込んで preview を更新する。
+    /// forceReload が true のときは URL が同じでもテキストキャッシュをスキップして再読み込みする。
+    private func loadPreview(for url: URL?, forceReload: Bool = false) async {
         guard let url = url else {
             preview = .empty
             loadedURL = nil
             return
         }
-        if loadedURL == url, case .text = preview { return }
+        if !forceReload, loadedURL == url, case .text = preview { return }
         preview = .loading
         loadedURL = url
 
