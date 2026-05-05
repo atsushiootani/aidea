@@ -58,10 +58,10 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 
 | サービス | 用途 |
 |---|---|
-| `com.aidea.anthropic-api-key` | Anthropic API キー (翻訳機能で使用) |
+| `com.aidea.anthropic-api-key` | Anthropic API キー (翻訳・ディレクトリ概要生成機能で使用) |
 
 管理: `Utilities/KeychainHelper.swift` (`save` / `load` / `delete`)
-利用: `Services/Translation/ClaudeTranslator.swift`
+利用: `Services/Translation/ClaudeTranslator.swift` / `Services/Filer/DirectorySummaryService.swift`
 
 ### Bundle Resources (`Aidea/Resources/`)
 

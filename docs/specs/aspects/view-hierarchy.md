@@ -246,7 +246,7 @@ SessionRegistry.view(for: id)                     [Sessions/SessionRegistry.swif
 
 | Tool | 本体 View (ファイル) | 内側の構造 |
 |---|---|---|
-| `filer` | `FilerSessionView` (`Sessions/Filer/FilerSessionView.swift`) | `NSViewControllerRepresentable` → `FileTreeViewController` の `NSStackView { searchField, NSScrollView { NSOutlineView } }` |
+| `filer` | `FilerSessionView` (`Sessions/Filer/FilerSessionView.swift`) | `NSViewControllerRepresentable` → `FileTreeViewController` の `NSStackView { searchField, NSScrollView { NSOutlineView }, summaryLabel }` |
 | `kit` | `KitSessionView` (`Sessions/Kit/KitSessionView.swift`) | `ScrollView` → `LazyVStack(pinnedViews: [.sectionHeaders])` の 4 セクション (Agents / Skills / Commands / MCP Servers) |
 | `terminal` | `TerminalSessionView` (`Sessions/Terminal/TerminalSessionView.swift`) | `NSViewRepresentable` → `PersistentTerminalView` (SwiftTerm `LocalProcessTerminalView`) |
 | `claude` | `ClaudeSessionView` (`Sessions/Claude/ClaudeSessionView.swift`) | `NSViewRepresentable` → `PersistentTerminalView` (Terminal と共用) |
