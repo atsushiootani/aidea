@@ -172,15 +172,7 @@ struct MarkdownPreview: View {
             Text(.init(text))
                 .frame(maxWidth: .infinity, alignment: .leading)
         case .frontmatter(let text):
-            Text(text)
-                .font(.system(.caption, design: .monospaced))
-                .foregroundStyle(.secondary)
-                .padding(8)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(Color.secondary.opacity(0.08))
-                )
+            FrontmatterView(text: text, baseURL: baseURL, onLinkTap: onLinkTap)
         case .divider:
             Divider().padding(.vertical, 2)
         case .blank:
@@ -517,6 +509,116 @@ struct MarkdownPreview: View {
             return (true, String(content.dropFirst(4)))
         }
         return nil
+    }
+}
+
+/// YAML frontmatter の 1 行を表す中間表現。
+private enum FrontmatterLineContent {
+    case plain(String)
+    case withLink(prefix: String, path: String, resolvedURL: URL)
+}
+
+/// YAML frontmatter ブロックを行ごとにレンダリングする View。
+/// ファイルパスと判定された値はクリック可能なリンクとして表示し、タップで隣タブに開く。
+private struct FrontmatterView: View {
+    let text: String
+    let baseURL: URL?
+    let onLinkTap: ((URL) -> Void)?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            ForEach(Array(parsedLines.enumerated()), id: \.offset) { pair in
+                FrontmatterLineView(content: pair.element, onLinkTap: onLinkTap)
+            }
+        }
+        .padding(8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 4)
+                .fill(Color.secondary.opacity(0.08))
+        )
+    }
+
+    private var parsedLines: [FrontmatterLineContent] {
+        text.split(separator: "\n", omittingEmptySubsequences: false)
+            .map(String.init)
+            .map { parseLine($0) }
+    }
+
+    private func parseLine(_ line: String) -> FrontmatterLineContent {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        let indent = String(line.prefix(while: { $0 == " " }))
+
+        // "  - value" 形式 (YAML 配列項目)
+        if trimmed.hasPrefix("- ") {
+            let value = String(trimmed.dropFirst(2)).trimmingCharacters(in: .whitespaces)
+            if looksLikeFilePath(value), let url = resolveURL(value) {
+                return .withLink(prefix: indent + "- ", path: value, resolvedURL: url)
+            }
+        } else if let colonIndex = trimmed.firstIndex(of: ":") {
+            // "key: value" 形式
+            let rest = trimmed[trimmed.index(after: colonIndex)...]
+            let afterColon = String(rest).trimmingCharacters(in: .whitespaces)
+            if looksLikeFilePath(afterColon), let url = resolveURL(afterColon) {
+                let key = String(trimmed[..<colonIndex])
+                return .withLink(prefix: indent + key + ": ", path: afterColon, resolvedURL: url)
+            }
+        }
+        return .plain(line)
+    }
+
+    private func looksLikeFilePath(_ value: String) -> Bool {
+        guard !value.isEmpty else { return false }
+        guard !value.hasPrefix("http"), !value.hasPrefix("["), !value.hasPrefix("{") else { return false }
+        return value.contains("/")
+    }
+
+    private func resolveURL(_ path: String) -> URL? {
+        guard let base = baseURL else { return nil }
+        let fm = FileManager.default
+        // ファイルの親ディレクトリから相対パスを試みる
+        let direct = base.appendingPathComponent(path).standardizedFileURL
+        if fm.fileExists(atPath: direct.path) { return direct }
+        // 親ディレクトリをさかのぼって探す (上限 10 段)
+        var dir = base
+        for _ in 0..<10 {
+            let parent = dir.deletingLastPathComponent()
+            guard parent != dir else { break }
+            dir = parent
+            let candidate = dir.appendingPathComponent(path).standardizedFileURL
+            if fm.fileExists(atPath: candidate.path) { return candidate }
+        }
+        return nil
+    }
+}
+
+/// frontmatter の 1 行を表示する View。
+private struct FrontmatterLineView: View {
+    let content: FrontmatterLineContent
+    let onLinkTap: ((URL) -> Void)?
+
+    var body: some View {
+        switch content {
+        case .plain(let text):
+            Text(text)
+                .font(.system(.body, design: .monospaced))
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        case .withLink(let prefix, let path, let resolvedURL):
+            HStack(spacing: 0) {
+                Text(prefix)
+                    .font(.system(.body, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                Button(path) {
+                    onLinkTap?(resolvedURL)
+                }
+                .buttonStyle(.plain)
+                .font(.system(.body, design: .monospaced))
+                .foregroundStyle(Color.accentColor)
+                .underline()
+                Spacer(minLength: 0)
+            }
+        }
     }
 }
 
