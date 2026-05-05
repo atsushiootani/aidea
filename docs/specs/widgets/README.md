@@ -45,13 +45,13 @@ AppHeaderView
    ├─ speechToggleButton     ※既存 (読み上げ ON/OFF)
    ├─ Spacer                 ※既存
    └─ WidgetView             ★新規 (右端の widget 集約コンテナ)
-      ├─ TimerView           (ポモドーロ → widgets/pomodoro.md)
       ├─ QuickMemoButton     (クイックメモ → widgets/quick-memo.md)
+      ├─ TimerView           (ポモドーロ → widgets/pomodoro.md)
       └─ …                   (今後追加される widget はここに並ぶ)
 ```
 
 - `WidgetView` は `CompanionView` と兄弟。`Spacer` の後ろ (= 右端) に置く
-- 各 widget は `WidgetView` の子としてヘッダ右端にインライン表示する。操作 UI は popover ではなくヘッダ上に常時並べる
+- 各 widget は `WidgetView` の子としてヘッダ右端に並べる。**常時ステータスを表示する** widget (タイマーなど) は操作 UI をヘッダ上にインライン表示する。**入力トリガー型** widget (クイックメモなど) はアイコンボタン + popover の形式を採る
 - 個別 widget を追加 / 削除したら [../aspects/view-hierarchy.md](../aspects/view-hierarchy.md) の AppHeaderView 階層図も同時に更新する
 
 ヘッダ全体の構成は [../backchannels/voicevox.md#ui-appheaderview](../backchannels/voicevox.md#ui-appheaderview) も参照。
