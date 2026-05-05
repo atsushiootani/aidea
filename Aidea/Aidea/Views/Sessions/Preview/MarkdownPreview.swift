@@ -527,13 +527,15 @@ private struct CodeBlockView: View {
     let language: String
     let onRunScript: ((String) -> Void)?
 
-    private static func isShellLanguage(_ lang: String) -> Bool {
-        ["bash", "sh", "shell", "zsh", "fish", "ksh", "csh", "tcsh"].contains(lang)
+    private var isShell: Bool {
+        ["bash", "sh", "shell", "zsh", "fish", "ksh", "csh", "tcsh"].contains(language)
+    }
+
+    private var trailingPadding: CGFloat {
+        isShell && onRunScript != nil ? 36 : 8
     }
 
     var body: some View {
-        let isShell = Self.isShellLanguage(language)
-        let trailingPad: CGFloat = isShell && onRunScript != nil ? 36 : 8
         ZStack(alignment: .topTrailing) {
             Text(text)
                 .font(.system(.callout, design: .monospaced))
@@ -541,7 +543,7 @@ private struct CodeBlockView: View {
                 .padding(.top, 8)
                 .padding(.bottom, 8)
                 .padding(.leading, 8)
-                .padding(.trailing, trailingPad)
+                .padding(.trailing, trailingPadding)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(
                     RoundedRectangle(cornerRadius: 4)
