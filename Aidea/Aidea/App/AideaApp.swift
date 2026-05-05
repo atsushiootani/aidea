@@ -19,6 +19,7 @@ struct AideaApp: App {
     @State private var companionStore: CompanionStore
     @State private var recommendState: RecommendState
     @State private var handoffState: HandoffState
+    @State private var outputState: OutputState
     @State private var pomodoroState: PomodoroState
     /// Ctrl+Tab で起動する Active Session Switcher (Window レベル singleton)
     @State private var sessionSwitcher = ActiveSessionSwitcher()
@@ -33,6 +34,7 @@ struct AideaApp: App {
         let companions = CompanionStore()
         let recommend = RecommendState()
         let handoff = HandoffState()
+        let output = OutputState()
         let manager = WorkspaceSnapshotManager()
 
         // 起動時に snapshot を読み込んで適用する。読み込めない場合 (Bundle テンプレも失敗) は
@@ -79,6 +81,7 @@ struct AideaApp: App {
         _companionStore = State(initialValue: companions)
         _recommendState = State(initialValue: recommend)
         _handoffState = State(initialValue: handoff)
+        _outputState = State(initialValue: output)
         _pomodoroState = State(initialValue: pomodoro)
     }
 
@@ -92,6 +95,7 @@ struct AideaApp: App {
                 .environment(companionStore)
                 .environment(recommendState)
                 .environment(handoffState)
+                .environment(outputState)
                 .environment(pomodoroState)
                 .environment(tabPickerAnchor)
                 .onAppear {
@@ -99,6 +103,7 @@ struct AideaApp: App {
                     registerKeyEventMonitor()
                     sessionSwitcher.install(registry: registry, companionStore: companionStore)
                     startHandoff()
+                    startOutput()
                 }
                 .onOpenURL { url in
                     handleExternalOpen(url)
@@ -444,6 +449,14 @@ struct AideaApp: App {
         if let claudeState = session.state as? ClaudeSessionState {
             claudeState.sendMessageWhenReady(prompt)
         }
+    }
+
+    // MARK: - Output
+
+    /// OutputState の監視を開始する。projectRoot が未設定なら何もしない。
+    private func startOutput() {
+        guard let projectRoot = workspace.projectRoot else { return }
+        outputState.start(projectRoot: projectRoot)
     }
 
     // MARK: - Handoff

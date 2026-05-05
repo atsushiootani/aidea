@@ -8,6 +8,7 @@ derived_from:
 syncs_with:
   - docs/specs/backchannels/voicevox.md
   - docs/specs/backchannels/handoff.md
+  - docs/specs/backchannels/output.md
   - docs/specs/backchannels/companion-roster.md
   - docs/specs/aspects/persistence.md
   - docs/specs/companions/companion.md
@@ -15,7 +16,7 @@ impacts:
   - docs/specs/tools/claude.md
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-03
+last_updated: 2026-05-05
 ---
 
 # Backchannel 仕様
@@ -145,6 +146,7 @@ Aidea は `.aidea/backchannels/` ディレクトリを FSEvents で **再帰監�
 |-----------------|---------|---------|
 | `backchannels/<0..8>/speech-*.txt` | SpeechWatcher → VoicevoxService | [voicevox.md](./voicevox.md) |
 | `backchannels/<0..8>/handoff-*.json` | HandoffWatcher → HandoffDispatcher → (宛先の) ClaudeSessionState | [handoff.md](./handoff.md) |
+| `backchannels/<0..8>/output-*.txt` | OutputWatcher → OutputState | [output.md](./output.md) |
 
 ### ハンドラ通過条件
 
@@ -161,6 +163,7 @@ Aidea は `.aidea/backchannels/` ディレクトリを FSEvents で **再帰監�
 |------|-----------------|------|------|
 | **Speech** | `<n>/speech-{timestamp}.txt` | プレーンテキスト | VOICEVOX 読み上げ |
 | **Handoff** | `<n>/handoff-{timestamp}.json` | JSON | Companion 間タスク受け渡し ([handoff.md](./handoff.md)) |
+| **Output** | `<n>/output-{timestamp}.txt` | プレーンテキスト | レスポンス全文の出力記録 ([output.md](./output.md)) |
 | Notification | `<n>/notify-{timestamp}.txt` | プレーンテキスト | 通知バナー表示 |
 | Action | `<n>/action-{timestamp}.json` | JSON | UI 操作の指示 |
 | Status | `<n>/status.json` | JSON | Claude の作業状態表示 |
