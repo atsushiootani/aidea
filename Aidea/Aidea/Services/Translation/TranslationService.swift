@@ -7,16 +7,21 @@ import Foundation
 import AppKit
 
 /// 翻訳フロー全体を統括するサービス。
-/// 言語判定 → キャッシュ確認 → Claude API 翻訳 → キャッシュ保存 → URL 返却。
+/// 言語判定 → キャッシュ確認 → Claude API SSE 翻訳 → キャッシュ保存 → URL 返却。
 enum TranslationService {
 
     /// 翻訳結果のキャッシュ URL を返す。必要なら Claude API で翻訳してキャッシュを作る。
     /// - Parameters:
     ///   - originalURL: 翻訳元の英語ファイル URL
     ///   - projectRoot: プロジェクトルート
+    ///   - onProgress: チャンク受信ごとに呼ばれる進捗コールバック (累積文字数)。メインアクターで呼ばれる
     /// - Returns: キャッシュされた日本語訳ファイルの URL
     /// - Throws: API キー未設定、翻訳エラー等
-    static func translateIfNeeded(originalURL: URL, projectRoot: URL) async throws -> URL {
+    static func translateIfNeeded(
+        originalURL: URL,
+        projectRoot: URL,
+        onProgress: (@MainActor @Sendable (Int) -> Void)? = nil
+    ) async throws -> URL {
         guard let cachedURL = TranslationCache.cachedURL(for: originalURL, projectRoot: projectRoot) else {
             throw TranslationError.invalidResponse
         }
@@ -32,10 +37,29 @@ enum TranslationService {
             guard keySet else { throw TranslationError.apiKeyNotSet }
         }
 
-        // 翻訳実行
         let originalText = try String(contentsOf: originalURL, encoding: .utf8)
-        let translated = try await ClaudeTranslator.translate(originalText)
-        try TranslationCache.save(text: translated, to: cachedURL)
+
+        // キャッシュディレクトリを事前作成して FileWatcher が検知できる状態にする
+        let cacheDir = cachedURL.deletingLastPathComponent()
+        try FileManager.default.createDirectory(at: cacheDir, withIntermediateDirectories: true)
+
+        var accumulated = ""
+        do {
+            for try await chunk in ClaudeTranslator.translateStream(originalText) {
+                accumulated += chunk
+                // 累積テキストをキャッシュに書き込む (FileWatcher が sibling タブを逐次更新)
+                try accumulated.write(to: cachedURL, atomically: true, encoding: .utf8)
+                if let handler = onProgress {
+                    let count = accumulated.count
+                    await MainActor.run { handler(count) }
+                }
+            }
+        } catch {
+            // 部分的なキャッシュを残さないよう削除する
+            try? FileManager.default.removeItem(at: cachedURL)
+            throw error
+        }
+
         return cachedURL
     }
 

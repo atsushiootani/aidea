@@ -14,7 +14,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-04
+last_updated: 2026-05-05
 ---
 
 # Tool 仕様: Preview
@@ -88,10 +88,22 @@ Markdown は `MarkdownContainer` で **view / edit の 2 モード**を扱う。
 
 1. `LanguageDetector` が先頭 1000 文字をサンプルし英語と判定 → 右上に「日本語」ボタンを表示
 2. ボタン押下 → `TranslationService` が `TranslationCache` でキャッシュの有無と鮮度 (mtime 比較) を確認
-3. キャッシュが新鮮ならそのまま表示。古い or 無ければ Claude API で翻訳
-4. `ClaudeTranslator` が `claude-haiku-4-5-20251001` に翻訳リクエスト (Markdown 構造・コード識別子は保持)
-5. 翻訳結果を `.aidea/ja/<相対パス>/<filename>` に保存
-6. 翻訳版を sibling タブで開く (タイトルに「(日本語)」付与)
+3. キャッシュが新鮮ならそのまま表示。古い or 無ければ Claude API で SSE ストリーミング翻訳
+4. `ClaudeTranslator` が `claude-haiku-4-5-20251001` に `stream: true` でリクエスト送信 (Markdown 構造・コード識別子は保持)
+5. チャンク受信のたびに `.aidea/ja/<相対パス>/<filename>` へ累積テキストを書き込む
+6. 最初のチャンク受信時に sibling タブを開く → FileWatcher がその後の書き込みを検知して表示を逐次更新
+7. 翻訳完了 (ストリーム終端) 後にボタン状態を完了に更新する
+
+#### ストリーミング (SSE)
+
+- `URLSession.bytes(for:)` で行単位に SSE イベントを受信する (タイムアウト不要)
+- `data: {...}` 行のみ処理し、`type == "content_block_delta"` かつ `delta.type == "text_delta"` の `delta.text` を取り出す
+- エラー終了時はキャッシュファイルを削除して不完全なキャッシュを残さない
+
+#### 進捗 UI
+
+- 翻訳中はボタンラベルを「翻訳中... (N 文字)」に更新する (N = 累積受信文字数)
+- 最初のチャンク受信前は「翻訳中...」のみ表示
 
 #### API キー設定
 

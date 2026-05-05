@@ -24,6 +24,8 @@ struct MarkdownContainer: View {
     @State private var loadError: String?
     @State private var autoSaveTask: Task<Void, Never>?
     @State private var isTranslating: Bool = false
+    @State private var translatedChars: Int = 0
+    @State private var translationSiblingOpened: Bool = false
     @State private var isEnglish: Bool = false
     @State private var hasCachedTranslation: Bool = false
     @State private var fileWatcher = FileWatcher()
@@ -216,8 +218,13 @@ struct MarkdownContainer: View {
                     translateDocument()
                 } label: {
                     if isTranslating {
-                        Label("翻訳中...", systemImage: "hourglass")
-                            .labelStyle(.titleAndIcon)
+                        if translatedChars > 0 {
+                            Label("翻訳中... (\(translatedChars)文字)", systemImage: "hourglass")
+                                .labelStyle(.titleAndIcon)
+                        } else {
+                            Label("翻訳中...", systemImage: "hourglass")
+                                .labelStyle(.titleAndIcon)
+                        }
                     } else {
                         Label("日本語", systemImage: hasCachedTranslation
                               ? "character.book.closed.ja.fill"
@@ -278,29 +285,44 @@ struct MarkdownContainer: View {
         return TranslationCache.isFresh(original: url, cached: cached)
     }
 
-    /// Claude API で翻訳して隣タブに開く
+    /// Claude API で SSE ストリーミング翻訳して隣タブに開く
     private func translateDocument() {
         guard let projectRoot = workspace.projectRoot else { return }
+        guard let cachedURL = TranslationCache.cachedURL(for: url, projectRoot: projectRoot) else { return }
+
         isTranslating = true
+        translatedChars = 0
+        translationSiblingOpened = false
+
+        let fileName = url.deletingPathExtension().lastPathComponent
+
         Task {
             do {
-                let cachedURL = try await TranslationService.translateIfNeeded(
+                try await TranslationService.translateIfNeeded(
                     originalURL: url,
-                    projectRoot: projectRoot
+                    projectRoot: projectRoot,
+                    onProgress: { @MainActor chars in
+                        translatedChars = chars
+                        // 最初のチャンク受信時に sibling タブを開く (FileWatcher が以降の更新を反映)
+                        if chars > 0, !translationSiblingOpened {
+                            translationSiblingOpened = true
+                            registry.openPreviewAsSibling(for: cachedURL, title: "\(fileName) (日本語)")
+                        }
+                    }
                 )
-                await MainActor.run {
-                    isTranslating = false
-                    let fileName = url.deletingPathExtension().lastPathComponent
-                    registry.openPreviewAsSibling(
-                        for: cachedURL,
-                        title: "\(fileName) (日本語)"
-                    )
+                isTranslating = false
+                translatedChars = 0
+                hasCachedTranslation = true
+                // キャッシュが新鮮だった場合 (onProgress 未呼び出し) はここでタブを開く
+                if !translationSiblingOpened {
+                    registry.openPreviewAsSibling(for: cachedURL, title: "\(fileName) (日本語)")
                 }
+                translationSiblingOpened = false
             } catch {
-                await MainActor.run {
-                    isTranslating = false
-                    NSAlert(error: error).runModal()
-                }
+                isTranslating = false
+                translatedChars = 0
+                translationSiblingOpened = false
+                NSAlert(error: error).runModal()
             }
         }
     }
