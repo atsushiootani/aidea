@@ -3,9 +3,9 @@ title: Companion Speech 履歴ビュー
 description: Companion ごとの speech ファイル (.aidea/backchannels/<n>/speech-*.txt) を一覧表示するビュー仕様
 derived_from:
   - docs/specs/backchannels/voicevox.md
-  - docs/specs/companions/companion.md
 syncs_with:
-  - docs/specs/backchannels/voicevox.md
+  - docs/specs/companions/companion.md
+  - docs/specs/aspects/view-hierarchy.md
 impacts: []
 conventions:
   - docs/LAYOUT.md

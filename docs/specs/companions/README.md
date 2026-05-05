@@ -23,6 +23,7 @@ Aidea のヘッダに並ぶ **コンパニオン** (9 体のアイコン) とそ
 |---|---|
 | [companion.md](./companion.md) | コンパニオンの概念・`CompanionConfig` / `CompanionStore` の仕様・起動フロー |
 | [recommend-mode.md](./recommend-mode.md) | Cmd+Enter で起動するレコメンド選択 UI (`RecommendState` / `RecommendStore`) |
+| [speech-history.md](./speech-history.md) | CompanionEditView から開く speech 履歴ビュー (`SpeechHistoryView`) の仕様 |
 
 ## 関連
 

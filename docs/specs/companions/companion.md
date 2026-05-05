@@ -9,6 +9,7 @@ syncs_with:
   - docs/specs/companions/recommend-mode.md
   - docs/specs/companions/speech-history.md
   - docs/specs/aspects/persistence.md
+  - docs/specs/aspects/view-hierarchy.md
   - docs/specs/backchannels/backchannel.md
   - docs/specs/backchannels/companion-roster.md
   - docs/specs/backchannels/voicevox.md
@@ -17,7 +18,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-03
+last_updated: 2026-05-05
 ---
 
 # コンパニオン

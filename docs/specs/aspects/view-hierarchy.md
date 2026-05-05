@@ -9,13 +9,14 @@ syncs_with:
   - docs/specs/sessions/ui-rules.md
   - docs/specs/companions/companion.md
   - docs/specs/companions/recommend-mode.md
+  - docs/specs/companions/speech-history.md
   - docs/specs/widgets/*
   - docs/specs/window/active-session-switcher.md
 impacts: []
 conventions:
   - docs/LAYOUT.md
   - docs/specs/aspects/README.md
-last_updated: 2026-05-02
+last_updated: 2026-05-05
 ---
 
 # View 階層 (UI コンポーネント親子関係)
@@ -80,6 +81,7 @@ NSWindow (メインウィンドウ)
 | トリガ | View | 親 |
 |---|---|---|
 | Companion 名タップ | `CompanionEditView` (`Views/Companion/CompanionEditView.swift`) | `CompanionView` の `.sheet` |
+| CompanionEditView の「speech 履歴を見る」ボタン | `SpeechHistoryView` (`Views/Companion/SpeechHistoryView.swift`) | `CompanionEditView` の `.sheet` |
 | ScenePromptsEditorView の Companion アイコン | Popover (Companion ピッカー) | `ScenePromptsEditorView` (Session 下部) |
 
 ### トップダウンビュー
