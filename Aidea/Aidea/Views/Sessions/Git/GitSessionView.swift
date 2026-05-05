@@ -242,8 +242,33 @@ final class GitFileListViewController: NSViewController, NSOutlineViewDataSource
         }
         let isViewed = !node.isDirectory && isFileViewed(node.relativePath)
         let stat = node.isDirectory ? nil : fileStat(for: node.relativePath, isStaged: node.isStaged)
-        cell.configure(node: node, isViewed: isViewed, stat: stat)
+        let decoration = resolveDecoration(for: node)
+        cell.configure(node: node, isViewed: isViewed, stat: stat, decorationIcon: decoration.icon)
         return cell
+    }
+
+    func outlineView(_ outlineView: NSOutlineView, rowViewForItem item: Any) -> NSTableRowView? {
+        guard let node = item as? GitFileTreeNode else { return nil }
+        let decoration = resolveDecoration(for: node)
+        let row = DecorationRowView()
+        row.decorationBackground = DecorationColorPresets.appliedBackground(for: decoration.color)
+        return row
+    }
+
+    /// Filer のデコレーションルール (default + user) を使い、Git ファイルノードの装飾を解決する。
+    /// ディレクトリはユーザルールの色のみ、ファイルは default + user を合成する。
+    private func resolveDecoration(for node: GitFileTreeNode) -> DecorationMatcher.Resolved {
+        let filerState = state?.registry?.session(for: SessionID(.filer, instance: 0))?.state as? FilerSessionState
+        let userRules = filerState?.userDecorationRules ?? []
+        if node.isDirectory {
+            let matcher = DecorationMatcher(defaults: [], userRules: userRules)
+            return matcher.resolve(relativePath: node.relativePath)
+        }
+        let matcher = DecorationMatcher(
+            defaults: FilerSessionState.defaultDecorationRules,
+            userRules: userRules
+        )
+        return matcher.resolve(relativePath: node.relativePath)
     }
 
     func outlineViewSelectionDidChange(_ notification: Notification) {
@@ -382,7 +407,7 @@ final class GitFileCellView: NSTableCellView {
         ])
     }
 
-    func configure(node: GitFileTreeNode, isViewed: Bool, stat: (added: Int, deleted: Int)?) {
+    func configure(node: GitFileTreeNode, isViewed: Bool, stat: (added: Int, deleted: Int)?, decorationIcon: String?) {
         label.stringValue = node.name
         label.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
 
@@ -392,7 +417,12 @@ final class GitFileCellView: NSTableCellView {
             statLabel.stringValue = ""
             viewedLabel.stringValue = ""
         } else if let status = node.status {
-            icon.image = NSImage(systemSymbolName: status.iconName, accessibilityDescription: nil)
+            // ファイル種別アイコン (decoration 解決済み) を優先し、マッチなしならステータスアイコンにフォールバック
+            let iconName = decorationIcon ?? status.iconName
+            let image = NSImage(systemSymbolName: iconName, accessibilityDescription: nil)
+                ?? NSImage(named: iconName)
+            icon.image = image
+            // ステータスはアイコンの tint 色で識別 (アイコン形状に依存しない)
             switch status {
             case .modified:  icon.contentTintColor = .systemOrange
             case .added:     icon.contentTintColor = .systemGreen
