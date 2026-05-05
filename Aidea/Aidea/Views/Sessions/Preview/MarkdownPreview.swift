@@ -196,21 +196,23 @@ struct MarkdownPreview: View {
                     RoundedRectangle(cornerRadius: 4)
                         .fill(Color.secondary.opacity(0.12))
                 )
-            if isShell, let run = onRunScript {
-                Button {
-                    run(text)
-                } label: {
-                    Image(systemName: "play.fill")
-                        .font(.system(size: 10))
-                        .foregroundStyle(.secondary)
-                        .padding(5)
-                        .background(
-                            RoundedRectangle(cornerRadius: 4)
-                                .fill(Color.secondary.opacity(0.15))
-                        )
+            if isShell {
+                if let run = onRunScript {
+                    Button {
+                        run(text)
+                    } label: {
+                        Image(systemName: "play.fill")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
+                            .padding(5)
+                            .background(
+                                RoundedRectangle(cornerRadius: 4)
+                                    .fill(Color.secondary.opacity(0.15))
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .padding(4)
                 }
-                .buttonStyle(.plain)
-                .padding(4)
             }
         }
     }
