@@ -11,10 +11,11 @@ syncs_with:
   - docs/specs/sessions/git-diff.md
   - docs/specs/aspects/keybindings.md
   - docs/specs/aspects/sort-order.md
+  - docs/specs/tools/filer.md
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-03
+last_updated: 2026-05-05
 ---
 
 # Tool 仕様: Git
@@ -58,16 +59,15 @@ Session 内部状態は [sessions/git.md](../sessions/git.md) / [sessions/git-di
 - **変更のあるファイルだけ**を表示 (変更のないファイル/ディレクトリは非表示)
 - 変更ディレクトリは変更ファイルを祖先に持つものだけ展開可能
 - **並び順**: 各階層は Filer と同じ Finder 互換自然順 (ファイル/ディレクトリを区別せず混在)。詳細は [aspects/sort-order.md](../aspects/sort-order.md) を参照
-- 各ファイルにステータスアイコン/バッジ:
-  - `M` (Modified) — 変更
-  - `A` (Added) — 新規
-  - `D` (Deleted) — 削除
-  - `R` (Renamed) — リネーム
-- SF Symbols + 色でステータスを区別:
-  - Modified: `pencil.circle` (黄色)
-  - Added: `plus.circle` (緑)
-  - Deleted: `minus.circle` (赤)
-  - Renamed: `arrow.right.circle` (青)
+- **デコレーション**: Filer と同じデコレーションルール (`FilerSessionState.defaultDecorationRules` + `userDecorationRules`) を適用する
+  - **ファイルアイコン**: デコレーションルールが解決したファイル種別アイコン (`.swift` → `swift`、`.md` → `doc.text` 等)。マッチするルールがない場合はステータスアイコンにフォールバック
+  - **ディレクトリアイコン**: `folder.fill` (固定)
+  - **行背景色**: デコレーションルールで指定した背景色 (Filer と同じ `alpha 0.2`)。選択中は AppKit 標準ハイライトが優先
+- Git ステータスはアイコンの **tint 色**で区別 (アイコン形状に関わらず一貫して適用):
+  - Modified: 橙 (`systemOrange`)
+  - Added / Untracked: 緑 (`systemGreen`)
+  - Deleted: 赤 (`systemRed`)
+  - Renamed: 青 (`systemBlue`)
 - ファイルごとに変更行数 `+N -M` を右端に表示する:
   - ステージ済みファイル: ステージ差分のみの行数 (`git diff --cached --numstat`)
   - 未ステージファイル: 未ステージ差分のみの行数 (`git diff --numstat`)
