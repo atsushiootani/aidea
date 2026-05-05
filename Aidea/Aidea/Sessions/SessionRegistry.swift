@@ -312,8 +312,7 @@ final class SessionRegistry {
             guard let session = session(for: id),
                   let termState = session.state as? TerminalSessionState else { continue }
             activateSession(id)
-            let bytes = Array((command + "\n").utf8)
-            termState.terminalView.send(bytes[...])
+            termState.terminalView.send(txt: command + "\n")
             return
         }
         // 既存ターミナルなし: 呼び出し元ペイン以外に新規作成
@@ -342,8 +341,7 @@ final class SessionRegistry {
             // terminalView にアクセスして PTY を起動
             _ = termState.terminalView
             try? await Task.sleep(nanoseconds: 800_000_000)
-            let bytes = Array((command + "\n").utf8)
-            termState.terminalView.send(bytes[...])
+            termState.terminalView.send(txt: command + "\n")
         }
     }
 
