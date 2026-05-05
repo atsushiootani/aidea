@@ -21,7 +21,7 @@ impacts: []
 conventions:
   - docs/LAYOUT.md
   - docs/specs/aspects/README.md
-last_updated: 2026-05-02
+last_updated: 2026-05-05
 ---
 
 # キー操作・マウス操作一覧
@@ -187,6 +187,7 @@ Aidea の全キーボードショートカットとマウス操作のリファ�
 | ← / → | フォーカスファイルの水平スクロール |
 | Space | フォーカスファイルの Viewed チェックボックスをトグル |
 | Tab | Git ツールにフォーカス移動 |
+| Enter | フォーカスファイルを Preview で開く |
 
 ### フォーカスファイル
 

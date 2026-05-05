@@ -13,7 +13,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-03
+last_updated: 2026-05-05
 ---
 
 # Session 内部状態: GitDiff
@@ -58,6 +58,14 @@ Working Changes モードで全ファイルを表示するとき、**Git パネ�
 PR Preview モードも同様に、`git diff main...HEAD` の出力をファイルパスで自然順に並び替えてから diff2html に渡す。
 
 比較ルール・共通ヘルパは [../aspects/sort-order.md](../aspects/sort-order.md) を参照。
+
+## プレビュージャンプ
+
+`focusedFile` が設定されている状態で **Enter** を押すと、対象ファイルを `SessionRegistry.openPreview(for:)` で Preview タブに開く。
+
+- `workspace.projectRoot` と `focusedFile` からフルパス URL を構築する
+- ファイルが存在しない場合 (削除済み・リネーム後の旧パス等) は何もしない
+- Preview の開き先ペインは `openPreview` の通常ルーティング (opposite pane / dedupe) に従う
 
 ## 追加制約
 

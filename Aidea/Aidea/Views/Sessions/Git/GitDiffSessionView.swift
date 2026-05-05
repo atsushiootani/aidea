@@ -10,9 +10,13 @@ import WebKit
 /// Tab キーで Git ツールに戻り、左右キーで水平スクロールする WKWebView
 final class GitDiffWebView: WKWebView {
     var onTabPressed: (() -> Void)?
+    var onOpenPreview: (() -> Void)?
 
     override func keyDown(with event: NSEvent) {
         switch event.keyCode {
+        case 36: // Return - フォーカスファイルを Preview で開く
+            onOpenPreview?()
+            return
         case 48: // Tab
             onTabPressed?()
             return
@@ -110,6 +114,15 @@ struct GitDiffSessionView: NSViewRepresentable {
                     return
                 }
             }
+        }
+        // Enter でフォーカスファイルを Preview で開く
+        webView.onOpenPreview = {
+            guard let registry = diffState.registry,
+                  let filePath = diffState.focusedFile,
+                  let root = diffState.workspace.projectRoot else { return }
+            let url = root.appendingPathComponent(filePath)
+            guard FileManager.default.fileExists(atPath: url.path) else { return }
+            registry.openPreview(for: url)
         }
         return webView
     }
