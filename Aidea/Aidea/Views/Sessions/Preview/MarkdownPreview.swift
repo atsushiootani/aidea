@@ -156,6 +156,8 @@ struct MarkdownPreview: View {
                 Spacer(minLength: 0)
             }
             .padding(.leading, CGFloat(indent) * 16)
+        case .mermaid(let source):
+            MermaidView(diagram: source)
         case .code(let text):
             Text(text)
                 .font(.system(.callout, design: .monospaced))
@@ -335,6 +337,7 @@ struct MarkdownPreview: View {
         var result: [MarkdownLine] = []
         var inCodeBlock = false
         var codeBuffer: [String] = []
+        var isMermaidBlock = false
         var inFrontmatter = false
         var frontmatterBuffer: [String] = []
 
@@ -365,10 +368,15 @@ struct MarkdownPreview: View {
             // コードブロック (``` で開閉)
             if raw.trimmingCharacters(in: .whitespaces).hasPrefix("```") {
                 if inCodeBlock {
-                    result.append(.code(codeBuffer.joined(separator: "\n")))
+                    let content = codeBuffer.joined(separator: "\n")
+                    result.append(isMermaidBlock ? .mermaid(content) : .code(content))
                     codeBuffer = []
                     inCodeBlock = false
+                    isMermaidBlock = false
                 } else {
+                    let lang = String(raw.trimmingCharacters(in: .whitespaces).dropFirst(3))
+                        .trimmingCharacters(in: .whitespaces).lowercased()
+                    isMermaidBlock = lang == "mermaid"
                     inCodeBlock = true
                 }
                 i += 1
@@ -451,7 +459,8 @@ struct MarkdownPreview: View {
         }
 
         if !codeBuffer.isEmpty {
-            result.append(.code(codeBuffer.joined(separator: "\n")))
+            let content = codeBuffer.joined(separator: "\n")
+            result.append(isMermaidBlock ? .mermaid(content) : .code(content))
         }
         if !frontmatterBuffer.isEmpty {
             result.append(.frontmatter(frontmatterBuffer.joined(separator: "\n")))
@@ -654,6 +663,7 @@ enum MarkdownLine {
     case bullet(text: String, indent: Int)
     case checkbox(text: String, checked: Bool, indent: Int)
     case code(String)
+    case mermaid(String)
     case table(header: [String], rows: [[String]])
     case paragraph(String)
     case frontmatter(String)

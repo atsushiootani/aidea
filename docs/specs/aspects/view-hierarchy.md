@@ -256,7 +256,8 @@ SessionRegistry.view(for: id)                     [Sessions/SessionRegistry.swif
 | `gitDiff` | `GitDiffSessionContainer` (`Sessions/Git/GitDiffSessionView.swift`) | `VStack { GitDiffSessionView, ScenePromptsEditorView }`。`GitDiffSessionView` は `NSViewRepresentable` → `GitDiffWebView` (`WKWebView` + diff2html) |
 
 PreviewSessionView の Markdown は `MarkdownContainer` がさらに `MarkdownPreview`
-(WKWebView ベース) と編集モード時の `EditableTextView` (NSTextView) を切り替える。
+(純 SwiftUI パーサ。`mermaid` ブロックは内部で `MermaidView` [WKWebView + CDN Mermaid.js] として描画)
+と編集モード時の `EditableTextView` (NSTextView) を切り替える。
 drawio は `DrawioPreview` が `DrawioStaticView` (画像表示) と `DrawioEditor`
 (WKWebView) を切り替える。
 
