@@ -11,10 +11,11 @@ syncs_with:
   - docs/specs/sessions/git-diff.md
   - docs/specs/aspects/keybindings.md
   - docs/specs/aspects/sort-order.md
+  - docs/specs/tools/filer.md
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-03
+last_updated: 2026-05-05
 ---
 
 # Tool 仕様: Git
