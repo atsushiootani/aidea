@@ -63,11 +63,8 @@ Session 内部状態は [sessions/git.md](../sessions/git.md) / [sessions/git-di
   - **ファイルアイコン**: デコレーションルールが解決したファイル種別アイコン (`.swift` → `swift`、`.md` → `doc.text` 等)。マッチするルールがない場合はステータスアイコンにフォールバック
   - **ディレクトリアイコン**: `folder.fill` (固定)
   - **行背景色**: デコレーションルールで指定した背景色 (Filer と同じ `alpha 0.2`)。選択中は AppKit 標準ハイライトが優先
-- Git ステータスはアイコンの **tint 色**で区別 (アイコン形状に関わらず一貫して適用):
-  - Modified: 橙 (`systemOrange`)
-  - Added / Untracked: 緑 (`systemGreen`)
-  - Deleted: 赤 (`systemRed`)
-  - Renamed: 青 (`systemBlue`)
+  - **アイコン tint 色**: `.labelColor` で統一 (テキストと同色)。Git ステータスによる色分けは行わない
+- Git ステータスは **`+N -M` の変更行数表示**と GitDiff ツールの差分で識別する (アイコン色では区別しない)
 - ファイルごとに変更行数 `+N -M` を右端に表示する:
   - ステージ済みファイル: ステージ差分のみの行数 (`git diff --cached --numstat`)
   - 未ステージファイル: 未ステージ差分のみの行数 (`git diff --numstat`)
