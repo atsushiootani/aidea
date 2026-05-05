@@ -207,17 +207,46 @@ struct MarkdownPreview: View {
         .padding(.top, level <= 2 ? 8 : 4)
     }
 
-    /// 見出しレベルに応じたフォント
-    @ViewBuilder
-    private func headingText(level: Int, text: String) -> some View {
-        let view = Text(.init(text))
+    /// 見出しレベルに応じたフォントでインラインコードスパンを等幅レンダリング
+    private func headingText(level: Int, text: String) -> Text {
+        let size: CGFloat
+        let weight: Font.Weight
         switch level {
-        case 1: view.font(.system(size: 26, weight: .bold))
-        case 2: view.font(.system(size: 22, weight: .bold))
-        case 3: view.font(.system(size: 18, weight: .semibold))
-        case 4: view.font(.system(size: 15, weight: .semibold))
-        default: view.font(.system(size: 13, weight: .semibold))
+        case 1: size = 26; weight = .bold
+        case 2: size = 22; weight = .bold
+        case 3: size = 18; weight = .semibold
+        case 4: size = 15; weight = .semibold
+        default: size = 13; weight = .semibold
         }
+        return Self.parseInlineSegments(text).reduce(Text("")) { result, segment in
+            let t: Text = segment.isCode
+                ? Text(segment.text).font(.system(size: size, weight: weight, design: .monospaced))
+                : Text(.init(segment.text)).font(.system(size: size, weight: weight))
+            return result + t
+        }
+    }
+
+    /// テキストをバッククォートコードスパンで分割して (テキスト, コードフラグ) のリストを返す
+    private static func parseInlineSegments(_ text: String) -> [(text: String, isCode: Bool)] {
+        var segments: [(text: String, isCode: Bool)] = []
+        var remaining = text
+        while !remaining.isEmpty {
+            guard let openIdx = remaining.firstIndex(of: "`") else {
+                segments.append((remaining, false))
+                break
+            }
+            let before = String(remaining[..<openIdx])
+            if !before.isEmpty { segments.append((before, false)) }
+            let rest = remaining[remaining.index(after: openIdx)...]
+            guard let closeIdx = rest.firstIndex(of: "`") else {
+                segments.append(("`" + String(rest), false))
+                break
+            }
+            let code = String(rest[..<closeIdx])
+            if !code.isEmpty { segments.append((code, true)) }
+            remaining = String(rest[rest.index(after: closeIdx)...])
+        }
+        return segments
     }
 
     /// テーブル
@@ -639,7 +668,7 @@ private struct TOCRow: View {
 
     var body: some View {
         HStack {
-            Text(heading.text)
+            Text(heading.text.replacingOccurrences(of: "`", with: ""))
                 .font(.system(size: 11))
                 .lineLimit(1)
                 .foregroundStyle(isHovered ? Color.white : Color.primary)
