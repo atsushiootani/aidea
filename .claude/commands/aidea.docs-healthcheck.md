@@ -39,6 +39,7 @@ Aidea の設計ドキュメント (`docs/decisions/` と `docs/specs/`) の健�
 - コードにあるのに specs に書かれていない機能・概念
 - 永続化データの抜け ([docs/specs/aspects/persistence.md](../../docs/specs/aspects/persistence.md) との突き合わせ)
 - aspects（横断的関心事）との整合性 — 機能群の変更が [docs/specs/aspects/](../../docs/specs/aspects/README.md) に反映されているか（詳細は aspects/README.md の更新ルールを参照）
+- **View 階層の整合性** — [docs/specs/aspects/view-hierarchy.md](../../docs/specs/aspects/view-hierarchy.md) の AA 図 (ツリービュー / トップダウンビュー) が `Aidea/Aidea/Views/` および `Aidea/Aidea/Widgets/` の実際の View 構造と一致しているか。親子関係の変更・View ファイルの追加/削除/リネームが反映されているかを確認する
 
 ### 3. frontmatter 整合性チェック
 
