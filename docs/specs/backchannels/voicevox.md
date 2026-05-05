@@ -13,7 +13,7 @@ impacts:
   - docs/specs/companions/speech-history.md
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-02
+last_updated: 2026-05-05
 ---
 
 # Backchannel: VOICEVOX 読み上げ

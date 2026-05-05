@@ -13,7 +13,7 @@ impacts:
   - docs/specs/backchannels/companion-roster.md
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-03
+last_updated: 2026-05-05
 ---
 
 # Backchannel: コンパニオン間ハンドオフ

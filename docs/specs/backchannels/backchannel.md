@@ -146,7 +146,7 @@ Aidea は `.aidea/backchannels/` ディレクトリを FSEvents で **再帰監�
 | ファイルパターン | ハンドラ | 参照仕様 |
 |-----------------|---------|---------|
 | `backchannels/<0..8>/speech-*.txt` | SpeechWatcher → VoicevoxService | [voicevox.md](./voicevox.md) |
-| `backchannels/<0..8>/handoff-*.json` | HandoffWatcher → HandoffDispatcher → (宛先の) ClaudeSessionState | [handoff.md](./handoff.md) |
+| `backchannels/<0..8>/handoff-*.json` | HandoffWatcher → HandoffDispatcher → 宛先 Claude セッション | [handoff.md](./handoff.md) |
 | `backchannels/<0..8>/output-*.txt` | OutputWatcher → OutputState | [output.md](./output.md) |
 
 ### ハンドラ通過条件

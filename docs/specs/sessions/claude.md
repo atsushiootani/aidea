@@ -13,7 +13,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-24
+last_updated: 2026-05-05
 ---
 
 # Session 内部状態: Claude
@@ -39,7 +39,7 @@ Backchannel の詳細は [../backchannels/backchannel.md](../backchannels/backch
 
 ## `companionPrompt` のセット経路
 
-`companionPrompt` は `autoStartClaude` が参照するため、**`terminalView` 生成前**に
+`companionPrompt` は自動起動シーケンスが参照するため、**ターミナル View の生成前**に
 セットされている必要がある。以下 2 経路のいずれかで設定される:
 
 1. **新規起動**: セッション作成直後に `companionPrompt` を固定パターン文字列にセット
@@ -48,7 +48,7 @@ Backchannel の詳細は [../backchannels/backchannel.md](../backchannels/backch
    bind 済みセッションに同じ固定パターン文字列を再注入
    (詳細は [../companions/companion.md#起動フロー-スナップショット復元時](../companions/companion.md))
 
-どちらの経路でも、`terminalView` の lazy 生成時に `autoStartClaude` が参照する。
+どちらの経路でも、ターミナル View の初回生成時に自動起動シーケンスが参照する。
 
 パスとロードコマンド文字列の生成は専用ヘルパに集約し、複数の呼び出し元で同じパターンを再生成しないようハードコードを 1 箇所に閉じ込める ([ADR 0022](../../decisions/0022-companion-instructions-as-files.md))。
 

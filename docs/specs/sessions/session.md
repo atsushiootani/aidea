@@ -13,7 +13,7 @@ impacts:
   - docs/specs/sessions/*
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-21
+last_updated: 2026-05-05
 ---
 
 # Session と SessionState
@@ -112,7 +112,7 @@ Aidea の Session 実体は、**汎用クラス `Session`** と **Tool ごとに
 | **アクティブ化のエントリポイント** | `activate()` を持つ (registry が呼ぶ) | `didBecomeActive(session:)` を実装 (Session が委譲) |
 | **フォーカス契約 (C1/C2/C3)** | 関与しない | `focusBridge` (AppKit 系) または `isActive` (SwiftUI 系) で履行 |
 | **永続化対象** | `id` のみ | Tool 固有の状態すべて (`focusBridge` / `isActive` は非永続) |
-| **誰が生成するか** | `SessionRegistry.createSession()` | Session 生成時に同時に作る |
+| **誰が生成するか** | SessionRegistry (Session 作成時に同時に生成) | Session 生成時に同時に作る |
 
 ---
 

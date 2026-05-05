@@ -8,7 +8,7 @@ impacts:
   - docs/specs/sessions/*
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-21
+last_updated: 2026-05-05
 ---
 
 # Session (sessions/) インデックス

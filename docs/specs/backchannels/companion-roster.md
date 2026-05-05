@@ -10,7 +10,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-03
+last_updated: 2026-05-05
 ---
 
 # Backchannel: コンパニオン名簿の自動同期
@@ -201,5 +201,5 @@ handoff.md には次の一文を追記する (本仕様への参照)。本文の
 - [ADR 0023: コンパニオン間ハンドオフ](../../decisions/0023-companion-handoff.md) — name 指定の正当化根拠
 - [handoff.md](./handoff.md) — `to` フィールドのスキーマと name 解決ルール
 - [companion.md](../companions/companion.md) — `CompanionConfig.name` のデータモデル
-- [backchannel.md](./backchannel.md) — Bundle テンプレと `BackchannelSetup` の責務
+- [backchannel.md](./backchannel.md) — Bundle テンプレと初回セットアップ処理の責務
 - [issue #137](https://github.com/atsushiootani/aidea/issues/137) — 本仕様の起票チケット
