@@ -61,6 +61,12 @@ Session 内部状態は [sessions/preview.md](../sessions/preview.md) を参照�
 - 見出し (`# ~ ####`) / コードブロック / Mermaid 図 / 箇条書き / 水平線 / frontmatter / インライン (bold・italic・リンク・`code`) をサポート
 - 外部依存なし (SwiftUI `Text(.init(String))` のネイティブ Markdown に委譲)
 
+#### 見出し内インラインコード
+
+- 見出し行 (`` # ~ #### ``) 内のバッククォートコードスパン (`` `code` ``) は等幅フォントで表示する
+- 見出しの文字サイズ・ウェイトはそのままに、コードスパン部分のみ `monospaced` デザインを適用する
+- 目次 (ToC) 表示では、バッククォート記号を除いたプレーンテキストで表示する
+
 #### frontmatter 表示
 
 - フォント: 本文と同サイズ (`.body`) のモノスペースフォント
