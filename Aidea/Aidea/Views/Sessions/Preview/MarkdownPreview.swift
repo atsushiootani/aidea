@@ -181,19 +181,18 @@ struct MarkdownPreview: View {
     /// 見出し行 (折りたたみトライアングル付き)
     @ViewBuilder
     private func headingRow(index: Int, level: Int, text: String) -> some View {
-        let collapsed = collapsedHeadings.contains(index)
         HStack(alignment: .firstTextBaseline, spacing: 6) {
             Image(systemName: "play.fill")
                 .font(.system(size: 9))
                 .foregroundStyle(.secondary)
-                .rotationEffect(.degrees(collapsed ? 0 : 90))
+                .rotationEffect(.degrees(collapsedHeadings.contains(index) ? 0 : 90))
             headingText(level: level, text: text)
             Spacer(minLength: 0)
         }
         .contentShape(Rectangle())
         .onTapGesture {
             withAnimation(.easeInOut(duration: 0.15)) {
-                if collapsed {
+                if collapsedHeadings.contains(index) {
                     collapsedHeadings.remove(index)
                 } else {
                     collapsedHeadings.insert(index)
@@ -206,13 +205,12 @@ struct MarkdownPreview: View {
     /// 見出しレベルに応じたフォント
     @ViewBuilder
     private func headingText(level: Int, text: String) -> some View {
-        let view = Text(.init(text))
         switch level {
-        case 1: view.font(.system(size: 26, weight: .bold))
-        case 2: view.font(.system(size: 22, weight: .bold))
-        case 3: view.font(.system(size: 18, weight: .semibold))
-        case 4: view.font(.system(size: 15, weight: .semibold))
-        default: view.font(.system(size: 13, weight: .semibold))
+        case 1: Text(.init(text)).font(.system(size: 26, weight: .bold))
+        case 2: Text(.init(text)).font(.system(size: 22, weight: .bold))
+        case 3: Text(.init(text)).font(.system(size: 18, weight: .semibold))
+        case 4: Text(.init(text)).font(.system(size: 15, weight: .semibold))
+        default: Text(.init(text)).font(.system(size: 13, weight: .semibold))
         }
     }
 
@@ -231,16 +229,16 @@ struct MarkdownPreview: View {
                 }
             }
             // ボディ
-            ForEach(Array(rows.enumerated()), id: \.offset) { rowIndex, row in
+            ForEach(Array(rows.enumerated()), id: \.offset) { pair in
                 HStack(spacing: 0) {
-                    ForEach(Array(row.enumerated()), id: \.offset) { _, cell in
+                    ForEach(Array(pair.element.enumerated()), id: \.offset) { _, cell in
                         Text(.init(cell))
                             .font(.system(size: 12))
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(6)
                     }
                 }
-                .background(rowIndex.isMultiple(of: 2)
+                .background(pair.offset.isMultiple(of: 2)
                             ? Color.clear
                             : Color.secondary.opacity(0.05))
             }
@@ -258,8 +256,7 @@ struct MarkdownPreview: View {
     /// 目次 (右上フローティング)
     @ViewBuilder
     private func tableOfContents(proxy: ScrollViewProxy) -> some View {
-        let headings = collectHeadings()
-        if !headings.isEmpty {
+        if !tocHeadings.isEmpty {
             VStack(alignment: .leading, spacing: 0) {
                 // ヘッダー: 全体がクリック可能領域 (折りたたみトグル)
                 HStack {
@@ -283,7 +280,7 @@ struct MarkdownPreview: View {
                     Divider()
                     ScrollView {
                         VStack(alignment: .leading, spacing: 0) {
-                            ForEach(headings, id: \.index) { heading in
+                            ForEach(tocHeadings, id: \.index) { heading in
                                 TOCRow(
                                     heading: heading,
                                     onTap: {
@@ -314,6 +311,11 @@ struct MarkdownPreview: View {
             .padding(.leading, 12)
             .padding(.bottom, 12)
         }
+    }
+
+    /// 目次用の見出し一覧 (computed property。tableOfContents で let binding を避けるために使う)
+    private var tocHeadings: [(index: Int, level: Int, text: String)] {
+        collectHeadings()
     }
 
     /// 見出しだけ抽出する
