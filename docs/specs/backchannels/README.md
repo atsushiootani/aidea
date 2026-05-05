@@ -8,7 +8,7 @@ impacts:
   - docs/specs/backchannels/*
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-03
+last_updated: 2026-05-05
 ---
 
 # Backchannels (Claude → Aidea 通信) インデックス

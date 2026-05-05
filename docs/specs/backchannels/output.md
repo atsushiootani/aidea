@@ -5,6 +5,7 @@ derived_from:
   - docs/decisions/0024-backchannel-per-companion-archive.md
 syncs_with:
   - docs/specs/backchannels/backchannel.md
+  - docs/specs/aspects/persistence.md
 impacts: []
 conventions:
   - docs/LAYOUT.md
