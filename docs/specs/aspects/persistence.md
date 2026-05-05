@@ -70,11 +70,11 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 | パス | 用途 |
 |---|---|
 | `default-workspace.json` | `<projectRoot>/.aidea/workspace.json` の初期テンプレ (ハードコード排除の SSoT) |
-| `Backchannels/aidea.md` | Backchannel 機能の指示書。`BackchannelSetup` が `.aidea/claude/` にコピー |
+| `Backchannels/aidea.md` | Backchannel 機能の指示書。初回セットアップ時に `.aidea/claude/` にコピー |
 | `Backchannels/speech.md` | speech 機能の指示書 (同上) |
 | `Backchannels/handoff.md` | Companion 間ハンドオフ機能の指示書 (同上)。詳細は [../backchannels/handoff.md](../backchannels/handoff.md) |
 | `Backchannels/output.md` | output 記録機能の指示書 (同上)。詳細は [../backchannels/output.md](../backchannels/output.md) |
-| `Backchannels/companion-instructions.md` | コンパニオン指示書 (`instructions.md`) のデフォルトテンプレ。`BackchannelSetup` が 9 個に複製して `.aidea/claude/companions/<0..8>/instructions.md` に配置 (既存ファイルは上書きしない) |
+| `Backchannels/companion-instructions.md` | コンパニオン指示書 (`instructions.md`) のデフォルトテンプレ。初回セットアップ時に 9 個に複製して `.aidea/claude/companions/<0..8>/instructions.md` に配置 (既存ファイルは上書きしない) |
 
 **設計ポリシー**: ハードコードしがちなデフォルト値 (初期レイアウト・コンパニオン定義・レコメンドプロンプト等) は Swift コード側に二重管理せず、Bundle 同梱の JSON / Markdown を **唯一のソース** とする。
 
@@ -107,10 +107,10 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 ```
 
 - `projectRoot` が変わるたびに `ensureAideaDirectory()` が `.aidea/` と `.aidea/ja/` を生成し、**プロジェクトの `.gitignore` に `.aidea/` を自動追記** する
-- `.aidea/claude/*.md` と `.aidea/backchannels/` は初回のみ `BackchannelSetup.setup()` が作成・複製する
-- `.aidea/claude/companions/<0..8>/instructions.md` も `BackchannelSetup.setup()` が `Backchannels/companion-instructions.md` を 9 個に複製する (既存ファイルは上書きしない)
-- `.aidea/claude/aidea.md` 内のマーカー領域 (`<!-- aidea:companions:start --> ... <!-- aidea:companions:end -->`) は `CompanionRosterWriter` が `WorkspaceSnapshotManager.apply()` 末尾と `CompanionEditView` のリネーム確定時に runtime 更新する (詳細: [../backchannels/companion-roster.md](../backchannels/companion-roster.md))
-- v2 以前の旧ファイル `.aidea/companions.json` / `.aidea/recommends.json` は起動時に `WorkspaceSnapshotManager` が `workspace.json` v3 に統合して自動削除する
+- `.aidea/claude/*.md` と `.aidea/backchannels/` は初回セットアップ時に作成・複製する
+- `.aidea/claude/companions/<0..8>/instructions.md` も初回セットアップ時に 9 個に複製する (既存ファイルは上書きしない)
+- `.aidea/claude/aidea.md` 内のマーカー領域 (`<!-- aidea:companions:start --> ... <!-- aidea:companions:end -->`) はワークスペース復元時とコンパニオン名前変更確定時に runtime 更新する (詳細: [../backchannels/companion-roster.md](../backchannels/companion-roster.md))
+- v2 以前の旧ファイル `.aidea/companions.json` / `.aidea/recommends.json` は起動時に `workspace.json` v3 に統合して自動削除する
 
 ---
 
@@ -118,10 +118,10 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 
 ### `workspace.json` (統合スナップショット)
 
-- **管理**: `Services/Workspace/WorkspaceSnapshotManager.swift`
+- **管理**: ワークスペーススナップショット管理コンポーネント
 - **フォーマット**: JSON (`version: 8`)
 - **初期値の SSoT**: Bundle 同梱の `Aidea/Resources/default-workspace.json` (ハードコード排除)
-- **読込フロー** (`WorkspaceSnapshotManager.load(projectRoot:)`):
+- **読込フロー**:
   1. `<projectRoot>/.aidea/workspace.json` が存在 → 読込・マイグレーション適用
   2. 不在 → Bundle 同梱の `default-workspace.json` を読込・初期スナップショットとして返す
   3. Bundle 読込も失敗 → nil を返す (AideaApp 側で緊急フォールバック)
@@ -203,7 +203,7 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 2. v8 スナップショット返却時には `initialPrompt` フィールドを含めない (Codable 側で削除済み)
 3. 以降の保存からは v8 として書き出される
 
-新規プロジェクト (workspace.json 不在) は `BackchannelSetup.setup()` が `Backchannels/companion-instructions.md` を 9 個に複製する経路で初期化される。
+新規プロジェクト (workspace.json 不在) は初回セットアップ処理が `Backchannels/companion-instructions.md` を 9 個に複製する経路で初期化される。
 
 ### `default-workspace.json` の構造ルール
 
@@ -251,37 +251,24 @@ Claude → Aidea 方向の通信は**ファイル経由**で行う。詳細は [
 4. SpeechQueue が VOICEVOX Service (localhost:50021) に投げて読み上げ
 ```
 
-### 関連クラス
-
-| ファイル | 役割 |
-|---|---|
-| `Services/Backchannel/BackchannelSetup.swift` | Bundle → `.aidea/claude/` の初期コピー (`aidea.md` / `speech.md` / `handoff.md` / `output.md` / コンパニオン指示書 9 個) |
-| `Services/Backchannel/Speech/SpeechWatcher.swift` | `.aidea/backchannels/<0..8>/speech-*.txt` の FSEvents 再帰監視 |
-| `Services/Backchannel/Speech/SpeechState.swift` | Speech 状態管理と SpeechQueue への投入 |
-| `Services/Backchannel/Speech/SpeechQueue.swift` | VOICEVOX 合成 → AVAudioPlayer 再生キュー |
-| `Services/Backchannel/Handoff/HandoffWatcher.swift` | `.aidea/backchannels/<0..8>/handoff-*.json` の FSEvents 再帰監視 |
-| `Services/Backchannel/Handoff/HandoffState.swift` | Handoff 状態管理 + Dispatcher 呼び出し |
-| `Services/Backchannel/Output/OutputWatcher.swift` | `.aidea/backchannels/<0..8>/output-*.txt` の FSEvents 再帰監視 |
-| `Services/Backchannel/Output/OutputState.swift` | Output 履歴蓄積 (コンパニオン別インメモリ) |
-
 詳細は [../backchannels/](../backchannels/README.md) を参照。
 
 ---
 
 ## 永続化タイミング一覧
 
-| タイミング | 対象 | 呼び出し元 |
-|---|---|---|
-| 起動時 | UserDefaults → `projectRoot` 復元 | `WorkspaceState.init()` |
-| 起動時 (workspace.json 既存) | `workspace.json` 読込 → 復元・マイグレーション適用 | `WorkspaceSnapshotManager.load()` |
-| 起動時 (workspace.json 不在) | Bundle 同梱 `default-workspace.json` 読込 → 初期スナップショットとして適用 | `WorkspaceSnapshotManager.load()` |
-| 起動時 (Bundle 読込も失敗) | Filer 1 ペインの最小レイアウトを生成して継続起動 (緊急フォールバック) | `AideaApp.init()` |
-| projectRoot 変更時 | `.aidea/` 生成 + `.gitignore` 追記 + Backchannel 再初期化 | `WorkspaceState.setProjectRoot()` |
-| Companion / Recommend 変更時 | インメモリのみ更新 (即座保存しない) | `CompanionStore` / `RecommendStore` |
-| Claude から speech 受信時 | `<n>/speech-*.txt` → 読み上げ (ファイルは残す、ADR 0024) | `SpeechWatcher` |
-| Claude から handoff 受信時 | `<n>/handoff-*.json` → 宛先解決 → 送信 (ファイルは残す、ADR 0024) | `HandoffWatcher` |
-| Claude から output 受信時 | `<n>/output-*.txt` → OutputState の履歴に蓄積 (ファイルは残す、ADR 0024) | `OutputWatcher` |
-| 終了時 / バックグラウンド化時 | `workspace.json` (4 グループ統合) 保存 | `AideaApp.registerTerminationObserver()` |
+| タイミング | 対象 |
+|---|---|
+| 起動時 | UserDefaults → `projectRoot` 復元 |
+| 起動時 (workspace.json 既存) | `workspace.json` 読込 → 復元・マイグレーション適用 |
+| 起動時 (workspace.json 不在) | Bundle 同梱 `default-workspace.json` 読込 → 初期スナップショットとして適用 |
+| 起動時 (Bundle 読込も失敗) | Filer 1 ペインの最小レイアウトを生成して継続起動 (緊急フォールバック) |
+| projectRoot 変更時 | `.aidea/` 生成 + `.gitignore` 追記 + Backchannel 再初期化 |
+| Companion / Recommend 変更時 | インメモリのみ更新 (即座保存しない) |
+| Claude から speech 受信時 | `<n>/speech-*.txt` → 読み上げ (ファイルは残す、ADR 0024) |
+| Claude から handoff 受信時 | `<n>/handoff-*.json` → 宛先解決 → 送信 (ファイルは残す、ADR 0024) |
+| Claude から output 受信時 | `<n>/output-*.txt` → 出力履歴に蓄積 (ファイルは残す、ADR 0024) |
+| 終了時 / バックグラウンド化時 | `workspace.json` (4 グループ統合) 保存 |
 
 ---
 

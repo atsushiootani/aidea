@@ -31,7 +31,7 @@ Aidea の設計ドキュメント (`docs/decisions/` と `docs/specs/`) の健�
 
 ### 2. specs ヘルスチェック
 
-[docs/specs/README.md](../../docs/specs/README.md) の「## ヘルスチェック」節のチェック項目 (1〜6) を順に適用する:
+[docs/specs/README.md](../../docs/specs/README.md) の「## ヘルスチェック」節のチェック項目 (1〜7) を順に適用する:
 
 - specs ドキュメント同士の矛盾
 - [docs/decisions/](../../docs/decisions/) の ADR との矛盾 (ADR 優先。暫定/提案状態は指摘レベル下げる)
@@ -39,6 +39,11 @@ Aidea の設計ドキュメント (`docs/decisions/` と `docs/specs/`) の健�
 - コードにあるのに specs に書かれていない機能・概念
 - 永続化データの抜け ([docs/specs/aspects/persistence.md](../../docs/specs/aspects/persistence.md) との突き合わせ)
 - aspects（横断的関心事）との整合性 — 機能群の変更が [docs/specs/aspects/](../../docs/specs/aspects/README.md) に反映されているか（詳細は aspects/README.md の更新ルールを参照）
+- **実装詳細の混入** — specs ファイル内に以下の禁止パターンが含まれていないか ([docs/LAYOUT.md](../../docs/LAYOUT.md) の「実装詳細禁止ルール」節が SSoT):
+  - 具体的なメソッド名 (camelCase 関数名 / `method(param:)` 形式のシグネチャ)
+  - Swift 固有デコレータ (`@Observable`, `@Published`, `@MainActor` 等)
+  - 実装コード断片 (`state.propName = value` / `.method()` 呼び出し記述)
+  - 対象外: glossary.md 定義済みのドメイン用語 / ユーザが意識するファイルパス / 抽象レベルの責務説明
 
 ### 3. frontmatter 整合性チェック
 

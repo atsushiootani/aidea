@@ -13,7 +13,7 @@ impacts:
   - docs/specs/companions/speech-history.md
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-02
+last_updated: 2026-05-05
 ---
 
 # Backchannel: VOICEVOX 読み上げ
@@ -122,7 +122,7 @@ v8 以降、読み上げ機能は各 Companion の `.aidea/claude/companions/<in
 .aidea/claude/aidea.md と .aidea/claude/speech.md を読んで従ってね
 ```
 
-デフォルトテンプレ (Bundle `Backchannels/companion-instructions.md`) にこの参照行が入っており、`BackchannelSetup.setup` が 9 Companion 分コピーする (既存ファイルは上書きしない)。読み上げを無効にしたい Companion は `instructions.md` から `speech.md` への参照行を削除すれば OK。
+デフォルトテンプレ (Bundle `Backchannels/companion-instructions.md`) にこの参照行が入っており、初回セットアップ時に 9 Companion 分コピーされる (既存ファイルは上書きしない)。読み上げを無効にしたい Companion は `instructions.md` から `speech.md` への参照行を削除すれば OK。
 
 ### 読み上げ文面の指示 (Companion 別上書き、issue #110)
 
@@ -160,19 +160,19 @@ v8 以降、読み上げ機能は各 Companion の `.aidea/claude/companions/<in
 
 ### 読み上げ中 Companion の UI 反映 (issue #45)
 
-`SpeechQueue` に `@Observable` な `currentlySpeakingIndex: Int?` を持たせ、**現在 VOICEVOX で再生中の speech の送信元 companionIndex** を公開する。
+音声キュー (SpeechQueue) は現在 VOICEVOX で再生中の speech の送信元 companionIndex を公開する。
 
-| タイミング | `currentlySpeakingIndex` |
+| タイミング | 公開値 |
 |---|---|
-| キューが空 | `nil` |
-| 次のエントリの再生開始直前 | そのエントリの `companionIndex` |
-| `AVAudioPlayer` 再生完了 (または VOICEVOX API エラーでスキップ) | `nil` に戻す |
+| キューが空 | nil (読み上げなし) |
+| 次のエントリの再生開始直前 | そのエントリの companionIndex |
+| 再生完了 (または VOICEVOX API エラーでスキップ) | nil に戻す |
 
-`CompanionView` はこの値を監視し、`companions[N].index == currentlySpeakingIndex` な Companion を「読み上げ中」表示 (笑顔 + heart.fill) に切り替える。詳細は [../companions/companion.md#表情・状態表示-issue-45](../companions/companion.md#表情・状態表示-issue-45) を参照。
+CompanionView はこの値を監視し、該当 Companion を「読み上げ中」表示 (笑顔 + heart.fill) に切り替える。詳細は [../companions/companion.md#表情・状態表示-issue-45](../companions/companion.md#表情・状態表示-issue-45) を参照。
 
-**Always**: `currentlySpeakingIndex` は単一値 (同時再生しない = キューは 1 つずつ逐次処理)。複数 Companion の speech が重なった場合、タイムスタンプ順で 1 体ずつ切り替わる。
+**Always**: 公開値は単一値 (同時再生しない = キューは 1 つずつ逐次処理)。複数 Companion の speech が重なった場合、タイムスタンプ順で 1 体ずつ切り替わる。
 
-**Never**: `SpeechState.isEnabled` が OFF のときでも `currentlySpeakingIndex` を false 立てしない (キューそのものがスキップされるため自然に `nil` のまま)。
+**Never**: 読み上げ OFF 中でも公開値を明示的に false 立てしない (キューそのものがスキップされるため自然に nil のまま)。
 
 ---
 
@@ -197,10 +197,10 @@ v8 以降、読み上げ機能は各 Companion の `.aidea/claude/companions/<in
 
 | コンポーネント | 責務 |
 |---------------|------|
-| **SpeechWatcher** | FSEvents で `.aidea/backchannels/<0..8>/speech-*.txt` を再帰監視。親ディレクトリが 0..8 の整数であること (不一致は警告ログのみで無視) を検証してから、ファイル読み取り → 1 行目のスピーカーIDをパース → `(speakerId?, companionIndex, text)` を SpeechQueue に投入。読み上げ後もファイルは残す |
-| **VoicevoxService** | VOICEVOX REST API クライアント (audio_query → synthesis)。`speaker` 引数でスピーカー指定 |
-| **SpeechQueue** | `(speakerId?, companionIndex, text)` をキューに積み、VOICEVOX → AVAudioPlayer で順番に再生。再生中エントリの `companionIndex` を `@Observable currentlySpeakingIndex: Int?` として外部公開 (issue #45) |
-| **SpeechState** | 読み上げ ON/OFF 状態管理 (@Observable)、ヘッダ UI と接続 |
+| **SpeechWatcher** | FSEvents で `.aidea/backchannels/<0..8>/speech-*.txt` を再帰監視。親ディレクトリが 0..8 の整数であること (不一致は警告ログのみで無視) を検証してから、ファイル読み取り → 1 行目のスピーカーIDをパース → (speakerId, companionIndex, text) を SpeechQueue に投入。読み上げ後もファイルは残す |
+| **VoicevoxService** | VOICEVOX REST API クライアント (audio_query → synthesis)。スピーカー指定に対応 |
+| **SpeechQueue** | (speakerId, companionIndex, text) をキューに積み、VOICEVOX → 音声プレイヤーで順番に再生。再生中の companionIndex を状態変更が自動伝播する形で外部公開 (issue #45) |
+| **SpeechState** | 読み上げ ON/OFF 状態管理、ヘッダ UI と接続 |
 
 ---
 
@@ -228,8 +228,8 @@ v8 以降、読み上げ機能は各 Companion の `.aidea/claude/companions/<in
 
 #### 動作
 
-- クリック時に `SpeechState.toggle()` を呼び、`isEnabled` を反転する
-- アイコンは `SpeechState.isEnabled` を見て切り替える (`@Observable` 駆動)
+- クリック時に読み上げ状態をトグルし、`isEnabled` を反転する
+- アイコンは読み上げ ON/OFF 状態に応じて切り替わる
 - ツールチップで `読み上げ ON/OFF` を提示する
 
 #### ショートカット
@@ -237,11 +237,11 @@ v8 以降、読み上げ機能は各 Companion の `.aidea/claude/companions/<in
 - **`⌥⌘M`** で読み上げを ON/OFF トグルする (M = Mute)
 - `AideaApp.swift` の「Aidea」`CommandMenu` に **「読み上げ ON/OFF」** 項目を追加し、`.keyboardShortcut("m", modifiers: [.command, .option])` を付与する
 - メニュー項目のラベルは状態に応じて切り替えず固定 (`読み上げ ON/OFF`)。状態はヘッダのアイコンで提示する
-- アクションは `SpeechState.toggle()` を呼ぶ (UI ボタンと同じ経路)
+- アクションは UI ボタンと同じ読み上げトグル処理を呼ぶ
 
 #### OFF 中の挙動
 
-- **Aidea 側**: `SpeechWatcher` を停止し、`SpeechQueue` をクリアする (= VOICEVOX 再生は行わない)
+- **Aidea 側**: FSEvents 監視を停止し、再生キューをクリアする (= VOICEVOX 再生は行わない)
 - **Claude 側**: 通常どおり `.aidea/backchannels/<N>/speech-{timestamp}.txt` を書き出す。speech.md の指示に変更は無く、プロンプトや CLI 動作も変わらない (= 履歴ファイルは残る)
 - **ON 切替時**: `SpeechWatcher` を再開し、`checkVoicevox()` を再実行する。**OFF 中に作成された speech ファイルは再生対象に含めない** (差分検知ではなく FSEvents の即時通知に依存しているため)。「一時的にオフ」用途として割り切る
 
@@ -252,9 +252,9 @@ v8 以降、読み上げ機能は各 Companion の `.aidea/claude/companions/<in
 
 #### 境界
 
-- **Always**: トグル UI からの状態変更は `SpeechState.toggle()` を経由する (直接 `isEnabled` を書き換えない)
+- **Always**: トグル UI からの状態変更は読み上げ状態管理コンポーネント経由で行う
 - **Never**: トグル状態を `workspace.json` に保存しない (ON/OFF はランタイム情報のみ)
-- **Never**: OFF 中も `currentlySpeakingIndex` は false 立てしない (キュー自体がスキップされるため自然に `nil` のまま、companion.md の Never 規約と整合)
+- **Never**: OFF 中も読み上げ中の companionIndex は明示的にリセットしない (キュー自体がスキップされるため自然に nil のまま、companion.md の Never 規約と整合)
 
 ---
 

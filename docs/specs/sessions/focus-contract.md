@@ -13,7 +13,7 @@ impacts:
   - docs/specs/sessions/ui-rules.md
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-21
+last_updated: 2026-05-05
 ---
 
 # Session フォーカス契約
@@ -63,34 +63,22 @@ AppKit 系 `SessionState` のフォーカス制御を担う **非永続ヘルパ
 - `activate()` / `deactivate()` / `releaseIfOurs()` の 3 メソッドで契約 C1 / C2 / C3 を履行する
 - AppKit Window API (`window.makeFirstResponder` 等) はこの中だけに閉じる
 
-### API
+### 操作
 
-```swift
-final class SessionFocusBridge {
-    /// View 側 (NSViewRepresentable) が `makeNSView` で呼ぶ。
-    /// nil 代入も有効 (子 View 切替で純 SwiftUI コンテンツに変わる場合等)。
-    func setView(_ view: NSView?)
+SessionFocusBridge は以下の 3 操作を公開する:
 
-    /// SessionState の didBecomeActive から呼ぶ (契約 C1)。
-    /// view が nil なら pending を立てて待機する。
-    func activate()
-
-    /// SessionState の didResignActive から呼ぶ (契約 C2)。
-    /// 自分配下の NSView が firstResponder のときだけ解放する。
-    func deactivate()
-
-    /// View 側の onDisappear から呼ぶ (契約 C3)。
-    /// deactivate と同じ判定で firstResponder を解放する。
-    func releaseIfOurs()
-}
-```
+| 操作 | 呼び出し元 | 役割 |
+|---|---|---|
+| NSView 参照の更新 | View 層 (NSViewRepresentable) の生成時 | フォーカス付与対象の NSView を登録・更新する。nil 代入も有効 (純 SwiftUI コンテンツに切り替える場合等) |
+| activate | SessionState の `didBecomeActive` | 契約 C1 を履行する。NSView が未登録なら保留フラグを立てて待機する |
+| deactivate / releaseIfOurs | SessionState の `didResignActive` / View の消滅時 | 契約 C2 / C3 を履行する。自 Session 配下の NSView が firstResponder の場合のみ解放する |
 
 ### 内部挙動の要点
 
-- `setView(_:)` で値が更新され、かつ `pendingActivation == true` かつ新しい view が non-nil なら、その場で `makeFirstResponder` を発火して pending を解消する
-- `activate()` は `view` が nil なら `pendingActivation = true` を立てるだけで何もしない (後の `setView` で解消される)
-- `deactivate()` / `releaseIfOurs()` は **`window.firstResponder` が `view` 自身またはその子孫の場合だけ** `makeFirstResponder(nil)` を呼ぶ。それ以外は何もしない
-- `view` を弱参照 (`weak`) で保持し、NSView の所有は SessionState 側 (lazy property) に任せる
+- NSView 参照が更新され、かつ保留フラグが立っていた場合はその場で firstResponder を付与して保留を解消する
+- activate 時に NSView が未登録なら保留フラグを立てるだけで何もしない (後の NSView 登録で解消される)
+- deactivate / releaseIfOurs は自 Session 配下の NSView が firstResponder の場合だけ firstResponder を解放する。それ以外は何もしない
+- NSView の所有は SessionState 側に任せ、SessionFocusBridge は弱参照のみ保持する
 
 ---
 
@@ -102,8 +90,8 @@ final class SessionFocusBridge {
 
 | Session 種別 | 履行方法 |
 |---|---|
-| **AppKit 系** | `SessionState.didBecomeActive` から `focusBridge.activate()` を呼ぶ。`focusBridge` は `view` が non-nil なら `makeFirstResponder(view)` を、nil なら `pendingActivation = true` を実行 |
-| **純 SwiftUI 系** | `SessionState.didBecomeActive` で `isActive = true` を代入。SwiftUI の `.focused($isActive)` が SwiftUI 内部 NSView を firstResponder にする |
+| **AppKit 系** | `didBecomeActive` で SessionFocusBridge に activate を依頼する。NSView 登録済みなら firstResponder に設定し、未登録なら保留フラグを立てて待機する |
+| **純 SwiftUI 系** | `didBecomeActive` で `isActive = true` に更新する。SwiftUI の focused バインディングが内部 NSView を firstResponder にする |
 
 ### 契約 C2: 非アクティブ化時の解除
 
@@ -111,10 +99,10 @@ final class SessionFocusBridge {
 
 | Session 種別 | 履行方法 |
 |---|---|
-| **AppKit 系** | `SessionState.didResignActive` から `focusBridge.deactivate()` を呼ぶ。`focusBridge` は自分配下の NSView が firstResponder の場合のみ `makeFirstResponder(nil)` を実行 |
-| **純 SwiftUI 系** | `SessionState.didResignActive` で `isActive = false` を代入。SwiftUI の `.focused($isActive)` が自動で内部 NSView を responder から外す |
+| **AppKit 系** | `didResignActive` で SessionFocusBridge に deactivate を依頼する。自 Session 配下の NSView が firstResponder の場合のみ firstResponder を解放する |
+| **純 SwiftUI 系** | `didResignActive` で `isActive = false` に更新する。SwiftUI の focused バインディングが自動で内部 NSView を responder から外す |
 
-**判定は必須 (AppKit 系)**: 無条件に `makeFirstResponder(nil)` を呼んではならない。次にアクティブ化された Session が契約 C1 で既に firstResponder を取得済みの場合があり、その場合は奪い返してはならない。`SessionFocusBridge.deactivate()` の内部判定 (自分配下チェック) でこれを保証する。
+**判定は必須 (AppKit 系)**: 自 Session 配下チェックなしに firstResponder を無条件解放してはならない。次にアクティブ化された Session が契約 C1 で既に firstResponder を取得済みの場合があり、その場合は奪い返してはならない。SessionFocusBridge の内部判定でこれを保証する。
 
 ### 契約 C3: View 破棄時の解除
 
@@ -122,83 +110,47 @@ Session ルートビューがビュー階層から消える (`onDisappear` 相�
 
 | Session 種別 | 履行方法 |
 |---|---|
-| **AppKit 系** | View ルートに `.sessionFocusCleanup(state)` modifier を 1 行付与。modifier の `onDisappear` で `state.focusBridge.releaseIfOurs()` を呼ぶ |
-| **純 SwiftUI 系** | 何もしない (SwiftUI が `.focused()` バインドの自動クリーンアップで対応) |
+| **AppKit 系** | View ルートにフォーカスクリーンアップ modifier を 1 行付与する。modifier の消滅イベントで SessionFocusBridge の releaseIfOurs を呼ぶ |
+| **純 SwiftUI 系** | 何もしない (SwiftUI が focused バインドの自動クリーンアップで対応) |
 
-`.sessionFocusCleanup` modifier の概略:
-
-```swift
-extension View {
-    func sessionFocusCleanup(_ state: any SessionState) -> some View {
-        onDisappear {
-            (state as? FocusBridgeOwner)?.focusBridge.releaseIfOurs()
-        }
-    }
-}
-
-protocol FocusBridgeOwner {
-    var focusBridge: SessionFocusBridge { get }
-}
-```
-
-AppKit 系 SessionState が `FocusBridgeOwner` に準拠することで、modifier 側で型判定して bridge を呼べる。
+AppKit 系 SessionState が SessionFocusBridge を保持することを宣言するインタフェース (FocusBridgeOwner) に準拠することで、modifier 側で型判定して bridge を呼べる。
 
 ---
 
 ## focusableView (NSView) の更新責任
 
-AppKit 系 Session で、`SessionFocusBridge` が保持する `view` 参照の **更新は View 層 (NSViewRepresentable)** が責任を持つ。SessionState は NSView の所有・生成 (`cached` プロパティ等) のみを担当する。
+AppKit 系 Session で、SessionFocusBridge が保持する NSView 参照の **更新は View 層 (NSViewRepresentable)** が責任を持つ。SessionState は NSView の所有・生成のみを担当する。
 
 ### 基本ルール
 
-- **更新する場所**: `NSViewRepresentable.makeNSView(context:)` 内で 1 回だけ
-- **更新する手段**: `state.focusBridge.setView(view)` を呼ぶ
-- **代入時のラップ**: `DispatchQueue.main.async { state.focusBridge.setView(view) }` で SwiftUI の update cycle と分離する
-- **`updateNSView` での再代入は不要**: NSView インスタンスは Representable のライフサイクル中ずっと同じ
-- **`dismantleNSView` では何もしない**: NSView は SessionState 所有で生き続けるため、参照を残しても dangling にならない。Session ルートの `.sessionFocusCleanup` (契約 C3) が firstResponder の解放だけ責任を持つ
-
-### コード例
-
-```swift
-struct TerminalNSViewRepresentable: NSViewRepresentable {
-    let state: TerminalSessionState
-
-    func makeNSView(context: Context) -> PersistentTerminalView {
-        let view = state.terminalView   // State の lazy property から取得
-        DispatchQueue.main.async {
-            state.focusBridge.setView(view)  // 契約 C1 用に bridge に登録
-        }
-        return view
-    }
-
-    func updateNSView(_ nsView: PersistentTerminalView, context: Context) {}
-    static func dismantleNSView(_ nsView: PersistentTerminalView, coordinator: ()) {}
-}
-```
+- **更新する場所**: NSView 生成時 (NSViewRepresentable の makeNSView に相当する箇所) で 1 回だけ
+- **更新する手段**: SessionFocusBridge に NSView 参照を登録する
+- **登録のタイミング**: SwiftUI の update cycle と分離するため非同期で行う
+- **NSView 破棄時**: NSView は SessionState 所有で生き続けるため参照を残しても問題ない。Session ルートのフォーカスクリーンアップ modifier (契約 C3) が firstResponder の解放だけ責任を持つ
 
 ### 子 View 切替時の更新
 
-Session 内部で複数の子 View 種別を切り替える場合 (Preview のコンテンツ切替等)、**新しい子 View が `setView` を呼ぶ責任を持つ**:
+Session 内部で複数の子 View 種別を切り替える場合 (Preview のコンテンツ切替等)、**新しい子 View が NSView 参照の登録責任を持つ**:
 
-- NSView 系子 View → `state.focusBridge.setView(nsView)` (新しい NSView を登録)
-- 純 SwiftUI 系子 View → `state.focusBridge.setView(nil)` (登録を外し、SwiftUI の `.focused()` パスに委譲)
+- NSView 系子 View → SessionFocusBridge に新しい NSView を登録する
+- 純 SwiftUI 系子 View → SessionFocusBridge に nil を登録し、SwiftUI の focused パスに委譲する
 
-`setView(nil)` を受けた bridge は、その状態で `activate()` が呼ばれても何もしない (pending 状態として待機するが解消される機会がない)。この場合は SwiftUI の `.focused()` 経由でフォーカスが取られることを期待する。
+nil 登録後の bridge は activate が呼ばれても何もしない (保留状態として待機するが解消の機会がない)。この場合は SwiftUI focused バインディング経由でフォーカスが取られることを期待する。
 
 ### 複数 NSView を持つ Session
 
-1 つの Session が複数の内部 NSView を持つ場合 (例: Git Diff の OutlineView + WKWebView)、**View 側がどれを `setView` するか選択する**。Session 間契約の観点ではどれを選んでも構わないが、**選択は 1 つに限る**こと (`SessionFocusBridge.view` は単一参照)。複数 NSView 間の内部フォーカス調整は本契約の範囲外。
+1 つの Session が複数の内部 NSView を持つ場合 (例: Git Diff の OutlineView + WKWebView)、**View 側がどれを SessionFocusBridge に登録するか選択する**。Session 間契約の観点ではどれを選んでも構わないが、**選択は 1 つに限る** (SessionFocusBridge は単一 NSView 参照のみ保持)。複数 NSView 間の内部フォーカス調整は本契約の範囲外。
 
 ---
 
 ## 各 SessionState の責務
 
-| SessionState | 種別 | フォーカス契約のための実装 |
+| Tool 種別 | フォーカス契約のための責務 | FocusBridgeOwner |
 |---|---|---|
-| AppKit 系 (Terminal / Claude / Web / Filer / Git / GitDiff / Preview の NSView 系コンテンツ) | `let focusBridge = SessionFocusBridge()` を持つ。`didBecomeActive` で `focusBridge.activate()`、`didResignActive` で `focusBridge.deactivate()` を呼ぶ | `FocusBridgeOwner` に準拠 |
-| 純 SwiftUI 系 (Kit / Preview の純 SwiftUI コンテンツ) | `var isActive: Bool = false` を持つ。`didBecomeActive` で `isActive = true`、`didResignActive` で `isActive = false` を実行 | `FocusBridgeOwner` に準拠しない |
+| AppKit 系 (Terminal / Claude / Web / Filer / Git / GitDiff / Preview の NSView 系コンテンツ) | SessionFocusBridge を 1 つ保持し、`didBecomeActive` / `didResignActive` で activate / deactivate を依頼する | 準拠する |
+| 純 SwiftUI 系 (Kit / Preview の純 SwiftUI コンテンツ) | `isActive: Bool` フラグを保持し、`didBecomeActive` / `didResignActive` でフラグを更新する | 準拠しない |
 
-各 SessionState はこれら以外のフォーカス制御コードを持たない。Tool 固有のドメイン処理 (リロード / sendMessage 等) のみが固有の役割となる。
+各 SessionState はこれら以外のフォーカス制御コードを持たない。Tool 固有のドメイン処理のみが固有の役割となる。
 
 ---
 
@@ -225,14 +177,14 @@ Session 内部で複数の子 View 種別を切り替える場合 (Preview の�
 
 | レイヤ | 契約の観点での責務 | 知らなくてよいこと |
 |---|---|---|
-| `SessionRegistry` | `Session.activate()` / `deactivate()` を切替時に呼ぶ | NSView、`firstResponder`、SessionState の種別 |
-| `Session` クラス | `state.didBecomeActive` / `didResignActive` への委譲のみ | NSView、`firstResponder`、Tool 固有処理 |
-| **AppKit 系 SessionState** | `focusBridge.activate()` / `deactivate()` を呼ぶ | 他 Session、AppKit Window API の詳細 (bridge に閉じる) |
+| `SessionRegistry` | Session のアクティブ切替時に activate / deactivate を依頼する | NSView、firstResponder、SessionState の種別 |
+| `Session` クラス | SessionState の didBecomeActive / didResignActive への委譲のみ | NSView、firstResponder、Tool 固有処理 |
+| **AppKit 系 SessionState** | SessionFocusBridge に activate / deactivate を依頼する | 他 Session、AppKit Window API の詳細 (bridge に閉じる) |
 | **純 SwiftUI 系 SessionState** | `isActive` フラグを更新する | NSView、firstResponder、AppKit |
 | **`SessionFocusBridge`** | C1 / C2 / C3 の AppKit 側ロジックを実装 | Tool 固有処理、SessionState の他フィールド |
-| Session ルート View | `.sessionFocusCleanup(state)` modifier を 1 行付ける、内部 NSViewRepresentable に state を渡す | 他 Session の存在 |
-| NSViewRepresentable | `state.focusBridge.setView(_:)` を `makeNSView` 内で呼ぶ | 他 Session、契約 C1 / C2 / C3 |
-| 内部 NSView | AppKit のネイティブな振る舞いに従う | `@FocusState`、他 Session |
+| Session ルート View | フォーカスクリーンアップ modifier を 1 行付け、内部 NSViewRepresentable に SessionState を渡す | 他 Session の存在 |
+| NSViewRepresentable | NSView 生成時に SessionFocusBridge へ NSView 参照を登録する | 他 Session、契約 C1 / C2 / C3 |
+| 内部 NSView | AppKit のネイティブな振る舞いに従う | FocusState、他 Session |
 
 `SessionFocusBridge` がフォーカス契約 (C1 / C2) の **責任主体** となり、AppKit 知識をその中に閉じ込める。`Session` クラスと純 SwiftUI 系 SessionState は AppKit を一切知らなくてよい構造。
 

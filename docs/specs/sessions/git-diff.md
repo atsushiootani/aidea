@@ -1,6 +1,6 @@
 ---
 title: Session 内部状態: GitDiff
-description: GitDiffSessionState の状態 (mode / diffOutput / viewedFiles / focusedFile 等)・Scene とレコメンドプロンプト・Git ツール経由でのみ開く制約
+description: GitDiff Tool の状態 (mode / diffOutput / viewedFiles / focusedFile 等)・Scene とレコメンドプロンプト・Git ツール経由でのみ開く制約
 derived_from:
   - docs/specs/sessions/ui-rules.md
   - docs/specs/frontchannels/scene.md
@@ -18,7 +18,7 @@ last_updated: 2026-05-05
 
 # Session 内部状態: GitDiff
 
-`gitDiff` Tool の Session は `GitDiffSessionState` (`@Observable`) として状態を保持する。
+`gitDiff` Tool の Session 状態を管理する。表示モード・差分出力・閲覧済みファイルなどを保持する。
 Git ツール経由で開かれる差分ビュー (diff2html レンダリング)。
 
 Tool 仕様の背景は [../tools/git.md](../tools/git.md) を、共通 UI ルールは [ui-rules.md](./ui-rules.md) を参照。
@@ -31,7 +31,7 @@ diff2html の採用理由は [ADR 0004](../../decisions/0004-git-diff-with-diff2
 | `mode` | `GitMode` (`.workingChanges` / `.prPreview`) | 対応する Git ツールのモード | ✅ |
 | `diffOutput` | `String` | `git diff` の生出力 | ✅ |
 | `scrollToFile` | `String?` | 指定ファイルへスクロール指示 | — |
-| `viewedFiles` | `Set<String>` | 既読ファイル集合 (変更時 `onViewedChanged` 発火) | ✅ |
+| `viewedFiles` | `Set<String>` | 既読ファイル集合 (変更時 Git パネルへ伝播) | ✅ |
 | `focusedFile` | `String?` | フォーカス中のファイル | ✅ |
 | `registry` | `weak var SessionRegistry?` | Git セッションへの逆参照 | — |
 
@@ -50,9 +50,9 @@ Scene キー (`gitDiff:*`) が Git ツール (`git:*`) と別のため、`worksp
 
 ## ファイル表示順序
 
-Working Changes モードで全ファイルを表示するとき、**Git パネル (GitSessionState) のツリーと同じ Finder 互換自然順**でファイルを並べる。
+Working Changes モードで全ファイルを表示するとき、**Git パネルのツリーと同じ Finder 互換自然順**でファイルを並べる。
 `git diff --cached` (staged) → `git diff` (unstaged) → untracked の順に diff を収集した後、
-ファイルパスを `String.naturalAscending` で並び替えてから diff2html に渡す。
+ファイルパスを Finder 互換自然順で並び替えてから diff2html に渡す。
 同一ファイルに staged と unstaged の両セクションがある場合は staged を先に表示する (安定ソート)。
 
 PR Preview モードも同様に、`git diff main...HEAD` の出力をファイルパスで自然順に並び替えてから diff2html に渡す。

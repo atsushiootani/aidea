@@ -11,7 +11,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-03
+last_updated: 2026-05-05
 ---
 
 # Tool 仕様: Kit
@@ -58,7 +58,7 @@ Session 内部状態は [sessions/kit.md](../sessions/kit.md) を参照。
 セクション順は上記表の通り (AGENTS → SKILLS → COMMANDS → MCP SERVERS)。
 
 各セクション内のエントリ並び順、および Skills / Commands の名前グループキーの並び順は
-**Filer と同じ Finder 互換自然順** (`String.naturalAscending`) を使う。
+**Filer と同じ Finder 互換自然順**を使う。
 同名で USER / PROJECT が両方存在する場合は **PROJECT を前に置く** (PROJECT が USER を上書きする関係性を可視化)。
 詳細は [aspects/sort-order.md](../aspects/sort-order.md) を参照。
 
@@ -90,7 +90,7 @@ Session 内部状態は [sessions/kit.md](../sessions/kit.md) を参照。
 
 ## 自動更新
 
-Filer / Git と同じ `FileWatcher` (FSEvents) を使い、外部エディタでの追加・削除・内容変更を即座に Kit 表示へ反映する。手動更新ボタンは設けない。
+FSEvents ベースのファイル監視を使い、外部エディタでの追加・削除・内容変更を即座に Kit 表示へ反映する。手動更新ボタンは設けない。
 
 ### 監視対象
 
@@ -103,22 +103,22 @@ Kit は **Window 内 singleton** なので、watcher は Window に 1 つだけ 
 
 ### 挙動
 
-- 監視パス配下でファイルイベントが起きたら **200ms デバウンス後に `reloadAll()`** を実行する (連続イベントで過剰 reload しないため)
-- `projectRoot` が変化したら監視対象のプロジェクトパスを差し替えて再 start する
-- Session 破棄時に watcher を stop する
+- 監視パス配下でファイルイベントが起きたら **200ms デバウンス後に全ローダを再実行**する (連続イベントで過剰 reload しないため)
+- `projectRoot` が変化したら監視対象のプロジェクトパスを差し替えて再起動する
+- Session 破棄時に監視を停止する
 
 ### `~/.claude.json` (MCP 設定) の扱い
 
 `~/.claude.json` は単一ファイルで FSEvents の直接監視が難しいため、個別 watcher は設けない。代わりに以下でカバー:
 
-- `~/.claude/` 配下の任意の変更時に `reloadAll()` が MCP もまとめて再読み込みする
-- Kit Session 活性化時 (`onAppear`) の既存 `reloadAll()` 呼び出しも維持する
+- `~/.claude/` 配下の任意の変更時に MCP もまとめて再読み込みする
+- Kit Session 活性化時の既存リロード処理も維持する
 
 → MCP だけ単独変更した場合の即時反映は見送る。実運用で問題になれば将来拡張。
 
-### FileWatcher の拡張
+### ファイル監視の複数パス対応
 
-既存の `FileWatcher.start(path:onChange:)` は単一パス前提なので、複数パスを受け付ける `start(paths:onChange:)` オーバーロードを追加する。`FSEventStreamCreate` は複数パスの配列を受け付けるため、内部変更のみで対応できる。既存呼び出し元 (Filer / Git / SpeechWatcher) は影響なし。
+ファイル監視は複数パス (USER と PROJECT 両方) を同時に監視できるよう拡張する。既存の Filer / Git / Speech 監視への影響はない。
 
 ---
 
@@ -207,56 +207,15 @@ code-reviewer              inherit      USER
 
 ## 実装メモ
 
-### SessionState
-- `KitSessionState` を新規作成
-- 内部に 4 つのローダを保持 (`SkillsLoader`, `CommandsLoader`, `McpLoader`, `AgentsLoader`)
-- 展開状態 `expandedSections: Set<KitSection>` と選択中 `selection: String?` を持つ
-- サブグループの展開状態 `expandedGroups: Set<String>` も保持
-- `KitSection` enum (`.agents`, `.skills`, `.commands`, `.mcps`)
-
-### SwiftUI 実装
-- `KitSessionView`: `ScrollView + LazyVStack(pinnedViews: [.sectionHeaders])`
-  (List ではなく LazyVStack を使う理由: スクロール時のセクションヘッダー固定が必要なため)
-- 各 `Section` にヘッダー (折りたたみトグル) + コンテンツ
-- 行は `HStack` で name + StatusTagView + ScopeTagView の 3 カラム
-- 選択ハイライトは手動 (accentColor 背景 + 白テキスト)、`state.selection` で管理
-- ダブルクリックは `onTapGesture(count: 2)` で `registry.openPreview(for:title:)` を呼ぶ
-- Kit のダブルクリック時は先に `registry.activeSessionID = sessionID` を設定して
-  openPreview のペイン決定ロジック (活動履歴ベース) に自分を起点として伝える
+実装の詳細はソースコードを参照。
 
 ### openPreview の呼び出し規約
 すべての Tool が共通で従うルール:
-1. `registry.activeSessionID` を自分自身の `SessionID` にセット
-2. `registry.openPreview(for: url, title: "表示名")` を呼ぶ
+1. 自分自身の SessionID をアクティブ Session に設定
+2. `openPreview(for: url, title: "表示名")` を呼ぶ
 
 Kit は項目の表示名 (例: `diagram.architecture`) を title に渡すことで、Preview タブの
 ヘッダーに `SKILL.md` ではなく意味のある名前を表示する。
-
-### Models
-- 既存の `Skill` / `Command` / `McpServer` モデルはそのまま流用
-- 新規 `Agent` モデル: `id`, `name`, `description`, `inherit: Bool`, `scope`, `path`
-
-### Loaders
-- 既存の `SkillsLoader` / `CommandsLoader` / `McpLoader` を再利用
-- 新規 `AgentsLoader` を追加 (`~/.claude/agents/*.md` と `<projectRoot>/.claude/agents/*.md` を走査、
-  frontmatter を `FrontmatterParser` で抽出)
-
-### ディレクトリ移行
-旧:
-```
-Models/Skills/ Models/Commands/ Models/Mcps/
-Services/Skills/ Services/Commands/ Services/Mcps/
-Sessions/Skills/ Sessions/Commands/ Sessions/Mcps/
-Views/Sessions/Skills/ Views/Sessions/Commands/ Views/Sessions/Mcps/
-```
-
-新:
-```
-Models/Kit/ (Skill, Command, McpServer, Agent をここに集約)
-Services/Kit/ (各 Loader をここに集約)
-Sessions/Kit/KitSessionState.swift
-Views/Sessions/Kit/KitSessionView.swift
-```
 
 ---
 

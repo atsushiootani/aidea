@@ -8,7 +8,7 @@ impacts:
   - docs/specs/sessions/*
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-21
+last_updated: 2026-05-05
 ---
 
 # Session (sessions/) インデックス
@@ -27,15 +27,15 @@ Session とは何かの用語定義は [../glossary.md](../glossary.md) を参�
 
 ## Tool ごとの SessionState
 
-各 Tool の `SessionState` 実装 (保持プロパティ・ペイン移動での保持・永続化) を 1 ファイルに記述。
+各 Tool の SessionState (保持プロパティ・ペイン移動での保持・永続化) を 1 ファイルに記述。
 
-| ファイル | SessionState クラス |
+| ファイル | Tool |
 |---|---|
-| [filer.md](./filer.md) | `FilerSessionState` |
-| [kit.md](./kit.md) | `KitSessionState` |
-| [terminal.md](./terminal.md) | `TerminalSessionState` |
-| [claude.md](./claude.md) | `ClaudeSessionState` |
-| [web.md](./web.md) | `WebSessionState` |
-| [preview.md](./preview.md) | `PreviewSessionState` |
-| [git.md](./git.md) | `GitSessionState` |
-| [git-diff.md](./git-diff.md) | `GitDiffSessionState` |
+| [filer.md](./filer.md) | Filer |
+| [kit.md](./kit.md) | Kit |
+| [terminal.md](./terminal.md) | Terminal |
+| [claude.md](./claude.md) | Claude |
+| [web.md](./web.md) | Web |
+| [preview.md](./preview.md) | Preview |
+| [git.md](./git.md) | Git |
+| [git-diff.md](./git-diff.md) | GitDiff |

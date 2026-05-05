@@ -1,6 +1,6 @@
 ---
 title: Session 内部状態: Filer
-description: FilerSessionState の状態 (selectedFile / expandedURLs)・シングルトン制約・workspace.json 永続化・Scene とレコメンドプロンプト
+description: Filer Tool のセッション内部状態 (選択ファイル / 展開ディレクトリ)・シングルトン制約・workspace.json 永続化・Scene とレコメンドプロンプト
 derived_from:
   - docs/specs/sessions/ui-rules.md
   - docs/specs/frontchannels/scene.md
@@ -11,12 +11,12 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-23
+last_updated: 2026-05-05
 ---
 
 # Session 内部状態: Filer
 
-`filer` Tool の Session は `FilerSessionState` (`@Observable`) として状態を保持する。
+`filer` Tool の Session 状態を管理する。ペイン移動でも状態は引き継がれる。
 **ペイン移動で状態が失われない** ことを保証する。
 
 用語と UI ルールの前提は [ui-rules.md](./ui-rules.md) を、Tool 仕様は [../tools/filer.md](../tools/filer.md) を参照。

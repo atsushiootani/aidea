@@ -32,7 +32,7 @@ Session 内部状態は [sessions/preview.md](../sessions/preview.md) を参照�
 
 - Preview Session は 1 つのファイルを表示する
 - ファイルの種別に応じて **コンテンツハンドラ**を切り替える (同じ Preview Session で複数の種別を透過的に扱う)
-- タブタイトルは `PreviewSessionState.title` があればそれ、無ければ URL の最終要素
+- タブタイトルは Session の `title` があればそれ、無ければ URL の最終要素
 - Preview は Window 内に複数インスタンス同時存在可
 
 ## ファイル種別とコンテンツハンドラ
@@ -114,7 +114,7 @@ Markdown は `MarkdownContainer` で **view / edit の 2 モード**を扱う。
 3. キャッシュが新鮮ならそのまま表示。古い or 無ければ Claude API で SSE ストリーミング翻訳
 4. `ClaudeTranslator` が `claude-haiku-4-5-20251001` に `stream: true` でリクエスト送信 (Markdown 構造・コード識別子は保持)
 5. チャンク受信のたびに `.aidea/ja/<相対パス>/<filename>` へ累積テキストを書き込む
-6. 最初のチャンク受信時に sibling タブを開く → FileWatcher がその後の書き込みを検知して表示を逐次更新
+6. 最初のチャンク受信時に sibling タブを開く → ファイル監視がその後の書き込みを検知して表示を逐次更新
 7. 翻訳完了 (ストリーム終端) 後にボタン状態を完了に更新する
 
 #### ストリーミング (SSE)
@@ -151,7 +151,7 @@ Markdown は `MarkdownContainer` で **view / edit の 2 モード**を扱う。
 
 プレビュー表示中のファイルが外部 (Claude など) によって変更されたとき、プレビュー表示を自動的に更新する。
 
-- ファイルの変更は **FSEvents** で検知する (実装: 既存の `FileWatcher` を流用)
+- ファイルの変更は **FSEvents** で検知する
 - 変更を検知したら直ちにファイルを再読み込みしてプレビューを更新する
 - **編集モード中は更新しない**: `MarkdownContainer` が edit モードのときはスキップし、view モードに戻ったタイミングで反映される
 - 対象: Markdown (`MarkdownContainer` の view モード) とテキスト / 画像ファイル (`NSTextPreview` / `NSImage`)
@@ -250,14 +250,7 @@ open "aidea://open?path=$(python3 -c "import urllib.parse,sys; print(urllib.pars
 
 ## 実装メモ
 
-### 既存コード
-- `PreviewSessionState.url: URL?` `title: String?` を保持
-- `PreviewSessionView` が state.url の拡張子を見て SwiftUI 分岐
-
-### drawio 実装ファイル
-- `Views/Sessions/Preview/DrawioPreview.swift` — View/Edit モード切替、保存/キャンセル UI
-- `Views/Sessions/Preview/DrawioStaticView.swift` — `.drawio.svg` の静的表示 / `.drawio` の chrome=0 レンダリング
-- `Views/Sessions/Preview/DrawioEditor.swift` — `embed.diagrams.net` embed mode の WKWebView ラッパ、postMessage プロトコル仲介
+実装の詳細はソースコードを参照。
 
 ### 依存追加の有無
 - **外部依存追加なし** (embed.diagrams.net をオンラインで使用、WebKit は既に使用中)

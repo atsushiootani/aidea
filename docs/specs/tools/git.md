@@ -59,7 +59,7 @@ Session 内部状態は [sessions/git.md](../sessions/git.md) / [sessions/git-di
 - **変更のあるファイルだけ**を表示 (変更のないファイル/ディレクトリは非表示)
 - 変更ディレクトリは変更ファイルを祖先に持つものだけ展開可能
 - **並び順**: 各階層は Filer と同じ Finder 互換自然順 (ファイル/ディレクトリを区別せず混在)。詳細は [aspects/sort-order.md](../aspects/sort-order.md) を参照
-- **デコレーション**: Filer と同じデコレーションルール (`FilerSessionState.defaultDecorationRules` + `userDecorationRules`) を適用する
+- **デコレーション**: Filer と同じデコレーションルール (デフォルトルール + ユーザ追加ルール) を適用する
   - **ファイルアイコン**: デコレーションルールが解決したファイル種別アイコン (`.swift` → `swift`、`.md` → `doc.text` 等)。マッチするルールがない場合はステータスアイコンにフォールバック
   - **ディレクトリアイコン**: `folder.fill` (固定)
   - **行背景色**: デコレーションルールで指定した背景色 (Filer と同じ `alpha 0.2`)。選択中は AppKit 標準ハイライトが優先
@@ -215,45 +215,14 @@ issue #26 では 2 つの Tool が必要:
 
 ## 実装メモ
 
-### 新規ファイル
-
-```
-Models/Git/
-  GitChangedFile.swift       // ステータス (M/A/D/R) + パス + ツリーノード
-  GitFileTreeNode.swift      // ディレクトリ/ファイルのツリー構造ノード
-
-Services/Git/
-  GitService.swift           // Process で git コマンド実行
-
-Sessions/Git/
-  GitSessionState.swift      // モード + 変更ファイル一覧
-  GitDiffSessionState.swift  // ファイルパス + diff コンテンツ + モード
-
-Views/Sessions/Git/
-  GitSessionView.swift       // NSOutlineView + セグメントピッカー
-  GitDiffSessionView.swift   // WKWebView + diff2html + Discard ボタン
-```
-
-### Tool enum 追加
-
-```swift
-enum Tool {
-    // 既存
-    case filer, kit, terminal, web, preview
-    // 追加
-    case git       // シングルトン
-    case gitDiff   // マルチインスタンス
-}
-```
+実装の詳細はソースコードを参照。
 
 ### シングルトン制約
-- Filer と同じく PaneView の `isAddable` で `.git` を条件付き非表示にする
+- Filer と同じく PaneView の追加メニューで `.git` を条件付き非表示にする
 
 ### GitDiff の開き方
-- Git ツールのダブルクリック → `registry.openPreview` と同じパターンだが、
-  Preview ではなく GitDiff Session を作成する
-- `registry.openGitDiff(for: filePath, mode: .workingChanges | .prPreview)`
-  のような専用メソッドを SessionRegistry に追加
+- Git ツールのダブルクリック → `openPreview` と同じパターンだが、Preview ではなく GitDiff Session を作成する
+- 専用の `openGitDiff` メソッドを SessionRegistry に追加
 
 ---
 

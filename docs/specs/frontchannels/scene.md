@@ -17,7 +17,7 @@ impacts:
   - docs/specs/sessions/web.md
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-23
+last_updated: 2026-05-05
 ---
 
 # Frontchannel: Scene
@@ -98,11 +98,6 @@ Claude セッションは Companion と 1:1 で紐付くため、Scene 識別子
 
 ## SessionState プロトコル
 
-```swift
-protocol SessionState {
-    /// 現在の Scene 識別子を返す
-    func currentScene() -> String?
-}
-```
+各 Tool の Session 状態は「現在の Scene 識別子」を返す能力を持つ。RecommendState はこの識別子を使って Scene プロンプトストアから対応するプロンプト一覧を引く。
 
-`recommendedPrompts()` は廃止 (初期値の二重管理を防ぐため)。RecommendState は `currentScene()` で識別子を取得し、RecommendStore から対応するプロンプトを引く。
+初期値の二重管理を防ぐため、SessionState 側にデフォルトプロンプトのハードコードは持たない。
