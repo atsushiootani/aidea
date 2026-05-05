@@ -8,7 +8,7 @@ impacts:
   - docs/specs/backchannels/*
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-03
+last_updated: 2026-05-05
 ---
 
 # Backchannels (Claude → Aidea 通信) インデックス
@@ -22,6 +22,7 @@ Claude が `.aidea/backchannels/` にファイルを書き出して Aidea に通
 | [backchannel.md](./backchannel.md) | Backchannel プロトコル全般 (設計原則・ディレクトリ構造・機能宣言チェーン・ファイル監視) |
 | [voicevox.md](./voicevox.md) | Speech メッセージの VOICEVOX 読み上げ実装 |
 | [handoff.md](./handoff.md) | Handoff メッセージによる Companion 間タスク受け渡し |
+| [output.md](./output.md) | Output メッセージによるレスポンス全文の出力記録 |
 | [companion-roster.md](./companion-roster.md) | aidea.md 内のコンパニオン名簿セクションを Aidea が `companions[].name` に追従して自動更新する仕様 |
 
 ## 関連

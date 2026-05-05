@@ -9,6 +9,7 @@ syncs_with:
   - docs/specs/backchannels/backchannel.md
   - docs/specs/backchannels/voicevox.md
   - docs/specs/backchannels/handoff.md
+  - docs/specs/backchannels/output.md
   - docs/specs/backchannels/companion-roster.md
   - docs/specs/frontchannels/scene.md
   - docs/specs/companions/companion.md
@@ -24,7 +25,7 @@ impacts: []
 conventions:
   - docs/LAYOUT.md
   - docs/specs/aspects/README.md
-last_updated: 2026-05-03
+last_updated: 2026-05-05
 ---
 
 # Persistence (データ永続化)
@@ -72,6 +73,7 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 | `Backchannels/aidea.md` | Backchannel 機能の指示書。`BackchannelSetup` が `.aidea/claude/` にコピー |
 | `Backchannels/speech.md` | speech 機能の指示書 (同上) |
 | `Backchannels/handoff.md` | Companion 間ハンドオフ機能の指示書 (同上)。詳細は [../backchannels/handoff.md](../backchannels/handoff.md) |
+| `Backchannels/output.md` | output 記録機能の指示書 (同上)。詳細は [../backchannels/output.md](../backchannels/output.md) |
 | `Backchannels/companion-instructions.md` | コンパニオン指示書 (`instructions.md`) のデフォルトテンプレ。`BackchannelSetup` が 9 個に複製して `.aidea/claude/companions/<0..8>/instructions.md` に配置 (既存ファイルは上書きしない) |
 
 **設計ポリシー**: ハードコードしがちなデフォルト値 (初期レイアウト・コンパニオン定義・レコメンドプロンプト等) は Swift コード側に二重管理せず、Bundle 同梱の JSON / Markdown を **唯一のソース** とする。
@@ -84,7 +86,8 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 ├── backchannels/             # Claude からのメッセージ受信ディレクトリ (ADR 0024: Companion 別に分離し履歴保全)
 │   ├── 0/                    # Companion 0 のメッセージ置き場
 │   │   ├── speech-*.txt      # 読み上げ対象テキスト (処理後も残す / 履歴)
-│   │   └── handoff-*.json    # Companion 0 が送信したハンドオフ (処理後も残す、[../backchannels/handoff.md](../backchannels/handoff.md))
+│   │   ├── handoff-*.json    # Companion 0 が送信したハンドオフ (処理後も残す、[../backchannels/handoff.md](../backchannels/handoff.md))
+│   │   └── output-*.txt      # レスポンス全文の出力記録 (処理後も残す / 履歴、[../backchannels/output.md](../backchannels/output.md))
 │   ├── 1/                    # Companion 1
 │   │   └── ...
 │   └── ...                   # 0..8 (必要に応じて Claude が mkdir で作成)
@@ -92,6 +95,7 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 │   ├── aidea.md              # Backchannel 機能の指示書 (共有)
 │   ├── speech.md             # speech 機能の指示書 (共有)
 │   ├── handoff.md            # Companion 間ハンドオフの指示書 (共有)
+│   ├── output.md             # output 記録機能の指示書 (共有)
 │   └── companions/           # コンパニオン別の指示書 (v8 新設)
 │       ├── 0/
 │       │   ├── instructions.md  # ← Aidea が起動時に "読んで" と指示するエントリーポイント
@@ -251,12 +255,14 @@ Claude → Aidea 方向の通信は**ファイル経由**で行う。詳細は [
 
 | ファイル | 役割 |
 |---|---|
-| `Services/Backchannel/BackchannelSetup.swift` | Bundle → `.aidea/claude/` の初期コピー (`aidea.md` / `speech.md` / `handoff.md` / コンパニオン指示書 9 個) |
+| `Services/Backchannel/BackchannelSetup.swift` | Bundle → `.aidea/claude/` の初期コピー (`aidea.md` / `speech.md` / `handoff.md` / `output.md` / コンパニオン指示書 9 個) |
 | `Services/Backchannel/Speech/SpeechWatcher.swift` | `.aidea/backchannels/<0..8>/speech-*.txt` の FSEvents 再帰監視 |
 | `Services/Backchannel/Speech/SpeechState.swift` | Speech 状態管理と SpeechQueue への投入 |
 | `Services/Backchannel/Speech/SpeechQueue.swift` | VOICEVOX 合成 → AVAudioPlayer 再生キュー |
 | `Services/Backchannel/Handoff/HandoffWatcher.swift` | `.aidea/backchannels/<0..8>/handoff-*.json` の FSEvents 再帰監視 |
 | `Services/Backchannel/Handoff/HandoffState.swift` | Handoff 状態管理 + Dispatcher 呼び出し |
+| `Services/Backchannel/Output/OutputWatcher.swift` | `.aidea/backchannels/<0..8>/output-*.txt` の FSEvents 再帰監視 |
+| `Services/Backchannel/Output/OutputState.swift` | Output 履歴蓄積 (コンパニオン別インメモリ) |
 
 詳細は [../backchannels/](../backchannels/README.md) を参照。
 
@@ -274,6 +280,7 @@ Claude → Aidea 方向の通信は**ファイル経由**で行う。詳細は [
 | Companion / Recommend 変更時 | インメモリのみ更新 (即座保存しない) | `CompanionStore` / `RecommendStore` |
 | Claude から speech 受信時 | `<n>/speech-*.txt` → 読み上げ (ファイルは残す、ADR 0024) | `SpeechWatcher` |
 | Claude から handoff 受信時 | `<n>/handoff-*.json` → 宛先解決 → 送信 (ファイルは残す、ADR 0024) | `HandoffWatcher` |
+| Claude から output 受信時 | `<n>/output-*.txt` → OutputState の履歴に蓄積 (ファイルは残す、ADR 0024) | `OutputWatcher` |
 | 終了時 / バックグラウンド化時 | `workspace.json` (4 グループ統合) 保存 | `AideaApp.registerTerminationObserver()` |
 
 ---
