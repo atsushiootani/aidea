@@ -58,7 +58,7 @@ Session 内部状態は [sessions/preview.md](../sessions/preview.md) を参照�
 
 ### renderMarkdown — Markdown を見やすく表示
 - `.md` / `.markdown` を `MarkdownPreview` で表示
-- 見出し (`# ~ ####`) / コードブロック / 箇条書き / 水平線 / frontmatter / インライン (bold・italic・リンク・`code`) をサポート
+- 見出し (`# ~ ####`) / コードブロック / Mermaid 図 / 箇条書き / 水平線 / frontmatter / インライン (bold・italic・リンク・`code`) をサポート
 - 外部依存なし (SwiftUI `Text(.init(String))` のネイティブ Markdown に委譲)
 
 #### frontmatter 表示
@@ -68,6 +68,15 @@ Session 内部状態は [sessions/preview.md](../sessions/preview.md) を参照�
 - YAML 行を `key: value` および配列項目 `  - value` の形式で行ごとに解析する
 - **ファイルパスのクリック**: 値がローカルファイルパスと判定される場合 (`/` を含み `http` / `[` / `{` で始まらない) はリンクとして表示し、タップすると隣タブで Preview が開く
 - パス解決順: ① ファイルの親ディレクトリからの相対パス → ② 親を順にさかのぼって最初に一致するパス (上限 10 段) → 見つからなければリンク非表示
+
+#### Mermaid 図の表示
+
+- Markdown 内の ` ```mermaid ... ``` ` ブロックを Mermaid 図として描画する
+- **view モード**: `MermaidView` (WKWebView + CDN の Mermaid.js) でレンダリング。描画完了後に高さを自動調整
+- **edit モード**: 通常のコードブロックとして表示 (生テキスト)
+- パース失敗時はエラーメッセージを赤文字で表示
+- ネットワーク接続が必要 (drawio embed と同様、オフライン対応は将来検討)
+- 実装: `Views/Sessions/Preview/MermaidView.swift`
 
 #### view / edit モード切替 UI
 
