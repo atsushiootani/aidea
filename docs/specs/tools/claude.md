@@ -53,9 +53,9 @@ Backchannel の詳細は [backchannels/backchannel.md](../backchannels/backchann
 
 | コンポーネント | 役割 |
 |---------------|------|
-| `ClaudeSessionState` | PTY 起動 + claude 自動送信 + Backchannel 指示送信 + **`isBusy` / `isSpeaking` 状態公開** (issue #45) |
-| `PersistentTerminalView` | Terminal と共用 |
-| `ClaudeSessionView` | NSViewRepresentable ラッパ（Terminal と同構造） |
+| Claude Session 状態管理 | PTY 起動 + claude 自動送信 + Backchannel 指示送信 + **`isBusy` / `isSpeaking` 状態公開** (issue #45) |
+| ターミナル View | Terminal と共用 |
+| Claude Session View | ターミナル View の SwiftUI ラッパ（Terminal と同構造） |
 
 ---
 
@@ -75,13 +75,13 @@ Backchannel の詳細は [backchannels/backchannel.md](../backchannels/backchann
 |---------|------|------|
 | zsh 起動 | 0s | PTY プロセス開始 |
 | claude 送信 | +1.0s | `claude\n` を PTY に送信 |
-| companionPrompt 送信 | +5.0s | `CompanionInstructions.loadCommand(for:)` が生成した固定パターン文字列 (`.aidea/claude/companions/<index>/instructions.md を読んで従ってね`) を PTY に送信 |
+| 初期プロンプト送信 | +5.0s | instructions.md パスを初期プロンプトとして PTY に送信 (`.aidea/claude/companions/<index>/instructions.md を読んで従ってね`) |
 | Enter 送信 | +5.3s | `\r` を送って submit させる |
-| isReady=true | +6.0s | Frontchannel (sendMessage) を受け付け可能とマーク。待機中の送信はこのタイミングで実行される |
+| isReady=true | +6.0s | Frontchannel からのメッセージ送信を受け付け可能とマーク。待機中の送信はこのタイミングで実行される |
 
 - `send()` は PTY にキー入力を送るため、対話シェル内での手入力と同等
 - ADR 0008 の非対話シェル問題を回避
-- companionPrompt が空の場合はステップ 3-4 をスキップし、isReady は `+1.3s` でセット
+- 初期プロンプトが空の場合はステップ 3-4 をスキップし、isReady は `+1.3s` でセット
 - 本文と `\r` を分離するのは、Claude Code (Ink 製 TUI) が bracketed paste を有効にしており、両者を一度に送ると `\r` も paste の一部とみなされ submit されないため。本文の入力処理が終わる間 (≈0.3s) を挟む
 - v8 以降、Aidea が送るのは固定パターン文字列のみ。Claude が Read ツールで `instructions.md` 本文を取りに行く (ADR 0022)。Claude 側は `instructions.md` 冒頭から `.aidea/claude/aidea.md` / `speech.md` / `handoff.md` 等を段階的に読み込む
 
@@ -89,9 +89,9 @@ Backchannel の詳細は [backchannels/backchannel.md](../backchannels/backchann
 
 ## Backchannel 連携
 
-コンパニオンの `instructions.md` 内で `.aidea/claude/` 配下の機能ファイルを参照することで Backchannel 機能が有効化される (機能宣言チェーン、ADR 0022)。Aidea が起動時に送るのは `CompanionInstructions.loadCommand(for:)` が生成する固定パターン文字列のみで、本文は Claude が Read ツール経由でファイルから取得する。
+コンパニオンの `instructions.md` 内で `.aidea/claude/` 配下の機能ファイルを参照することで Backchannel 機能が有効化される (機能宣言チェーン、ADR 0022)。Aidea が起動時に送るのは instructions.md パスを指示する固定パターン文字列のみで、本文は Claude が Read ツール経由でファイルから取得する。
 
-1. BackchannelSetup が `.aidea/claude/aidea.md` / `speech.md` / `handoff.md` と `companions/<0..8>/instructions.md` を Bundle からコピー済み (既存ファイルは上書きしない)
+1. 初回セットアップ時に `.aidea/claude/aidea.md` / `speech.md` / `handoff.md` と `companions/<0..8>/instructions.md` が Bundle からコピー済み (既存ファイルは上書きしない)
 2. companionPrompt 送信により Claude が `instructions.md` を読み込む
 3. `instructions.md` の参照行に従って Claude が `aidea.md` / `speech.md` / `handoff.md` 等を段階的に読み込む (参照しない Companion はその機能を持たない)
 4. 以降 Claude が `.aidea/backchannels/<companion-index>/speech-{timestamp}.txt` や `handoff-{timestamp}.json` にメッセージを書き出す (ADR 0024)
@@ -103,14 +103,14 @@ Backchannel の詳細は [backchannels/backchannel.md](../backchannels/backchann
 
 ## 実行中判定 `isBusy` (issue #45)
 
-`ClaudeSessionState` に `@Observable` な `isBusy: Bool` を公開する。Companion アイコンの表情切替 ([../companions/companion.md#表情・状態表示-issue-45](../companions/companion.md#表情・状態表示-issue-45)) が外部から参照する。
+Claude セッションは実行中状態 (`isBusy`) を外部に公開する。Companion アイコンの表情切替 ([../companions/companion.md#表情・状態表示-issue-45](../companions/companion.md#表情・状態表示-issue-45)) が外部から参照する。
 
 ### 判定ロジック
 
-- **true にする**: PTY に `send` したタイミング。`Frontchannel.sendMessage` / `autoStartClaude` が PTY に書き込んだ直後に `markBusy()` で明示的にセットする (出力を待たずに UI を考え中表示に切り替えるため)
-- **初期タイマー (3.0s)**: `markBusy()` は `busySendDebounceInterval` (3.0s) のタイマーをセットする。Claude API のレイテンシで最初の出力が来るまでの間も busy=true を維持するための猶予期間
-- **タイマー延長 (0.5s)**: busy 中に PTY 出力が来たらデバウンスタイマーを `busyDebounceInterval` (0.5s) に再セットする (応答ストリーミング中は延長され続けて busy 維持)
-- **false にする**: busy 中に PTY 出力が **0.5 秒** 途切れたら `isBusy = false` に戻す。send から 3.0s 以内に出力が来なかった場合も同様
+- **true にする**: PTY にメッセージを送信したタイミング。送信直後に明示的にセットする (出力を待たずに UI を考え中表示に切り替えるため)
+- **初期タイマー (3.0s)**: busy 設定と同時に 3.0s のタイマーをセットする。Claude API のレイテンシで最初の出力が来るまでの間も busy=true を維持するための猶予期間
+- **タイマー延長 (0.5s)**: busy 中に PTY 出力が来たらデバウンスタイマーを 0.5s に再セットする (応答ストリーミング中は延長され続けて busy 維持)
+- **false にする**: busy 中に PTY 出力が **0.5 秒** 途切れたら false に戻す。送信から 3.0s 以内に出力が来なかった場合も同様
 
 > **Never**: PTY 出力を観測しただけで `isBusy = true` にはしない。Claude CLI はアイドル時もカーソル点滅 / 定期再描画で出力を出すため、「出力観測 = busy」にすると常時 busy になる。send ベースで true にすることで「ユーザ/Aidea が Claude に仕事を投げた期間」のみを busy と判定する。
 
@@ -121,20 +121,18 @@ Backchannel の詳細は [backchannels/backchannel.md](../backchannels/backchann
 
 | タイミング | `isBusy` | 遷移理由 |
 |---|---|---|
-| `ClaudeSessionState` 初期化直後 | `false` | send 未実施 |
-| 自動起動シーケンス (claude / companionPrompt / Enter send) | 各 send 直後に `true` | `markBusy()` (3.0s タイマー) |
+| Claude セッション初期化直後 | `false` | 送信未実施 |
+| 自動起動シーケンス (claude / 初期プロンプト / Enter 送信) | 各送信直後に `true` | 3.0s タイマー開始 |
 | TUI 初期描画中〜 isReady | `true` 維持 | 応答出力で 0.5s タイマーに切り替え延長 |
 | 入力待ちプロンプト表示 (起動後の初回アイドル) | 0.5s 静止後 `false` | タイマー満了 |
-| ユーザが `Cmd+Enter` でプロンプト送信 | 送信直後 `true` | `markBusy()` (3.0s タイマー) |
+| ユーザが `Cmd+Enter` でプロンプト送信 | 送信直後 `true` | 3.0s タイマー開始 |
 | Claude の応答ストリーミング中 | `true` 維持 | 応答出力で 0.5s タイマーに切り替え延長 |
 | 応答完了 → 入力待ちプロンプト表示 | 0.5s 静止後 `false` | タイマー満了 |
-| PTY 終了時 (`exitCode != nil`) | `false` | (アイドル扱い) |
+| PTY 終了時 | `false` | (アイドル扱い) |
 
-### 外部参照箇所
+### 外部参照
 
-| 参照元 | 用途 |
-|---|---|
-| `CompanionView.companionIcon(_:)` | 「実行中」状態判定でアイコンを `companion-N-thinking` + `ellipsis.bubble` に切り替える |
+CompanionView が「実行中」状態判定でアイコン表情 (thinking) + オーバーレイ記号を切り替える。
 
 **Never**: `isBusy` をターミナル出力の文字列パース (「> 」「✻」など特定トークン検知) で判定しない。出力静止ベースの単純判定に留める ([ADR 0008](../../decisions/0008-no-claude-autostart.md) の思想踏襲)。
 
@@ -142,19 +140,17 @@ Backchannel の詳細は [backchannels/backchannel.md](../backchannels/backchann
 
 ## 読み上げ中判定 `isSpeaking` (issue #45)
 
-`ClaudeSessionState` に computed な `isSpeaking: Bool` を公開する。状態実体は持たず、`SpeechQueue.currentlySpeakingIndex == companionIndex` を返す薄い facade。Companion アイコンの表情切替 ([../companions/companion.md#表情・状態表示-issue-45](../companions/companion.md#表情・状態表示-issue-45)) が `isBusy` と対称に read できるよう揃える位置づけ。
+Claude セッションは読み上げ中状態 (`isSpeaking`) を外部に公開する。状態実体は持たず、音声キューが当該コンパニオンを読み上げ中かどうかを返す薄いファサード。Companion アイコンの表情切替 ([../companions/companion.md#表情・状態表示-issue-45](../companions/companion.md#表情・状態表示-issue-45)) が `isBusy` と対称に参照できるよう揃える位置づけ。
 
 ### 状態源
 
-- **SSoT**: `SpeechQueue.currentlySpeakingIndex: Int?` ([../backchannels/voicevox.md](../backchannels/voicevox.md))
-- **注入**: Claude セッション生成 / 復元時に `state.speechQueue = speechState.queue` で weak 参照を持たせる (`AideaApp.activateCompanion` / `sendRecommendedPrompt` / `dispatchHandoff` / `CompanionView.launchCompanion` / `WorkspaceSnapshotManager.apply`)
-- **tracking**: `SpeechQueue` 自身が `@Observable` なので、`isSpeaking` を読むスコープに観測が自動伝播する (ClaudeSessionState に別途 stored な state を持たせない)
+- **SSoT**: 音声キューが公開する「現在読み上げ中の companionIndex」([../backchannels/voicevox.md](../backchannels/voicevox.md))
+- **注入**: Claude セッション生成・復元時に音声キューへの参照を保持させる
+- **伝播**: 音声キューが状態変更を自動伝播するため、Claude セッション側に別途状態を持たせない
 
-### 外部参照箇所
+### 外部参照
 
-| 参照元 | 用途 |
-|---|---|
-| `CompanionView.companionIcon(_:)` | 「読み上げ中」状態判定でアイコンを `companion-N-smile` + `heart.fill` に切り替える |
+CompanionView が「読み上げ中」状態判定でアイコン表情 (smile) + オーバーレイ記号を切り替える。
 
 ---
 

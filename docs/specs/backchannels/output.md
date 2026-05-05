@@ -38,17 +38,17 @@ Claude がレスポンスのテキストを `.aidea/backchannels/<companion-inde
 
 ## ファイル監視 (Aidea 側)
 
-`OutputWatcher` が `.aidea/backchannels/` を FSEvents で再帰監視し、`output-*.txt` ファイルを検知したら `OutputState` に通知する。
+出力監視コンポーネント (OutputWatcher) が `.aidea/backchannels/` を FSEvents で再帰監視し、`output-*.txt` ファイルを検知したら出力状態管理コンポーネントに通知する。
 
 | チェック項目 | 動作 |
 |-------------|------|
 | 親ディレクトリが `0..8` 以外 | 警告ログのみで無視 |
 | ファイルが空 | スキップ (ログなし) |
-| 正常検知 | `OutputState` のコールバックを呼ぶ |
+| 正常検知 | 出力状態管理コンポーネントに通知する |
 
-### OutputState
+### 出力状態管理 (OutputState)
 
-`OutputWatcher` からの通知を受け取り、コンパニオン別の出力履歴を保持する `@Observable` クラス。`history: [Int: [OutputEntry]]` でインデックスをキーとして蓄積する。
+通知を受け取り、コンパニオン別の出力履歴をインデックスをキーとして蓄積する。状態変更は UI に自動伝播する。
 
 ---
 
@@ -62,7 +62,7 @@ Claude は以下のタイミングで output ファイルを書き出す。
 
 ## 機能宣言 (Claude 側)
 
-`.aidea/claude/output.md` を `instructions.md` から参照することで有効化する (機能宣言チェーン)。`BackchannelSetup` がアプリ起動時にこのファイルを Bundle からコピーする。
+`.aidea/claude/output.md` を `instructions.md` から参照することで有効化する (機能宣言チェーン)。アプリ起動時の初回セットアップ処理がこのファイルを Bundle からコピーする。
 
 ---
 
@@ -72,7 +72,7 @@ Claude は以下のタイミングで output ファイルを書き出す。
 
 - output ファイルは `.aidea/backchannels/<companion-index>/output-{timestamp}.txt` に書き出す
 - Aidea 側でファイルを削除しない (ADR 0024)
-- `OutputWatcher` は `BackchannelPath.extractCompanionIndex` で親ディレクトリを検証する
+- 出力監視コンポーネントは親ディレクトリ名を検証してから処理する
 
 ### Never
 

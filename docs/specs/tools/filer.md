@@ -239,14 +239,14 @@ Filer の表示順がワークスペース全体 (Git / Kit 等) の List UI の
   - 「その他...」を選ぶと SF Symbol 名を文字列で直接入力できる小ダイアログを開く (`NSImage(systemSymbolName:)` で実在チェック)
 - 色列のセルをクリックすると **推奨色プリセット + 「カスタム...」** ポップアップを表示
   - 「カスタム...」を選ぶと `NSColorPanel` から自由に色を指定できる (hex 形式で保存)
-- OK で `FilerSessionState.userDecorationRules` を更新し、即座に Filer 表示を再描画
+- OK でデコレーションルールを更新し、即座に Filer 表示を再描画
 - 永続化される (`workspace.json` v6)
 
 ### editExcludeRules — 除外ルールを編集
 - ペイン上部の歯車ボタン (または検索バー横の設定アイコン) から「除外ルール設定...」ダイアログを開く
 - 改行区切りで複数のパターンを編集できる `NSScrollView` 内の `NSTextView`
 - ダイアログ下部に「デフォルトに戻す」ボタン (デフォルトリストで上書き)
-- OK / Cancel ボタン。OK で `FilerSessionState.excludeRules` を更新し、即座に Filer 表示と検索を再評価する
+- OK / Cancel ボタン。OK で除外ルールを更新し、即座に Filer 表示と検索を再評価する
 - 適用後の状態は `workspace.json` に保存される (詳細は [除外ルール](#除外ルール) 節)
 
 ### openInFinder — Finder で開く
@@ -379,7 +379,7 @@ Filer の表示順がワークスペース全体 (Git / Kit 等) の List UI の
 
 複数のルールにマッチした場合は **後勝ち** (配列の後方ほど高優先)。
 
-- 評価順: `defaultDecorationRules` → `userDecorationRules` の順に連結した 1 本の配列を上から評価
+- 評価順: デフォルトデコレーションルール → ユーザー定義デコレーションルール の順に連結した 1 本の配列を上から評価
 - マッチした全ルールを順に合成し、`icon` / `color` ともに **最後にマッチしたルールの値** を使う
   - 後ろのルールが `icon: nil` を持つ場合は前のルールの `icon` を引き継ぐ (色も同様)
 - これにより「特定ディレクトリ全体に薄い色 → さらに特定ファイルだけ強調色」のスタイルが書ける
@@ -411,7 +411,7 @@ Filer の表示順がワークスペース全体 (Git / Kit 等) の List UI の
 
 ### デフォルトデコレーション
 
-現状コードの `FileTreeLoader.iconName(for:)` 拡張子マッピングを **デフォルトデコレーション (`defaultDecorationRules`)** として明示的に表現する。
+拡張子マッピングを**デフォルトデコレーション**として明示的に表現する。
 
 | パターン | アイコン (SF Symbol) | 色 |
 |---|---|---|
@@ -425,17 +425,17 @@ Filer の表示順がワークスペース全体 (Git / Kit 等) の List UI の
 | `*.sh` / `*.zsh` / `*.bash` | `terminal` | — |
 | `*.drawio` / `*.drawio.svg` | (Asset `drawio`) | — |
 
-ディレクトリ (`folder`) は `node.isDirectory` 判定で別途決まり、`*` フォールバック以前に適用する (= デコレーションリストに含めず実装側で先に解決)。
+ディレクトリは `isDirectory` 判定で別途決まり、`*` フォールバック以前に適用する (= デコレーションリストに含めず実装側で先に解決)。
 
-色は全てなし (デフォルトは無装飾)。**ユーザは `userDecorationRules` を編集するだけで、デフォルト分は触らない** (Aidea 本体のアップデートで進化する)。
+色は全てなし (デフォルトは無装飾)。**ユーザはユーザー定義デコレーションルールを編集するだけで、デフォルト分は触らない** (Aidea 本体のアップデートで進化する)。
 
-- 管理場所 (当面): `FilerSessionState.defaultDecorationRules` — Swift 側の定数
+- 管理場所 (当面): Swift 側の定数
 - 管理場所 (将来): #80 完了時に Bundle 内 `default-workspace.json` へ移管予定
 
 ### 永続化
 
-各 Filer Session が **`userDecorationRules: [DecorationRule]`** (ユーザ追加分のみ) を保持し、`workspace.json` (v6) に Filer Tab の状態として保存される。
-`defaultDecorationRules` は Aidea 同梱の定数なので **永続化しない**。
+各 Filer Session がユーザ追加分のデコレーションルールのみを保持し、`workspace.json` (v6) に Filer Tab の状態として保存される。
+デフォルトデコレーションルールは Aidea 同梱の定数なので **永続化しない**。
 詳細は [../sessions/filer.md](../sessions/filer.md) と [../aspects/persistence.md](../aspects/persistence.md) を参照。
 
 ### 編集
@@ -479,7 +479,7 @@ DerivedData
 .claude/worktrees
 ```
 
-- 管理場所 (当面): `FilerSessionState.defaultExcludeRules` — Swift 側の定数
+- 管理場所 (当面): Swift 側の定数
 - 管理場所 (将来): #80 完了時に Bundle 内 `default-workspace.json` へ移管予定
 - `.gitignore` に書かれた内容は**尊重しない** (除外ルールは Filer 専用設定で、git とは独立)
 
@@ -487,7 +487,7 @@ DerivedData
 
 - 各 Filer Session が `excludeRules: [String]` を保持し、`workspace.json` (v4) に Filer Tab の状態として保存される
 - 詳細は [../sessions/filer.md](../sessions/filer.md) と [../aspects/persistence.md](../aspects/persistence.md) を参照
-- 新規 Filer Session 作成時 / v3→v4 マイグレーション時 / 「デフォルトに戻す」ボタン押下時には、`FilerSessionState.defaultExcludeRules` を参照する
+- 新規 Filer Session 作成時 / v3→v4 マイグレーション時 / 「デフォルトに戻す」ボタン押下時にはデフォルト除外ルールを適用する
 
 ### 編集
 
@@ -497,35 +497,7 @@ DerivedData
 
 ## 実装メモ
 
-- キー入力は `FilerOutlineView` (NSOutlineView サブクラス) の `keyDown(with:)` で拾う
-- 右クリックメニューは `FilerOutlineView.menu(for:)` をオーバーライドしてコントローラの `buildContextMenu()` を呼ぶ
-- 名前変更・新規作成は `FileNameInputDialog` (NSAlert ベース) に集約。リアルタイム重複チェックは
-  `NSControl.textDidChangeNotification` を監視し、`NameInputValidator` が OK ボタンと赤字ラベルを更新する
-- 削除は `FileManager.default.trashItem(at:resultingItemURL:)` でゴミ箱行き
-- 確認ダイアログは `NSAlert` (`.warning` style、Cancel ボタンに `keyEquivalent = "\u{1b}"` を明示)
-- ドラッグ&ドロップは `NSOutlineViewDataSource` の `pasteboardWriterForItem` / `validateDrop` / `acceptDrop` で実装。
-  ペイロードは `NSURL`、受け取りは `.fileURL` 経由
-- 検索バーは `NSSearchField`。`NSStackView` で outlineView の上に配置、通常は `isHidden = true`
-- 検索フィルタは `filteredRoots: [FileTreeNode]` + `filteredChildren: [ObjectIdentifier: [FileTreeNode]]`
-  に蓄積し、データソースメソッドが `isSearching` 中はこれを参照する (元の rootNodes は破壊しない)
-- マッチハイライトは `NSMutableAttributedString` で背景色 (`.systemYellow.withAlphaComponent(0.6)`) と
-  太字フォントを該当範囲に適用
-- `openInFinder` / `openWith` の候補列挙は `NSWorkspace.shared.urlsForApplications(toOpen:)` (macOS 12+) を使用
-- `openWith` のデフォルトアプリ解決は `NSWorkspace.shared.urlForApplication(toOpen:)` (macOS 12+) を使用
-- `openWith` の「その他...」は `NSOpenPanel` に `allowedContentTypes = [UTType.application]`, `directoryURL = /Applications` を設定して表示
-- `openWith` の右クリックサブメニューと Ctrl+A ポップアップは同一の `NSMenu` 構築関数を共用 (UI 経路のみ切替)
-- `copySelected` は `NSPasteboard.general.clearContents()` → `writeObjects(urls as [NSURL])` で書き込む
-- `pasteFromClipboard` は `NSPasteboard.general.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true])` で取得
-- 衝突リネームは `nextAvailableURL(in:for:)` が `{base}_{N}{.ext}` を `N=2` から試し、存在しない名前が見つかるまでインクリメントして返す
-- デコレーション解決は `DecorationMatcher` (除外ルールの `ExcludeMatcher` と同じ glob 実装を再利用) でファイル/ディレクトリ → 適用ルール群を取り出し、後勝ちで `icon` / `color` を合成する
-- 描画は `outlineView(_:viewFor:)` で `imageView` のアイコン + tint を、`outlineView(_:rowViewForItem:)` で `NSTableRowView.backgroundColor` を設定する。`color` は hex 文字列を `NSColor` に復元したうえで `alpha 0.2` を掛けて適用する
-- `DecorationRulesDialog` は `NSTableView` ベースで、編集中は内部に `[DecorationRule]` を持ち OK 確定で `FilerSessionState.userDecorationRules` を上書きする (除外ルールと同じパターン)
-- 行 D&D 並べ替えは独自 pasteboard type `jp.ruri.aidea.decoration-row` を使い、`pasteboardWriterForRow` / `validateDrop` (`.above` のみ accept) / `acceptDrop` で `[DecorationRule]` の要素を移動する
-- 行内のアイコン / 色 ポップアップは NSAlert モーダル中でも selection event が届くよう `NSMenu.popUpContextMenu(_:with:for:)` (NSEvent ベース) で表示する。`menu.popUp(positioning:at:in:)` 経路は NSAlert モーダル下では target/action 配信が走らず handler が呼ばれないため不可
-- アンドゥは `FilerSessionState.undoManager: UndoManager` で管理。各操作 (rename / move / delete / create / paste) が成功した時点で `registerUndo(withTarget:handler:)` で逆操作を登録する。複数選択操作は `beginUndoGrouping` / `endUndoGrouping` で 1 グループにまとめる
-- Cmd+Z / Cmd+Shift+Z は **`AideaApp.registerKeyEventMonitor` の `NSEvent.addLocalMonitorForEvents` で先取り**し、active session が `filer` のときだけ `FilerSessionState.undoManager.undo()` / `redo()` を呼ぶ。SwiftUI の Edit メニューは `@Environment(\.undoManager)` を見て AppKit 側 `NSResponder.undoManager` を見ないため、`performKeyEquivalent` 段階で disabled 判定 → beep を起こされる前にイベントを横取りする必要がある
-- ページ移動 ([pageMoveSelection](#pagemoveselection--ページ単位の選択移動-issue-121)) は `FilerOutlineView.keyDown(with:)` 内で **PageUp / PageDown / Ctrl+V / Ctrl+Z** を捕捉する。1 ページの行数は `enclosingScrollView?.contentView.bounds.height / rowHeight` を Int 化 (最低 1) して算出し、`max(0, min(numberOfRows - 1, current ± pageRows))` でクランプして `selectRowIndexes(_:byExtendingSelection: false)` + `scrollRowToVisible(_:)` を呼ぶ
-- 共通の `EmacsNavigation.handle` は `allowPageNav: false` のままとし、Ctrl+V/Z は Filer 側で独自処理する (共通ヘルパは selection 追従の概念を持たないため、Filer 拡張版として上書きする方針)
+実装の詳細 (クラス名・メソッド名・AppKit API 呼び出しパターン等) は実装コード (`Aidea/Sessions/Filer/` 配下) を参照。本節には specs の範囲を超えた情報は記載しない。
 
 ---
 

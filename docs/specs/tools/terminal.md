@@ -40,9 +40,9 @@ Session 内部状態は [sessions/terminal.md](../sessions/terminal.md) を参�
 
 | コンポーネント | 役割 |
 |---------------|------|
-| `TerminalSessionState` | PTY の生成・キャッシュ、フォーカス管理 |
-| `PersistentTerminalView` | SwiftTerm の LocalProcessTerminalView 拡張。ペイン移動時のバッファ消失防止 |
-| `TerminalSessionView` | NSViewRepresentable ラッパ |
+| Terminal Session 状態管理 | PTY の生成・キャッシュ、フォーカス管理 |
+| ターミナル View | SwiftTerm ベースの PTY 端末 View。ペイン移動時のバッファ消失防止 |
+| Terminal Session View | ターミナル View の SwiftUI ラッパ |
 
 ---
 

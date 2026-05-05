@@ -1,6 +1,6 @@
 ---
 title: Session 内部状態: Kit
-description: KitSessionState の状態 (expandedSections / expandedGroups / selection) と 4 種ローダ・FileWatcher 自動更新・workspace.json 永続化・Scene とレコメンドプロンプト
+description: Kit Tool の状態 (expandedSections / expandedGroups / selection) と 4 種ローダ・ファイル監視による自動更新・workspace.json 永続化・Scene とレコメンドプロンプト
 derived_from:
   - docs/specs/sessions/ui-rules.md
   - docs/specs/frontchannels/scene.md
@@ -16,7 +16,7 @@ last_updated: 2026-04-23
 
 # Session 内部状態: Kit
 
-`kit` Tool の Session は `KitSessionState` (`@Observable`) として状態を保持する。
+`kit` Tool の Session 状態を管理する。4 種のリソースローダーと展開・選択状態を保持する。
 **ペイン移動で状態が失われない** ことを保証する。
 
 Tool 仕様 (UI / 操作) は [../tools/kit.md](../tools/kit.md) を参照。
@@ -33,32 +33,32 @@ Tool 仕様 (UI / 操作) は [../tools/kit.md](../tools/kit.md) を参照。
 
 ## 内部ローダ
 
-4 種のローダを束ねる (`Services/Kit/` 配下):
+4 種のローダを束ねる:
 
 | ローダ | 対象 |
 |---|---|
-| `AgentsLoader` | `~/.claude/agents/*.md` + `<projectRoot>/.claude/agents/*.md` |
-| `SkillsLoader` | `~/.claude/skills/*/SKILL.md` + `<projectRoot>/.claude/skills/*/SKILL.md` |
-| `CommandsLoader` | `~/.claude/commands/*.md` + `<projectRoot>/.claude/commands/*.md` |
-| `McpLoader` | `~/.claude.json` の `mcpServers` |
+| エージェントローダ | `~/.claude/agents/*.md` + `<projectRoot>/.claude/agents/*.md` |
+| スキルローダ | `~/.claude/skills/*/SKILL.md` + `<projectRoot>/.claude/skills/*/SKILL.md` |
+| コマンドローダ | `~/.claude/commands/*.md` + `<projectRoot>/.claude/commands/*.md` |
+| MCP ローダ | `~/.claude.json` の `mcpServers` |
 
-## 自動更新 (FileWatcher)
+## 自動更新 (ファイル監視)
 
-Kit は Window singleton で、`KitSessionState` が `FileWatcher` を 1 つ保持する。外部エディタ等で `.claude/` 配下に変更が発生したら自動的に `reloadAll()` を実行する。Tool 仕様は [../tools/kit.md#自動更新](../tools/kit.md#自動更新) を参照。
+Kit は Window singleton で、Kit Session がファイル監視コンポーネントを 1 つ保持する。外部エディタ等で `.claude/` 配下に変更が発生したら自動的に全ローダを再実行する。Tool 仕様は [../tools/kit.md#自動更新](../tools/kit.md#自動更新) を参照。
 
-| プロパティ | 型 | 用途 | 永続化 |
-|---|---|---|---|
-| `watcher` | `FileWatcher` | `~/.claude/` と `<projectRoot>/.claude/` を監視 | — |
-| `reloadDebounce` | `DispatchWorkItem?` | 変更通知のデバウンス (200ms) | — |
+| 役割 | 内容 |
+|---|---|
+| 監視対象 | `~/.claude/` と `<projectRoot>/.claude/` |
+| デバウンス | 変更通知から 200ms 待って再読み込み実行 |
 
 ### ライフサイクル
 
 | イベント | アクション |
 |---|---|
-| Session 生成時 | `watcher.start(paths: [~/.claude, <projectRoot>/.claude])` |
-| `projectRoot` 変更時 | watcher を stop → 新しい projectRoot で再 start |
-| 変更通知 (FSEvents コールバック) | 200ms デバウンス後に `reloadAll()` |
-| Session 破棄時 | `watcher.stop()` |
+| Session 生成時 | `~/.claude/` と `<projectRoot>/.claude/` の監視を開始 |
+| `projectRoot` 変更時 | 監視を停止 → 新しい projectRoot で再開 |
+| 変更通知 (FSEvents コールバック) | 200ms デバウンス後に全ローダを再実行 |
+| Session 破棄時 | 監視を停止 |
 
 ## 永続化
 

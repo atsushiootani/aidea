@@ -1,6 +1,6 @@
 ---
 title: Session 内部状態: Web
-description: WebSessionState の状態 (url / WKWebView キャッシュ) と PaneView ZStack による DOM 維持・workspace.json 永続化・Scene とレコメンドプロンプト
+description: Web Tool の状態 (url / WebView キャッシュ) と PaneView ZStack による DOM 維持・workspace.json 永続化・Scene とレコメンドプロンプト
 derived_from:
   - docs/specs/sessions/ui-rules.md
   - docs/decisions/0015-wkwebview-scope-and-chrome-coexistence.md
@@ -17,7 +17,7 @@ last_updated: 2026-04-23
 
 # Session 内部状態: Web
 
-`web` Tool の Session は `WebSessionState` (`@Observable`) として状態を保持する。
+`web` Tool の Session 状態を管理する。URL と WKWebView のキャッシュを保持する。
 **ペイン移動で WKWebView の状態 (ページ・Cookie・スクロール位置) が失われない** ことを保証する。
 
 共通 UI ルールは [ui-rules.md](./ui-rules.md) を参照。

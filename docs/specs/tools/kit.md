@@ -207,56 +207,15 @@ code-reviewer              inherit      USER
 
 ## 実装メモ
 
-### SessionState
-- `KitSessionState` を新規作成
-- 内部に 4 つのローダを保持 (`SkillsLoader`, `CommandsLoader`, `McpLoader`, `AgentsLoader`)
-- 展開状態 `expandedSections: Set<KitSection>` と選択中 `selection: String?` を持つ
-- サブグループの展開状態 `expandedGroups: Set<String>` も保持
-- `KitSection` enum (`.agents`, `.skills`, `.commands`, `.mcps`)
-
-### SwiftUI 実装
-- `KitSessionView`: `ScrollView + LazyVStack(pinnedViews: [.sectionHeaders])`
-  (List ではなく LazyVStack を使う理由: スクロール時のセクションヘッダー固定が必要なため)
-- 各 `Section` にヘッダー (折りたたみトグル) + コンテンツ
-- 行は `HStack` で name + StatusTagView + ScopeTagView の 3 カラム
-- 選択ハイライトは手動 (accentColor 背景 + 白テキスト)、`state.selection` で管理
-- ダブルクリックは `onTapGesture(count: 2)` で `registry.openPreview(for:title:)` を呼ぶ
-- Kit のダブルクリック時は先に `registry.activeSessionID = sessionID` を設定して
-  openPreview のペイン決定ロジック (活動履歴ベース) に自分を起点として伝える
+実装の詳細はソースコードを参照。
 
 ### openPreview の呼び出し規約
 すべての Tool が共通で従うルール:
-1. `registry.activeSessionID` を自分自身の `SessionID` にセット
-2. `registry.openPreview(for: url, title: "表示名")` を呼ぶ
+1. 自分自身の SessionID をアクティブ Session に設定
+2. `openPreview(for: url, title: "表示名")` を呼ぶ
 
 Kit は項目の表示名 (例: `diagram.architecture`) を title に渡すことで、Preview タブの
 ヘッダーに `SKILL.md` ではなく意味のある名前を表示する。
-
-### Models
-- 既存の `Skill` / `Command` / `McpServer` モデルはそのまま流用
-- 新規 `Agent` モデル: `id`, `name`, `description`, `inherit: Bool`, `scope`, `path`
-
-### Loaders
-- 既存の `SkillsLoader` / `CommandsLoader` / `McpLoader` を再利用
-- 新規 `AgentsLoader` を追加 (`~/.claude/agents/*.md` と `<projectRoot>/.claude/agents/*.md` を走査、
-  frontmatter を `FrontmatterParser` で抽出)
-
-### ディレクトリ移行
-旧:
-```
-Models/Skills/ Models/Commands/ Models/Mcps/
-Services/Skills/ Services/Commands/ Services/Mcps/
-Sessions/Skills/ Sessions/Commands/ Sessions/Mcps/
-Views/Sessions/Skills/ Views/Sessions/Commands/ Views/Sessions/Mcps/
-```
-
-新:
-```
-Models/Kit/ (Skill, Command, McpServer, Agent をここに集約)
-Services/Kit/ (各 Loader をここに集約)
-Sessions/Kit/KitSessionState.swift
-Views/Sessions/Kit/KitSessionView.swift
-```
 
 ---
 

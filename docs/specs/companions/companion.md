@@ -73,7 +73,7 @@ Aidea が起動時に PTY へ送る文字列は `companionIndex` から派生す
 .aidea/claude/companions/<index>/instructions.md を読んで従ってね
 ```
 
-これを生成・パス解決するヘルパが `Services/Companion/CompanionInstructions.swift` に集約される (`loadCommand(for:)` / `entrypointURL(projectRoot:index:)`)。
+このパターンに従うコマンド文字列の生成とパス解決は、Companion 担当のサービスレイヤーが一元管理する。
 
 ### `CompanionIconPresets`
 
@@ -94,8 +94,8 @@ Aidea が起動時に PTY へ送る文字列は `companionIndex` から派生す
 
 ## ストア (`CompanionStore`)
 
-`Services/Companion/CompanionStore.swift` の `@Observable` クラス。
-9 個固定のコンパニオン配列をインメモリで保持し、永続化は [`WorkspaceSnapshotManager`](../../../Aidea/Aidea/Services/Workspace/WorkspaceSnapshotManager.swift) 経由で `.aidea/workspace.json` に書き出される (詳細は [../aspects/persistence.md](../aspects/persistence.md))。
+9 個固定のコンパニオン配列をインメモリで保持するコンポーネント。状態変更は UI に自動伝播する。
+永続化はワークスペーススナップショット管理コンポーネント経由で `.aidea/workspace.json` に書き出される (詳細は [../aspects/persistence.md](../aspects/persistence.md))。
 
 ### 状態
 
@@ -105,19 +105,17 @@ Aidea が起動時に PTY へ送る文字列は `companionIndex` から派生す
 
 `bindings` 相当の情報は `CompanionConfig.sessionID` に統合済み。別マップは持たない。
 
-### 主要 API
+### 操作一覧
 
-| メソッド | 役割 |
+| 操作 | 役割 |
 |---|---|
-| `update(_ companion: CompanionConfig)` | 指定 index のコンパニオン設定を更新 (`name` / `icon` / `sessionID` を差し替え)。`name` を変更する経路 (主に `CompanionEditView` の OK ハンドラ) では呼び出し側で直後に `CompanionRosterWriter.writeRoster(...)` を呼び、`.aidea/claude/aidea.md` のコンパニオン名簿セクションを更新する ([companion-roster.md](../backchannels/companion-roster.md)) |
-| `bind(index: Int, sessionID: SessionID)` | コンパニオンと Claude セッションを紐付け (`companions[index].sessionID = sessionID`) |
-| `unbind(index: Int)` | 紐付け解除 (`companions[index].sessionID = nil`) |
-| `unbindSession(_ sessionID: SessionID)` | 該当 sessionID を持つ index の `sessionID` を nil にする (タブを閉じたとき用) |
-| `isActive(_ index: Int) -> Bool` | `companions[index].sessionID != nil` |
-| `companion(forIndex index: Int) -> CompanionConfig` | `companions[index]` (non-optional) |
-| `companionName(for sessionID: SessionID) -> String?` | `SessionID` から該当コンパニオン名を逆引き (タブ表示で使用) |
+| コンパニオン設定の更新 | 指定 index の設定 (name / icon / sessionID) を差し替える。名前を変更した場合は `.aidea/claude/aidea.md` のコンパニオン名簿セクションも同時に更新する ([companion-roster.md](../backchannels/companion-roster.md)) |
+| セッション紐付け | コンパニオンと Claude セッションを紐付ける |
+| 紐付け解除 | index 指定、または sessionID 指定でセッション紐付けを解除する (タブを閉じたときなど) |
+| アクティブ判定 | 指定 index のコンパニオンが Claude セッションと紐付いているか返す |
+| コンパニオン取得 | index または sessionID からコンパニオン設定を取得する |
 
-`add` / `remove` / `upsert` / `createDefault(forIndex:)` は **廃止** (9 個固定で動的増減しないため)。
+コンパニオンの動的追加・削除は **廃止** (9 個固定で動的増減しないため)。
 
 ### 永続化
 
@@ -143,18 +141,17 @@ Aidea が起動時に PTY へ送る文字列は `companionIndex` から派生す
 
 ```
 1. ユーザが未起動アイコン (index N) をタップ
-2. companion = store.companion(forIndex: N) を取得 (必ず存在)
-3. layout.nextSessionInstance(of: .claude) で新 instance 番号を採番
-4. registry.createSession(tool: .claude, instance:) で Claude セッション生成
-5. ClaudeSessionState.companionPrompt に CompanionInstructions.loadCommand(for: N) をセット
+2. index N のコンパニオン設定を取得 (必ず存在)
+3. 新しい instance 番号を採番
+4. Claude セッションを新規生成
+5. Claude セッションに instructions.md パスを初期プロンプトとして設定する
    = ".aidea/claude/companions/N/instructions.md を読んで従ってね"
    (ターミナル起動後に自動送信される → tools/claude.md)
-6. store.bind(index: N, sessionID: session.id)
-   → companions[N].sessionID が更新される
+6. コンパニオンと生成した Claude セッションを紐付ける
 7. アクティブ pane の末尾にタブ追加しアクティブ化
 ```
 
-`instructions.md` が不在のまま起動した場合の挙動は `BackchannelSetup` の責務 (新規プロジェクト初回セットアップ時にコピー)。詳細は [../backchannels/backchannel.md](../backchannels/backchannel.md) を参照。
+`instructions.md` が不在のまま起動した場合は初回セットアップ処理がコピーを行う。詳細は [../backchannels/backchannel.md](../backchannels/backchannel.md) を参照。
 
 ---
 
@@ -163,28 +160,25 @@ Aidea が起動時に PTY へ送る文字列は `companionIndex` から派生す
 Aidea 起動時、`workspace.json` から Claude タブが復元されるケースの挙動:
 
 ```
-1. AideaApp.init() が WorkspaceSnapshotManager.load(projectRoot:) で
-   workspace.json を読み込む
+1. アプリ起動時にワークスペーススナップショットを読み込む
    - 旧版なら自動マイグレーション (v6 → v7 で UUID → index 化、bindings 統合)
    - workspace.json 不在なら Bundle 同梱の default-workspace.json を使う
-2. WorkspaceSnapshotManager.apply() が同期的に以下を実行:
+2. スナップショットを適用し以下を同期的に実行:
    - レイアウトツリー復元 (タブ構成のみ、セッション実体は未生成)
-   - snapshot.companions を CompanionStore.companions にセット (9 要素)
-   - snapshot.recommends を RecommendStore にセット
-3. 同じ apply() 内で sessionID が non-nil なコンパニオンに対して
-   companionPrompt 再注入:
-   - companions を走査し、sessionID != nil な index について
-   - registry.ensureSession(for: sessionID) で ClaudeSessionState を生成
-     (PTY/terminalView は引き続き lazy)
-   - state.companionPrompt = CompanionInstructions.loadCommand(for: index) をセット
+   - コンパニオン設定を復元 (9 要素)
+   - レコメンド設定を復元
+3. セッションが紐付いているコンパニオンに対して初期プロンプトを再注入:
+   - sessionID が設定されている各 index について
+   - Claude セッションを生成または既存のものを利用 (PTY 起動は遅延)
+   - セッションに instructions.md パスを初期プロンプトとして設定する
      ( = ".aidea/claude/companions/<index>/instructions.md を読んで従ってね")
-   - state.companionIndex = index もセット (Scene 識別子 claude:<index> 解決用)
-4. ユーザがタブをアクティブ化 → terminalView 生成 → 自動起動シーケンス
-   → companionPrompt が送信される
+   - コンパニオン index も設定する (Scene 識別子 claude:<index> 解決用)
+4. ユーザがタブをアクティブ化 → ターミナル生成 → 自動起動シーケンス
+   → 初期プロンプトが送信される
 ```
 
-この再注入がないと、復元された Claude セッションは `companionPrompt == nil` のままで
-`claude` CLI は起動するが initialPrompt が送られない (Issue #69 の挙動)。
+この再注入がないと、復元された Claude セッションは初期プロンプトが未設定のままで
+`claude` CLI は起動するが instructions が送られない (Issue #69 の挙動)。
 
 ---
 
@@ -199,8 +193,8 @@ SF Symbol オーバーレイの組み合わせで表現する。
 |---|---|---|---|---|
 | **未起動** | `companion.sessionID == nil` | `companion-N-small` (thumbnail) | なし | 彩度 0.3 / 不透明度 0.5 |
 | **アイドル** | セッション起動済み・busy でない・読み上げ中でない | `companion-N-small` (thumbnail) | なし | なし |
-| **実行中** | `ClaudeSessionState.isBusy == true` | `companion-N-thinking` | `ellipsis.bubble` (濃いグレー) | なし |
-| **読み上げ中** | `SpeechQueue.currentlySpeakingIndex == N` | `companion-N-smile` | `heart.fill` (pink) | なし |
+| **実行中** | Claude セッションが応答処理中 | `companion-N-thinking` | `ellipsis.bubble` (濃いグレー) | なし |
+| **読み上げ中** | このコンパニオンの音声が読み上げ中 | `companion-N-smile` | `heart.fill` (pink) | なし |
 
 ### 優先順位
 
@@ -223,26 +217,26 @@ SF Symbol オーバーレイの組み合わせで表現する。
 
 ### 依存する状態源
 
-| 状態 | 参照する `@Observable` | 新規/既存 |
+| 状態 | 状態の参照元 | 新規/既存 |
 |---|---|---|
-| `sessionID == nil` | `CompanionStore.companions[N].sessionID` | 既存 |
-| `isBusy` | `ClaudeSessionState.isBusy` | **新規** (issue #45 で追加) |
-| `isSpeaking` | `ClaudeSessionState.isSpeaking` (facade) → `SpeechQueue.currentlySpeakingIndex` | **新規** (issue #45 で追加、voicevox.md の将来拡張枠を具体化) |
+| セッション未起動 | コンパニオンに紐付く sessionID が nil | 既存 |
+| 実行中 | Claude セッションの実行状態 (PTY 出力継続中) | **新規** (issue #45 で追加) |
+| 読み上げ中 | 音声キューが当該コンパニオンを読み上げ中 | **新規** (issue #45 で追加、voicevox.md の将来拡張枠を具体化) |
 
-- `ClaudeSessionState.isBusy`: PTY 出力が続いている間 true。静止を検知したら false。詳細は [../tools/claude.md](../tools/claude.md) を参照
-- `ClaudeSessionState.isSpeaking`: `SpeechQueue.currentlySpeakingIndex == companionIndex` を返す computed facade。`CompanionView` は `isBusy` と対称に ClaudeSessionState から read し、SpeechQueue の Observable tracking が自動で伝播する。詳細は [../backchannels/voicevox.md](../backchannels/voicevox.md) を参照
+- 実行中の判定: PTY 出力が続いている間 true、静止を検知したら false。詳細は [../tools/claude.md](../tools/claude.md) を参照
+- 読み上げ中の判定: 音声キューが当該コンパニオンの index を読み上げているかどうかを返すファサード。詳細は [../backchannels/voicevox.md](../backchannels/voicevox.md) を参照
 
-### 実装箇所
+### 担当コンポーネント
 
 | コンポーネント | 役割 |
 |---|---|
-| `CompanionView.companionIcon(_:)` | 状態を判定してベース画像を差し替え + オーバーレイ描画 |
-| `CompanionIconPresets` | `thumbnailIcon(for:)` に加えて `smileIcon(for:)` / `thinkingIcon(for:)` を追加 |
+| CompanionView | 状態を判定してベース画像を差し替え + オーバーレイ描画 |
+| CompanionIconPresets | 通常・笑顔・考え中の各アイコンバリアントを管理 |
 
 ### 境界
 
-- **Always**: 状態は `@Observable` の変化に駆動される Pure SwiftUI (タイマー polling しない)。優先順位判定は `CompanionView` の 1 箇所に集約
-- **Never**: 表情切替のために companion の永続状態 (`workspace.json`) を書き換えない。`isBusy` / `currentlySpeakingIndex` はランタイム情報のみ
+- **Always**: 状態変化に駆動される Pure SwiftUI (タイマー polling しない)。優先順位判定は CompanionView の 1 箇所に集約
+- **Never**: 表情切替のために companion の永続状態 (`workspace.json`) を書き換えない。実行中・読み上げ中はランタイム情報のみ
 
 ---
 

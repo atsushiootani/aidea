@@ -79,6 +79,14 @@ specs は「コードベースと 1:1 対応するストック情報」が原則
 6. **aspects（横断的関心事）との整合性**
    - 機能群の変更が [aspects/](./aspects/README.md) に反映されていないものをフラグ（詳細は [aspects/README.md](./aspects/README.md) の更新ルールを参照）
 
+7. **実装詳細の混入**
+   - specs に実装コードに直結した記述が含まれていないかをフラグ
+   - 禁止パターン (詳細は [docs/LAYOUT.md](../LAYOUT.md) の「実装詳細禁止ルール」節を参照):
+     - 具体的なメソッド名 (camelCase の関数名や `method(param:)` 形式のシグネチャ)
+     - Swift 固有デコレータ (`@Observable`, `@Published`, `@MainActor` 等)
+     - 実装コード断片 (`state.propName = value` 形式、`.method()` 呼び出し記述)
+   - 対象外: glossary.md に定義済みのドメイン用語 / ユーザが意識するファイルパス / 抽象レベルの責務説明
+
 ### フラグへの対応
 
 | フラグ | 基本方針 | 追加アクション |

@@ -38,7 +38,7 @@ Aidea プロジェクトで使われる用語の定義。
 | 用語 | 意味 |
 |---|---|
 | **SessionID** | `(tool: Tool, instance: Int)` の組。Window 内で一意 |
-| **SessionState** | Session の内部状態 (クラス参照)。`FilerSessionState` `PreviewSessionState` 等 |
+| **SessionState** | Session の内部状態。Tool ごとに 1 種類定義され、ペイン移動を超えて維持される |
 | **SessionRegistry** | Window 全体で Session 実体を管理するレジストリ。`activeSessionID` と `activeSessionHistory` も保持 |
 | **Active Session** | Window 全体で常に 1 つ存在する "現在操作中の Session"。青ハイライトされる |
 | **activeSessionHistory** | `activeSessionID` の変更履歴 (末尾が最新、重複排除済、最大 50 件)。Preview 開く先のペインを決める / [Active Session Switcher](./window/active-session-switcher.md) の表示元 / Tab クローズで該当 ID を除去 |

@@ -93,6 +93,27 @@ docs/
 - **構成**: トップレベル (`architecture.md` / `glossary.md`) と **機能群ごとのサブディレクトリ**で構成される。現在のサブディレクトリ一覧は [specs/README.md](./specs/README.md) を参照。
 - **新しい機能群を追加するとき**: `specs/<新機能群>/` を切って `README.md` を置き、`specs/README.md` の一覧表に1行追加する (本ファイルの更新は不要)
 - **命名**: kebab-case 全小文字 (`recommend-mode.md` `scene.md`)
+- **実装詳細の禁止** (後述の「実装詳細禁止ルール」を参照)
+
+#### 実装詳細禁止ルール
+
+specs は「**何ができるか・どう振る舞うか**」を記述する場所であり、「**どう実装するか**」を書く場所ではない。実装知識がなくても specs を読めることを目指す。
+
+| 禁止する記述 | 代わりに書くもの |
+|---|---|
+| 具体的なメソッド名 (`sendMessage()`, `writeRoster(projectRoot:companions:)` 等) | 「〜を送信する」「〜を書き出す」など動作の説明 |
+| 具体的な Swift クラス名・struct 名 (`CompanionRosterWriter`, `SpeechQueue` 等) | 「〜の書き出し担当コンポーネント」「〜キュー」など概念的なラベル |
+| 言語固有のデコレータ (`@Observable`, `@Published` 等) | 「状態変更が自動的に伝播する」など動作の説明 |
+| プロパティアクセスチェーン (`state.companionPrompt = ...` 等) | 「〜が設定される」など概念的な説明 |
+| 実装内部のアルゴリズム詳細 | 概念レベルの処理フロー |
+
+**許可する記述:**
+- `Session` / `SessionState` / `Tool` など**ドメイン概念として確立した用語** (glossary.md に定義済みのもの)
+- ユーザに見える振る舞い・UI 上の挙動
+- コンポーネント間の責務分担 (抽象レベル)
+- ファイルパスや設定ファイル名 (`.aidea/` 以下など、ユーザが意識するもの)
+
+このルールは `/aidea.docs-healthcheck` で機械的に検証される (詳細は [docs/specs/README.md](./specs/README.md) のヘルスチェック項目 #7 を参照)。
 
 ### `docs/plans/` — 実装計画 (git 管理外)
 

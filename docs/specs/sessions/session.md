@@ -70,7 +70,7 @@ Aidea の Session 実体は、**汎用クラス `Session`** と **Tool ごとに
 
 ## Session クラス
 
-`Aidea/Tools/Session.swift` で定義される **汎用 `@Observable` クラス**。全 Tool で共通の 1 クラスで、Session 実体ごとにインスタンスが作られる。
+全 Tool で共通の汎用クラス。Session 実体ごとにインスタンスが作られ、状態変更が自動的に UI に伝播する。
 
 - `id: SessionID` — Window 内で一意の識別子
 - `state: any SessionState` — Tool 固有の状態への参照
@@ -116,20 +116,20 @@ Aidea の Session 実体は、**汎用クラス `Session`** と **Tool ごとに
 
 ---
 
-## Tool ごとの SessionState 実装
+## Tool ごとの SessionState
 
-Tool ごとの実装の違いは **すべて SessionState 側**にある。各 SessionState の Tool 固有データと振る舞いの概観:
+Tool ごとの実装の違いは **すべて SessionState 側**にある。各 Tool の固有データと振る舞いの概観:
 
-| SessionState | 種別 | Tool 固有のデータ | Tool 固有の振る舞い |
+| Tool | 種別 | Tool 固有のデータ | Tool 固有の振る舞い |
 |---|---|---|---|
-| **FilerSessionState** | AppKit 系 | `selectedFile`, `expandedURLs`, `excludeRules`, `controller (FileTreeViewController)` | ファイルツリー操作 |
-| **TerminalSessionState** | AppKit 系 | `cached: PersistentTerminalView?`, `terminalView` lazy | PTY 起動 |
-| **ClaudeSessionState** | AppKit 系 | `cached`, `companionPrompt`, `terminalView` lazy, `sendMessage` | claude CLI 自動起動 |
-| **WebSessionState** | AppKit 系 | `url`, `cached: WKWebView?`, `urlObservation` | URL 永続化、ナビゲーション追従 |
-| **PreviewSessionState** | AppKit 系 / 純 SwiftUI 系 (コンテンツ次第) | `url`, `title` | コンテンツ種別自動判定。NSView 系コンテンツ (text/drawio) では focusBridge を使い、純 SwiftUI コンテンツ (markdown/image) では isActive を使う |
-| **GitSessionState** | AppKit 系 | `mode`, `treeNodes`, `selectedPath`, `fileStats`, `currentBranch` | git status 取得・パース |
-| **GitDiffSessionState** | AppKit 系 | `mode`, `diffOutput`, `viewedFiles`, `focusedFile` | git diff 取得・パース |
-| **KitSessionState** | 純 SwiftUI 系 | 4 つの Loader, `expandedSections`, `selection`, `isActive` | リソース読み込み |
+| **Filer** | AppKit 系 | 選択ファイル、展開ディレクトリ一覧、除外ルール、ツリーコントローラ | ファイルツリー操作 |
+| **Terminal** | AppKit 系 | PTY ビューのキャッシュ (遅延生成) | PTY 起動 |
+| **Claude** | AppKit 系 | PTY ビューのキャッシュ、初期プロンプト (遅延生成) | claude CLI 自動起動 |
+| **Web** | AppKit 系 | URL、WebView キャッシュ、URL 追従ハンドラ | URL 永続化、ナビゲーション追従 |
+| **Preview** | AppKit 系 / 純 SwiftUI 系 (コンテンツ次第) | URL、タイトル | コンテンツ種別自動判定。NSView 系コンテンツ (text/drawio) では focusBridge を使い、純 SwiftUI コンテンツ (markdown/image) では isActive を使う |
+| **Git** | AppKit 系 | 表示モード、ツリーノード一覧、選択パス、ファイル統計、カレントブランチ | git status 取得・パース |
+| **GitDiff** | AppKit 系 | 表示モード、差分出力、閲覧済みファイル一覧、フォーカスファイル | git diff 取得・パース |
+| **Kit** | 純 SwiftUI 系 | 4 種のローダー、展開セクション一覧、選択状態、アクティブ状態 | リソース読み込み |
 
 各フィールドの詳細仕様 (ペイン移動での保持・永続化対象等) は per-tool spec ([filer.md](./filer.md) ほか) を SSoT とする。本表は概観のみ。
 
