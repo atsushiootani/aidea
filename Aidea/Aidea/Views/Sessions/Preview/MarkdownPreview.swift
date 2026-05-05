@@ -512,6 +512,12 @@ struct MarkdownPreview: View {
     }
 }
 
+/// YAML frontmatter の 1 行を表す中間表現。
+private enum FrontmatterLineContent {
+    case plain(String)
+    case withLink(prefix: String, path: String, resolvedURL: URL)
+}
+
 /// YAML frontmatter ブロックを行ごとにレンダリングする View。
 /// ファイルパスと判定された値はクリック可能なリンクとして表示し、タップで隣タブに開く。
 private struct FrontmatterView: View {
@@ -519,15 +525,10 @@ private struct FrontmatterView: View {
     let baseURL: URL?
     let onLinkTap: ((URL) -> Void)?
 
-    private enum LineContent {
-        case plain(String)
-        case withLink(prefix: String, path: String, resolvedURL: URL)
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            ForEach(Array(parsedLines.enumerated()), id: \.offset) { _, line in
-                lineView(line)
+            ForEach(Array(parsedLines.enumerated()), id: \.offset) { pair in
+                FrontmatterLineView(content: pair.element, onLinkTap: onLinkTap)
             }
         }
         .padding(8)
@@ -538,13 +539,13 @@ private struct FrontmatterView: View {
         )
     }
 
-    private var parsedLines: [LineContent] {
+    private var parsedLines: [FrontmatterLineContent] {
         text.split(separator: "\n", omittingEmptySubsequences: false)
             .map(String.init)
             .map { parseLine($0) }
     }
 
-    private func parseLine(_ line: String) -> LineContent {
+    private func parseLine(_ line: String) -> FrontmatterLineContent {
         let trimmed = line.trimmingCharacters(in: .whitespaces)
         let indent = String(line.prefix(while: { $0 == " " }))
 
@@ -556,38 +557,14 @@ private struct FrontmatterView: View {
             }
         } else if let colonIndex = trimmed.firstIndex(of: ":") {
             // "key: value" 形式
-            let afterColon = String(trimmed[trimmed.index(after: colonIndex)...]).trimmingCharacters(in: .whitespaces)
+            let rest = trimmed[trimmed.index(after: colonIndex)...]
+            let afterColon = String(rest).trimmingCharacters(in: .whitespaces)
             if looksLikeFilePath(afterColon), let url = resolveURL(afterColon) {
                 let key = String(trimmed[..<colonIndex])
                 return .withLink(prefix: indent + key + ": ", path: afterColon, resolvedURL: url)
             }
         }
         return .plain(line)
-    }
-
-    @ViewBuilder
-    private func lineView(_ content: LineContent) -> some View {
-        switch content {
-        case .plain(let text):
-            Text(text)
-                .font(.system(.body, design: .monospaced))
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        case .withLink(let prefix, let path, let resolvedURL):
-            HStack(spacing: 0) {
-                Text(prefix)
-                    .font(.system(.body, design: .monospaced))
-                    .foregroundStyle(.secondary)
-                Button(action: { onLinkTap?(resolvedURL) }) {
-                    Text(path)
-                        .font(.system(.body, design: .monospaced))
-                        .foregroundStyle(.accentColor)
-                        .underline()
-                }
-                .buttonStyle(.plain)
-                Spacer(minLength: 0)
-            }
-        }
     }
 
     private func looksLikeFilePath(_ value: String) -> Bool {
@@ -612,6 +589,36 @@ private struct FrontmatterView: View {
             if fm.fileExists(atPath: candidate.path) { return candidate }
         }
         return nil
+    }
+}
+
+/// frontmatter の 1 行を表示する View。
+private struct FrontmatterLineView: View {
+    let content: FrontmatterLineContent
+    let onLinkTap: ((URL) -> Void)?
+
+    var body: some View {
+        switch content {
+        case .plain(let text):
+            Text(text)
+                .font(.system(.body, design: .monospaced))
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        case .withLink(let prefix, let path, let resolvedURL):
+            HStack(spacing: 0) {
+                Text(prefix)
+                    .font(.system(.body, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                Button(path) {
+                    onLinkTap?(resolvedURL)
+                }
+                .buttonStyle(.plain)
+                .font(.system(.body, design: .monospaced))
+                .foregroundStyle(Color.accentColor)
+                .underline()
+                Spacer(minLength: 0)
+            }
+        }
     }
 }
 
