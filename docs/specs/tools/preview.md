@@ -10,10 +10,11 @@ syncs_with:
   - docs/specs/sessions/preview.md
   - docs/specs/aspects/keybindings.md
   - docs/specs/aspects/persistence.md
+  - docs/specs/tools/terminal.md
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-01
+last_updated: 2026-05-04
 ---
 
 # Tool 仕様: Preview

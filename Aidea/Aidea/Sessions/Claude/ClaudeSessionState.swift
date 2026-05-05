@@ -145,6 +145,9 @@ final class ClaudeSessionState: SessionState, FocusBridgeOwner {
             args: ["-c", command],
             environment: env
         )
+        // クリック起動 (issue #71) で projectRoot 起点のパス解決と Preview 配信に使う
+        terminal.workspace = workspace
+        terminal.sessionRegistry = registry
         terminal.installLinkGuard(isClaudeSession: true)
         // PTY 出力で busy 状態追跡する (issue #45)。rangeChanged 経由で呼ばれる。
         // SwiftTerm の `notifyUpdateChanges` はデフォルト false で、true にしないと
