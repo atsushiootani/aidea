@@ -14,7 +14,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-04
+last_updated: 2026-05-05
 ---
 
 # Tool 仕様: Preview
@@ -60,6 +60,14 @@ Session 内部状態は [sessions/preview.md](../sessions/preview.md) を参照�
 - `.md` / `.markdown` を `MarkdownPreview` で表示
 - 見出し (`# ~ ####`) / コードブロック / 箇条書き / 水平線 / frontmatter / インライン (bold・italic・リンク・`code`) をサポート
 - 外部依存なし (SwiftUI `Text(.init(String))` のネイティブ Markdown に委譲)
+
+#### frontmatter 表示
+
+- フォント: 本文と同サイズ (`.body`) のモノスペースフォント
+- 背景: `Color.secondary.opacity(0.08)` のラウンドコーナーブロック
+- YAML 行を `key: value` および配列項目 `  - value` の形式で行ごとに解析する
+- **ファイルパスのクリック**: 値がローカルファイルパスと判定される場合 (`/` を含み `http` / `[` / `{` で始まらない) はリンクとして表示し、タップすると隣タブで Preview が開く
+- パス解決順: ① ファイルの親ディレクトリからの相対パス → ② 親を順にさかのぼって最初に一致するパス (上限 10 段) → 見つからなければリンク非表示
 
 #### view / edit モード切替 UI
 
