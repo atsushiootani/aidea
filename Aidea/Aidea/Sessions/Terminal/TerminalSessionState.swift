@@ -79,6 +79,9 @@ final class TerminalSessionState: SessionState, FocusBridgeOwner {
             args: ["-c", command],
             environment: env
         )
+        // クリック起動 (issue #71) で projectRoot 起点のパス解決と Preview 配信に使う
+        terminal.workspace = workspace
+        terminal.sessionRegistry = registry
         terminal.installLinkGuard()
         cached = terminal
         return terminal

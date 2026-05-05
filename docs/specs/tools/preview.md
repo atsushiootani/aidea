@@ -10,6 +10,7 @@ syncs_with:
   - docs/specs/sessions/preview.md
   - docs/specs/aspects/keybindings.md
   - docs/specs/aspects/persistence.md
+  - docs/specs/tools/terminal.md
 impacts: []
 conventions:
   - docs/LAYOUT.md
