@@ -48,6 +48,12 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
     private var rootNodes: [FileTreeNode] = []
     private var reloadWorkItem: DispatchWorkItem?
 
+    // MARK: - Directory Summary
+    private let summaryLabel = NSTextField(labelWithString: "")
+    /// セッション中の概要キャッシュ (URL → 1 行テキスト)
+    private var summaryCache: [URL: String] = [:]
+    private var currentSummaryTask: Task<Void, Never>?
+
     /// owner (FilerSessionState) の除外ルールから ExcludeMatcher を組み立てる。
     /// owner が未設定なら defaultExcludeRules を使う。
     private func excludeMatcher() -> ExcludeMatcher {
@@ -139,14 +145,20 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
         searchField.action = #selector(searchFieldChanged)
         searchField.isHidden = true
 
-        let stack = NSStackView(views: [searchField, scrollView])
+        summaryLabel.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
+        summaryLabel.textColor = .secondaryLabelColor
+        summaryLabel.lineBreakMode = .byTruncatingTail
+        summaryLabel.isHidden = true
+
+        let stack = NSStackView(views: [searchField, scrollView, summaryLabel])
         stack.orientation = .vertical
         stack.spacing = 4
-        stack.edgeInsets = NSEdgeInsets(top: 4, left: 6, bottom: 0, right: 6)
+        stack.edgeInsets = NSEdgeInsets(top: 4, left: 6, bottom: 4, right: 6)
         stack.distribution = .fill
         // searchField は hugging を強めに (縦方向に伸びないように)
         searchField.setContentHuggingPriority(.required, for: .vertical)
         scrollView.setContentHuggingPriority(.defaultLow, for: .vertical)
+        summaryLabel.setContentHuggingPriority(.required, for: .vertical)
         self.view = stack
     }
 
@@ -635,11 +647,69 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
     func outlineViewSelectionDidChange(_ notification: Notification) {
         let row = outlineView.selectedRow
         guard row >= 0,
-              let node = outlineView.item(atRow: row) as? FileTreeNode,
-              !node.isDirectory else {
+              let node = outlineView.item(atRow: row) as? FileTreeNode else {
+            hideSummary()
             return
         }
-        owner?.selectedFile = node.url
+        if node.isDirectory {
+            // 単一選択のディレクトリ → AI 概要を表示
+            if outlineView.selectedRowIndexes.count == 1 {
+                requestDirectorySummary(for: node)
+            } else {
+                hideSummary()
+            }
+        } else {
+            hideSummary()
+            owner?.selectedFile = node.url
+        }
+    }
+
+    private func hideSummary() {
+        currentSummaryTask?.cancel()
+        currentSummaryTask = nil
+        summaryLabel.isHidden = true
+        summaryLabel.stringValue = ""
+    }
+
+    private func requestDirectorySummary(for node: FileTreeNode) {
+        guard DirectorySummaryService.hasApiKey else {
+            summaryLabel.isHidden = true
+            return
+        }
+
+        if let cached = summaryCache[node.url] {
+            summaryLabel.stringValue = cached
+            summaryLabel.isHidden = false
+            return
+        }
+
+        currentSummaryTask?.cancel()
+        summaryLabel.stringValue = "..."
+        summaryLabel.isHidden = false
+
+        let url = node.url
+        // 子エントリを取得 (既にロード済みなら再利用、なければ同期ロード)
+        let childNames: [String]
+        if let children = node.children {
+            childNames = children.map(\.name)
+        } else {
+            childNames = FileTreeLoader.load(directory: url, parent: node).map(\.name)
+        }
+
+        currentSummaryTask = Task { [weak self] in
+            guard let self else { return }
+            let summary = await DirectorySummaryService.generate(directoryURL: url, children: childNames)
+            await MainActor.run {
+                guard !Task.isCancelled else { return }
+                if let summary {
+                    self.summaryCache[url] = summary
+                    self.summaryLabel.stringValue = summary
+                    self.summaryLabel.isHidden = false
+                } else {
+                    self.summaryLabel.isHidden = true
+                }
+            }
+        }
     }
 
     /// ユーザー操作でノードが展開されたとき、owner の expandedURLs に記録する (永続化対象)
