@@ -66,8 +66,13 @@ struct MarkdownContainer: View {
             await reload()
         }
         .onChange(of: fileChangedTick) { _, _ in
-            guard mode == .view else { return }
-            Task { await reload() }
+            // guard は Task 内で再確認する: Task 生成前に guard が通っても、
+            // 実行タイミングまでにユーザーが edit モードへ切替えた場合に
+            // draftText を上書きしてしまう競合を防ぐ。
+            Task { @MainActor in
+                guard mode == .view else { return }
+                await reload()
+            }
         }
         // Session アクティブ状態を SwiftUI の @FocusState に同期する (view モード用)。
         // Kit と同じく「active のときだけ true を立てる」片方向同期にする (false 代入は SwiftUI に任せる)。
@@ -255,8 +260,14 @@ struct MarkdownContainer: View {
     /// ファイルを読み込み、英語判定を行う
     private func reload() async {
         do {
-            loadedText = try String(contentsOf: url, encoding: .utf8)
-            draftText = loadedText
+            let content = try String(contentsOf: url, encoding: .utf8)
+            loadedText = content
+            // edit モード中は draftText を上書きしない: ユーザーが入力中の変更を保護する。
+            // fileChangedTick 経由の呼び出しは Task 内でも mode チェック済みだが、
+            // task(id: url) 経由 (URL 変更時) でも edit モード中に呼ばれる場合を考慮する。
+            if mode == .view {
+                draftText = content
+            }
             loadError = nil
             isEnglish = LanguageDetector.isEnglish(loadedText)
             if isEnglish, let projectRoot = workspace.projectRoot {
