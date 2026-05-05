@@ -422,14 +422,7 @@ final class GitFileCellView: NSTableCellView {
             let image = NSImage(systemSymbolName: iconName, accessibilityDescription: nil)
                 ?? NSImage(named: iconName)
             icon.image = image
-            // ステータスはアイコンの tint 色で識別 (アイコン形状に依存しない)
-            switch status {
-            case .modified:  icon.contentTintColor = .systemOrange
-            case .added:     icon.contentTintColor = .systemGreen
-            case .deleted:   icon.contentTintColor = .systemRed
-            case .renamed:   icon.contentTintColor = .systemBlue
-            case .untracked: icon.contentTintColor = .systemGreen
-            }
+            icon.contentTintColor = .labelColor
 
             // 行数統計
             if let stat {
