@@ -17,6 +17,7 @@ struct PreviewSessionView: View {
     @State private var isEnglishText: Bool = false
     @State private var isTranslating: Bool = false
     @State private var translatedChars: Int = 0
+    @State private var translationSiblingOpened: Bool = false
     @State private var hasCachedTranslation: Bool = false
     @State private var fileWatcher = FileWatcher()
     /// FSEvents で外部変更が検知されるたびにインクリメントされるカウンタ。
@@ -136,22 +137,37 @@ struct PreviewSessionView: View {
     /// Claude API で SSE ストリーミング翻訳して隣タブに開く
     private func translateDocument() {
         guard let url = state.url, let projectRoot = workspace.projectRoot else { return }
+        guard let cachedURL = TranslationCache.cachedURL(for: url, projectRoot: projectRoot) else { return }
+
         isTranslating = true
         translatedChars = 0
+        translationSiblingOpened = false
+
+        let fileName = url.deletingPathExtension().lastPathComponent
+
         Task {
             do {
-                let cachedURL = try await TranslationService.translateIfNeeded(
+                try await TranslationService.translateIfNeeded(
                     originalURL: url,
                     projectRoot: projectRoot,
-                    onProgress: { @MainActor chars in translatedChars = chars }
+                    onProgress: { @MainActor chars in
+                        translatedChars = chars
+                        if chars > 0, !translationSiblingOpened {
+                            translationSiblingOpened = true
+                            registry.openPreviewAsSibling(for: cachedURL, title: "\(fileName) (日本語)")
+                        }
+                    }
                 )
                 isTranslating = false
                 translatedChars = 0
-                let fileName = url.deletingPathExtension().lastPathComponent
-                registry.openPreviewAsSibling(for: cachedURL, title: "\(fileName) (日本語)")
+                if !translationSiblingOpened {
+                    registry.openPreviewAsSibling(for: cachedURL, title: "\(fileName) (日本語)")
+                }
+                translationSiblingOpened = false
             } catch {
                 isTranslating = false
                 translatedChars = 0
+                translationSiblingOpened = false
                 NSAlert(error: error).runModal()
             }
         }
