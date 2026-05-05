@@ -5,13 +5,15 @@
 
 import SwiftUI
 
-/// コンパニオンの編集シート。名前と「指示書を開く」ボタンを持つ。
+/// コンパニオンの編集シート。名前・指示書・speech 履歴へのアクセスを持つ。
 /// 初期プロンプト本文は v8 以降ファイル化されたため、本シートでは編集せず Preview セッションに委譲する (ADR 0022)。
 struct CompanionEditView: View {
     @State var companion: CompanionConfig
     let onSave: (CompanionConfig) -> Void
     let onOpenInstructions: () -> Void
     @Environment(\.dismiss) private var dismiss
+    @Environment(WorkspaceState.self) private var workspace
+    @State private var showingHistory = false
 
     var body: some View {
         VStack(spacing: 16) {
@@ -50,6 +52,26 @@ struct CompanionEditView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .help(".aidea/claude/companions/\(companion.index)/instructions.md を Preview タブで開きます")
+            }
+
+            // Speech 履歴
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Speech 履歴")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Button {
+                    showingHistory = true
+                } label: {
+                    Label("speech 履歴を見る", systemImage: "waveform")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .help(".aidea/backchannels/\(companion.index)/ 以下の speech ファイルを一覧表示します")
+            }
+            .sheet(isPresented: $showingHistory) {
+                SpeechHistoryView(
+                    companionIndex: companion.index,
+                    projectRoot: workspace.projectRoot
+                )
             }
 
             // ボタン

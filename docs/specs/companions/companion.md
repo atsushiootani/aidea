@@ -16,7 +16,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-03
+last_updated: 2026-05-05
 ---
 
 # コンパニオン
@@ -132,8 +132,9 @@ Aidea が起動時に PTY へ送る文字列は `companionIndex` から派生す
 | 型 | ファイル | 責務 |
 |---|---|---|
 | `CompanionView` | `Views/Companion/CompanionView.swift` | ヘッダに 9 体並べる本体。アイコンタップで起動/フォーカス、ラベルタップで編集 sheet を開く。レコメンドモード中は選択コンパニオンの下に `RecommendBubbleView` を表示 |
-| `CompanionEditView` | `Views/Companion/CompanionEditView.swift` | 名前・アイコンを編集する sheet (`update(_:)` を呼ぶ)。「指示書を開く」ボタンで `SessionRegistry.openPreview` 経由で `.aidea/claude/companions/<index>/instructions.md` を Preview セッションとして開く (markdown view + 編集モード) |
+| `CompanionEditView` | `Views/Companion/CompanionEditView.swift` | 名前・アイコンを編集する sheet (`update(_:)` を呼ぶ)。「指示書を開く」ボタンで `SessionRegistry.openPreview` 経由で `.aidea/claude/companions/<index>/instructions.md` を Preview セッションとして開く (markdown view + 編集モード)。「speech 履歴を見る」ボタンで `SpeechHistoryView` を sheet として開く |
 | `RecommendBubbleView` | `Views/Companion/RecommendBubbleView.swift` | `RecommendState.prompts` を縦に並べ、選択中をアクセントカラーでハイライトする吹き出し |
+| `SpeechHistoryView` | `Views/Companion/SpeechHistoryView.swift` | `CompanionEditView` から開く speech 履歴 sheet。`.aidea/backchannels/<n>/speech-*.txt` を逆時系列で一覧表示する (読み取り専用、[speech-history.md](./speech-history.md)) |
 
 ---
 
