@@ -11,6 +11,14 @@ enum ClaudeTranslator {
     private static let model = "claude-haiku-4-5-20251001"
     private static let keychainService = "com.aidea.anthropic-api-key"
 
+    private static let systemPrompt = """
+        あなたは翻訳者です。以下の英語テキストを日本語に翻訳してください。
+        - Markdown の構造 (見出し、リスト、コードブロック、テーブル、リンク等) はそのまま維持してください
+        - コード内の変数名やコマンドは翻訳しないでください
+        - 自然で読みやすい日本語にしてください
+        - 翻訳結果のみを出力し、説明や注釈は付けないでください
+        """
+
     /// API キーを Keychain から取得する
     static var apiKey: String? {
         KeychainHelper.load(service: keychainService)
@@ -27,57 +35,83 @@ enum ClaudeTranslator {
         return !key.isEmpty
     }
 
-    /// 英語テキストを日本語に翻訳する
+    /// 英語テキストを日本語に SSE ストリーミング翻訳する。
+    /// テキストデルタを逐次 yield する。
+    static func translateStream(_ text: String) -> AsyncThrowingStream<String, Error> {
+        AsyncThrowingStream { continuation in
+            Task {
+                do {
+                    guard let key = apiKey, !key.isEmpty else {
+                        continuation.finish(throwing: TranslationError.apiKeyNotSet)
+                        return
+                    }
+
+                    var request = URLRequest(url: endpoint)
+                    request.httpMethod = "POST"
+                    request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+                    request.addValue(key, forHTTPHeaderField: "x-api-key")
+                    request.addValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
+
+                    let body: [String: Any] = [
+                        "model": model,
+                        "max_tokens": 8192,
+                        "stream": true,
+                        "system": systemPrompt,
+                        "messages": [
+                            ["role": "user", "content": text]
+                        ]
+                    ]
+
+                    request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+                    let (bytes, response) = try await URLSession.shared.bytes(for: request)
+
+                    guard let httpResponse = response as? HTTPURLResponse else {
+                        continuation.finish(throwing: TranslationError.invalidResponse)
+                        return
+                    }
+
+                    if httpResponse.statusCode != 200 {
+                        var errorData = Data()
+                        for try await byte in bytes { errorData.append(byte) }
+                        let errorBody = String(data: errorData, encoding: .utf8) ?? "unknown"
+                        continuation.finish(throwing: TranslationError.apiError(
+                            statusCode: httpResponse.statusCode,
+                            body: errorBody
+                        ))
+                        return
+                    }
+
+                    for try await line in bytes.lines {
+                        guard line.hasPrefix("data: ") else { continue }
+                        let jsonStr = String(line.dropFirst(6))
+                        guard let data = jsonStr.data(using: .utf8),
+                              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                              (json["type"] as? String) == "content_block_delta",
+                              let delta = json["delta"] as? [String: Any],
+                              (delta["type"] as? String) == "text_delta",
+                              let chunk = delta["text"] as? String else { continue }
+                        continuation.yield(chunk)
+                    }
+
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+        }
+    }
+
+    /// 英語テキストを日本語に翻訳する (内部で SSE ストリーミングを使用)
     /// - Parameter text: 翻訳する英語テキスト
     /// - Returns: 日本語に翻訳されたテキスト
     /// - Throws: API キー未設定、ネットワークエラー、API エラー
     static func translate(_ text: String) async throws -> String {
-        guard let key = apiKey, !key.isEmpty else {
-            throw TranslationError.apiKeyNotSet
+        var result = ""
+        for try await chunk in translateStream(text) {
+            result += chunk
         }
-
-        var request = URLRequest(url: endpoint)
-        request.timeoutInterval = 300 // 長いファイルの翻訳に対応 (5 分)
-        request.httpMethod = "POST"
-        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.addValue(key, forHTTPHeaderField: "x-api-key")
-        request.addValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
-
-        let body: [String: Any] = [
-            "model": model,
-            "max_tokens": 8192,
-            "system": """
-            あなたは翻訳者です。以下の英語テキストを日本語に翻訳してください。
-            - Markdown の構造 (見出し、リスト、コードブロック、テーブル、リンク等) はそのまま維持してください
-            - コード内の変数名やコマンドは翻訳しないでください
-            - 自然で読みやすい日本語にしてください
-            - 翻訳結果のみを出力し、説明や注釈は付けないでください
-            """,
-            "messages": [
-                ["role": "user", "content": text]
-            ]
-        ]
-
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw TranslationError.invalidResponse
-        }
-        guard httpResponse.statusCode == 200 else {
-            let errorBody = String(data: data, encoding: .utf8) ?? "unknown"
-            throw TranslationError.apiError(statusCode: httpResponse.statusCode, body: errorBody)
-        }
-
-        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let content = json["content"] as? [[String: Any]],
-              let firstBlock = content.first,
-              let translatedText = firstBlock["text"] as? String else {
-            throw TranslationError.parseError
-        }
-
-        return translatedText
+        return result
     }
 }
 
