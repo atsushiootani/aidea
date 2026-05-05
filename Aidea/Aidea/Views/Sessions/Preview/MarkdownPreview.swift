@@ -57,8 +57,15 @@ struct MarkdownPreview: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 4) {
                         ForEach(visibleIndices, id: \.self) { index in
-                            render(index: index, line: lines[index])
-                                .id("line-\(index)")
+                            MarkdownLineView(
+                                index: index,
+                                line: lines[index],
+                                onRunScript: onRunScript,
+                                onLinkTap: onLinkTap,
+                                baseURL: baseURL,
+                                collapsedHeadings: $collapsedHeadings
+                            )
+                            .id("line-\(index)")
                         }
                         // スクロールコントローラの橋渡し用の透明 NSView
                         // (NSScrollView を enclosingScrollView 経由で掴むため content 内に配置する)
@@ -134,121 +141,6 @@ struct MarkdownPreview: View {
         }
         onLinkTap?(target)
         return .handled
-    }
-
-    // MARK: - Render
-
-    /// 1 行を View にレンダリング
-    @ViewBuilder
-    private func render(index: Int, line: MarkdownLine) -> some View {
-        switch line {
-        case .heading(let level, let text):
-            headingRow(index: index, level: level, text: text)
-        case .checkbox(let text, let checked, let indent):
-            HStack(alignment: .top, spacing: 6) {
-                Image(systemName: checked ? "checkmark.square.fill" : "square")
-                    .foregroundStyle(checked ? Color.accentColor : Color.secondary)
-                Text(.init(text))
-                Spacer(minLength: 0)
-            }
-            .padding(.leading, CGFloat(indent) * 16)
-        case .bullet(let text, let indent):
-            HStack(alignment: .top, spacing: 6) {
-                Text("•")
-                    .foregroundStyle(.secondary)
-                Text(.init(text))
-                Spacer(minLength: 0)
-            }
-            .padding(.leading, CGFloat(indent) * 16)
-        case .mermaid(let source):
-            MermaidView(diagram: source)
-        case .code(let text, let language):
-            CodeBlockView(text: text, language: language, onRunScript: onRunScript)
-        case .table(let header, let rows):
-            tableView(header: header, rows: rows)
-        case .paragraph(let text):
-            Text(.init(text))
-                .frame(maxWidth: .infinity, alignment: .leading)
-        case .frontmatter(let text):
-            FrontmatterView(text: text, baseURL: baseURL, onLinkTap: onLinkTap)
-        case .divider:
-            Divider().padding(.vertical, 2)
-        case .blank:
-            Text("").frame(height: 4)
-        }
-    }
-
-    /// 見出し行 (折りたたみトライアングル付き)
-    @ViewBuilder
-    private func headingRow(index: Int, level: Int, text: String) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 6) {
-            Image(systemName: "play.fill")
-                .font(.system(size: 9))
-                .foregroundStyle(.secondary)
-                .rotationEffect(.degrees(collapsedHeadings.contains(index) ? 0 : 90))
-            headingText(level: level, text: text)
-            Spacer(minLength: 0)
-        }
-        .contentShape(Rectangle())
-        .onTapGesture {
-            withAnimation(.easeInOut(duration: 0.15)) {
-                if collapsedHeadings.contains(index) {
-                    collapsedHeadings.remove(index)
-                } else {
-                    collapsedHeadings.insert(index)
-                }
-            }
-        }
-        .padding(.top, level <= 2 ? 8 : 4)
-    }
-
-    /// 見出しレベルに応じたフォント
-    @ViewBuilder
-    private func headingText(level: Int, text: String) -> some View {
-        switch level {
-        case 1: Text(.init(text)).font(.system(size: 26, weight: .bold))
-        case 2: Text(.init(text)).font(.system(size: 22, weight: .bold))
-        case 3: Text(.init(text)).font(.system(size: 18, weight: .semibold))
-        case 4: Text(.init(text)).font(.system(size: 15, weight: .semibold))
-        default: Text(.init(text)).font(.system(size: 13, weight: .semibold))
-        }
-    }
-
-    /// テーブル
-    @ViewBuilder
-    private func tableView(header: [String], rows: [[String]]) -> some View {
-        VStack(spacing: 0) {
-            // ヘッダー
-            HStack(spacing: 0) {
-                ForEach(Array(header.enumerated()), id: \.offset) { _, cell in
-                    Text(.init(cell))
-                        .font(.system(size: 12, weight: .semibold))
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(6)
-                        .background(Color.secondary.opacity(0.15))
-                }
-            }
-            // ボディ
-            ForEach(Array(rows.enumerated()), id: \.offset) { pair in
-                HStack(spacing: 0) {
-                    ForEach(Array(pair.element.enumerated()), id: \.offset) { _, cell in
-                        Text(.init(cell))
-                            .font(.system(size: 12))
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(6)
-                    }
-                }
-                .background(pair.offset.isMultiple(of: 2)
-                            ? Color.clear
-                            : Color.secondary.opacity(0.05))
-            }
-        }
-        .overlay(
-            RoundedRectangle(cornerRadius: 4)
-                .stroke(Color.secondary.opacity(0.3), lineWidth: 0.5)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 4))
-        .padding(.vertical, 4)
     }
 
     // MARK: - Table of contents
@@ -519,6 +411,129 @@ struct MarkdownPreview: View {
             return (true, String(content.dropFirst(4)))
         }
         return nil
+    }
+}
+
+/// 1 行の Markdown を表示する View。
+/// render(@ViewBuilder) を ForEach 内から直接呼ぶと型推論が重くなるため、
+/// 具体型の struct として分離する (FrontmatterLineView と同じ対策)。
+private struct MarkdownLineView: View {
+    let index: Int
+    let line: MarkdownLine
+    let onRunScript: ((String) -> Void)?
+    let onLinkTap: ((URL) -> Void)?
+    let baseURL: URL?
+    @Binding var collapsedHeadings: Set<Int>
+
+    var body: some View {
+        switch line {
+        case .heading(let level, let text):
+            headingRow(index: index, level: level, text: text)
+        case .checkbox(let text, let checked, let indent):
+            HStack(alignment: .top, spacing: 6) {
+                Image(systemName: checked ? "checkmark.square.fill" : "square")
+                    .foregroundStyle(checked ? Color.accentColor : Color.secondary)
+                Text(.init(text))
+                Spacer(minLength: 0)
+            }
+            .padding(.leading, CGFloat(indent) * 16)
+        case .bullet(let text, let indent):
+            HStack(alignment: .top, spacing: 6) {
+                Text("•")
+                    .foregroundStyle(.secondary)
+                Text(.init(text))
+                Spacer(minLength: 0)
+            }
+            .padding(.leading, CGFloat(indent) * 16)
+        case .mermaid(let source):
+            MermaidView(diagram: source)
+        case .code(let text, let language):
+            CodeBlockView(text: text, language: language, onRunScript: onRunScript)
+        case .table(let header, let rows):
+            tableView(header: header, rows: rows)
+        case .paragraph(let text):
+            Text(.init(text))
+                .frame(maxWidth: .infinity, alignment: .leading)
+        case .frontmatter(let text):
+            FrontmatterView(text: text, baseURL: baseURL, onLinkTap: onLinkTap)
+        case .divider:
+            Divider().padding(.vertical, 2)
+        case .blank:
+            Text("").frame(height: 4)
+        }
+    }
+
+    /// 見出し行 (折りたたみトライアングル付き)
+    @ViewBuilder
+    private func headingRow(index: Int, level: Int, text: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            Image(systemName: "play.fill")
+                .font(.system(size: 9))
+                .foregroundStyle(.secondary)
+                .rotationEffect(.degrees(collapsedHeadings.contains(index) ? 0 : 90))
+            headingText(level: level, text: text)
+            Spacer(minLength: 0)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            withAnimation(.easeInOut(duration: 0.15)) {
+                if collapsedHeadings.contains(index) {
+                    collapsedHeadings.remove(index)
+                } else {
+                    collapsedHeadings.insert(index)
+                }
+            }
+        }
+        .padding(.top, level <= 2 ? 8 : 4)
+    }
+
+    /// 見出しレベルに応じたフォント
+    @ViewBuilder
+    private func headingText(level: Int, text: String) -> some View {
+        switch level {
+        case 1: Text(.init(text)).font(.system(size: 26, weight: .bold))
+        case 2: Text(.init(text)).font(.system(size: 22, weight: .bold))
+        case 3: Text(.init(text)).font(.system(size: 18, weight: .semibold))
+        case 4: Text(.init(text)).font(.system(size: 15, weight: .semibold))
+        default: Text(.init(text)).font(.system(size: 13, weight: .semibold))
+        }
+    }
+
+    /// テーブル
+    @ViewBuilder
+    private func tableView(header: [String], rows: [[String]]) -> some View {
+        VStack(spacing: 0) {
+            // ヘッダー
+            HStack(spacing: 0) {
+                ForEach(Array(header.enumerated()), id: \.offset) { _, cell in
+                    Text(.init(cell))
+                        .font(.system(size: 12, weight: .semibold))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(6)
+                        .background(Color.secondary.opacity(0.15))
+                }
+            }
+            // ボディ
+            ForEach(Array(rows.enumerated()), id: \.offset) { pair in
+                HStack(spacing: 0) {
+                    ForEach(Array(pair.element.enumerated()), id: \.offset) { _, cell in
+                        Text(.init(cell))
+                            .font(.system(size: 12))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(6)
+                    }
+                }
+                .background(pair.offset.isMultiple(of: 2)
+                            ? Color.clear
+                            : Color.secondary.opacity(0.05))
+            }
+        }
+        .overlay(
+            RoundedRectangle(cornerRadius: 4)
+                .stroke(Color.secondary.opacity(0.3), lineWidth: 0.5)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 4))
+        .padding(.vertical, 4)
     }
 }
 
