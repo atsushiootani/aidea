@@ -9,7 +9,7 @@ impacts:
   - docs/specs/widgets/*
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-02
+last_updated: 2026-05-05
 ---
 
 # Widgets
@@ -22,6 +22,7 @@ last_updated: 2026-05-02
 | ファイル | 内容 |
 |---|---|
 | [pomodoro.md](./pomodoro.md) | ポモドーロタイマー (25 分作業 / 5 分休憩を交互に計測する) |
+| [quick-memo.md](./quick-memo.md) | クイックメモ (Cmd+M で即開き、quickmemo/todo/ にファイル保存) |
 
 ## 位置付け
 
@@ -45,6 +46,7 @@ AppHeaderView
    ├─ Spacer                 ※既存
    └─ WidgetView             ★新規 (右端の widget 集約コンテナ)
       ├─ TimerView           (ポモドーロ → widgets/pomodoro.md)
+      ├─ QuickMemoButton     (クイックメモ → widgets/quick-memo.md)
       └─ …                   (今後追加される widget はここに並ぶ)
 ```
 

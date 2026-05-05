@@ -21,6 +21,7 @@ syncs_with:
   - docs/specs/sessions/active-session.md
   - docs/specs/tools/preview.md
   - docs/specs/window/active-session-switcher.md
+  - docs/specs/widgets/quick-memo.md
 impacts: []
 conventions:
   - docs/LAYOUT.md
@@ -104,8 +105,21 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 │       └── ...                  # 0…8 の 9 ディレクトリ固定
 └── ja/                       # 英語ドキュメントの日本語翻訳キャッシュ
     └── <相対パス>/<filename>
+
 ```
 
+### `<projectRoot>/quickmemo/` (クイックメモ)
+
+```
+<projectRoot>/quickmemo/
+└── todo/
+    ├── 2026-05-05-143000.md   # クイックメモ保存ファイル (タイムスタンプ付き)
+    └── ...
+```
+
+- `quickmemo/todo/` はクイックメモ保存先。詳細は [../widgets/quick-memo.md](../widgets/quick-memo.md) を参照
+- `quickmemo/` は **git 管理対象** (`.aidea/` とは異なり `.gitignore` には追記しない)
+- ファイル名は `YYYY-MM-DD-HHmmss.md` 形式
 - `projectRoot` が変わるたびに `ensureAideaDirectory()` が `.aidea/` と `.aidea/ja/` を生成し、**プロジェクトの `.gitignore` に `.aidea/` を自動追記** する
 - `.aidea/claude/*.md` と `.aidea/backchannels/` は初回のみ `BackchannelSetup.setup()` が作成・複製する
 - `.aidea/claude/companions/<0..8>/instructions.md` も `BackchannelSetup.setup()` が `Backchannels/companion-instructions.md` を 9 個に複製する (既存ファイルは上書きしない)

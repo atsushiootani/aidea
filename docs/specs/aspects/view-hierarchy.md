@@ -65,6 +65,8 @@ NSWindow (メインウィンドウ)
       │     ├─ Spacer
       │     └─ WidgetView                         [Widgets/WidgetView.swift]
       │        └─ HStack (ヘッダ常駐 widget を右端に並べる)
+      │           ├─ QuickMemoButton              [Widgets/QuickMemo/QuickMemoButton.swift]
+      │           │  (メモアイコンボタン。押下で .popover → QuickMemoView)
       │           └─ TimerView                    [Widgets/Pomodoro/TimerView.swift]
       │              (フェーズアイコン + 残り時間 + Start/Pause + Reset + 進捗ゲージを常時表示)
       ├─ Divider
@@ -95,7 +97,7 @@ NSWindow (メインウィンドウ)
 ┌─ NSWindow / ContentView ───────────────────────────────────────────────┐
 │ ┌─ AppHeaderView ────────────────────────────────────────────────────┐ │
 │ │ ┌─ CompanionView ────────────────────────────┐  ┌──────┐           │ │
-│ │ │ [1] [2] [3] [4] [5] [6] [7] [8] [9]        │  │  🔊  │  Spacer   │ │
+│ │ │ [1] [2] [3] [4] [5] [6] [7] [8] [9]        │  │  🔊  │  Spacer  ✏️ ⏱ │ │
 │ │ └────────────────────────────────────────────┘  └──────┘           │ │
 │ └────────────────────────────────────────────────────────────────────┘ │
 │ ── Divider ─────────────────────────────────────────────────────────── │
@@ -187,6 +189,7 @@ NSWindow (メインウィンドウ)
 | `CompanionEditView` | ウィンドウ全体の sheet | Companion 名ラベルをタップ |
 | Tool 選択 NSMenu | `+` ボタン直下 / 任意位置 | `+` ボタン押下 / Cmd+T |
 | `ActiveSessionSwitcherView` | 別 NSWindow (`level = .floating`、メインウィンドウ中央) | Ctrl+Tab |
+| `QuickMemoView` | `QuickMemoButton` の `.popover` | Cmd+M またはボタン押下 |
 
 ---
 

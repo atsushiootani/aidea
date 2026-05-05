@@ -21,6 +21,7 @@ struct AideaApp: App {
     @State private var handoffState: HandoffState
     @State private var outputState: OutputState
     @State private var pomodoroState: PomodoroState
+    @State private var quickMemoState: QuickMemoState
     /// Ctrl+Tab で起動する Active Session Switcher (Window レベル singleton)
     @State private var sessionSwitcher = ActiveSessionSwitcher()
     /// Cmd+T のツール選択メニューを各ペインの「+」ボタン直下に表示するためのアンカー管理
@@ -83,6 +84,7 @@ struct AideaApp: App {
         _handoffState = State(initialValue: handoff)
         _outputState = State(initialValue: output)
         _pomodoroState = State(initialValue: pomodoro)
+        _quickMemoState = State(initialValue: QuickMemoState())
     }
 
     var body: some Scene {
@@ -97,6 +99,7 @@ struct AideaApp: App {
                 .environment(handoffState)
                 .environment(outputState)
                 .environment(pomodoroState)
+                .environment(quickMemoState)
                 .environment(tabPickerAnchor)
                 .onAppear {
                     registerTerminationObserver()
@@ -341,6 +344,7 @@ struct AideaApp: App {
         let companionStore = self.companionStore
         let recommend = self.recommendState
         let speechState = self.speechState
+        let quickMemo = self.quickMemoState
         NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
             // レコメンドモード中のキー操作
             if recommend.isActive {
@@ -396,7 +400,7 @@ struct AideaApp: App {
                 return event
             }
 
-            // Cmd+W
+            // Cmd+M / Cmd+W 判定 (modifier: Cmd のみ / Shift・Option・Ctrl なし)
             guard event.modifierFlags.contains(.command),
                   !event.modifierFlags.contains(.shift),
                   !event.modifierFlags.contains(.option),
@@ -404,6 +408,15 @@ struct AideaApp: App {
                 return event
             }
             let chars = event.charactersIgnoringModifiers?.lowercased() ?? ""
+            if chars == "m" {
+                // Cmd+M: クイックメモ (システムの minimize より前に吸収)
+                if quickMemo.isPresented {
+                    quickMemo.dismiss()
+                } else {
+                    quickMemo.present()
+                }
+                return nil
+            }
             if chars == "w" {
                 Self.closeCurrentTabStatic(layout: layout, registry: registry, companionStore: companionStore)
                 return nil

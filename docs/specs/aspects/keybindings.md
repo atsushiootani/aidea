@@ -14,6 +14,7 @@ syncs_with:
   - docs/specs/tools/terminal.md
   - docs/specs/tools/web.md
   - docs/specs/widgets/pomodoro.md
+  - docs/specs/widgets/quick-memo.md
   - docs/specs/window/shortcuts.md
   - docs/specs/window/active-session-switcher.md
   - docs/specs/companions/recommend-mode.md
@@ -76,12 +77,13 @@ Aidea の全キーボードショートカットとマウス操作のリファ�
 | Enter | 選択したプロンプトを送信 |
 | Esc | キャンセル |
 
-### Widgets / ポモドーロ
+### Widgets / ポモドーロ・クイックメモ
 
 | キー | アクション |
 |------|-----------|
 | ⌘ ⌥ P | ポモドーロタイマー 開始 / 一時停止 |
 | ⌘ ⌥ ⇧ P | ポモドーロタイマー リセット (集中フェーズ 25 分に戻す) |
+| ⌘ M | クイックメモパネルを開く / 閉じる |
 
 ### その他
 

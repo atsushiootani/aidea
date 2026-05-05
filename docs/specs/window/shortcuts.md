@@ -7,11 +7,12 @@ derived_from:
 syncs_with:
   - docs/specs/aspects/keybindings.md
   - docs/specs/widgets/pomodoro.md
+  - docs/specs/widgets/quick-memo.md
   - docs/specs/window/active-session-switcher.md
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-02
+last_updated: 2026-05-05
 ---
 
 # グローバルショートカット
@@ -63,3 +64,11 @@ Window 全体で有効なキーボードショートカット。
 |---|---|
 | **⌘ ⌥ P** | ポモドーロタイマー 開始 / 一時停止 |
 | **⌘ ⌥ ⇧ P** | ポモドーロタイマー リセット |
+
+## クイックメモ
+
+`AideaApp.registerKeyEventMonitor()` で Cmd+M を横取りして実装する。詳細は [../widgets/quick-memo.md](../widgets/quick-memo.md)。
+
+| キー | 動作 |
+|---|---|
+| **⌘ M** | クイックメモパネルを開く / 閉じる |
