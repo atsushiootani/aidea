@@ -7,6 +7,7 @@ derived_from:
   - docs/decisions/0022-companion-instructions-as-files.md
 syncs_with:
   - docs/specs/companions/recommend-mode.md
+  - docs/specs/companions/speech-history.md
   - docs/specs/aspects/persistence.md
   - docs/specs/backchannels/backchannel.md
   - docs/specs/backchannels/companion-roster.md
@@ -248,6 +249,7 @@ SF Symbol オーバーレイの組み合わせで表現する。
 
 - [../frontchannels/frontchannel.md](../frontchannels/frontchannel.md) — 送信メカニズム (PTY `send(txt:)`)
 - [recommend-mode.md](./recommend-mode.md) — Cmd+Enter によるレコメンド選択 UI
+- [speech-history.md](./speech-history.md) — speech 履歴ビュー (CompanionEditView から開く)
 - [../backchannels/handoff.md](../backchannels/handoff.md) — Companion 間ハンドオフ ([ADR 0023](../../decisions/0023-companion-handoff.md))
 - [../backchannels/companion-roster.md](../backchannels/companion-roster.md) — `aidea.md` 内のコンパニオン名簿自動同期
 - [../tools/claude.md](../tools/claude.md) — Claude セッション側の挙動
