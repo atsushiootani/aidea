@@ -12,6 +12,8 @@ struct CompanionEditView: View {
     let onSave: (CompanionConfig) -> Void
     let onOpenInstructions: () -> Void
     @Environment(\.dismiss) private var dismiss
+    @Environment(WorkspaceState.self) private var workspace
+    @State private var showSpeechHistory = false
 
     var body: some View {
         VStack(spacing: 16) {
@@ -50,6 +52,27 @@ struct CompanionEditView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .help(".aidea/claude/companions/\(companion.index)/instructions.md を Preview タブで開きます")
+            }
+
+            // speech 履歴
+            VStack(alignment: .leading, spacing: 4) {
+                Text("speech 履歴")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Button {
+                    showSpeechHistory = true
+                } label: {
+                    Label("speech 履歴を見る", systemImage: "waveform")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .disabled(workspace.projectRoot == nil)
+                .help(".aidea/backchannels/\(companion.index)/ の speech ファイル一覧を表示します")
+            }
+            .sheet(isPresented: $showSpeechHistory) {
+                SpeechHistoryView(
+                    companionIndex: companion.index,
+                    projectRoot: workspace.projectRoot
+                )
             }
 
             // ボタン
