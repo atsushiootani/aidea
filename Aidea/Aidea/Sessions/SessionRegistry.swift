@@ -304,6 +304,49 @@ final class SessionRegistry {
         setActiveTab(paneID: pane.id, tabIndex: pane.tabs.count - 1)
     }
 
+    /// Markdown プレビューの実行ボタンから呼ばれる: 既存のターミナルにコマンドを送信して
+    /// アクティブ化する。ターミナルが存在しない場合は新規作成し、シェル起動後に送信する。
+    func openTerminalAndRun(_ command: String) {
+        // 最近使ったターミナルを優先して再利用
+        for id in activeSessionHistory.reversed() where id.tool == .terminal {
+            guard let session = session(for: id),
+                  let termState = session.state as? TerminalSessionState else { continue }
+            activateSession(id)
+            let bytes = Array((command + "\n").utf8)
+            termState.terminalView.send(bytes[...])
+            return
+        }
+        // 既存ターミナルなし: 呼び出し元ペイン以外に新規作成
+        let callerPane = activePane
+        var targetPane: Pane?
+        for id in activeSessionHistory.reversed() {
+            if let pane = layout.allPanes.first(where: { $0.tabs.contains(id) }),
+               pane !== callerPane {
+                targetPane = pane
+                break
+            }
+        }
+        if targetPane == nil {
+            targetPane = layout.allPanes.first { $0 !== callerPane }
+        }
+        guard let pane = targetPane ?? layout.allPanes.first else { return }
+
+        let instance = layout.nextSessionInstance(of: .terminal)
+        let newSession = createSession(tool: .terminal, instance: instance)
+        pane.tabs.append(newSession.id)
+        setActiveTab(paneID: pane.id, tabIndex: pane.tabs.count - 1)
+
+        // シェルの起動を待ってからコマンドを送信する
+        guard let termState = newSession.state as? TerminalSessionState else { return }
+        Task { @MainActor in
+            // terminalView にアクセスして PTY を起動
+            _ = termState.terminalView
+            try? await Task.sleep(nanoseconds: 800_000_000)
+            let bytes = Array((command + "\n").utf8)
+            termState.terminalView.send(bytes[...])
+        }
+    }
+
     /// 削除されたファイル/ディレクトリを表示していた Preview タブを閉じる
     func closePreviewsForDeleted(_ deleted: URL, isDirectory: Bool) {
         let deletedPath = deleted.path
