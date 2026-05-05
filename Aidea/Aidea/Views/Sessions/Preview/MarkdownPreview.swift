@@ -163,7 +163,7 @@ struct MarkdownPreview: View {
         case .mermaid(let source):
             MermaidView(diagram: source)
         case .code(let text, let language):
-            codeBlockView(text: text, language: language)
+            CodeBlockView(text: text, language: language, onRunScript: onRunScript)
         case .table(let header, let rows):
             tableView(header: header, rows: rows)
         case .paragraph(let text):
@@ -175,45 +175,6 @@ struct MarkdownPreview: View {
             Divider().padding(.vertical, 2)
         case .blank:
             Text("").frame(height: 4)
-        }
-    }
-
-    /// コードブロック View。シェル言語の場合は右上に実行ボタンを重ねる。
-    @ViewBuilder
-    private func codeBlockView(text: String, language: String) -> some View {
-        let isShell = Self.isShellLanguage(language)
-        let trailingPad: CGFloat = isShell && onRunScript != nil ? 36 : 8
-        ZStack(alignment: .topTrailing) {
-            Text(text)
-                .font(.system(.callout, design: .monospaced))
-                .foregroundStyle(.primary)
-                .padding(.top, 8)
-                .padding(.bottom, 8)
-                .padding(.leading, 8)
-                .padding(.trailing, trailingPad)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(Color.secondary.opacity(0.12))
-                )
-            if isShell {
-                if let run = onRunScript {
-                    Button {
-                        run(text)
-                    } label: {
-                        Image(systemName: "play.fill")
-                            .font(.system(size: 10))
-                            .foregroundStyle(.secondary)
-                            .padding(5)
-                            .background(
-                                RoundedRectangle(cornerRadius: 4)
-                                    .fill(Color.secondary.opacity(0.15))
-                            )
-                    }
-                    .buttonStyle(.plain)
-                    .padding(4)
-                }
-            }
         }
     }
 
@@ -353,11 +314,6 @@ struct MarkdownPreview: View {
             .padding(.leading, 12)
             .padding(.bottom, 12)
         }
-    }
-
-    /// 言語識別子がシェルスクリプト系かどうかを判定する
-    private static func isShellLanguage(_ lang: String) -> Bool {
-        ["bash", "sh", "shell", "zsh", "fish", "ksh", "csh", "tcsh"].contains(lang)
     }
 
     /// 見出しだけ抽出する
@@ -561,6 +517,55 @@ struct MarkdownPreview: View {
             return (true, String(content.dropFirst(4)))
         }
         return nil
+    }
+}
+
+/// コードブロック View。シェル言語の場合は右上に実行ボタンを重ねる。
+/// @ViewBuilder method からの独立した struct に抽出することで、render switch の型推論を単純化する。
+private struct CodeBlockView: View {
+    let text: String
+    let language: String
+    let onRunScript: ((String) -> Void)?
+
+    private static func isShellLanguage(_ lang: String) -> Bool {
+        ["bash", "sh", "shell", "zsh", "fish", "ksh", "csh", "tcsh"].contains(lang)
+    }
+
+    var body: some View {
+        let isShell = Self.isShellLanguage(language)
+        let trailingPad: CGFloat = isShell && onRunScript != nil ? 36 : 8
+        ZStack(alignment: .topTrailing) {
+            Text(text)
+                .font(.system(.callout, design: .monospaced))
+                .foregroundStyle(.primary)
+                .padding(.top, 8)
+                .padding(.bottom, 8)
+                .padding(.leading, 8)
+                .padding(.trailing, trailingPad)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(Color.secondary.opacity(0.12))
+                )
+            if isShell {
+                if let run = onRunScript {
+                    Button {
+                        run(text)
+                    } label: {
+                        Image(systemName: "play.fill")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
+                            .padding(5)
+                            .background(
+                                RoundedRectangle(cornerRadius: 4)
+                                    .fill(Color.secondary.opacity(0.15))
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .padding(4)
+                }
+            }
+        }
     }
 }
 
