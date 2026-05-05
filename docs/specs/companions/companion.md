@@ -7,6 +7,7 @@ derived_from:
   - docs/decisions/0022-companion-instructions-as-files.md
 syncs_with:
   - docs/specs/companions/recommend-mode.md
+  - docs/specs/companions/speech-history.md
   - docs/specs/aspects/persistence.md
   - docs/specs/backchannels/backchannel.md
   - docs/specs/backchannels/companion-roster.md

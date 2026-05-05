@@ -5,6 +5,7 @@ derived_from:
   - docs/specs/backchannels/voicevox.md
 syncs_with:
   - docs/specs/companions/companion.md
+  - docs/specs/aspects/view-hierarchy.md
 impacts: []
 conventions:
   - docs/LAYOUT.md
