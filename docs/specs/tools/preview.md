@@ -192,6 +192,45 @@ Obsidian の drawio プラグインと同等の UX を目指す。
 | **Cmd + E** | drawio ファイル表示時に編集モードへトグル |
 | **Esc** | drawio 編集モードをキャンセルしてプレビューへ戻る |
 
+### openFromExternal — 外部アプリからファイルを開く (URL スキーム)
+
+Aidea は `aidea://` カスタム URL スキームを登録する。
+外部アプリ (Claude Code のトランスクリプトビューア等) から Aidea でファイルを開くために使用する。
+
+#### URL 形式
+
+```
+aidea://open?path=<パーセントエンコード済みの絶対パス>
+```
+
+例:
+```
+aidea://open?path=%2FUsers%2Fme%2F.claude%2Fprojects%2Faidea%2Fabc123.jsonl
+```
+
+#### 動作
+
+- Aidea がフォアグラウンドでなければ前面に出る
+- `path` パラメータのファイルを Preview セッションで開く (既存の `openPreview` ルーティングに準拠)
+- 同一 URL の Preview が既に存在する場合はアクティブ化 (dedupe)
+- `path` パラメータが欠如・不正の場合は何もしない (エラー表示なし)
+
+#### 実装ポイント
+
+- `AideaApp.swift` の `WindowGroup` に `.onOpenURL { url in ... }` を追加
+- URL スキームは `Info.plist` の `CFBundleURLTypes` で登録 (スキーム名: `aidea`)
+- `file://` URL を直接受信した場合も同様に Preview で開く
+
+#### Claude Code トランスクリプトの設定方法
+
+Claude Code のトランスクリプトビューアから Aidea でファイルを開くには、次のシェルスクリプトを `$EDITOR` または Claude 設定の `editor` に設定する:
+
+```bash
+#!/bin/bash
+# ~/.local/bin/aidea-open
+open "aidea://open?path=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))" "$1")"
+```
+
 ---
 
 ## 実装メモ

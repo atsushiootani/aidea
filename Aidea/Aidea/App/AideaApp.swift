@@ -100,6 +100,9 @@ struct AideaApp: App {
                     sessionSwitcher.install(registry: registry, companionStore: companionStore)
                     startHandoff()
                 }
+                .onOpenURL { url in
+                    handleExternalOpen(url)
+                }
         }
         .commands {
             CommandGroup(replacing: .newItem) {
@@ -567,6 +570,21 @@ struct AideaApp: App {
                     }
                 }
             }
+        }
+    }
+
+    // MARK: - External file open (aidea:// URL scheme)
+
+    /// `aidea://open?path=<encoded_path>` または `file://` URL を受け取り Preview で開く。
+    /// Claude Code のトランスクリプトビューア等の外部アプリから呼ばれる。
+    private func handleExternalOpen(_ url: URL) {
+        if url.isFileURL {
+            registry.openPreview(for: url, title: url.lastPathComponent)
+        } else if url.scheme == "aidea", url.host == "open",
+                  let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+                  let path = components.queryItems?.first(where: { $0.name == "path" })?.value {
+            let fileURL = URL(fileURLWithPath: path)
+            registry.openPreview(for: fileURL, title: fileURL.lastPathComponent)
         }
     }
 
