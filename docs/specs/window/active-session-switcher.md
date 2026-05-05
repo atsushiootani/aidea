@@ -7,6 +7,7 @@ syncs_with:
   - docs/specs/window/shortcuts.md
   - docs/specs/aspects/keybindings.md
   - docs/specs/aspects/persistence.md
+  - docs/specs/aspects/view-hierarchy.md
 impacts: []
 conventions:
   - docs/LAYOUT.md

@@ -7,7 +7,7 @@ impacts:
   - docs/README.md
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-02
+last_updated: 2026-05-05
 ---
 
 # docs ディレクトリ構成とファイル配置ルール
@@ -33,7 +33,7 @@ docs/
 ├── specs/             # プロダクト仕様 (設計ストック・コードと 1:1 対応)
 │   ├── README.md      # 内のインデックス・機能群ごとのサブディレクトリ一覧
 │   ├── architecture.md
-│   ├── aspects/
+│   ├── aspects/       # 横断的関心事 — keybindings / persistence / sort-order / view-hierarchy (View 親子関係 AA 図)
 │   ├── glossary.md
 │   └── <機能群>/       # backchannels / frontchannels / companions / sessions / tools / widgets / window など (→ README.md 参照)
 │
@@ -136,6 +136,7 @@ docs/
 | `docs/specs/` 直下のファイル追加/削除 | `docs/specs/README.md` | 一覧表に行を増減 |
 | `docs/specs/<機能群>/` にサブディレクトリ新設 | `docs/specs/README.md` + 新設したサブディレクトリの `README.md` | 両方に一覧を書く |
 | `docs/specs/<機能群>/` 内のファイル追加/削除 | 該当サブディレクトリの `README.md` | 一覧表に行を増減 |
+| `Aidea/Aidea/Views/` / `Aidea/Aidea/Widgets/` の View を追加・削除・親子関係変更 | `docs/specs/aspects/view-hierarchy.md` | AA 図 (ツリービュー / トップダウンビュー) を実装と同期する |
 | `docs/conventions/` のファイル追加/削除 | `docs/conventions/README.md` | 一覧表に行を増減 |
 | `docs/decisions/` に ADR 追加 / 状態変更 / 廃止 | `docs/decisions/README.md` | 一覧表に行追加、状態列を正しく反映 |
 | `docs/plans/` / `specs/` サブディレクトリ / `docs/agent-skills/` | — | インデックス不要 (ディレクトリ単位で参照している) |
