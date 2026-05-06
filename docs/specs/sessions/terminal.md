@@ -8,7 +8,6 @@ derived_from:
 syncs_with:
   - docs/specs/tools/terminal.md
   - docs/specs/companions/recommend-mode.md
-  - docs/specs/aspects/persistence.md
 impacts: []
 conventions:
   - docs/LAYOUT.md

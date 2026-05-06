@@ -44,12 +44,19 @@ Session 内部状態は [sessions/terminal.md](../sessions/terminal.md) を参�
 | `TerminalSessionState` | PTY の生成・キャッシュ、フォーカス管理 |
 | `PersistentTerminalView` | SwiftTerm の LocalProcessTerminalView 拡張。ペイン移動時のバッファ消失防止 |
 | `TerminalSessionView` | NSViewRepresentable ラッパ |
+| `TmuxLauncher` | tmux の有無検出・セッション名生成・起動コマンド生成 |
 
 ---
 
 ## 起動フロー
 
 ```
+(tmux あり)
+1. TmuxLauncher が tmux のパスを検出 (/opt/homebrew / /usr/local / /usr/bin の順)
+2. exec <tmux> new-session -A -s <name> -c <dir> でセッション起動または再 attach
+3. 環境変数: TERM=xterm-256color, SHELL=/bin/zsh (tmux クライアント側)
+
+(tmux なし / フォールバック)
 1. zsh -c "cd '{projectRoot}' && exec zsh -l" で対話シェルを起動
 2. 環境変数: TERM=xterm-256color, SHELL=/bin/zsh
 3. ユーザーが手動でコマンドを実行
