@@ -22,6 +22,7 @@ struct AideaApp: App {
     @State private var outputState: OutputState
     @State private var pomodoroState: PomodoroState
     @State private var focusTimerState: FocusTimerState
+    @State private var quickMemoState: QuickMemoState
     /// Ctrl+Tab で起動する Active Session Switcher (Window レベル singleton)
     @State private var sessionSwitcher = ActiveSessionSwitcher()
     /// Cmd+T のツール選択メニューを各ペインの「+」ボタン直下に表示するためのアンカー管理
@@ -104,6 +105,7 @@ struct AideaApp: App {
         _outputState = State(initialValue: output)
         _pomodoroState = State(initialValue: pomodoro)
         _focusTimerState = State(initialValue: focusTimer)
+        _quickMemoState = State(initialValue: QuickMemoState())
     }
 
     var body: some Scene {
@@ -119,6 +121,7 @@ struct AideaApp: App {
                 .environment(outputState)
                 .environment(pomodoroState)
                 .environment(focusTimerState)
+                .environment(quickMemoState)
                 .environment(tabPickerAnchor)
                 .onAppear {
                     registerTerminationObserver()
@@ -375,6 +378,7 @@ struct AideaApp: App {
         let companionStore = self.companionStore
         let recommend = self.recommendState
         let speechState = self.speechState
+        let quickMemo = self.quickMemoState
         NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
             // レコメンドモード中のキー操作
             if recommend.isActive {
@@ -393,6 +397,16 @@ struct AideaApp: App {
                     recommend.deactivate()
                     return event
                 }
+            }
+
+            // Cmd+M でクイックメモ popover をトグル (macOS の最小化より前に横取り)
+            if event.modifierFlags.contains(.command),
+               !event.modifierFlags.contains(.option),
+               !event.modifierFlags.contains(.shift),
+               !event.modifierFlags.contains(.control),
+               event.charactersIgnoringModifiers?.lowercased() == "m" {
+                quickMemo.togglePresented()
+                return nil
             }
 
             // Cmd+Enter でレコメンドモード起動
