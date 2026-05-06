@@ -1,6 +1,6 @@
 ---
 title: Persistence (データ永続化)
-description: UserDefaults / Keychain / Bundle Resources / .aidea/ のデータ永続化と初期値テンプレ仕様を機能群横断で集約
+description: UserDefaults / Keychain / Bundle Resources / .aidea/ / quickmemo/todo/ のデータ永続化と初期値テンプレ仕様を機能群横断で集約
 derived_from:
   - docs/specs/architecture.md
   - docs/decisions/0022-companion-instructions-as-files.md

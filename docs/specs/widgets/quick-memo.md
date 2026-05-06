@@ -1,8 +1,7 @@
 ---
 title: クイックメモ
 description: Cmd+M でヘッダ右端のボタンから即座にメモ入力 popover を開き、quickmemo/todo/ 配下に Markdown ファイルとして保存する Widget 仕様
-derived_from:
-  - docs/specs/widgets/README.md
+derived_from: []
 syncs_with:
   - docs/specs/aspects/keybindings.md
   - docs/specs/aspects/persistence.md
@@ -11,6 +10,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
+  - docs/specs/widgets/README.md
 last_updated: 2026-05-06
 ---
 
