@@ -1,13 +1,13 @@
 ---
 title: 没入防止タイマー
 description: ヘッダの WidgetView に常駐する没入防止タイマー。設定した時間が経過するとコンシェルちゃん (companion index 6) へ読み上げとフロントチャネルで相談を促すメッセージを送る
-derived_from: []
+derived_from:
+  - docs/specs/companions/companion.md
+  - docs/specs/frontchannels/frontchannel.md
 syncs_with:
   - docs/specs/aspects/keybindings.md
   - docs/specs/aspects/view-hierarchy.md
   - docs/specs/window/shortcuts.md
-  - docs/specs/companions/companion.md
-  - docs/specs/frontchannels/frontchannel.md
   - docs/specs/backchannels/voicevox.md
 impacts: []
 conventions:
