@@ -11,6 +11,7 @@ syncs_with:
 impacts:
   - docs/specs/tools/claude.md
   - docs/specs/companions/speech-history.md
+  - docs/specs/skills/concier-schedule-voice.md
 conventions:
   - docs/LAYOUT.md
 last_updated: 2026-05-02

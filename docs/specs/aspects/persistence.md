@@ -22,7 +22,8 @@ syncs_with:
   - docs/specs/sessions/active-session.md
   - docs/specs/tools/preview.md
   - docs/specs/window/active-session-switcher.md
-impacts: []
+impacts:
+  - docs/specs/skills/concier-schedule-voice.md
 conventions:
   - docs/LAYOUT.md
   - docs/specs/aspects/README.md
@@ -76,6 +77,8 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 | `Backchannels/handoff.md` | Companion 間ハンドオフ機能の指示書 (同上)。詳細は [../backchannels/handoff.md](../backchannels/handoff.md) |
 | `Backchannels/output.md` | output 記録機能の指示書 (同上)。詳細は [../backchannels/output.md](../backchannels/output.md) |
 | `Backchannels/companion-instructions.md` | コンパニオン指示書 (`instructions.md`) のデフォルトテンプレ。`BackchannelSetup` が 9 個に複製して `.aidea/claude/companions/<0..8>/instructions.md` に配置 (既存ファイルは上書きしない) |
+| `Backchannels/schedule-voice.md` | スケジュールリマインド機能の指示書。`BackchannelSetup` が `.aidea/claude/` にコピー |
+| `Backchannels/concier-schedule.yaml` | スケジュールリマインド設定テンプレ。`BackchannelSetup` が `.aidea/config/concier-schedule.yaml` に配置 (既存ファイルは上書きしない) |
 
 **設計ポリシー**: ハードコードしがちなデフォルト値 (初期レイアウト・コンパニオン定義・レコメンドプロンプト等) は Swift コード側に二重管理せず、Bundle 同梱の JSON / Markdown を **唯一のソース** とする。
 
@@ -98,12 +101,17 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 │   ├── speech.md             # speech 機能の指示書 (共有)
 │   ├── handoff.md            # Companion 間ハンドオフの指示書 (共有)
 │   ├── output.md             # output 記録機能の指示書 (共有)
+│   ├── schedule-voice.md     # スケジュールリマインド機能の指示書 (共有)
 │   └── companions/           # コンパニオン別の指示書 (v8 新設)
 │       ├── 0/
 │       │   ├── instructions.md  # ← Aidea が起動時に "読んで" と指示するエントリーポイント
 │       │   └── *.md             # (任意) 段階的開示の参照先
 │       ├── 1/instructions.md
 │       └── ...                  # 0…8 の 9 ディレクトリ固定
+├── config/                   # 機能別設定ファイル (ユーザ編集可)
+│   └── concier-schedule.yaml # スケジュールリマインドの設定 (初回起動時に Bundle テンプレからコピー)
+├── state/                    # ランタイム状態 (Claude が自律管理)
+│   └── concier-notified.json # スケジュールリマインドの既読フラグ
 └── ja/                       # 英語ドキュメントの日本語翻訳キャッシュ
     └── <相対パス>/<filename>
 ```
@@ -111,6 +119,8 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 - `projectRoot` が変わるたびに `ensureAideaDirectory()` が `.aidea/` と `.aidea/ja/` を生成し、**プロジェクトの `.gitignore` に `.aidea/` を自動追記** する
 - `.aidea/claude/*.md` と `.aidea/backchannels/` は初回のみ `BackchannelSetup.setup()` が作成・複製する
 - `.aidea/claude/companions/<0..8>/instructions.md` も `BackchannelSetup.setup()` が `Backchannels/companion-instructions.md` を 9 個に複製する (既存ファイルは上書きしない)
+- `.aidea/config/concier-schedule.yaml` は `BackchannelSetup.setup()` が不在時のみ Bundle テンプレ `Backchannels/concier-schedule.yaml` からコピーする
+- `.aidea/state/concier-notified.json` は `cc.schedule-voice` スキルが初回実行時に自動生成する (Aidea は管理しない)
 - `.aidea/claude/aidea.md` 内のマーカー領域 (`<!-- aidea:companions:start --> ... <!-- aidea:companions:end -->`) は `CompanionRosterWriter` が `WorkspaceSnapshotManager.apply()` 末尾と `CompanionEditView` のリネーム確定時に runtime 更新する (詳細: [../backchannels/companion-roster.md](../backchannels/companion-roster.md))
 - v2 以前の旧ファイル `.aidea/companions.json` / `.aidea/recommends.json` は起動時に `WorkspaceSnapshotManager` が `workspace.json` v3 に統合して自動削除する
 

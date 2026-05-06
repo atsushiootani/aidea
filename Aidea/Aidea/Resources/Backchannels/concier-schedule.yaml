@@ -1,0 +1,23 @@
+# スケジュールリマインド設定
+# .aidea/config/concier-schedule.yaml
+#
+# concier-chan (Companion 6) が Google Calendar の予定をリマインドするタイミングと
+# ミュート時間帯を設定するファイルです。
+# 詳細は docs/specs/skills/concier-schedule-voice.md を参照してください。
+
+# リマインドする「イベント開始 N 分前」のリスト
+reminder_minutes:
+  - 60   # 1 時間前
+  - 10   # 10 分前
+  - 0    # 開始直前 (0 = 開始時刻ちょうど)
+
+# ミュート時間帯 (この時間帯は音声をサプレスする)
+# start > end の場合は日をまたぐ (例: 23:00 〜 翌 08:00)
+mute_periods:
+  - start: "23:00"
+    end: "08:00"
+
+# 通知モード
+#   voice  - VOICEVOX で音声読み上げする (デフォルト)
+#   silent - ログのみ出力し、音声は発しない
+notification_mode: voice
