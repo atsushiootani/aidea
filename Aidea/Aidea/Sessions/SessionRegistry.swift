@@ -340,7 +340,8 @@ final class SessionRegistry {
         pane.tabs.append(newSession.id)
         setActiveTab(paneID: pane.id, tabIndex: pane.tabs.count - 1)
         // 新規シェルが起動するまで待ってからコマンドを送信
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 800_000_000)
             termState.terminalView.send(txt: txt)
         }
     }
