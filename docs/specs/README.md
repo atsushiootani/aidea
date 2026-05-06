@@ -8,7 +8,7 @@ impacts:
   - docs/specs/*
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-02
+last_updated: 2026-05-06
 ---
 
 # Aidea Specs
@@ -28,6 +28,7 @@ Aidea の**プロダクト仕様 (設計ストック)**。コードベースと 
 | [backchannels/](./backchannels/) | **中** | 裏側処理 (読み上げ / VOICEVOX 連携など) |
 | [sessions/](./sessions/) | **中** | Session 概念の詳細 (概念モデル・アクティブ切替・UI ルール) |
 | [widgets/](./widgets/) | **中** | ヘッダ常駐型の小さな補助機能 (ポモドーロ / TODO 等) |
+| [skills/](./skills/) | **低中** | Claude Code スキルの仕様 (concier スケジュールリマインド等) |
 | [window/](./window/) | **中低** | Window 全体の振る舞い (ダイアログ・グローバルショートカット) |
 | [glossary.md](./glossary.md) | **低中** | 用語集 |
 
