@@ -10,17 +10,13 @@ jobs:
     runs-on: macos-15
 
     steps:
-      - name: Runner environment
+      - name: Runner info
         run: |
-          echo "RUNNER_OS=$RUNNER_OS RUNNER_ARCH=$RUNNER_ARCH"
-          ls /Applications | grep -i xcode || echo "No Xcode entries in /Applications"
-          which xcodebuild && xcodebuild -version || echo "xcodebuild not in PATH"
+          echo "OS=$RUNNER_OS ARCH=$RUNNER_ARCH"
+          xcodebuild -version 2>&1 || echo "xcodebuild not found"
 
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: List project schemes
-        run: xcodebuild -list -project Aidea/Aidea.xcodeproj
 
       - name: Build
         run: |
