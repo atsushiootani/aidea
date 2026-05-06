@@ -21,7 +21,7 @@ impacts: []
 conventions:
   - docs/LAYOUT.md
   - docs/specs/aspects/README.md
-last_updated: 2026-05-05
+last_updated: 2026-05-06
 ---
 
 # キー操作・マウス操作一覧
@@ -103,6 +103,7 @@ Aidea の全キーボードショートカットとマウス操作のリファ�
 | ⌘ ⇧ N | 新規ディレクトリ |
 | Backspace | 削除（確認ダイアログ） |
 | ⌘ F | 検索バーの表示/非表示 |
+| ⌘ ⇧ G | ルートディレクトリ切り替えメニューを開く |
 | ⌃ O | Finder で開く（単一選択） |
 | ⌃ A | 指定のアプリケーションで開く（単一選択 / 候補ポップアップ） |
 | ⌘ C | コピー（クリップボードにコピー / Finder 相互運用可） |

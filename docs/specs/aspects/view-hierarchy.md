@@ -16,7 +16,7 @@ impacts: []
 conventions:
   - docs/LAYOUT.md
   - docs/specs/aspects/README.md
-last_updated: 2026-05-05
+last_updated: 2026-05-06
 ---
 
 # View 階層 (UI コンポーネント親子関係)
@@ -246,7 +246,7 @@ SessionRegistry.view(for: id)                     [Sessions/SessionRegistry.swif
 
 | Tool | 本体 View (ファイル) | 内側の構造 |
 |---|---|---|
-| `filer` | `FilerSessionView` (`Sessions/Filer/FilerSessionView.swift`) | `NSViewControllerRepresentable` → `FileTreeViewController` の `NSStackView { searchField, NSScrollView { NSOutlineView }, summaryLabel }` |
+| `filer` | `FilerSessionView` (`Sessions/Filer/FilerSessionView.swift`) | `NSViewControllerRepresentable` → `FileTreeViewController` の `NSStackView { navigateBar (NSStackView { backToProjectButton, rootSelectorButton }), searchField, NSScrollView { NSOutlineView }, summaryLabel }` |
 | `kit` | `KitSessionView` (`Sessions/Kit/KitSessionView.swift`) | `ScrollView` → `LazyVStack(pinnedViews: [.sectionHeaders])` の 4 セクション (Agents / Skills / Commands / MCP Servers) |
 | `terminal` | `TerminalSessionView` (`Sessions/Terminal/TerminalSessionView.swift`) | `NSViewRepresentable` → `PersistentTerminalView` (SwiftTerm `LocalProcessTerminalView`) |
 | `claude` | `ClaudeSessionView` (`Sessions/Claude/ClaudeSessionView.swift`) | `NSViewRepresentable` → `PersistentTerminalView` (Terminal と共用) |

@@ -1,6 +1,6 @@
 ---
 title: Session 内部状態: Filer
-description: FilerSessionState の状態 (selectedFile / expandedURLs)・シングルトン制約・workspace.json 永続化・Scene とレコメンドプロンプト
+description: FilerSessionState の状態 (selectedFile / expandedURLs / customRoot)・シングルトン制約・workspace.json 永続化・Scene とレコメンドプロンプト
 derived_from:
   - docs/specs/sessions/ui-rules.md
   - docs/specs/frontchannels/scene.md
@@ -11,7 +11,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-23
+last_updated: 2026-05-06
 ---
 
 # Session 内部状態: Filer
@@ -29,6 +29,7 @@ last_updated: 2026-04-23
 | `expandedURLs` | `Set<URL>` | アウトライン上で展開されているノード | ✅ |
 | `excludeRules` | `[String]` | 表示・検索の除外パターン (デフォルト + ユーザ追加) | ✅ |
 | `userDecorationRules` | `[DecorationRule]` | アイコン / 行背景色のユーザ追加ルール (デフォルトの後に連結 = 後勝ち) | ✅ |
+| `customRoot` | `URL?` | 現在表示中のカスタムルートディレクトリ (nil = projectRoot を使用) | ✅ (永続化なし・再起動で nil にリセット) |
 | `undoManager` | `NSUndoManager` (ObservationIgnored) | Filer 操作 (rename / move / delete / create / paste) のアンドゥ・リドゥ履歴 | ✅ (履歴はメモリ上のみ・永続化なし) |
 | `registry` | `weak var SessionRegistry?` | Filer ダブルクリック時に Preview を開くための参照 | ✅ |
 

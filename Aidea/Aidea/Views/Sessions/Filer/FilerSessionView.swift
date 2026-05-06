@@ -26,7 +26,8 @@ struct FilerSessionView: NSViewControllerRepresentable {
     }
 
     func updateNSViewController(_ vc: FileTreeViewController, context: Context) {
-        if vc.currentRoot != workspace.projectRoot {
+        let effectiveRoot = state.customRoot ?? workspace.projectRoot
+        if vc.currentRoot != effectiveRoot {
             vc.reload()
         }
     }
@@ -44,6 +45,10 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
     let outlineView = FilerOutlineView()
     private let scrollView = NSScrollView()
     private let searchField = NSSearchField()
+    // MARK: - Navigate Bar
+    private let navigateBar = NSStackView()
+    private let backToProjectButton = NSButton()
+    private let rootSelectorButton = NSButton()
     private let watcher = FileWatcher()
     private var rootNodes: [FileTreeNode] = []
     private var reloadWorkItem: DispatchWorkItem?
@@ -106,6 +111,116 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
     /// 検索中か
     private var isSearching: Bool { !searchQuery.isEmpty }
 
+    // MARK: - Navigate Bar Setup
+
+    private func buildNavigateBar() {
+        backToProjectButton.title = "← Project"
+        backToProjectButton.bezelStyle = .inline
+        backToProjectButton.isBordered = false
+        backToProjectButton.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
+        backToProjectButton.contentTintColor = .secondaryLabelColor
+        backToProjectButton.target = self
+        backToProjectButton.action = #selector(backToProjectAction)
+        backToProjectButton.isHidden = true
+
+        rootSelectorButton.bezelStyle = .inline
+        rootSelectorButton.isBordered = false
+        rootSelectorButton.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
+        rootSelectorButton.contentTintColor = .labelColor
+        rootSelectorButton.target = self
+        rootSelectorButton.action = #selector(showNavigateMenu)
+
+        navigateBar.orientation = .horizontal
+        navigateBar.spacing = 4
+        navigateBar.alignment = .centerY
+        navigateBar.addArrangedSubview(backToProjectButton)
+        navigateBar.addArrangedSubview(rootSelectorButton)
+
+        backToProjectButton.setContentHuggingPriority(.required, for: .horizontal)
+        rootSelectorButton.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+    }
+
+    @objc private func backToProjectAction() {
+        navigateToRoot(nil)
+    }
+
+    @objc private func showNavigateMenu() {
+        let menu = buildNavigateMenu()
+        let bounds = rootSelectorButton.bounds
+        menu.popUp(positioning: nil, at: NSPoint(x: bounds.minX, y: bounds.maxY), in: rootSelectorButton)
+    }
+
+    /// Cmd+Shift+G キーボードショートカット経由でナビゲーションメニューを表示する
+    func showNavigateMenuFromKeyboard() {
+        let menu = buildNavigateMenu()
+        let bounds = rootSelectorButton.bounds
+        menu.popUp(positioning: nil, at: NSPoint(x: bounds.minX, y: bounds.maxY), in: rootSelectorButton)
+    }
+
+    private func buildNavigateMenu() -> NSMenu {
+        let menu = NSMenu()
+        let projectRoot = workspace?.projectRoot
+        let effectiveRoot = owner?.customRoot ?? projectRoot
+
+        let projectTitle = projectRoot?.lastPathComponent ?? "Project"
+        let projectItem = ClosureMenuItem(title: projectTitle, image: NSImage(systemSymbolName: "folder", accessibilityDescription: nil)) { [weak self] in
+            self?.navigateToRoot(nil)
+        }
+        projectItem.state = (effectiveRoot == projectRoot) ? .on : .off
+        menu.addItem(projectItem)
+
+        menu.addItem(NSMenuItem.separator())
+
+        let systemDirs: [(String, String)] = [
+            ("Downloads", "arrow.down.circle"),
+            ("Desktop", "menubar.dock.rectangle"),
+            ("Pictures", "photo.on.rectangle")
+        ]
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        for (name, symbol) in systemDirs {
+            let url = home.appendingPathComponent(name)
+            let icon = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
+            let item = ClosureMenuItem(title: name, image: icon) { [weak self] in
+                self?.navigateToRoot(url)
+            }
+            item.state = (effectiveRoot == url) ? .on : .off
+            menu.addItem(item)
+        }
+
+        menu.addItem(NSMenuItem.separator())
+
+        let openItem = ClosureMenuItem(title: "フォルダを開く...", image: NSImage(systemSymbolName: "folder.badge.plus", accessibilityDescription: nil)) { [weak self] in
+            self?.openFolderPanel()
+        }
+        menu.addItem(openItem)
+
+        return menu
+    }
+
+    private func openFolderPanel() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.title = "表示するフォルダを選択"
+        if panel.runModal() == .OK, let url = panel.url {
+            navigateToRoot(url)
+        }
+    }
+
+    /// ルートを切り替えてリロードする。nil を渡すとプロジェクトルートに戻る。
+    func navigateToRoot(_ url: URL?) {
+        owner?.customRoot = url
+        reload()
+    }
+
+    private func updateNavigateBar() {
+        let isAtProjectRoot = (owner?.customRoot == nil)
+        backToProjectButton.isHidden = isAtProjectRoot
+        let name = currentRoot?.lastPathComponent ?? workspace?.projectRoot?.lastPathComponent ?? "Filer"
+        rootSelectorButton.title = name + " ▾"
+    }
+
     /// View 階層を構築する
     override func loadView() {
         let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("name"))
@@ -150,12 +265,14 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
         summaryLabel.lineBreakMode = .byTruncatingTail
         summaryLabel.isHidden = true
 
-        let stack = NSStackView(views: [searchField, scrollView, summaryLabel])
+        buildNavigateBar()
+
+        let stack = NSStackView(views: [navigateBar, searchField, scrollView, summaryLabel])
         stack.orientation = .vertical
-        stack.spacing = 4
+        stack.spacing = 2
         stack.edgeInsets = NSEdgeInsets(top: 4, left: 6, bottom: 4, right: 6)
         stack.distribution = .fill
-        // searchField は hugging を強めに (縦方向に伸びないように)
+        navigateBar.setContentHuggingPriority(.required, for: .vertical)
         searchField.setContentHuggingPriority(.required, for: .vertical)
         scrollView.setContentHuggingPriority(.defaultLow, for: .vertical)
         summaryLabel.setContentHuggingPriority(.required, for: .vertical)
@@ -286,13 +403,19 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
         owner?.registry?.openPreview(for: node.url)
     }
 
-    /// ルートディレクトリを WorkspaceState から取得して再読み込みする
+    /// 実効ルートディレクトリ (customRoot が設定されていれば優先、なければ projectRoot)
+    private var effectiveRoot: URL? {
+        owner?.customRoot ?? workspace?.projectRoot
+    }
+
+    /// ルートディレクトリを再読み込みする。customRoot が設定されていればそちらを優先する。
     func reload() {
-        guard let root = workspace?.projectRoot else {
+        guard let root = effectiveRoot else {
             currentRoot = nil
             rootNodes = []
             outlineView.reloadData()
             watcher.stop()
+            updateNavigateBar()
             return
         }
         currentRoot = root
@@ -321,6 +444,7 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
             self.reloadWorkItem = work
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2, execute: work)
         }
+        updateNavigateBar()
     }
 
     /// FSEvents 通知を受けたときの処理。展開状態と選択状態を可能な限り保持する。

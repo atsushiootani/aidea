@@ -63,6 +63,12 @@ final class FilerOutlineView: NSOutlineView {
             return
         }
 
+        // Cmd + Shift + G: ナビゲーションメニューを開く
+        if cmd, shift, chars == "g" {
+            controller.showNavigateMenuFromKeyboard()
+            return
+        }
+
         // Cmd + C: コピー / Cmd + V: ペースト
         // (Cmd 単独修飾のときのみ反応。Shift/Ctrl/Opt 同時押しは super に委ねる)
         if cmd, !shift, !ctrl, !opt {
