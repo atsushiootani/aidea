@@ -70,6 +70,10 @@ final class FilerSessionState: SessionState, FocusBridgeOwner {
     /// 仕様: docs/specs/tools/filer.md#undolastoperation
     @ObservationIgnored
     let undoManager = UndoManager()
+    /// 現在 Filer が表示しているカスタムルートディレクトリ。
+    /// nil のとき workspace.projectRoot を使う (デフォルト)。永続化しない。
+    /// 仕様: docs/specs/tools/filer.md#navigatetodirectory
+    var customRoot: URL?
     /// アクティブな Session に転送するためのレジストリ参照
     weak var registry: SessionRegistry?
 

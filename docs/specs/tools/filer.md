@@ -13,7 +13,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-05
+last_updated: 2026-05-06
 ---
 
 # Tool 仕様: Filer
@@ -206,6 +206,27 @@ Filer の表示順がワークスペース全体 (Git / Kit 等) の List UI の
   - 部分的にしか復元できなかったグループでも履歴は前進する (失敗分の再試行は提供しない)
 - **Preview タブとの連携**: アンドゥで復元されたファイルが Preview に紐付くタブがあった場合の挙動は変えない (削除時の自動クローズと同じく `closePreviewsForDeleted` 経路に乗せず、復元 = 再オープンの扱いはユーザ次第)
 
+### navigateToDirectory — ルートディレクトリの切り替え
+
+- Filer ビュー上部の**ナビゲーションバー**に現在表示中のルートディレクトリ名を表示する
+- ルートボタンをクリックするとメニューを表示し、以下の切り替え先を提示する:
+  - **Project** — `WorkspaceState.projectRoot` のディレクトリ名 (現在表示中なら ✓ マーク)
+  - --- 区切り ---
+  - **Downloads** (`~/Downloads`)
+  - **Desktop** (`~/Desktop`)
+  - **Pictures** (`~/Pictures`)
+  - --- 区切り ---
+  - **フォルダを開く...** — NSOpenPanel でディレクトリを選択
+- 切り替え後、選択したディレクトリを新しいルートとしてファイルツリーを再描画する
+- プロジェクトルート以外のディレクトリを表示中は、ナビゲーションバー左端に **「← Project」ボタン** を表示し、クリックでプロジェクトルートへ即座に戻れる
+- **ファイル操作の制限なし**: ルートをどこに切り替えていても createFile / createDirectory / deleteSelected / renameSelected / copySelected / pasteFromClipboard / moveByDragAndDrop は引き続き動作する
+- **永続化しない**: カスタムルートはセッション中のみ有効。アプリ再起動時は projectRoot に戻る
+- FSEvents ウォッチャーは切り替えたルートのディレクトリに張り直す
+
+**ナビゲーションバーの構成**:
+- ルートが `projectRoot` のとき: `[ルート名 ▾]`
+- ルートが別ディレクトリのとき: `[← Project]  [ルート名 ▾]`
+
 ### showDirectorySummary — 選択ディレクトリの AI 概要を表示
 
 - Filer でディレクトリノードを**単一選択**すると、ファイラビュー下部に 1 行の概要テキストを表示する
@@ -352,6 +373,7 @@ Filer の表示順がワークスペース全体 (Git / Kit 等) の List UI の
 | **Page Up** / **Ctrl + Z** | [pageMoveSelection](#pagemoveselection--ページ単位の選択移動-issue-121) (上方向) |
 | **Page Down** / **Ctrl + V** | [pageMoveSelection](#pagemoveselection--ページ単位の選択移動-issue-121) (下方向) |
 | **Ctrl + P / N / F / B** | Emacs ライクナビゲーション ([共通ルール](../sessions/ui-rules.md#キーボードナビゲーション-emacs-ライク) を参照) |
+| **Cmd + Shift + G** | [navigateToDirectory](#navigatetodirectory--ルートディレクトリの切り替え) — ナビゲーションメニューを開く |
 
 ---
 
