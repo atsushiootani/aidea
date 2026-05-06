@@ -9,6 +9,7 @@ syncs_with:
   - docs/specs/backchannels/voicevox.md
   - docs/specs/backchannels/handoff.md
   - docs/specs/backchannels/output.md
+  - docs/specs/backchannels/context.md
   - docs/specs/backchannels/companion-roster.md
   - docs/specs/aspects/persistence.md
   - docs/specs/companions/companion.md
@@ -16,7 +17,7 @@ impacts:
   - docs/specs/tools/claude.md
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-05
+last_updated: 2026-05-06
 ---
 
 # Backchannel 仕様
@@ -61,6 +62,8 @@ Aidea は `.aidea/` ディレクトリを共有バスとして使用し、FSEven
 │   ├── 0/
 │   │   ├── speech-{timestamp}.txt     # Companion 0 の VOICEVOX 読み上げ用テキスト
 │   │   ├── handoff-{timestamp}.json   # Companion 0 が送信したハンドオフ
+│   │   ├── output-{timestamp}.txt     # レスポンス全文の出力記録
+│   │   ├── context.txt               # セッション間記憶保持用コンテキスト (上書き更新)
 │   │   └── notify-{timestamp}.txt     # 通知バナー用テキスト (将来)
 │   ├── 1/
 │   │   └── ...
@@ -128,6 +131,7 @@ instructions.md 内から相対参照 (`./persona.md` など) で他ファイル
 | `speech.md` | 読み上げ機能の定義 | 同上 |
 | `handoff.md` | コンパニオン間ハンドオフ機能の定義 ([handoff.md](./handoff.md)) | 同上 |
 | `output.md` | output 記録機能の定義 ([output.md](./output.md)) | 同上 |
+| `context.md` | コンテキスト記憶機能の定義 ([context.md](./context.md)) | 同上 |
 | `{feature}.md` | 将来の共有機能 | 同上 |
 | `companions/<index>/instructions.md` | コンパニオンごとの起動指示 (エントリーポイント) | `.aidea/claude/companions/<0..8>/` |
 | `companions/<index>/*.md` | 段階的開示用の補助ファイル (persona / workflow など) | 同上 |
@@ -165,6 +169,7 @@ Aidea は `.aidea/backchannels/` ディレクトリを FSEvents で **再帰監�
 | **Speech** | `<n>/speech-{timestamp}.txt` | プレーンテキスト | VOICEVOX 読み上げ |
 | **Handoff** | `<n>/handoff-{timestamp}.json` | JSON | Companion 間タスク受け渡し ([handoff.md](./handoff.md)) |
 | **Output** | `<n>/output-{timestamp}.txt` | プレーンテキスト | レスポンス全文の出力記録 ([output.md](./output.md)) |
+| **Context** | `<n>/context.txt` | Markdown | セッション間記憶保持用コンテキスト ([context.md](./context.md)) |
 | Notification | `<n>/notify-{timestamp}.txt` | プレーンテキスト | 通知バナー表示 |
 | Action | `<n>/action-{timestamp}.json` | JSON | UI 操作の指示 |
 | Status | `<n>/status.json` | JSON | Claude の作業状態表示 |

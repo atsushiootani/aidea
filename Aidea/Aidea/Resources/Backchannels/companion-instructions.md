@@ -1,6 +1,6 @@
 # Companion 指示書
 
-.aidea/claude/aidea.md と .aidea/claude/speech.md を読んで従ってね。
+.aidea/claude/aidea.md と .aidea/claude/speech.md と .aidea/claude/context.md を読んで従ってね。
 
 ## このコンパニオンの役割
 

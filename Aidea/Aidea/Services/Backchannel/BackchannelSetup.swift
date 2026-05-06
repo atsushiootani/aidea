@@ -12,7 +12,7 @@ import Foundation
 enum BackchannelSetup {
 
     /// 既知の共有 Backchannel 機能ファイル名（拡張子なし）
-    private static let knownFeatures = ["speech", "aidea", "handoff", "output"]
+    private static let knownFeatures = ["speech", "aidea", "handoff", "output", "context"]
 
     /// コンパニオン指示書 Bundle テンプレ名（拡張子なし）
     private static let companionInstructionsTemplate = "companion-instructions"
