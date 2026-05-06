@@ -163,7 +163,31 @@ struct MarkdownPreview: View {
         case .mermaid(let source):
             MermaidView(diagram: source)
         case .code(let text, let language):
-            codeBlockView(text: text, language: language)
+            Text(text)
+                .font(.system(.callout, design: .monospaced))
+                .foregroundStyle(.primary)
+                .padding(8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(Color.secondary.opacity(0.12))
+                )
+                .overlay(alignment: .topTrailing) {
+                    if Self.isShellLanguage(language), let run = onRunScript {
+                        Button {
+                            run(text)
+                        } label: {
+                            Image(systemName: "play.fill")
+                                .font(.system(size: 10))
+                                .foregroundStyle(.white)
+                                .padding(5)
+                                .background(Color.accentColor)
+                                .clipShape(Circle())
+                        }
+                        .buttonStyle(.plain)
+                        .padding(6)
+                    }
+                }
         case .table(let header, let rows):
             tableView(header: header, rows: rows)
         case .paragraph(let text):
@@ -288,38 +312,6 @@ struct MarkdownPreview: View {
         )
         .clipShape(RoundedRectangle(cornerRadius: 4))
         .padding(.vertical, 4)
-    }
-
-    /// コードブロック (言語タグ付き)
-    @ViewBuilder
-    private func codeBlockView(text: String, language: String) -> some View {
-        ZStack(alignment: .topTrailing) {
-            Text(text)
-                .font(.system(.callout, design: .monospaced))
-                .foregroundStyle(.primary)
-                .padding(8)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(Color.secondary.opacity(0.12))
-                )
-            if Self.isShellLanguage(language) {
-                if let runScript = onRunScript {
-                    Button {
-                        runScript(text)
-                    } label: {
-                        Image(systemName: "play.fill")
-                            .font(.system(size: 10))
-                            .foregroundStyle(.white)
-                            .padding(5)
-                            .background(Color.accentColor)
-                            .clipShape(Circle())
-                    }
-                    .buttonStyle(.plain)
-                    .padding(6)
-                }
-            }
-        }
     }
 
     // MARK: - Table of contents
