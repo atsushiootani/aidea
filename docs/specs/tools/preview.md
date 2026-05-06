@@ -14,7 +14,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-05
+last_updated: 2026-05-06
 ---
 
 # Tool 仕様: Preview
@@ -146,6 +146,17 @@ Markdown は `MarkdownContainer` で **view / edit の 2 モード**を扱う。
 
 - `MarkdownContainer` — Markdown 表示時の右上フローティングボタン
 - `PreviewSessionView` — テキストファイル表示時の翻訳ボタン
+
+### runShellScript — コードブロックのシェルスクリプトを実行する
+
+Markdown の view モードで、シェルスクリプトのコードブロック右上に実行ボタン (`play.fill`) を表示する。
+
+- **対象言語**: `bash` / `sh` / `zsh` / `shell` / `fish` / `ksh` / `csh` / `tcsh`
+- 実行ボタン押下で `SessionRegistry.openTerminalAndRun(_:)` を呼び出す
+  - 既存の Terminal セッションがあればそれをアクティブ化してコマンドを送信
+  - Terminal セッションがなければ新規 Terminal タブを作成してコマンドを送信
+- 非シェル言語のコードブロックにはボタンを表示しない
+- edit モード中は表示しない (view モードのみ)
 
 ### autoReload — 外部変更の自動再読み込み
 

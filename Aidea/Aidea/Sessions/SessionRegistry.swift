@@ -304,6 +304,48 @@ final class SessionRegistry {
         setActiveTab(paneID: pane.id, tabIndex: pane.tabs.count - 1)
     }
 
+    /// Markdown Preview のシェルスクリプト実行ボタンから呼ばれる。
+    /// 既存の Terminal セッションをアクティブ化してコマンドを送信する。
+    /// Terminal セッションが存在しなければ新規タブを作成してシェル起動後に送信する。
+    func openTerminalAndRun(_ command: String) {
+        let bytes = ArraySlice(Array((command + "\n").utf8))
+        // 既存の Terminal セッションを探してアクティブ化 + 送信
+        for pane in layout.allPanes {
+            for (index, id) in pane.tabs.enumerated() where id.tool == .terminal {
+                if let s = session(for: id),
+                   let state = s.state as? TerminalSessionState {
+                    setActiveTab(paneID: pane.id, tabIndex: index)
+                    state.terminalView.send(bytes)
+                    return
+                }
+            }
+        }
+        // Terminal がなければ新規作成して送信
+        let callerPane = activePane
+        var targetPane: Pane?
+        for id in activeSessionHistory.reversed() {
+            if let pane = layout.allPanes.first(where: { $0.tabs.contains(id) }),
+               pane !== callerPane {
+                targetPane = pane
+                break
+            }
+        }
+        if targetPane == nil {
+            targetPane = layout.allPanes.first { $0 !== callerPane } ?? callerPane
+        }
+        guard let pane = targetPane else { return }
+        let instance = layout.nextSessionInstance(of: .terminal)
+        let newSession = createSession(tool: .terminal, instance: instance)
+        let termState = newSession.state as! TerminalSessionState
+        pane.tabs.append(newSession.id)
+        setActiveTab(paneID: pane.id, tabIndex: pane.tabs.count - 1)
+        // 新規シェルが起動するまで待ってからコマンドを送信
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 800_000_000)
+            termState.terminalView.send(bytes)
+        }
+    }
+
     /// 削除されたファイル/ディレクトリを表示していた Preview タブを閉じる
     func closePreviewsForDeleted(_ deleted: URL, isDirectory: Bool) {
         let deletedPath = deleted.path

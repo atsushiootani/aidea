@@ -172,6 +172,15 @@ issue #71 の `(want)` 項目。Preview 側のコード/テキストビューが
 
 ---
 
+## openTerminalAndRun — Preview からのスクリプト実行
+
+Markdown Preview のシェルスクリプトコードブロック実行ボタンから呼ばれる。
+
+- 既存の Terminal セッション (Window 内の任意のペイン) があればそれをアクティブ化し、コマンド文字列を PTY へ送信 (末尾に改行を付加)
+- Terminal セッションがなければ新規 Terminal タブを作成し、シェル起動後にコマンドを送信する
+
+---
+
 ## 境界
 
 ### Always
