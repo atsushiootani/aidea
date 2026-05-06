@@ -173,19 +173,21 @@ struct MarkdownPreview: View {
                         RoundedRectangle(cornerRadius: 4)
                             .fill(Color.secondary.opacity(0.12))
                     )
-                if Self.isShellLanguage(language), let onRunScript = onRunScript {
-                    Button {
-                        onRunScript(text)
-                    } label: {
-                        Image(systemName: "play.fill")
-                            .font(.system(size: 10))
-                            .foregroundStyle(.white)
-                            .padding(5)
-                            .background(Color.accentColor)
-                            .clipShape(Circle())
+                if Self.isShellLanguage(language) {
+                    if let runScript = onRunScript {
+                        Button {
+                            runScript(text)
+                        } label: {
+                            Image(systemName: "play.fill")
+                                .font(.system(size: 10))
+                                .foregroundStyle(.white)
+                                .padding(5)
+                                .background(Color.accentColor)
+                                .clipShape(Circle())
+                        }
+                        .buttonStyle(.plain)
+                        .padding(6)
                     }
-                    .buttonStyle(.plain)
-                    .padding(6)
                 }
             }
         case .table(let header, let rows):
