@@ -117,10 +117,7 @@ struct MarkdownContainer: View {
                     baseURL: url.deletingLastPathComponent(),
                     onLinkTap: onLinkTap,
                     tocTopInset: toolbarHeight,
-                    scrollController: scrollController,
-                    onRunScript: { command in
-                        registry.openTerminalAndRun(command)
-                    }
+                    scrollController: scrollController
                 )
                 .focusable()
                 .focused($isFocused)
