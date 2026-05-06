@@ -129,7 +129,7 @@ final class SessionRegistry {
     func createSession(tool: Tool, instance: Int) -> Session {
         let id = SessionID(tool, instance: instance)
         if let existing = session(for: id) { return existing }
-        let state = makeState(for: tool)
+        let state = makeState(for: id)
         let session = Session(id: id, state: state)
         sessions.append(session)
         // Session/State 間の参照をセット
@@ -422,15 +422,15 @@ final class SessionRegistry {
     // MARK: - State factory
 
     /// tool に応じた SessionState インスタンスを生成する
-    private func makeState(for tool: Tool) -> any SessionState {
-        switch tool {
+    private func makeState(for id: SessionID) -> any SessionState {
+        switch id.tool {
         case .filer:
             let state = FilerSessionState(workspace: workspace)
             state.registry = self
             return state
         case .kit:      return KitSessionState(workspace: workspace)
         case .terminal:
-            let state = TerminalSessionState(workspace: workspace)
+            let state = TerminalSessionState(workspace: workspace, instance: id.instance)
             state.registry = self
             return state
         case .claude:

@@ -1,6 +1,6 @@
 ---
 title: Session 内部状態: Terminal
-description: TerminalSessionState の PTY + SwiftTerm キャッシュ方式と PaneView ZStack による状態維持・Scene とレコメンドプロンプト
+description: TerminalSessionState の PTY + SwiftTerm キャッシュ方式・tmux による PTY プロセス永続化・PaneView ZStack による状態維持・Scene とレコメンドプロンプト
 derived_from:
   - docs/specs/sessions/ui-rules.md
   - docs/specs/architecture.md
@@ -11,7 +11,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-23
+last_updated: 2026-05-06
 ---
 
 # Session 内部状態: Terminal
@@ -36,7 +36,22 @@ Tool 仕様は [../tools/terminal.md](../tools/terminal.md) を、共通 UI ル�
 
 ## 永続化
 
-PTY バッファは揮発性 (永続化しない)。ターミナルを閉じれば PTY プロセスも終了する。
+### tmux による PTY プロセス永続化
+
+tmux が利用可能な場合 (探索順: `/opt/homebrew/bin/tmux` → `/usr/local/bin/tmux` → `/usr/bin/tmux`)、PTY の内側で名前付き tmux セッションを自動起動する。
+
+| 項目 | 詳細 |
+|---|---|
+| セッション名 | `aidea-<project-slug>-<path-hash>-<instance>` 形式。`project-slug` はプロジェクトルートのディレクトリ名を小文字英数・ハイフン区切りに正規化したもの。`path-hash` はフルパスから生成した短いハッシュ (同名ディレクトリを区別するため) |
+| 起動コマンド | `exec <tmux> new-session -A -s <name> -c <dir>` — 同名セッションが存在すれば attach、なければ新規作成 |
+| Aidea 終了時 | PTY (tmux クライアント) が閉じられるが、tmux サーバは生存しシェルプロセスが継続する |
+| 再起動後の再接続 | Aidea 再起動後に同じ `instance` 番号でターミナルタブを作ると (`nextSessionInstance` は起動時に既存タブがなければ 0 から採番し直す)、同名の tmux セッションに自動 attach する |
+
+tmux が見つからない場合は既存どおり `cd <dir> && exec zsh -l` で直接起動する (フォールバック)。
+
+### PTY バッファ
+
+PTY バッファ自体は揮発性。ただし tmux セッションが生存していれば、tmux のスクロールバックバッファに出力履歴が保持される。タブを閉じる (`Cmd+W`) とターミナルプロセスも終了する (tmux セッションが破棄される)。
 
 ## Scene とレコメンドプロンプト
 
