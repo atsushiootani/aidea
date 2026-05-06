@@ -22,6 +22,8 @@ struct MarkdownPreview: View {
     let baseURL: URL?
     /// ローカルファイルへのリンクがクリックされたときに呼ばれる (resolved 絶対 URL)
     let onLinkTap: ((URL) -> Void)?
+    /// シェルスクリプトコードブロックの実行ボタンが押されたときに呼ばれる (スクリプト本文)
+    let onRunScript: ((String) -> Void)?
     /// 目次 (ToC) の上部に確保する追加のマージン (親側にフローティングボタン等がある場合)
     let tocTopInset: CGFloat
     /// オプション: 親から受け取るスクロールコントローラ。キー操作でスクロールさせるときに使う。
@@ -37,12 +39,14 @@ struct MarkdownPreview: View {
         text: String,
         baseURL: URL? = nil,
         onLinkTap: ((URL) -> Void)? = nil,
+        onRunScript: ((String) -> Void)? = nil,
         tocTopInset: CGFloat = 0,
         scrollController: ScrollController? = nil
     ) {
         self.text = text
         self.baseURL = baseURL
         self.onLinkTap = onLinkTap
+        self.onRunScript = onRunScript
         self.tocTopInset = tocTopInset
         self.scrollController = scrollController
     }
@@ -159,7 +163,7 @@ struct MarkdownPreview: View {
         case .mermaid(let source):
             MermaidView(diagram: source)
         case .code(let text, let language):
-            CodeBlockView(text: text, language: language)
+            CodeBlockView(text: text, language: language, onRun: onRunScript)
         case .table(let header, let rows):
             tableView(header: header, rows: rows)
         case .paragraph(let text):
@@ -682,12 +686,11 @@ private struct TOCRow: View {
 }
 
 /// コードブロックを表示する View。シェル言語の場合は右上に実行ボタンを表示する。
-/// `@Environment(SessionRegistry.self)` を独自に保持するため、MarkdownPreview の
-/// カスタム init とは分離した独立した View として定義する。
+/// 実行時のコールバックは onRun で受け取る (onLinkTap と同じパターン)。
 private struct CodeBlockView: View {
     let text: String
     let language: String
-    @Environment(SessionRegistry.self) private var registry
+    let onRun: ((String) -> Void)?
 
     private static let shellLanguages: Set<String> = [
         "bash", "sh", "zsh", "shell", "fish", "ksh", "csh", "tcsh"
@@ -704,9 +707,9 @@ private struct CodeBlockView: View {
                     .fill(Color.secondary.opacity(0.12))
             )
             .overlay(alignment: .topTrailing) {
-                if Self.shellLanguages.contains(language) {
+                if let onRun, Self.shellLanguages.contains(language) {
                     Button {
-                        registry.openTerminalAndRun(text)
+                        onRun(text)
                     } label: {
                         Image(systemName: "play.fill")
                             .font(.system(size: 10))
