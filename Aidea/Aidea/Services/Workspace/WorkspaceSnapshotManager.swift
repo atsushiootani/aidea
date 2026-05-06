@@ -398,7 +398,7 @@ final class WorkspaceSnapshotManager {
                 guard let sessionID = companion.sessionID else { continue }
                 let session = registry.ensureSession(for: sessionID)
                 if let state = session.state as? ClaudeSessionState {
-                    state.companionPrompt = CompanionInstructions.loadCommand(for: companion.index)
+                    state.companionPrompt = CompanionInstructions.startupCommand(for: companion.index, projectRoot: projectRoot)
                     state.companionIndex = companion.index
                     state.speechQueue = speechQueue
                 }

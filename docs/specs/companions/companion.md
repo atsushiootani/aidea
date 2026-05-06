@@ -8,6 +8,7 @@ derived_from:
 syncs_with:
   - docs/specs/companions/recommend-mode.md
   - docs/specs/companions/speech-history.md
+  - docs/specs/companions/agent-definition.md
   - docs/specs/aspects/persistence.md
   - docs/specs/aspects/view-hierarchy.md
   - docs/specs/backchannels/backchannel.md
@@ -18,7 +19,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-05
+last_updated: 2026-05-06
 ---
 
 # コンパニオン
@@ -67,13 +68,13 @@ last_updated: 2026-05-05
 
 v7 までは `CompanionConfig.initialPrompt: String` に文字列として保持していたが、v8 で削除。各コンパニオンの初期指示は `<projectRoot>/.aidea/claude/companions/<index>/instructions.md` に外部化されている (詳細は [ADR 0022](../../decisions/0022-companion-instructions-as-files.md))。
 
-Aidea が起動時に PTY へ送る文字列は `companionIndex` から派生する固定パターン:
+Aidea が起動時に PTY へ送る文字列は `agent.md` の有無によって切り替わる (ADR 0026):
 
-```
-.aidea/claude/companions/<index>/instructions.md を読んで従ってね
-```
+- **`agent.md` あり**: `.aidea/claude/companions/<index>/agent.md を読んで、その定義に従ってエージェントとして動いてね`
+- **`agent.md` なし**: `.aidea/claude/companions/<index>/instructions.md を読んで従ってね`
 
-これを生成・パス解決するヘルパが `Services/Companion/CompanionInstructions.swift` に集約される (`loadCommand(for:)` / `entrypointURL(projectRoot:index:)`)。
+パス解決と起動コマンド生成は `CompanionInstructions` サービスに集約される。
+詳細は [agent-definition.md](./agent-definition.md) を参照。
 
 ### `CompanionIconPresets`
 
@@ -146,8 +147,9 @@ Aidea が起動時に PTY へ送る文字列は `companionIndex` から派生す
 2. companion = store.companion(forIndex: N) を取得 (必ず存在)
 3. layout.nextSessionInstance(of: .claude) で新 instance 番号を採番
 4. registry.createSession(tool: .claude, instance:) で Claude セッション生成
-5. ClaudeSessionState.companionPrompt に CompanionInstructions.loadCommand(for: N) をセット
-   = ".aidea/claude/companions/N/instructions.md を読んで従ってね"
+5. ClaudeSessionState.companionPrompt に CompanionInstructions.startupCommand(for: N, projectRoot:) をセット
+   = agent.md が存在すれば ".aidea/claude/companions/N/agent.md を読んで、その定義に従ってエージェントとして動いてね"
+   = agent.md がなければ ".aidea/claude/companions/N/instructions.md を読んで従ってね" (ADR 0022/0026)
    (ターミナル起動後に自動送信される → tools/claude.md)
 6. store.bind(index: N, sessionID: session.id)
    → companions[N].sessionID が更新される
@@ -176,9 +178,9 @@ Aidea 起動時、`workspace.json` から Claude タブが復元されるケー�
    - companions を走査し、sessionID != nil な index について
    - registry.ensureSession(for: sessionID) で ClaudeSessionState を生成
      (PTY/terminalView は引き続き lazy)
-   - state.companionPrompt = CompanionInstructions.loadCommand(for: index) をセット
-     ( = ".aidea/claude/companions/<index>/instructions.md を読んで従ってね")
-   - state.companionIndex = index もセット (Scene 識別子 claude:<index> 解決用)
+   - companionPrompt に起動コマンドをセット
+     (agent.md が存在すればエージェント定義読み込みコマンド、なければ instructions.md 読み込みコマンド)
+   - companionIndex をセット (Scene 識別子 claude:<index> 解決用)
 4. ユーザがタブをアクティブ化 → terminalView 生成 → 自動起動シーケンス
    → companionPrompt が送信される
 ```
@@ -249,6 +251,7 @@ SF Symbol オーバーレイの組み合わせで表現する。
 ## 関連ドキュメント
 
 - [../frontchannels/frontchannel.md](../frontchannels/frontchannel.md) — 送信メカニズム (PTY `send(txt:)`)
+- [agent-definition.md](./agent-definition.md) — `agent.md` によるエージェント定義仕様 (ADR 0026)
 - [recommend-mode.md](./recommend-mode.md) — Cmd+Enter によるレコメンド選択 UI
 - [speech-history.md](./speech-history.md) — speech 履歴ビュー (CompanionEditView から開く)
 - [../backchannels/handoff.md](../backchannels/handoff.md) — Companion 間ハンドオフ ([ADR 0023](../../decisions/0023-companion-handoff.md))

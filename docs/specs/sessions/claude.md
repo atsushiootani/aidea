@@ -1,10 +1,11 @@
 ---
 title: Session 内部状態: Claude
-description: ClaudeSessionState の状態 (companionPrompt / companionIndex / cached)・companionPrompt のセット経路・自動起動シーケンス・コンパニオン紐付け・Scene とレコメンドプロンプト・instructions.md ロード方式
+description: ClaudeSessionState の状態 (companionPrompt / companionIndex / cached)・companionPrompt のセット経路・自動起動シーケンス・コンパニオン紐付け・Scene とレコメンドプロンプト・instructions.md / agent.md による起動コマンド生成
 derived_from:
   - docs/specs/sessions/ui-rules.md
   - docs/decisions/0008-no-claude-autostart.md
   - docs/decisions/0022-companion-instructions-as-files.md
+  - docs/decisions/0026-companion-as-agent-definition.md
   - docs/specs/frontchannels/scene.md
 syncs_with:
   - docs/specs/tools/claude.md
@@ -13,7 +14,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-24
+last_updated: 2026-05-06
 ---
 
 # Session 内部状態: Claude
@@ -28,7 +29,7 @@ Backchannel の詳細は [../backchannels/backchannel.md](../backchannels/backch
 
 | プロパティ | 型 | 用途 | ペイン移動で保持 |
 |---|---|---|---|
-| `companionPrompt` | `String?` | 起動後 PTY に `send()` される文字列。v8 以降は `CompanionInstructions.loadCommand(for:)` で生成される固定パターン (`.aidea/claude/companions/<index>/instructions.md を読んで従ってね`) | ✅ |
+| `companionPrompt` | `String?` | 起動後 PTY に `send()` される文字列。`agent.md` が存在すればエージェント定義読み込みコマンド、なければ `instructions.md` 読み込みコマンド (ADR 0022/0026) | ✅ |
 | `companionIndex` | `Int?` | 紐付く Companion の index (0…8)。Scene 識別子 `claude:<index>` および `companionPrompt` 文字列の解決に使う | ✅ |
 | `isReady` | `Bool` | `autoStartClaude` のシーケンス完了 (claude 起動 + companionPrompt 送信 + Enter) を経て Frontchannel (`sendMessage`) を受け付け可能になったかどうか。`sendMessageWhenReady` が判定に使う | — |
 | `isBusy` | `Bool` | PTY 出力が続いている (Claude がプロンプト処理中) 状態。Companion アイコンの実行中表示で参照 (issue #45)。判定ロジックは [../tools/claude.md#実行中判定-isbusy-issue-45](../tools/claude.md#実行中判定-isbusy-issue-45) を参照 | — |
@@ -42,15 +43,16 @@ Backchannel の詳細は [../backchannels/backchannel.md](../backchannels/backch
 `companionPrompt` は `autoStartClaude` が参照するため、**`terminalView` 生成前**に
 セットされている必要がある。以下 2 経路のいずれかで設定される:
 
-1. **新規起動**: `createSession` 直後に `state.companionPrompt = CompanionInstructions.loadCommand(for: index)` をセット
-   (`CompanionView` / `AideaApp.activateCompanion` / `sendRecommendedPrompt`)
-2. **スナップショット復元**: `WorkspaceSnapshotManager.apply()` が `CompanionStore.activeSessionMap`
-   を走査し、bind 済みセッションに対して `ensureSession` で state を生成した上で同じヘルパで再注入
+1. **新規起動**: セッション生成直後に `companionPrompt` に起動コマンドをセット
+   (`CompanionView` のアイコンタップ / `activateCompanion` / `sendRecommendedPrompt` 等の複数経路)
+2. **スナップショット復元**: ワークスペース復元処理が bind 済みセッションを走査し、同じ起動コマンドを再注入
    (詳細は [../companions/companion.md#起動フロー-スナップショット復元時](../companions/companion.md))
 
 どちらの経路でも、`terminalView` の lazy 生成時に `autoStartClaude` が参照する。
 
-`CompanionInstructions` (`Services/Companion/CompanionInstructions.swift`) はパスとロードコマンド文字列の生成を集約するヘルパ。複数の呼び出し元で同じパターンを再生成しないよう、ハードコードを 1 箇所に閉じ込める ([ADR 0022](../../decisions/0022-companion-instructions-as-files.md))。
+起動コマンドは `CompanionInstructions` サービスが生成する。
+`agent.md` が存在すればエージェント定義読み込みコマンドを返し、
+なければ `instructions.md` 読み込みコマンドにフォールバックする ([ADR 0022](../../decisions/0022-companion-instructions-as-files.md), [ADR 0026](../../decisions/0026-companion-as-agent-definition.md))。
 
 ## 自動起動シーケンス
 
@@ -64,7 +66,7 @@ Backchannel の詳細は [../backchannels/backchannel.md](../backchannels/backch
 
 - ステップ 3-4 は分離して送る。Claude Code (Ink 製 TUI) は bracketed paste を有効にしており、本文と `\r` を一度に送ると `\r` も paste の一部とみなされ submit されないため、本文の入力処理が終わる間 (≈0.3s) を挟んでから `\r` を送る
 - companionPrompt が空の場合はステップ 3-4 をスキップし、isReady は `+1.3s` でセット
-- v8 以降のデフォルトは `".aidea/claude/companions/<index>/instructions.md を読んで従ってね"` (`CompanionInstructions.loadCommand(for:)` が生成)。Claude が `Read` ツールで本体を読みに行き、必要に応じて `aidea.md` / `speech.md` 等を段階的開示する
+- v8 以降、`agent.md` が存在する場合は `".aidea/claude/companions/<index>/agent.md を読んで、その定義に従ってエージェントとして動いてね"` が送信される。`agent.md` がない場合は `".aidea/claude/companions/<index>/instructions.md を読んで従ってね"`。いずれも Claude が `Read` ツールで本体を読みに行き、必要に応じて `aidea.md` / `speech.md` 等を段階的開示する (ADR 0026)
 - ADR 0008 により、非対話シェルから直接 `claude` を exec せず、**対話シェル内で `send()`** する
 - ハンドオフ / レコメンドプロンプトのように起動直後に Frontchannel へ送信したい場合は、固定 asyncAfter で待たず `sendMessageWhenReady` を使う。ready=false の間は内部で積んで `+6.0s` で flush される
 
