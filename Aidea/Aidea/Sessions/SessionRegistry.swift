@@ -339,10 +339,12 @@ final class SessionRegistry {
         let termState = newSession.state as! TerminalSessionState
         pane.tabs.append(newSession.id)
         setActiveTab(paneID: pane.id, tabIndex: pane.tabs.count - 1)
-        // 新規シェルが起動するまで待ってからコマンドを送信
-        Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 800_000_000)
-            termState.terminalView.send(txt: txt)
+        // PTY を起動し、シェルが起動するまで待ってからコマンドを送信。
+        // send(txt:) は SwiftTerm 外部ライブラリ由来で @MainActor 非隔離のため
+        // DispatchQueue.main.asyncAfter で安全にキャプチャできる。
+        let termView = termState.terminalView
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+            termView.send(txt: txt)
         }
     }
 

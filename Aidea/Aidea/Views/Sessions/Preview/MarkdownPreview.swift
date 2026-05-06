@@ -161,7 +161,7 @@ struct MarkdownPreview: View {
         case .mermaid(let source):
             MermaidView(diagram: source)
         case .code(let text, let language):
-            codeBlockView(text: text, language: language)
+            AnyView(codeBlockView(text: text, language: language))
         case .table(let header, let rows):
             tableView(header: header, rows: rows)
         case .paragraph(let text):
