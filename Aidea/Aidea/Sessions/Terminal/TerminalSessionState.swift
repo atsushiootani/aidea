@@ -17,9 +17,12 @@ final class TerminalSessionState: SessionState, FocusBridgeOwner {
     /// フォーカス契約 C1/C2/C3 を担う非永続ヘルパ (仕様は focus-contract.md)
     let focusBridge = SessionFocusBridge()
     @ObservationIgnored private var cached: PersistentTerminalView?
+    /// tmux セッション名の採番に使うインスタンス番号 (SessionID.instance と一致)
+    private let instance: Int
 
-    init(workspace: WorkspaceState) {
+    init(workspace: WorkspaceState, instance: Int = 0) {
         self.workspace = workspace
+        self.instance = instance
     }
 
     /// SessionRegistry への弱参照 (クリック時のアクティブ化用)
@@ -70,10 +73,19 @@ final class TerminalSessionState: SessionState, FocusBridgeOwner {
         }
         var env = Terminal.getEnvironmentVariables(termName: "xterm-256color")
         env.append("SHELL=/bin/zsh")
-        let path = workspace.projectRoot?.path
-            ?? FileManager.default.homeDirectoryForCurrentUser.path
-        let escaped = path.replacingOccurrences(of: "'", with: "'\\''")
-        let command = "cd '\(escaped)' && exec zsh -l"
+        let command: String
+        if let tmux = TmuxLauncher.path {
+            command = TmuxLauncher.launchCommand(
+                projectRoot: workspace.projectRoot,
+                instance: instance,
+                tmuxPath: tmux
+            )
+        } else {
+            let dir = workspace.projectRoot?.path
+                ?? FileManager.default.homeDirectoryForCurrentUser.path
+            let escaped = dir.replacingOccurrences(of: "'", with: "'\\''")
+            command = "cd '\(escaped)' && exec zsh -l"
+        }
         terminal.startProcess(
             executable: "/bin/zsh",
             args: ["-c", command],

@@ -1,6 +1,6 @@
 ---
 title: Tool 仕様: Terminal
-description: SwiftTerm ベースの PTY ターミナル Tool 仕様。対話シェル起動・claude 自動起動はしない純粋なシェル環境
+description: SwiftTerm ベースの PTY ターミナル Tool 仕様。tmux が利用可能な場合はプロセス永続化、claude 自動起動はしない純粋なシェル環境
 derived_from:
   - docs/decisions/0006-only-swiftterm-dependency.md
   - docs/decisions/0008-no-claude-autostart.md
@@ -13,7 +13,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-05
+last_updated: 2026-05-06
 ---
 
 # Tool 仕様: Terminal
@@ -30,8 +30,9 @@ Session 内部状態は [sessions/terminal.md](../sessions/terminal.md) を参�
 
 - SwiftTerm (`LocalProcessTerminalView`) ベースの PTY ターミナル
 - **複数インスタンス可** — Window 内で複数の Terminal セッションを開ける
-- `WorkspaceState.projectRoot` を初期ディレクトリとして `zsh -l` を起動
-- 対話シェル (`exec zsh -l`) で起動（ADR 0008 参照）
+- `WorkspaceState.projectRoot` を初期ディレクトリとして起動
+- tmux が利用可能な場合は `exec tmux new-session -A -s <name>` で起動し、Aidea を閉じてもシェルプロセスが継続する ([sessions/terminal.md#永続化](../sessions/terminal.md#永続化) 参照)
+- tmux が利用不可の場合は対話シェル (`exec zsh -l`) で起動（ADR 0008 参照）
 - `claude` の自動起動は**行わない** — 純粋なシェル環境のみ
 
 ---
@@ -167,7 +168,8 @@ issue #71 の `(want)` 項目。Preview 側のコード/テキストビューが
 ## 境界
 
 ### Always
-- 対話シェル (`exec zsh -l`) で起動する
+- tmux が利用可能なら `exec tmux new-session -A -s <name>` で PTY プロセスを tmux セッション内に起動する
+- tmux が利用不可なら対話シェル (`exec zsh -l`) にフォールバックする
 - PTY は初回生成後にキャッシュし、タブ切替・ペイン移動で再生成しない
 - クリック起動は Terminal Tool / Claude Tool の両方で同じ挙動 (PersistentTerminalView 共用)
 - クリック起動は mouseDown→mouseUp の距離が threshold (4 pt) 以下かつドラッグなしのときのみ発火
