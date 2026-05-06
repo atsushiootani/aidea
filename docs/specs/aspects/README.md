@@ -23,6 +23,7 @@ last_updated: 2026-05-03
 | [keybindings.md](./keybindings.md) | 全キーボードショートカット・マウス操作の一覧 |
 | [persistence.md](./persistence.md) | データ永続化仕様（UserDefaults / Keychain / `.aidea/`） |
 | [sort-order.md](./sort-order.md) | List UI のソート規約 (Finder 互換自然順) と共通ヘルパの SSoT |
+| [stale-docs-notification.md](./stale-docs-notification.md) | Swift 変更時に docs/specs が未更新なら警告する git post-commit hook の仕様 |
 | [view-hierarchy.md](./view-hierarchy.md) | 実装上の SwiftUI / AppKit View の親子関係を AA で図示したリファレンス |
 
 ## 更新ルール
@@ -32,4 +33,5 @@ last_updated: 2026-05-03
 - CI パイプラインの設定を変更したら **ci-cd.md** も更新する
 - 新しい List UI を追加したり、ソートのキー / 比較関数を変更したら **sort-order.md** も更新する
 - View ファイルを追加・削除したり、View の親子関係を変更したら **view-hierarchy.md** も更新する
+- `.githooks/post-commit` の検出ロジックや警告メッセージを変更したら **stale-docs-notification.md** も更新する
 - `/aidea.docs-healthcheck` で機能群との不整合がフラグされる

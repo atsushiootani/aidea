@@ -1,0 +1,23 @@
+#!/bin/bash
+# docs/specs/aspects/stale-docs-notification.md 参照
+
+CHANGED=$(git diff-tree --no-commit-id -r --name-only HEAD 2>/dev/null)
+
+SWIFT_CHANGED=$(echo "$CHANGED" | grep '\.swift$' | grep -v 'Tests')
+DOCS_CHANGED=$(echo "$CHANGED" | grep '^docs/specs/')
+
+[ -z "$SWIFT_CHANGED" ] && exit 0
+[ -n "$DOCS_CHANGED" ] && exit 0
+
+printf '\n'
+printf '⚠️  [stale-docs] Swift ファイルが変更されましたが docs/specs/ は更新されていません。\n'
+printf '\n'
+printf '変更された Swift ファイル:\n'
+while IFS= read -r f; do
+    printf '  - %s\n' "$f"
+done <<< "$SWIFT_CHANGED"
+printf '\n'
+printf 'specs の更新が必要か確認してください。不要なら無視してください。\n'
+printf '\n'
+
+exit 0
