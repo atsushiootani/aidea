@@ -183,7 +183,7 @@ Aidea は `.aidea/backchannels/` ディレクトリを FSEvents で **再帰監�
 ### Always
 - `.aidea/` 配下のファイル監視は FSEvents で再帰的に行う
 - 全 Backchannel メッセージは Aidea 側で **削除せず残す** (作業履歴・コンテキスト記録として保全、ADR 0024)
-- Backchannel メッセージの書き出し先は `.aidea/backchannels/<companion-index>/{type}-{timestamp}.{ext}` 形式
+- Backchannel メッセージの書き出し先は `.aidea/backchannels/<companion-index>/{type}-{timestamp}.{ext}` 形式 (**Context ファイルを除く**: `context.txt` は固定ファイル名で上書き更新する Claude 自律管理ファイル。Aidea 側では FSEvents 監視を行わない)
 - `<companion-index>` は `0..8` の整数のみ有効。それ以外のパスに置かれたファイルはハンドラに通さない
 - `.aidea/claude/{feature}.md` と `.aidea/claude/companions/<0..8>/instructions.md` は初回セットアップ時に Bundle からコピーする
 - Claude セッション起動時に送信するのは `CompanionInstructions.loadCommand(for:)` で生成した固定パターン文字列のみ
