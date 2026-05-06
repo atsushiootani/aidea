@@ -22,8 +22,8 @@ syncs_with:
   - docs/specs/sessions/active-session.md
   - docs/specs/tools/preview.md
   - docs/specs/window/active-session-switcher.md
-impacts:
   - docs/specs/skills/concier-schedule-voice.md
+impacts: []
 conventions:
   - docs/LAYOUT.md
   - docs/specs/aspects/README.md

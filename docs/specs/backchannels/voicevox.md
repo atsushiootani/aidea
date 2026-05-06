@@ -14,7 +14,7 @@ impacts:
   - docs/specs/skills/concier-schedule-voice.md
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-02
+last_updated: 2026-05-06
 ---
 
 # Backchannel: VOICEVOX 読み上げ

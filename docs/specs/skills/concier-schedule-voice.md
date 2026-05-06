@@ -5,7 +5,6 @@ derived_from:
   - docs/specs/backchannels/voicevox.md
   - docs/specs/backchannels/backchannel.md
 syncs_with:
-  - docs/specs/backchannels/voicevox.md
   - docs/specs/aspects/persistence.md
 impacts: []
 conventions:

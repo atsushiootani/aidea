@@ -4,7 +4,8 @@ description: Claude Code スキル (.claude/commands/) の仕様を機能別に�
 derived_from:
   - docs/LAYOUT.md
 syncs_with: []
-impacts: []
+impacts:
+  - docs/specs/skills/*
 conventions:
   - docs/LAYOUT.md
 last_updated: 2026-05-06
