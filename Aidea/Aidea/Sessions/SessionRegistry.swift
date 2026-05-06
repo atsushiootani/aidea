@@ -308,14 +308,14 @@ final class SessionRegistry {
     /// 既存の Terminal セッションをアクティブ化してコマンドを送信する。
     /// Terminal セッションが存在しなければ新規タブを作成してシェル起動後に送信する。
     func openTerminalAndRun(_ command: String) {
-        let bytes = ArraySlice(Array((command + "\n").utf8))
+        let txt = command + "\n"
         // 既存の Terminal セッションを探してアクティブ化 + 送信
         for pane in layout.allPanes {
             for (index, id) in pane.tabs.enumerated() where id.tool == .terminal {
                 if let s = session(for: id),
                    let state = s.state as? TerminalSessionState {
                     setActiveTab(paneID: pane.id, tabIndex: index)
-                    state.terminalView.send(bytes)
+                    state.terminalView.send(txt: txt)
                     return
                 }
             }
@@ -340,9 +340,8 @@ final class SessionRegistry {
         pane.tabs.append(newSession.id)
         setActiveTab(paneID: pane.id, tabIndex: pane.tabs.count - 1)
         // 新規シェルが起動するまで待ってからコマンドを送信
-        Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 800_000_000)
-            termState.terminalView.send(bytes)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+            termState.terminalView.send(txt: txt)
         }
     }
 
