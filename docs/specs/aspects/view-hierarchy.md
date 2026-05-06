@@ -65,8 +65,10 @@ NSWindow (メインウィンドウ)
       │     ├─ Spacer
       │     └─ WidgetView                         [Widgets/WidgetView.swift]
       │        └─ HStack (ヘッダ常駐 widget を右端に並べる)
-      │           └─ TimerView                    [Widgets/Pomodoro/TimerView.swift]
-      │              (フェーズアイコン + 残り時間 + Start/Pause + Reset + 進捗ゲージを常時表示)
+      │           ├─ TimerView                    [Widgets/Pomodoro/TimerView.swift]
+      │           │  (フェーズアイコン + 残り時間 + Start/Pause + Reset + 進捗ゲージを常時表示)
+      │           └─ FocusTimerView               [Widgets/FocusTimer/FocusTimerView.swift]
+      │              (砂時計/ベルアイコン + 残り時間 + Start/Pause + Reset + 進捗ゲージを常時表示)
       ├─ Divider
       └─ SplitLayoutView                          [Views/Layout/SplitLayoutView.swift]
          (NSViewControllerRepresentable — 以下は AppKit 側)

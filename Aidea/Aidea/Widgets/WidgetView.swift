@@ -13,6 +13,7 @@ struct WidgetView: View {
     var body: some View {
         HStack(spacing: 4) {
             TimerView()
+            FocusTimerView()
         }
     }
 }
