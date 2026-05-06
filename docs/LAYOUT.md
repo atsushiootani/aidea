@@ -7,7 +7,7 @@ impacts:
   - docs/README.md
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-02
+last_updated: 2026-05-06
 ---
 
 # docs ディレクトリ構成とファイル配置ルール
@@ -307,6 +307,8 @@ last_updated: 2026-MM-DD
 | `docs/specs/backchannels/` | ✅ 完了 (2026-04-17) |
 | `docs/specs/frontchannels/` | ✅ 完了 (2026-04-17) |
 | `docs/specs/companions/` | ✅ 完了 (2026-04-17) |
+| `docs/specs/widgets/` | ✅ 完了 (2026-04-17) |
+| `docs/specs/skills/` | ✅ 完了 (2026-05-06) |
 | `docs/specs/window/` | ✅ 完了 (2026-04-17) |
 | `docs/foundation/` | ✅ 完了 (2026-04-17) |
 | `docs/agent-skills/` | ✅ 完了 (2026-04-17) |

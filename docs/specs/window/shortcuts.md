@@ -6,6 +6,7 @@ derived_from:
   - docs/decisions/0014-no-ctrl-number-shortcuts.md
 syncs_with:
   - docs/specs/aspects/keybindings.md
+  - docs/specs/widgets/quick-memo.md
   - docs/specs/widgets/pomodoro.md
   - docs/specs/widgets/focus-timer.md
   - docs/specs/window/active-session-switcher.md
@@ -55,6 +56,14 @@ Window 全体で有効なキーボードショートカット。
 | キー | 動作 |
 |---|---|
 | **⌘ 1** 〜 **⌘ 8** | 対応するコンパニオンを起動 / アクティブ化 |
+
+## クイックメモ
+
+`NSEvent.addLocalMonitorForEvents` で Cmd+M を横取りして popover をトグルする。詳細は [../widgets/quick-memo.md](../widgets/quick-memo.md)。
+
+| キー | 動作 |
+|---|---|
+| **⌘ M** | クイックメモ popover を開く / 閉じる |
 
 ## ポモドーロ
 

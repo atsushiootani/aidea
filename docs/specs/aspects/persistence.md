@@ -1,6 +1,6 @@
 ---
 title: Persistence (データ永続化)
-description: UserDefaults / Keychain / Bundle Resources / .aidea/ のデータ永続化と初期値テンプレ仕様を機能群横断で集約
+description: UserDefaults / Keychain / Bundle Resources / .aidea/ / quickmemo/todo/ のデータ永続化と初期値テンプレ仕様を機能群横断で集約
 derived_from:
   - docs/specs/architecture.md
   - docs/decisions/0022-companion-instructions-as-files.md
@@ -23,6 +23,7 @@ syncs_with:
   - docs/specs/tools/preview.md
   - docs/specs/window/active-session-switcher.md
   - docs/specs/skills/concier-schedule-voice.md
+  - docs/specs/widgets/quick-memo.md
 impacts: []
 conventions:
   - docs/LAYOUT.md
@@ -34,12 +35,13 @@ last_updated: 2026-05-06
 
 Aidea が **どのデータをどこに、どのタイミングで保存するか** の仕様。
 
-保存先は大きく 4 種類:
+保存先は大きく 5 種類:
 
 1. **UserDefaults** — アプリ全体のユーザ設定 (最小限)
 2. **Keychain** — 機密情報 (API キー)
 3. **Bundle Resources** — アプリ同梱の初期値テンプレ・指示書 (読み取り専用)
 4. **`<projectRoot>/.aidea/`** — プロジェクト固有の状態・リソース・通信データ (メイン)
+5. **`<projectRoot>/quickmemo/todo/`** — クイックメモの保存先 (`.aidea/` 外のプロジェクト直下)
 
 `~/Library/Application Support/Aidea/` は **現時点では使用していない**。プロジェクト固有の情報は `.aidea/` 配下に集約することで、プロジェクトをまたいだ干渉を防いでいる。
 

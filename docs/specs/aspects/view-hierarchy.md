@@ -65,6 +65,8 @@ NSWindow (メインウィンドウ)
       │     ├─ Spacer
       │     └─ WidgetView                         [Widgets/WidgetView.swift]
       │        └─ HStack (ヘッダ常駐 widget を右端に並べる)
+      │           ├─ QuickMemoButton              [Widgets/QuickMemo/QuickMemoButton.swift]
+      │           │  (✏️ ボタン。タップで QuickMemoView popover を開く)
       │           ├─ TimerView                    [Widgets/Pomodoro/TimerView.swift]
       │           │  (フェーズアイコン + 残り時間 + Start/Pause + Reset + 進捗ゲージを常時表示)
       │           └─ FocusTimerView               [Widgets/FocusTimer/FocusTimerView.swift]

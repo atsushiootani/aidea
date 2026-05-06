@@ -13,6 +13,7 @@ syncs_with:
   - docs/specs/tools/preview.md
   - docs/specs/tools/terminal.md
   - docs/specs/tools/web.md
+  - docs/specs/widgets/quick-memo.md
   - docs/specs/widgets/pomodoro.md
   - docs/specs/widgets/focus-timer.md
   - docs/specs/window/shortcuts.md
@@ -22,8 +23,7 @@ impacts: []
 conventions:
   - docs/LAYOUT.md
   - docs/specs/aspects/README.md
-last_updated: 2026-05-06
----
+last_updated: 2026-05-06---
 
 # キー操作・マウス操作一覧
 
@@ -76,6 +76,13 @@ Aidea の全キーボードショートカットとマウス操作のリファ�
 | ← / → | コンパニオンを選択（吹き出し移動） |
 | Enter | 選択したプロンプトを送信 |
 | Esc | キャンセル |
+
+### Widgets / クイックメモ
+
+| キー | アクション |
+|------|-----------|
+| ⌘ M | クイックメモ popover を開く / 閉じる (トグル) |
+| ⌘ Return | (popover 内) 保存して閉じる |
 
 ### Widgets / ポモドーロ
 

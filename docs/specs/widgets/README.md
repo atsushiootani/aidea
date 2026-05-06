@@ -21,6 +21,7 @@ last_updated: 2026-05-06
 
 | ファイル | 内容 |
 |---|---|
+| [quick-memo.md](./quick-memo.md) | クイックメモ (Cmd+M で popover を開き quickmemo/todo/ に保存) |
 | [pomodoro.md](./pomodoro.md) | ポモドーロタイマー (25 分作業 / 5 分休憩を交互に計測する) |
 | [focus-timer.md](./focus-timer.md) | 没入防止タイマー (設定時間経過時にコンシェルちゃんへ相談を促す) |
 
@@ -45,6 +46,7 @@ AppHeaderView
    ├─ speechToggleButton     ※既存 (読み上げ ON/OFF)
    ├─ Spacer                 ※既存
    └─ WidgetView             (右端の widget 集約コンテナ)
+      ├─ QuickMemoButton     (クイックメモ → widgets/quick-memo.md)
       ├─ TimerView           (ポモドーロ → widgets/pomodoro.md)
       └─ FocusTimerView      (没入防止タイマー → widgets/focus-timer.md)
 ```
