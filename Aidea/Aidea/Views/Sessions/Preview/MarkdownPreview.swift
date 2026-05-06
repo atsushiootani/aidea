@@ -28,8 +28,6 @@ struct MarkdownPreview: View {
     /// 非 nil の場合は ScrollView 内部に透明 NSView を仕込んで NSScrollView を橋渡しする。
     let scrollController: ScrollController?
 
-    @Environment(SessionRegistry.self) private var registry
-
     /// 折りたたみ中の見出し行インデックス集合
     @State private var collapsedHeadings: Set<Int> = []
     /// ToC の表示/非表示
@@ -161,7 +159,7 @@ struct MarkdownPreview: View {
         case .mermaid(let source):
             MermaidView(diagram: source)
         case .code(let text, let language):
-            AnyView(codeBlockView(text: text, language: language))
+            CodeBlockView(text: text, language: language)
         case .table(let header, let rows):
             tableView(header: header, rows: rows)
         case .paragraph(let text):
@@ -174,36 +172,6 @@ struct MarkdownPreview: View {
         case .blank:
             Text("").frame(height: 4)
         }
-    }
-
-    /// コードブロック。シェル言語の場合は右上に実行ボタンを表示する。
-    private func codeBlockView(text: String, language: String) -> some View {
-        let isShell = Self.isShellLanguage(language)
-        return Text(text)
-            .font(.system(.callout, design: .monospaced))
-            .foregroundStyle(.primary)
-            .padding(8)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(Color.secondary.opacity(0.12))
-            )
-            .overlay(alignment: .topTrailing) {
-                if isShell {
-                    Button {
-                        registry.openTerminalAndRun(text)
-                    } label: {
-                        Image(systemName: "play.fill")
-                            .font(.system(size: 10))
-                            .foregroundStyle(.white)
-                            .padding(5)
-                            .background(Color.accentColor)
-                            .clipShape(Circle())
-                    }
-                    .buttonStyle(.plain)
-                    .padding(6)
-                }
-            }
     }
 
     /// 見出し行 (折りたたみトライアングル付き)
@@ -248,14 +216,6 @@ struct MarkdownPreview: View {
                 : Text(.init(segment.text)).font(.system(size: size, weight: weight))
             return result + t
         }
-    }
-
-    private static let shellLanguages: Set<String> = [
-        "bash", "sh", "zsh", "shell", "fish", "ksh", "csh", "tcsh"
-    ]
-
-    private static func isShellLanguage(_ lang: String) -> Bool {
-        shellLanguages.contains(lang)
     }
 
     /// テキストをバッククォートコードスパンで分割して (テキスト, コードフラグ) のリストを返す
@@ -718,6 +678,47 @@ private struct TOCRow: View {
             isHovered = hovered
         }
         .onTapGesture { onTap() }
+    }
+}
+
+/// コードブロックを表示する View。シェル言語の場合は右上に実行ボタンを表示する。
+/// `@Environment(SessionRegistry.self)` を独自に保持するため、MarkdownPreview の
+/// カスタム init とは分離した独立した View として定義する。
+private struct CodeBlockView: View {
+    let text: String
+    let language: String
+    @Environment(SessionRegistry.self) private var registry
+
+    private static let shellLanguages: Set<String> = [
+        "bash", "sh", "zsh", "shell", "fish", "ksh", "csh", "tcsh"
+    ]
+
+    var body: some View {
+        Text(text)
+            .font(.system(.callout, design: .monospaced))
+            .foregroundStyle(.primary)
+            .padding(8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(Color.secondary.opacity(0.12))
+            )
+            .overlay(alignment: .topTrailing) {
+                if Self.shellLanguages.contains(language) {
+                    Button {
+                        registry.openTerminalAndRun(text)
+                    } label: {
+                        Image(systemName: "play.fill")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.white)
+                            .padding(5)
+                            .background(Color.accentColor)
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .padding(6)
+                }
+            }
     }
 }
 
