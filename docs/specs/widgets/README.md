@@ -9,7 +9,7 @@ impacts:
   - docs/specs/widgets/*
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-02
+last_updated: 2026-05-06
 ---
 
 # Widgets
@@ -22,6 +22,7 @@ last_updated: 2026-05-02
 | ファイル | 内容 |
 |---|---|
 | [pomodoro.md](./pomodoro.md) | ポモドーロタイマー (25 分作業 / 5 分休憩を交互に計測する) |
+| [focus-timer.md](./focus-timer.md) | 没入防止タイマー (設定時間経過時にコンシェルちゃんへ相談を促す) |
 
 ## 位置付け
 
@@ -43,9 +44,9 @@ AppHeaderView
    ├─ CompanionView          ※既存 (左端: 9 体のコンパニオンアイコン)
    ├─ speechToggleButton     ※既存 (読み上げ ON/OFF)
    ├─ Spacer                 ※既存
-   └─ WidgetView             ★新規 (右端の widget 集約コンテナ)
+   └─ WidgetView             (右端の widget 集約コンテナ)
       ├─ TimerView           (ポモドーロ → widgets/pomodoro.md)
-      └─ …                   (今後追加される widget はここに並ぶ)
+      └─ FocusTimerView      (没入防止タイマー → widgets/focus-timer.md)
 ```
 
 - `WidgetView` は `CompanionView` と兄弟。`Spacer` の後ろ (= 右端) に置く

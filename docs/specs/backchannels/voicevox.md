@@ -8,6 +8,7 @@ syncs_with:
   - docs/specs/aspects/persistence.md
   - docs/specs/companions/companion.md
   - docs/specs/widgets/pomodoro.md
+  - docs/specs/widgets/focus-timer.md
 impacts:
   - docs/specs/tools/claude.md
   - docs/specs/companions/speech-history.md

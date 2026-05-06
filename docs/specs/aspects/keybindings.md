@@ -14,6 +14,7 @@ syncs_with:
   - docs/specs/tools/terminal.md
   - docs/specs/tools/web.md
   - docs/specs/widgets/pomodoro.md
+  - docs/specs/widgets/focus-timer.md
   - docs/specs/window/shortcuts.md
   - docs/specs/window/active-session-switcher.md
   - docs/specs/companions/recommend-mode.md
@@ -82,6 +83,13 @@ Aidea の全キーボードショートカットとマウス操作のリファ�
 |------|-----------|
 | ⌘ ⌥ P | ポモドーロタイマー 開始 / 一時停止 |
 | ⌘ ⌥ ⇧ P | ポモドーロタイマー リセット (集中フェーズ 25 分に戻す) |
+
+### Widgets / 没入防止タイマー
+
+| キー | アクション |
+|------|-----------|
+| ⌘ ⌥ F | 没入防止タイマー 開始 / 一時停止 |
+| ⌘ ⌥ ⇧ F | 没入防止タイマー リセット (30 分に戻す) |
 
 ### その他
 
