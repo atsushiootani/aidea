@@ -32,8 +32,8 @@ final class WorkspaceState {
         Self.ensureAideaDirectory(at: url)
     }
 
-    /// `.aidea/` と `.aidea/ja/` を作成し、`.gitignore` に `.aidea/` を追記する。
-    /// 既に存在する場合は何もしない。
+    /// `.aidea/` と `.aidea/ja/` を作成し、`.git/info/exclude` に `.aidea/` を追記する。
+    /// 既に存在する場合は何もしない。共有 `.gitignore` は変更しない (ADR 0026)。
     private static func ensureAideaDirectory(at projectRoot: URL) {
         let fm = FileManager.default
         let aideaDir = projectRoot.appending(path: ".aidea", directoryHint: .isDirectory)
@@ -42,20 +42,21 @@ final class WorkspaceState {
         // ディレクトリ作成
         try? fm.createDirectory(at: jaDir, withIntermediateDirectories: true)
 
-        // .gitignore に .aidea/ を追記
-        let gitignore = projectRoot.appending(path: ".gitignore")
+        // .git/info/exclude に .aidea/ を追記 (共有 .gitignore は触らない)
+        let gitInfoDir = projectRoot.appending(path: ".git/info", directoryHint: .isDirectory)
+        guard fm.fileExists(atPath: gitInfoDir.path) else { return }
+
+        let excludeFile = gitInfoDir.appending(path: "exclude")
         let entry = ".aidea/"
-        if fm.fileExists(atPath: gitignore.path) {
-            if let content = try? String(contentsOf: gitignore, encoding: .utf8) {
-                // 行単位でチェック (部分一致ではなく完全一致)
-                let lines = content.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
-                if !lines.contains(where: { $0.trimmingCharacters(in: .whitespaces) == entry }) {
-                    let append = content.hasSuffix("\n") ? entry + "\n" : "\n" + entry + "\n"
-                    try? (content + append).write(to: gitignore, atomically: true, encoding: .utf8)
-                }
+        if fm.fileExists(atPath: excludeFile.path) {
+            guard let content = try? String(contentsOf: excludeFile, encoding: .utf8) else { return }
+            let lines = content.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+            if !lines.contains(where: { $0.trimmingCharacters(in: .whitespaces) == entry }) {
+                let append = content.hasSuffix("\n") ? entry + "\n" : "\n" + entry + "\n"
+                try? (content + append).write(to: excludeFile, atomically: true, encoding: .utf8)
             }
         } else {
-            try? (entry + "\n").write(to: gitignore, atomically: true, encoding: .utf8)
+            try? (entry + "\n").write(to: excludeFile, atomically: true, encoding: .utf8)
         }
     }
 }
