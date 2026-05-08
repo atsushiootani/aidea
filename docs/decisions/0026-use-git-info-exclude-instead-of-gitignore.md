@@ -3,8 +3,7 @@ title: .aidea/ の除外設定を .git/info/exclude に書き、共有 .gitignor
 description: ensureAideaDirectory が .gitignore を自動書き換えする挙動をやめ、.git/info/exclude を使うことで共有リポジトリへの副作用をゼロにする設計判断
 status: 採用
 derived_from: []
-syncs_with:
-  - docs/specs/aspects/persistence.md
+syncs_with: []
 impacts: []
 replaces: []
 replaced_by: []
@@ -13,7 +12,7 @@ conventions:
 last_updated: 2026-05-08
 ---
 
-# ADR 0026: .aidea/ の除外設定を .git/info/exclude に書き、共有 .gitignore は触らない
+# .aidea/ の除外設定を .git/info/exclude に書き、共有 .gitignore は触らない
 
 ## 背景
 
