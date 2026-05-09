@@ -16,7 +16,7 @@ impacts: []
 conventions:
   - docs/LAYOUT.md
   - docs/specs/aspects/README.md
-last_updated: 2026-05-06
+last_updated: 2026-05-09
 ---
 
 # View 階層 (UI コンポーネント親子関係)
@@ -256,7 +256,7 @@ SessionRegistry.view(for: id)                     [Sessions/SessionRegistry.swif
 | `claude` | `ClaudeSessionView` (`Sessions/Claude/ClaudeSessionView.swift`) | `NSViewRepresentable` → `PersistentTerminalView` (Terminal と共用) |
 | `web` | `WebSessionView` (`Sessions/Web/WebSessionView.swift`) | `NSViewRepresentable` → `WKWebView` |
 | `preview` | `PreviewSessionView` (`Sessions/Preview/PreviewSessionView.swift`) | 拡張子で分岐: `DrawioPreview` / `MarkdownContainer` / `NSTextPreview` (`NSTextView`) / `Image` (NSImage) / placeholder |
-| `git` | `GitSessionView` (`Sessions/Git/GitSessionView.swift`) | `NSViewControllerRepresentable` → `GitFileListViewController` (`branchBadge` + `picker(NSSegmentedControl)` + `NSScrollView { GitOutlineView }`) |
+| `git` | `GitSessionView` (`Sessions/Git/GitSessionView.swift`) | `NSViewControllerRepresentable` → `GitFileListViewController` (`branchBadge` + `picker(NSSegmentedControl)` + `NSScrollView { GitOutlineView }` + `showMoreButton(NSButton, 超過時のみ表示)`) |
 | `gitDiff` | `GitDiffSessionContainer` (`Sessions/Git/GitDiffSessionView.swift`) | `VStack { GitDiffSessionView, ScenePromptsEditorView }`。`GitDiffSessionView` は `NSViewRepresentable` → `GitDiffWebView` (`WKWebView` + diff2html) |
 
 PreviewSessionView の Markdown は `MarkdownContainer` がさらに `MarkdownPreview`
