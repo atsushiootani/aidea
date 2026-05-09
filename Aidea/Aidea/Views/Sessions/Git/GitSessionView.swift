@@ -66,6 +66,9 @@ final class GitFileListViewController: NSViewController, NSOutlineViewDataSource
     /// Diff 追従による選択変更中は true（無限ループ防止）
     private var isUpdatingFromDiff = false
 
+    private let showMoreButton = NSButton()
+    private var showMoreButtonHeight: NSLayoutConstraint!
+
     override func loadView() {
         let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("name"))
         column.title = "Name"
@@ -99,12 +102,24 @@ final class GitFileListViewController: NSViewController, NSOutlineViewDataSource
 
         branchBadge.translatesAutoresizingMaskIntoConstraints = false
 
+        // 「さらに N 件表示」ボタン (超過分がある場合のみ表示)
+        showMoreButton.bezelStyle = .recessed
+        showMoreButton.font = .systemFont(ofSize: 11)
+        showMoreButton.target = self
+        showMoreButton.action = #selector(showMoreTapped)
+        showMoreButton.translatesAutoresizingMaskIntoConstraints = false
+        showMoreButton.isHidden = true
+
         let container = NSView()
         container.addSubview(picker)
         container.addSubview(branchBadge)
         container.addSubview(scrollView)
+        container.addSubview(showMoreButton)
         picker.translatesAutoresizingMaskIntoConstraints = false
         scrollView.translatesAutoresizingMaskIntoConstraints = false
+
+        showMoreButtonHeight = showMoreButton.heightAnchor.constraint(equalToConstant: 0)
+
         NSLayoutConstraint.activate([
             picker.topAnchor.constraint(equalTo: container.topAnchor, constant: 6),
             picker.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 8),
@@ -116,7 +131,11 @@ final class GitFileListViewController: NSViewController, NSOutlineViewDataSource
             scrollView.topAnchor.constraint(equalTo: branchBadge.bottomAnchor, constant: 4),
             scrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: showMoreButton.topAnchor),
+            showMoreButton.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            showMoreButton.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            showMoreButton.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            showMoreButtonHeight,
         ])
         self.view = container
 
@@ -162,11 +181,15 @@ final class GitFileListViewController: NSViewController, NSOutlineViewDataSource
         }
     }
 
+    /// git データをバックグラウンドで取得し、完了後に UI を更新する
     func reload() {
-        state?.reload()
-        updateBranchLabel()
-        outlineView.reloadData()
-        outlineView.expandItem(nil, expandChildren: true)
+        state?.reload { [weak self] in
+            guard let self else { return }
+            self.updateBranchLabel()
+            self.outlineView.reloadData()
+            self.outlineView.expandItem(nil, expandChildren: true)
+            self.updateShowMoreButton()
+        }
     }
 
     /// モードに応じてブランチラベルと合計行数を更新する
@@ -187,6 +210,31 @@ final class GitFileListViewController: NSViewController, NSOutlineViewDataSource
             totalDeleted = state.fileStats.values.reduce(0) { $0 + $1.deleted }
             branchBadge.setBranches([state.baseBranch, state.currentBranch], added: totalAdded, deleted: totalDeleted)
         }
+    }
+
+    /// 「さらに N 件表示」ボタンの表示状態を更新する
+    private func updateShowMoreButton() {
+        guard let state else {
+            showMoreButtonHeight.constant = 0
+            showMoreButton.isHidden = true
+            return
+        }
+        if state.hasMore {
+            let remaining = state.treeNodes.count - state.displayLimit
+            showMoreButton.title = "さらに \(remaining) 件表示"
+            showMoreButtonHeight.constant = 28
+            showMoreButton.isHidden = false
+        } else {
+            showMoreButtonHeight.constant = 0
+            showMoreButton.isHidden = true
+        }
+    }
+
+    @objc private func showMoreTapped() {
+        state?.showAll = true
+        outlineView.reloadData()
+        outlineView.expandItem(nil, expandChildren: true)
+        updateShowMoreButton()
     }
 
     private func scheduleReload() {
@@ -213,7 +261,7 @@ final class GitFileListViewController: NSViewController, NSOutlineViewDataSource
     // MARK: - NSOutlineViewDataSource
 
     func outlineView(_ outlineView: NSOutlineView, numberOfChildrenOfItem item: Any?) -> Int {
-        if item == nil { return state?.treeNodes.count ?? 0 }
+        if item == nil { return state?.displayedNodes.count ?? 0 }
         return (item as? GitFileTreeNode)?.children?.count ?? 0
     }
 
@@ -221,7 +269,7 @@ final class GitFileListViewController: NSViewController, NSOutlineViewDataSource
         if let node = item as? GitFileTreeNode {
             return node.children![index]
         }
-        return state!.treeNodes[index]
+        return state!.displayedNodes[index]
     }
 
     func outlineView(_ outlineView: NSOutlineView, isItemExpandable item: Any) -> Bool {

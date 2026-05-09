@@ -11,7 +11,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-01
+last_updated: 2026-05-09
 ---
 
 # Session 内部状態: Git
@@ -32,6 +32,8 @@ Tool 仕様は [../tools/git.md](../tools/git.md) を、共通 UI ルールは [
 | `fileStats` | `[String: (added: Int, deleted: Int)]` | ファイルごとの追加/削除行数 (未ステージ差分。PR Preview では main との全差分) | ✅ |
 | `stagedFileStats` | `[String: (added: Int, deleted: Int)]` | ステージ済みファイルごとの追加/削除行数 (Working Changes 専用。staged 差分のみ) | ✅ |
 | `registry` | `weak var SessionRegistry?` | Diff ビュー連携用 | — |
+| `displayLimit` | `Int` (デフォルト 50) | ルートレベルの表示件数上限 | ✅ |
+| `showAll` | `Bool` | 上限を超えて全件表示するか | ✅ |
 | `onSelectedPathChanged` | `((String?) -> Void)?` (ObservationIgnored) | 選択変更コールバック | — |
 | `onViewedChanged` | `(() -> Void)?` (ObservationIgnored) | 既読状態変更コールバック | — |
 

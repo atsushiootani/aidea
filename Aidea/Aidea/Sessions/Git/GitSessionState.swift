@@ -40,53 +40,81 @@ final class GitSessionState: SessionState, FocusBridgeOwner {
     /// ファイルパス → (追加行数, 削除行数) — ステージ済み差分のみ (Working Changes 専用)
     var stagedFileStats: [String: (added: Int, deleted: Int)] = [:]
 
+    /// ルートレベルの表示件数上限 (デフォルト 50)
+    var displayLimit: Int = 50
+    /// 上限を超えて全件表示するか
+    var showAll: Bool = false
+
+    /// 表示するルートノード一覧 (displayLimit / showAll に応じてフィルタ)
+    var displayedNodes: [GitFileTreeNode] {
+        showAll ? treeNodes : Array(treeNodes.prefix(displayLimit))
+    }
+
+    /// 非表示のルートノードがあるか
+    var hasMore: Bool { !showAll && treeNodes.count > displayLimit }
+
+    /// 進行中のリロードを識別するためのカウンタ (古いリロード結果の上書きを防ぐ)
+    @ObservationIgnored private var reloadGeneration: Int = 0
+
     init(workspace: WorkspaceState) {
         self.workspace = workspace
     }
 
-    /// 現在のモードに応じて変更ファイル一覧をリロードする
-    func reload() {
+    /// 現在のモードに応じて変更ファイル一覧をバックグラウンドでリロードする。
+    /// git コマンドはメインスレッドをブロックしないようバックグラウンドキューで実行し、
+    /// 完了後にメインスレッドで state を更新してから completion を呼ぶ。
+    func reload(completion: (() -> Void)? = nil) {
         guard let root = workspace.projectRoot else {
             treeNodes = []
+            completion?()
             return
         }
-        do {
-            currentBranch = (try? GitService.currentBranch(cwd: root)) ?? ""
+        reloadGeneration += 1
+        let generation = reloadGeneration
+        let capturedMode = mode
+
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            var branch = ""
             var files: [GitChangedFile] = []
-            switch mode {
+            var fileStats: [String: (added: Int, deleted: Int)] = [:]
+            var stagedFileStats: [String: (added: Int, deleted: Int)] = [:]
+
+            branch = (try? GitService.currentBranch(cwd: root)) ?? ""
+
+            switch capturedMode {
             case .workingChanges:
-                // staged
-                let stagedOutput = try GitService.diffCachedNameStatus(cwd: root)
+                let stagedOutput = (try? GitService.diffCachedNameStatus(cwd: root)) ?? ""
                 files += GitChangesParser.parse(stagedOutput, staged: true)
-                // unstaged
-                let unstagedOutput = try GitService.diffNameStatus(cwd: root)
+                let unstagedOutput = (try? GitService.diffNameStatus(cwd: root)) ?? ""
                 files += GitChangesParser.parse(unstagedOutput, staged: false)
-                // untracked
-                let untrackedOutput = try GitService.untrackedFiles(cwd: root)
+                let untrackedOutput = (try? GitService.untrackedFiles(cwd: root)) ?? ""
                 files += GitChangesParser.parseUntracked(untrackedOutput)
-            case .prPreview:
-                let output = try GitService.diffMainNameStatus(cwd: root)
-                files = GitChangesParser.parse(output)
-            }
-            treeNodes = GitFileTreeNode.buildTree(from: files)
-            // numstat でファイルごとの追加/削除行数を取得
-            switch mode {
-            case .workingChanges:
                 let staged = (try? GitService.numstatStaged(cwd: root)) ?? ""
                 let unstaged = (try? GitService.numstatUnstaged(cwd: root)) ?? ""
-                stagedFileStats = parseNumstat(staged)
-                fileStats = parseNumstat(unstaged)
+                stagedFileStats = GitSessionState.parseNumstat(staged)
+                fileStats = GitSessionState.parseNumstat(unstaged)
             case .prPreview:
-                stagedFileStats = [:]
-                fileStats = parseNumstat((try? GitService.numstatMain(cwd: root)) ?? "")
+                let output = (try? GitService.diffMainNameStatus(cwd: root)) ?? ""
+                files = GitChangesParser.parse(output)
+                fileStats = GitSessionState.parseNumstat((try? GitService.numstatMain(cwd: root)) ?? "")
             }
-        } catch {
-            treeNodes = []
+
+            let nodes = GitFileTreeNode.buildTree(from: files)
+
+            DispatchQueue.main.async { [weak self] in
+                guard let self, self.reloadGeneration == generation else { return }
+                self.currentBranch = branch
+                self.treeNodes = nodes
+                self.fileStats = fileStats
+                self.stagedFileStats = stagedFileStats
+                self.showAll = false
+                completion?()
+            }
         }
     }
 
     /// numstat 出力をパースする (形式: "追加\t削除\tファイルパス")
-    private func parseNumstat(_ output: String) -> [String: (added: Int, deleted: Int)] {
+    private static func parseNumstat(_ output: String) -> [String: (added: Int, deleted: Int)] {
         var result: [String: (added: Int, deleted: Int)] = [:]
         for line in output.split(separator: "\n") {
             let parts = line.split(separator: "\t", maxSplits: 2)
