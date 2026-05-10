@@ -259,7 +259,8 @@ struct GitDiffSessionView: NSViewRepresentable {
                             if (cur) cur.style.background = 'rgb(30, 60, 110)';
                             this.focusEl = el;
                             if (cur) {
-                                const name = cur.textContent.trim();
+                                const nameEl = cur.querySelector('.d2h-file-name') || cur;
+                                const name = nameEl.textContent.trim();
                                 if (name !== this.focusName) {
                                     this.focusName = name;
                                     window.webkit.messageHandlers.focusFile.postMessage(name);
@@ -302,6 +303,12 @@ struct GitDiffSessionView: NSViewRepresentable {
                             }
                         });
                     });
+
+                    // 初期フォーカス: ロード直後に先頭ファイルへフォーカスを設定する（スクロール前でも Enter が機能するよう）
+                    (function() {
+                        const first = document.querySelector('.d2h-file-wrapper');
+                        if (first) { window._aidea.setFocus(first); }
+                    })();
 
                     // 上下キー: スクロール端ならフォーカス移動、そうでなければ標準スクロール
                     document.addEventListener('keydown', function(e) {
