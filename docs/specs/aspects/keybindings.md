@@ -23,7 +23,8 @@ impacts: []
 conventions:
   - docs/LAYOUT.md
   - docs/specs/aspects/README.md
-last_updated: 2026-05-06---
+last_updated: 2026-05-06
+---
 
 # キー操作・マウス操作一覧
 
