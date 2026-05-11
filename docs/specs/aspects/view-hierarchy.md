@@ -16,7 +16,7 @@ impacts: []
 conventions:
   - docs/LAYOUT.md
   - docs/specs/aspects/README.md
-last_updated: 2026-05-06
+last_updated: 2026-05-11
 ---
 
 # View 階層 (UI コンポーネント親子関係)
@@ -277,6 +277,7 @@ drawio は `DrawioPreview` が `DrawioStaticView` (画像表示) と `DrawioEdit
 | `ActiveSessionSwitcherView` | `Views/Common/ActiveSessionSwitcherView.swift` | `borderless` NSWindow + `NSHostingView` ([ActiveSessionSwitcher.swift](../../../Aidea/Aidea/Sessions/ActiveSessionSwitcher.swift) が `level = .floating`) | [../window/active-session-switcher.md](../window/active-session-switcher.md) |
 | Tool 選択 NSMenu (Cmd+T / `+`) | `PaneView.showToolPickerMenu` | `NSMenu.popUp()` | — |
 | 「指定のアプリで開く」NSMenu | `FileTreeViewController.buildOpenWithMenu` | `NSMenu.popUp()` | [../tools/filer.md](../tools/filer.md) |
+| ファイルパス選択 NSMenu | `PersistentTerminalView.showPathSelectionMenu` | `NSMenu.popUp()` | [../tools/terminal.md](../tools/terminal.md) |
 | ファイル名入力ダイアログ | `Sessions/Filer/FileNameInputDialog.swift` | `NSAlert` + accessoryView | [../tools/filer.md](../tools/filer.md) |
 | 除外ルール / デコレーションルール ダイアログ | `Sessions/Filer/ExcludeRulesDialog.swift` / `DecorationRulesDialog.swift` | `NSAlert` accessoryView | [../tools/filer.md](../tools/filer.md) |
 

@@ -231,23 +231,55 @@ final class PersistentTerminalView: LocalProcessTerminalView {
         }
     }
 
-    // MARK: - Path click activation (issue #71)
+    // MARK: - Path click activation (issue #71, #186)
 
     /// クリック位置にあるファイルパス候補を検出し、実在すれば Preview を開く。
+    /// 絶対/相対解決で見つからない場合はプロジェクト内検索にフォールバックする。
+    /// 複数マッチ時はクリック位置近傍に NSMenu ポップアップを表示してユーザに選択させる。
     /// projectRoot / sessionRegistry が未設定 (Session 側で未注入) の場合は何もしない。
-    /// Preview はターミナルと同じペインの右隣タブに開く (`openPreviewAsSibling`)。
-    /// ターミナルでの作業中に他ペインへフォーカスを奪われない方が体感が自然なため。
     private func handlePathClickIfNeeded(at locationInWindow: CGPoint) {
         guard let registry = sessionRegistry,
               let pos = cellPosition(at: locationInWindow),
               let line = terminal.getLine(row: pos.bufferRow)?
-                  .translateToString(trimRight: false),
-              let match = TerminalPathResolver.match(
-                  in: line,
-                  at: pos.col,
-                  projectRoot: workspace?.projectRoot
-              )
+                  .translateToString(trimRight: false)
         else { return }
+        switch TerminalPathResolver.matchWithFallback(
+            in: line,
+            at: pos.col,
+            projectRoot: workspace?.projectRoot
+        ) {
+        case .found(let match):
+            registry.openPreviewAsSibling(for: match.absoluteURL, title: match.displayPath)
+        case .ambiguous(let candidates):
+            showPathSelectionMenu(for: candidates, at: locationInWindow)
+        case nil:
+            break
+        }
+    }
+
+    /// 複数候補を NSMenu で提示し、ユーザが選んだファイルを Preview で開く。
+    private func showPathSelectionMenu(for candidates: [TerminalPathMatch], at locationInWindow: CGPoint) {
+        guard let registry = sessionRegistry else { return }
+        let menu = NSMenu()
+        for candidate in candidates {
+            let item = NSMenuItem(
+                title: candidate.displayPath,
+                action: #selector(pathMenuItemSelected(_:)),
+                keyEquivalent: ""
+            )
+            item.representedObject = candidate
+            item.target = self
+            menu.addItem(item)
+        }
+        let point = convert(locationInWindow, from: nil)
+        menu.popUp(positioning: nil, at: point, in: self)
+        // 選択後に呼ばれる pathMenuItemSelected で registry を参照するため強参照を維持する
+        _ = registry
+    }
+
+    @objc private func pathMenuItemSelected(_ sender: NSMenuItem) {
+        guard let match = sender.representedObject as? TerminalPathMatch,
+              let registry = sessionRegistry else { return }
         registry.openPreviewAsSibling(for: match.absoluteURL, title: match.displayPath)
     }
 
@@ -274,6 +306,7 @@ final class PersistentTerminalView: LocalProcessTerminalView {
     }
 
     /// 指定座標がクリック可能なターゲット (URL または実在するファイルパス) の上にあるか判定する。
+    /// ファイルパスは絶対/相対解決 → プロジェクト内検索フォールバックの順で試みる。
     private func isHoveringClickable(at locationInWindow: CGPoint) -> Bool {
         guard let pos = cellPosition(at: locationInWindow) else { return false }
         // URL/OSC 8 リンク判定: SwiftTerm の `link(at:mode:)` を活用
@@ -281,12 +314,12 @@ final class PersistentTerminalView: LocalProcessTerminalView {
         if terminal.link(at: .buffer(bufferPos), mode: .explicitAndImplicit) != nil {
             return true
         }
-        // ファイルパス判定: 行テキストに対して resolver で実在確認まで行う
+        // ファイルパス判定: フォールバック検索込みで実在確認まで行う
         guard let line = terminal.getLine(row: pos.bufferRow)?
                   .translateToString(trimRight: false) else {
             return false
         }
-        return TerminalPathResolver.match(
+        return TerminalPathResolver.matchWithFallback(
             in: line,
             at: pos.col,
             projectRoot: workspace?.projectRoot

@@ -22,6 +22,14 @@ struct TerminalPathMatch: Equatable {
     let displayPath: String
 }
 
+/// `matchWithFallback` の検索結果。
+enum TerminalPathMatchResult {
+    /// 一意に解決できたファイル
+    case found(TerminalPathMatch)
+    /// 複数ファイルがマッチした場合 (ユーザに選択させる)
+    case ambiguous([TerminalPathMatch])
+}
+
 /// 行テキストから ASCII のファイルパスを検出して projectRoot 起点で解決する純関数ヘルパ。
 /// SwiftTerm/UI 依存を持たず、Foundation のみで完結する (テスト容易性)。
 /// 仕様: docs/specs/tools/terminal.md#ファイルパスのクリック起動-issue-71
@@ -35,6 +43,30 @@ enum TerminalPathResolver {
                     return resolved
                 }
             }
+        }
+        return nil
+    }
+
+    /// 行内の col 位置に重なるパス候補を、絶対/相対解決 → プロジェクト内検索の順で試みる。
+    /// 仕様: docs/specs/tools/terminal.md#パス解決
+    static func matchWithFallback(
+        in line: String,
+        at column: Int,
+        projectRoot: URL?
+    ) -> TerminalPathMatchResult? {
+        // 手順 1・2: 絶対パス / projectRoot 起点の通常解決
+        if let m = match(in: line, at: column, projectRoot: projectRoot) {
+            return .found(m)
+        }
+        // 手順 3: プロジェクト内検索フォールバック
+        guard let root = projectRoot else { return nil }
+        for candidate in detectCandidates(in: line) {
+            guard column >= candidate.startColumn && column < candidate.endColumn else { continue }
+            // 絶対パス候補は手順 1 で処理済み。相対パス候補のみフォールバック対象とする
+            guard !candidate.path.hasPrefix("/") else { continue }
+            let hits = searchProject(for: candidate, projectRoot: root)
+            guard !hits.isEmpty else { continue }
+            return hits.count == 1 ? .found(hits[0]) : .ambiguous(hits)
         }
         return nil
     }
@@ -115,6 +147,45 @@ enum TerminalPathResolver {
             absoluteURL: absoluteURL,
             displayPath: displayPath
         )
+    }
+
+    /// projectRoot 以下を再帰的に検索し、ファイル名一致または末尾パス一致するファイルを返す。
+    /// `.gitignore` の内容は考慮しない (全ファイルを対象)。
+    private static func searchProject(for candidate: Candidate, projectRoot: URL) -> [TerminalPathMatch] {
+        let searchPath = candidate.path.hasPrefix("./")
+            ? String(candidate.path.dropFirst(2))
+            : candidate.path
+        let fm = FileManager.default
+        guard let enumerator = fm.enumerator(
+            at: projectRoot,
+            includingPropertiesForKeys: [.isRegularFileKey],
+            options: [.skipsPackageDescendants]
+        ) else { return [] }
+
+        var results: [TerminalPathMatch] = []
+        let rootPath = projectRoot.standardizedFileURL.path
+        for case let fileURL as URL in enumerator {
+            guard (try? fileURL.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true
+            else { continue }
+            let filePath = fileURL.standardizedFileURL.path
+            // relativePath: projectRoot 以下の相対パス
+            let relativePath = filePath.hasPrefix(rootPath + "/")
+                ? String(filePath.dropFirst(rootPath.count + 1))
+                : filePath
+            // ファイル名一致 または 末尾パス一致 (パス境界を保証するためスラッシュを前置)
+            let isMatch = relativePath == searchPath
+                || relativePath.hasSuffix("/" + searchPath)
+            guard isMatch else { continue }
+            results.append(TerminalPathMatch(
+                startColumn: candidate.startColumn,
+                endColumn: candidate.endColumn,
+                path: candidate.path,
+                line: candidate.line,
+                absoluteURL: fileURL.standardizedFileURL,
+                displayPath: relativePath
+            ))
+        }
+        return results
     }
 
     /// パス検出 regex。spec の文字種・拡張子規則を厳密に表す。
