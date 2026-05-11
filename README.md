@@ -19,12 +19,13 @@ cd aidea
 open Aidea/Aidea.xcodeproj
 ```
 
-Xcode で `⌘R`。ビルド・実行手順の詳細は [`Aidea/README.md`](./Aidea/README.md) を参照。
+Xcode で `⌘R`。**初めて使うとき**は [docs/setup/getting-started.md](./docs/setup/getting-started.md) を一読すると、ビルド → 署名 → ディレクトリを開く → ターミナルで `claude` 起動 → Companion セットアップまで通しで設定できる。ビルド/実行手順の詳細だけ知りたいときは [`Aidea/README.md`](./Aidea/README.md) を参照。
 
 ## ドキュメント
 
 | ファイル | 内容 |
 |---|---|
+| [docs/setup/getting-started.md](./docs/setup/getting-started.md) | 初回ユーザー向けの導入ガイド |
 | [docs/specs/](./docs/specs/README.md) | プロダクト仕様 (設計ストック) |
 | [Aidea/README.md](./Aidea/README.md) | macOS アプリのビルド/起動手順 |
 | [docs/foundation/vision.md](./docs/foundation/vision.md) | 作る動機とプロジェクトの原則 |
