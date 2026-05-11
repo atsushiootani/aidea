@@ -7,7 +7,7 @@ impacts:
   - docs/README.md
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-06
+last_updated: 2026-05-11
 ---
 
 # docs ディレクトリ構成とファイル配置ルール
@@ -25,6 +25,9 @@ docs/
 ├── foundation/        # プロジェクトの土台 (動機・原則)
 │   ├── README.md
 │   └── vision.md      # 作る動機とプロジェクトの原則
+│
+├── setup/             # 初回ユーザー向けの導入・セットアップ手順
+│   └── getting-started.md
 │
 ├── decisions/         # 設計判断を残す ADR (Architecture Decision Records) の保管場所
 │   ├── README.md      # ADR 一覧・追加手順
@@ -79,6 +82,13 @@ docs/
 - **現在のファイル**: `vision.md` (作る動機とプロジェクトの原則)
 - **判断基準**: 個別設計判断は `docs/decisions/` へ、確定仕様は `docs/specs/` へ、規約は `docs/conventions/` へ。それらより一段上の「プロジェクトの土台」に相当するものを置く
 - **命名**: kebab-case 全小文字
+
+### `docs/setup/` — 初回ユーザー向けセットアップ手順
+
+- **用途**: Aidea を**初めて手元で動かすまで**の導入ガイドを置く。ビルド・署名・起動・初期設定など「使い始めるための具体的な手順」を扱う
+- **判断基準**: コードの書き方は `docs/conventions/`、動作仕様は `docs/specs/`、設計判断は `docs/decisions/` に。`setup/` は「未経験のユーザーが Aidea を使い始められる状態にする」までの操作ガイドだけを置く
+- **命名**: kebab-case 全小文字 (`getting-started.md`)
+- **インデックス**: ファイルが少ないうちは README なしで運用する。肥大化したら README を追加する
 
 ### `docs/decisions/` — 設計判断 (ADR)
 
@@ -311,6 +321,7 @@ last_updated: 2026-MM-DD
 | `docs/specs/skills/` | ✅ 完了 (2026-05-06) |
 | `docs/specs/window/` | ✅ 完了 (2026-04-17) |
 | `docs/foundation/` | ✅ 完了 (2026-04-17) |
+| `docs/setup/` | ✅ 完了 (2026-05-11) |
 | `docs/agent-skills/` | ✅ 完了 (2026-04-17) |
 | `docs/decisions/` | ✅ 完了 (2026-04-17) — status フィールドを本文から frontmatter に移行 |
 | `docs/conventions/` | 未適用 |

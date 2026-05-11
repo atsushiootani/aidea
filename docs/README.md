@@ -7,7 +7,7 @@ syncs_with: []
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-17
+last_updated: 2026-05-11
 ---
 
 # Aidea Documentation
@@ -28,6 +28,7 @@ last_updated: 2026-04-17
 各サブディレクトリの詳細インデックス:
 
 - [foundation/README.md](./foundation/README.md) — プロジェクトの土台 (動機・原則)
+- [setup/getting-started.md](./setup/getting-started.md) — 初回ユーザー向けの導入手順 (ビルド〜Claude セッション起動まで)
 - [specs/README.md](./specs/README.md) — プロダクト仕様 (何を作るか・どう動くか)
 - [conventions/README.md](./conventions/README.md) — コードを書くときの規約
 - [decisions/README.md](./decisions/README.md) — 設計判断の記録 (ADR)
