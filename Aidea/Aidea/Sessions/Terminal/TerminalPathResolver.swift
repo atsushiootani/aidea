@@ -165,7 +165,8 @@ enum TerminalPathResolver {
         var results: [TerminalPathMatch] = []
         let rootPath = projectRoot.standardizedFileURL.path
         for case let fileURL as URL in enumerator {
-            guard (try? fileURL.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true
+            guard let resourceValues = try? fileURL.resourceValues(forKeys: [.isRegularFileKey]),
+                  resourceValues.isRegularFile == true
             else { continue }
             let filePath = fileURL.standardizedFileURL.path
             // relativePath: projectRoot 以下の相対パス
