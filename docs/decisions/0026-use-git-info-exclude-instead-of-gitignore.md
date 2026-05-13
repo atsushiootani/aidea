@@ -3,10 +3,8 @@ title: .aidea/ の除外設定を .gitignore ではなく .git/info/exclude に�
 description: WorkspaceState.ensureAideaDirectory が共有 .gitignore を自動書き換えする挙動を廃止し、ローカル専用の .git/info/exclude に追記するよう変更する設計判断
 status: 採用
 derived_from: []
-syncs_with:
-  - docs/specs/aspects/persistence.md
-impacts:
-  - docs/specs/aspects/persistence.md
+syncs_with: []
+impacts: []
 replaces: []
 replaced_by: []
 conventions:
@@ -14,7 +12,7 @@ conventions:
 last_updated: 2026-05-13
 ---
 
-# ADR 0026: .aidea/ の除外設定を .gitignore ではなく .git/info/exclude に書く
+# .aidea/ の除外設定を .gitignore ではなく .git/info/exclude に書く
 
 ## 背景
 

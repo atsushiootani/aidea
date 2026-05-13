@@ -5,6 +5,7 @@ derived_from:
   - docs/specs/architecture.md
   - docs/decisions/0022-companion-instructions-as-files.md
   - docs/decisions/0024-backchannel-per-companion-archive.md
+  - docs/decisions/0026-use-git-info-exclude-instead-of-gitignore.md
 syncs_with:
   - docs/specs/backchannels/backchannel.md
   - docs/specs/backchannels/voicevox.md
