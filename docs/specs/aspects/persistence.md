@@ -28,7 +28,7 @@ impacts: []
 conventions:
   - docs/LAYOUT.md
   - docs/specs/aspects/README.md
-last_updated: 2026-05-06
+last_updated: 2026-05-13
 ---
 
 # Persistence (データ永続化)
@@ -118,7 +118,7 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
     └── <相対パス>/<filename>
 ```
 
-- `projectRoot` が変わるたびに `ensureAideaDirectory()` が `.aidea/` と `.aidea/ja/` を生成し、**プロジェクトの `.gitignore` に `.aidea/` を自動追記** する
+- `projectRoot` が変わるたびに `ensureAideaDirectory()` が `.aidea/` と `.aidea/ja/` を生成し、**`.git/info/exclude` (ローカル専用 ignore) に `.aidea/` を追記** する。`.git/info/` が存在しない非 git プロジェクトでは追記をスキップする
 - `.aidea/claude/*.md` と `.aidea/backchannels/` は初回のみ `BackchannelSetup.setup()` が作成・複製する
 - `.aidea/claude/companions/<0..8>/instructions.md` も `BackchannelSetup.setup()` が `Backchannels/companion-instructions.md` を 9 個に複製する (既存ファイルは上書きしない)
 - `.aidea/config/concier-schedule.yaml` は `BackchannelSetup.setup()` が不在時のみ Bundle テンプレ `Backchannels/concier-schedule.yaml` からコピーする
@@ -290,7 +290,7 @@ Claude → Aidea 方向の通信は**ファイル経由**で行う。詳細は [
 | 起動時 (workspace.json 既存) | `workspace.json` 読込 → 復元・マイグレーション適用 | `WorkspaceSnapshotManager.load()` |
 | 起動時 (workspace.json 不在) | Bundle 同梱 `default-workspace.json` 読込 → 初期スナップショットとして適用 | `WorkspaceSnapshotManager.load()` |
 | 起動時 (Bundle 読込も失敗) | Filer 1 ペインの最小レイアウトを生成して継続起動 (緊急フォールバック) | `AideaApp.init()` |
-| projectRoot 変更時 | `.aidea/` 生成 + `.gitignore` 追記 + Backchannel 再初期化 | `WorkspaceState.setProjectRoot()` |
+| projectRoot 変更時 | `.aidea/` 生成 + `.git/info/exclude` 追記 + Backchannel 再初期化 | `WorkspaceState.setProjectRoot()` |
 | Companion / Recommend 変更時 | インメモリのみ更新 (即座保存しない) | `CompanionStore` / `RecommendStore` |
 | Claude から speech 受信時 | `<n>/speech-*.txt` → 読み上げ (ファイルは残す、ADR 0024) | `SpeechWatcher` |
 | Claude から handoff 受信時 | `<n>/handoff-*.json` → 宛先解決 → 送信 (ファイルは残す、ADR 0024) | `HandoffWatcher` |
@@ -306,7 +306,7 @@ Claude → Aidea 方向の通信は**ファイル経由**で行う。詳細は [
 - **グローバル設定は UserDefaults**: プロジェクトに依存しないユーザ設定のみ
 - **機密情報は Keychain**: API キー等は macOS 標準の Keychain に委譲
 - **デフォルト値は Bundle Resources**: ハードコードを避け、Swift と JSON の二重管理を排する
-- **`.aidea/` は git 管理外**: Aidea が自動で `.gitignore` に追加する (プロジェクト側で除外する手間を省く)
+- **`.aidea/` はローカル専用 ignore**: Aidea が自動で `.git/info/exclude` に追記する。共有 `.gitignore` は一切変更しないため、チームメンバーの環境や `.aidea/` をコミット対象にしたい運用に影響しない (ADR 0026)
 - **ファイルフォーマットは JSON / Markdown / Plain Text**: バイナリは使わず、直接編集・diff 可能にする
 
 ---
