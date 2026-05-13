@@ -32,7 +32,8 @@ final class WorkspaceState {
         Self.ensureAideaDirectory(at: url)
     }
 
-    /// `.aidea/` と `.aidea/ja/` を作成し、`.gitignore` に `.aidea/` を追記する。
+    /// `.aidea/` と `.aidea/ja/` を作成し、`.git/info/exclude` に `.aidea/` を追記する。
+    /// `.git/info/` が存在しない (非 git プロジェクト) 場合は追記をスキップする。
     /// 既に存在する場合は何もしない。
     private static func ensureAideaDirectory(at projectRoot: URL) {
         let fm = FileManager.default
@@ -42,20 +43,22 @@ final class WorkspaceState {
         // ディレクトリ作成
         try? fm.createDirectory(at: jaDir, withIntermediateDirectories: true)
 
-        // .gitignore に .aidea/ を追記
-        let gitignore = projectRoot.appending(path: ".gitignore")
+        // .git/info/exclude にローカル専用 ignore として .aidea/ を追記 (ADR 0026)
+        let gitInfoDir = projectRoot.appending(path: ".git/info", directoryHint: .isDirectory)
+        guard fm.fileExists(atPath: gitInfoDir.path) else { return }
+
+        let exclude = gitInfoDir.appending(path: "exclude")
         let entry = ".aidea/"
-        if fm.fileExists(atPath: gitignore.path) {
-            if let content = try? String(contentsOf: gitignore, encoding: .utf8) {
-                // 行単位でチェック (部分一致ではなく完全一致)
+        if fm.fileExists(atPath: exclude.path) {
+            if let content = try? String(contentsOf: exclude, encoding: .utf8) {
                 let lines = content.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
                 if !lines.contains(where: { $0.trimmingCharacters(in: .whitespaces) == entry }) {
                     let append = content.hasSuffix("\n") ? entry + "\n" : "\n" + entry + "\n"
-                    try? (content + append).write(to: gitignore, atomically: true, encoding: .utf8)
+                    try? (content + append).write(to: exclude, atomically: true, encoding: .utf8)
                 }
             }
         } else {
-            try? (entry + "\n").write(to: gitignore, atomically: true, encoding: .utf8)
+            try? (entry + "\n").write(to: exclude, atomically: true, encoding: .utf8)
         }
     }
 }
