@@ -13,7 +13,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-06
+last_updated: 2026-05-11
 ---
 
 # Tool 仕様: Terminal
@@ -132,9 +132,13 @@ mouseDown と mouseUp の位置が **threshold (4 pt) 以下** に収まり、�
 
 1. 検出した `path` が絶対パス (`/` 始まり) なら **そのまま**
 2. 相対パスなら `WorkspaceState.projectRoot` を起点に絶対化する
-3. 解決後の URL が `FileManager.fileExists` でファイルとして実在しなければ **無音で無視** (URL クリックの失敗時挙動と同じ)
+3. 上記で実在しない場合: **プロジェクト内検索フォールバック** — `projectRoot` 以下を再帰的に検索し、ファイル名一致 (末尾の pathComponent が等しい) または末尾パス一致 (`relativePath` が `"/" + searchPath` で終わる) するファイルを列挙する
+   - `.gitignore` の内容は考慮しない (全ファイルを対象とする)
+   - **1 件のみマッチ** → そのファイルを Preview で開く
+   - **複数マッチ** → クリック位置近傍に **NSMenu ポップアップ**を表示し、ユーザが選んだファイルを Preview で開く
+4. それでも見つからない場合: 現状どおり無音で無視
 
-PTY の `cwd` は **追跡しない** (MVP)。`cd` 後に表示された相対パスは projectRoot 起点に解決されるため不正確になり得るが、Claude や `grep -rn` 等の主要出力源は projectRoot 起点が大半なので許容する。`hostCurrentDirectoryUpdate` を実装した cwd 追跡は別 issue で扱う (将来拡張)。
+PTY の `cwd` は **追跡しない**。cwd 追跡 (`hostCurrentDirectoryUpdate` / OSC 7) の代替として、上記のプロジェクト内検索フォールバック (手順 3) で `cd` 後の相対パスや Claude が省略したファイル名にも対応する。
 
 #### Preview 起動
 
@@ -183,7 +187,9 @@ issue #71 の `(want)` 項目。Preview 側のコード/テキストビューが
 - URL とファイルパスの両方が **単純クリック** で開く (Cmd 修飾は不要・押されていても同じ挙動)
 - クリックターゲット (URL / 実在するファイルパス) 上では `NSCursor.pointingHand` でクリック可能であることを示す
 - ファイルパスのクリック起動は `WorkspaceState.projectRoot` を相対パスの起点とする
-- 検出パスがファイルとして実在しない場合は無音で無視 (URL クリックの失敗時挙動に揃える)
+- 検出パスが絶対パス / projectRoot 起点で解決できないときは `projectRoot` 以下を再帰検索してフォールバックを試みる
+- 複数のファイルがフォールバック検索でマッチした場合はクリック位置近傍に NSMenu ポップアップを表示してユーザに選択させる
+- 検出パスがいずれの方法でも解決できない場合は無音で無視 (URL クリックの失敗時挙動に揃える)
 - ファイルパスから開く Preview は **ターミナルと同じペインの右隣** に新規タブで挿入する (`openPreviewAsSibling`)
 
 ### Never
@@ -191,6 +197,6 @@ issue #71 の `(want)` 項目。Preview 側のコード/テキストビューが
 - 非対話シェルから直接プロセスを exec しない（ADR 0008）
 - ドラッグ選択中の mouseUp でクリック起動を発火しない (テキスト選択を優先)
 - SwiftTerm 標準の mouseMoved 経由 URL 自動オープンを許可しない (mouseUp 必須)
-- PTY の `cwd` 追跡で相対パスを解決しない (MVP では projectRoot 固定)
+- PTY の `cwd` 追跡 (`hostCurrentDirectoryUpdate` / OSC 7) でパスを解決しない — プロジェクト内検索フォールバックで代替する
 - `:行数` を Preview に引き渡さない (MVP)
 - `TerminalLinkGuard.requestOpenLink` で scheme を持たない link 文字列を `NSWorkspace.shared.open` に渡さない (SwiftTerm の link detector がファイルパスを link として渡してきても、Preview 起動は `handlePathClickIfNeeded` が担うため。`open` に渡すと Finder が `-50` ダイアログを出してしまう)
