@@ -11,7 +11,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-01
+last_updated: 2026-05-14
 ---
 
 # Session 内部状態: Git
@@ -26,7 +26,9 @@ Tool 仕様は [../tools/git.md](../tools/git.md) を、共通 UI ルールは [
 | プロパティ | 型 | 用途 | ペイン移動で保持 |
 |---|---|---|---|
 | `mode` | `GitMode` (`.workingChanges` / `.prPreview`) | 表示モード | ✅ |
-| `treeNodes` | `[GitFileTreeNode]` | 変更ファイルのツリー表現 | ✅ |
+| `treeNodes` | `[GitFileTreeNode]` | 変更ファイルのツリー表現 (表示上限を適用済み) | ✅ |
+| `totalFileCount` | `Int` | 全変更ファイル数 (表示上限適用前の合計) | — |
+| `hasMoreFiles` | `Bool` (computed) | 表示上限を超えるファイルが存在するか | — |
 | `selectedPath` | `String?` | 選択中のファイルパス (変更時に `onSelectedPathChanged` を発火) | ✅ |
 | `currentBranch` | `String` | 現在のブランチ名 | ✅ |
 | `fileStats` | `[String: (added: Int, deleted: Int)]` | ファイルごとの追加/削除行数 (未ステージ差分。PR Preview では main との全差分) | ✅ |
@@ -34,6 +36,7 @@ Tool 仕様は [../tools/git.md](../tools/git.md) を、共通 UI ルールは [
 | `registry` | `weak var SessionRegistry?` | Diff ビュー連携用 | — |
 | `onSelectedPathChanged` | `((String?) -> Void)?` (ObservationIgnored) | 選択変更コールバック | — |
 | `onViewedChanged` | `(() -> Void)?` (ObservationIgnored) | 既読状態変更コールバック | — |
+| `onDataReloaded` | `(() -> Void)?` (ObservationIgnored) | バックグラウンドリロード完了後の UI 更新コールバック | — |
 
 ## Scene とレコメンドプロンプト
 
