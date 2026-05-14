@@ -65,6 +65,10 @@ final class GitFileListViewController: NSViewController, NSOutlineViewDataSource
     private var reloadWorkItem: DispatchWorkItem?
     /// Diff 追従による選択変更中は true（無限ループ防止）
     private var isUpdatingFromDiff = false
+    private let moreFilesFooter = NSView()
+    private let moreFilesLabel = NSTextField(labelWithString: "")
+    private let moreFilesButton = NSButton(title: "", target: nil, action: nil)
+    private var moreFilesHeightConstraint: NSLayoutConstraint?
 
     override func loadView() {
         let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("name"))
@@ -99,12 +103,35 @@ final class GitFileListViewController: NSViewController, NSOutlineViewDataSource
 
         branchBadge.translatesAutoresizingMaskIntoConstraints = false
 
+        // 表示上限超過フッター
+        moreFilesLabel.font = .systemFont(ofSize: 11)
+        moreFilesLabel.textColor = .secondaryLabelColor
+        moreFilesLabel.translatesAutoresizingMaskIntoConstraints = false
+        moreFilesButton.bezelStyle = .inline
+        moreFilesButton.font = .systemFont(ofSize: 11)
+        moreFilesButton.target = self
+        moreFilesButton.action = #selector(showAllFiles)
+        moreFilesButton.translatesAutoresizingMaskIntoConstraints = false
+        moreFilesFooter.translatesAutoresizingMaskIntoConstraints = false
+        moreFilesFooter.isHidden = true
+        moreFilesFooter.addSubview(moreFilesLabel)
+        moreFilesFooter.addSubview(moreFilesButton)
+        NSLayoutConstraint.activate([
+            moreFilesLabel.leadingAnchor.constraint(equalTo: moreFilesFooter.leadingAnchor, constant: 10),
+            moreFilesLabel.centerYAnchor.constraint(equalTo: moreFilesFooter.centerYAnchor),
+            moreFilesButton.leadingAnchor.constraint(equalTo: moreFilesLabel.trailingAnchor, constant: 6),
+            moreFilesButton.centerYAnchor.constraint(equalTo: moreFilesFooter.centerYAnchor),
+        ])
+
         let container = NSView()
         container.addSubview(picker)
         container.addSubview(branchBadge)
         container.addSubview(scrollView)
+        container.addSubview(moreFilesFooter)
         picker.translatesAutoresizingMaskIntoConstraints = false
         scrollView.translatesAutoresizingMaskIntoConstraints = false
+        let heightConstraint = moreFilesFooter.heightAnchor.constraint(equalToConstant: 0)
+        moreFilesHeightConstraint = heightConstraint
         NSLayoutConstraint.activate([
             picker.topAnchor.constraint(equalTo: container.topAnchor, constant: 6),
             picker.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 8),
@@ -116,7 +143,11 @@ final class GitFileListViewController: NSViewController, NSOutlineViewDataSource
             scrollView.topAnchor.constraint(equalTo: branchBadge.bottomAnchor, constant: 4),
             scrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: moreFilesFooter.topAnchor),
+            moreFilesFooter.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            moreFilesFooter.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            moreFilesFooter.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            heightConstraint,
         ])
         self.view = container
 
@@ -140,7 +171,6 @@ final class GitFileListViewController: NSViewController, NSOutlineViewDataSource
             self.switchDiffMode(mode)
         }
 
-
         // GitDiff のフォーカスファイル変化に追従して OutlineView の選択を更新
         state?.onSelectedPathChanged = { [weak self] path in
             guard let self, let path else { return }
@@ -153,6 +183,11 @@ final class GitFileListViewController: NSViewController, NSOutlineViewDataSource
             self?.outlineView.expandItem(nil, expandChildren: true)
         }
 
+        // バックグラウンドリロード完了後に UI を更新
+        state?.onDataReloaded = { [weak self] in
+            self?.refreshUI()
+        }
+
         // .git 監視で自動更新
         if let root = state?.workspace.projectRoot {
             let gitDir = root.appending(path: ".git").path
@@ -162,11 +197,37 @@ final class GitFileListViewController: NSViewController, NSOutlineViewDataSource
         }
     }
 
+    /// バックグラウンドリロードをキックするだけ。UI 更新は onDataReloaded コールバックで行う。
     func reload() {
         state?.reload()
+    }
+
+    /// リロード完了後の UI 更新。onDataReloaded コールバックから呼ぶ。
+    private func refreshUI() {
         updateBranchLabel()
         outlineView.reloadData()
         outlineView.expandItem(nil, expandChildren: true)
+        updateMoreFilesFooter()
+    }
+
+    private func updateMoreFilesFooter() {
+        guard let state else {
+            moreFilesFooter.isHidden = true
+            moreFilesHeightConstraint?.constant = 0
+            return
+        }
+        let hasMore = state.hasMoreFiles
+        moreFilesFooter.isHidden = !hasMore
+        moreFilesHeightConstraint?.constant = hasMore ? 28 : 0
+        if hasMore {
+            let shown = state.treeNodes.reduce(0) { $0 + ($1.isDirectory ? 0 : 1) }
+            moreFilesLabel.stringValue = "\(shown)件を表示中"
+            moreFilesButton.title = "全\(state.totalFileCount)件を表示"
+        }
+    }
+
+    @objc private func showAllFiles() {
+        state?.showMoreFiles()
     }
 
     /// モードに応じてブランチラベルと合計行数を更新する
