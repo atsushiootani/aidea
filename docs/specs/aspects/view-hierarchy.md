@@ -16,7 +16,7 @@ impacts: []
 conventions:
   - docs/LAYOUT.md
   - docs/specs/aspects/README.md
-last_updated: 2026-05-06
+last_updated: 2026-05-16
 ---
 
 # View 階層 (UI コンポーネント親子関係)

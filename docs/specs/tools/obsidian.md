@@ -7,7 +7,7 @@ syncs_with: []
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-17
+last_updated: 2026-05-16
 ---
 
 # Tool 仕様: Obsidian 連携

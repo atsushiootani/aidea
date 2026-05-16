@@ -13,7 +13,7 @@ impacts:
   - docs/specs/sessions/ui-rules.md
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-21
+last_updated: 2026-05-16
 ---
 
 # Session フォーカス契約
