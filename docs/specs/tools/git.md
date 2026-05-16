@@ -72,12 +72,10 @@ Session 内部状態は [sessions/git.md](../sessions/git.md) / [sessions/git-di
 
 ### データ取得
 
-```swift
-// Working Changes
-Process: git diff --name-status
-// PR Preview
-Process: git diff main...HEAD --name-status
-```
+| モード | git コマンド |
+|---|---|
+| Working Changes | `git diff --name-status` |
+| PR Preview | `git diff main...HEAD --name-status` |
 
 出力パース例:
 ```
@@ -116,12 +114,10 @@ Git ツールのファイル一覧からダブルクリック / Enter で開か�
 
 ### diff 取得
 
-```swift
-// Working Changes モードから開いた場合
-Process: git diff <file>
-// PR Preview モードから開いた場合
-Process: git diff main...HEAD -- <file>
-```
+| モード | git コマンド |
+|---|---|
+| Working Changes | `git diff <file>` |
+| PR Preview | `git diff main...HEAD -- <file>` |
 
 ### diff2html 統合
 
@@ -159,9 +155,6 @@ diff2html の JS/CSS は **オンライン CDN** (`https://cdn.jsdelivr.net/npm/
 #### 実装
 - `git diff <file>` のパッチ出力からハンクを抽出
 - 対象ハンクを逆パッチ (`git apply --reverse`) でワーキングツリーに適用
-  ```swift
-  Process: echo "<reverse-patch>" | git apply --reverse
-  ```
 - 適用後、diff 表示を再取得して更新
 
 #### 制約
@@ -214,37 +207,6 @@ issue #26 では 2 つの Tool が必要:
 ---
 
 ## 実装メモ
-
-### 新規ファイル
-
-```
-Models/Git/
-  GitChangedFile.swift       // ステータス (M/A/D/R) + パス + ツリーノード
-  GitFileTreeNode.swift      // ディレクトリ/ファイルのツリー構造ノード
-
-Services/Git/
-  GitService.swift           // Process で git コマンド実行
-
-Sessions/Git/
-  GitSessionState.swift      // モード + 変更ファイル一覧
-  GitDiffSessionState.swift  // ファイルパス + diff コンテンツ + モード
-
-Views/Sessions/Git/
-  GitSessionView.swift       // NSOutlineView + セグメントピッカー
-  GitDiffSessionView.swift   // WKWebView + diff2html + Discard ボタン
-```
-
-### Tool enum 追加
-
-```swift
-enum Tool {
-    // 既存
-    case filer, kit, terminal, web, preview
-    // 追加
-    case git       // シングルトン
-    case gitDiff   // マルチインスタンス
-}
-```
 
 ### シングルトン制約
 - Filer と同じく PaneView の `isAddable` で `.git` を条件付き非表示にする

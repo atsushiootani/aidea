@@ -11,12 +11,12 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-06
+last_updated: 2026-05-16
 ---
 
 # Session 内部状態: Filer
 
-`filer` Tool の Session は `FilerSessionState` (`@Observable`) として状態を保持する。
+`filer` Tool の Session は `FilerSessionState` として状態を保持する。
 **ペイン移動で状態が失われない** ことを保証する。
 
 用語と UI ルールの前提は [ui-rules.md](./ui-rules.md) を、Tool 仕様は [../tools/filer.md](../tools/filer.md) を参照。

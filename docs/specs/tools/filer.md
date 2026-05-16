@@ -54,10 +54,6 @@ Filer の表示順がワークスペース全体 (Git / Kit 等) の List UI の
 - [searchByName](#searchbyname--ファイル名ディレクトリ名のインクリメンタル検索) のフィルタ結果も同じ比較で並べる
 - アンドゥ後の再描画・FSEvents による自動再読み込み後も同じ規則を適用
 
-### 実装箇所
-
-- `Services/Filer/FileTreeLoader.swift` の `load(directory:parent:)` — 子エントリ取得直後に `String.naturalAscending` でソート
-
 ---
 
 ## シンボリックリンク (issue #119)
@@ -108,11 +104,6 @@ Filer の表示順がワークスペース全体 (Git / Kit 等) の List UI の
 - **Always**: 操作系 (rename / delete / move / copy) はリンク自体を対象とする (実体には触れない)
 - **Never**: ディレクトリリンクの祖先チェーン内に同一解決先がある場合は展開しない (循環防止)
 - **Never**: リンクであることをアイコン・色・badge で区別表示しない (issue #119 の方針「区別せず扱いたい」)
-
-### 実装箇所
-
-- `Services/Filer/FileTreeLoader.swift` — `isSymbolicLinkKey` 取得 + 解決先の `isDirectoryKey` 再評価
-- `Views/Sessions/Filer/FileTreeViewController.swift` (展開系) — シンボリックリンク自身についてのみ祖先解決先チェックを実施し、循環時は展開を抑止
 
 ---
 

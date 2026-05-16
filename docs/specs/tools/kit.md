@@ -252,10 +252,10 @@ Views/Sessions/Skills/ Views/Sessions/Commands/ Views/Sessions/Mcps/
 
 新:
 ```
-Models/Kit/ (Skill, Command, McpServer, Agent をここに集約)
-Services/Kit/ (各 Loader をここに集約)
-Sessions/Kit/KitSessionState.swift
-Views/Sessions/Kit/KitSessionView.swift
+Models/Kit/     (Skill, Command, McpServer, Agent をここに集約)
+Services/Kit/   (各 Loader をここに集約)
+Sessions/Kit/   (KitSessionState)
+Views/Sessions/Kit/ (KitSessionView)
 ```
 
 ---

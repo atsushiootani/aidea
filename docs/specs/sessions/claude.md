@@ -13,12 +13,12 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-24
+last_updated: 2026-05-16
 ---
 
 # Session 内部状態: Claude
 
-`claude` Tool の Session は `ClaudeSessionState` (`@Observable`) として状態を保持する。
+`claude` Tool の Session が保持する内部状態の仕様。
 Terminal と同じ PTY ベースだが、起動後に `claude` CLI と Backchannel 指示を自動送信する。
 
 Tool 仕様は [../tools/claude.md](../tools/claude.md) を、共通 UI ルールは [ui-rules.md](./ui-rules.md) を参照。
@@ -42,15 +42,13 @@ Backchannel の詳細は [../backchannels/backchannel.md](../backchannels/backch
 `companionPrompt` は `autoStartClaude` が参照するため、**`terminalView` 生成前**に
 セットされている必要がある。以下 2 経路のいずれかで設定される:
 
-1. **新規起動**: `createSession` 直後に `state.companionPrompt = CompanionInstructions.loadCommand(for: index)` をセット
-   (`CompanionView` / `AideaApp.activateCompanion` / `sendRecommendedPrompt`)
-2. **スナップショット復元**: `WorkspaceSnapshotManager.apply()` が `CompanionStore.activeSessionMap`
-   を走査し、bind 済みセッションに対して `ensureSession` で state を生成した上で同じヘルパで再注入
+1. **新規起動**: セッション生成直後に起動プロンプトをセット
+2. **スナップショット復元**: スナップショット適用時に bind 済みセッションに対して起動プロンプトを再注入
    (詳細は [../companions/companion.md#起動フロー-スナップショット復元時](../companions/companion.md))
 
-どちらの経路でも、`terminalView` の lazy 生成時に `autoStartClaude` が参照する。
+どちらの経路でも、ターミナルビューの lazy 生成時に自動起動シーケンスが参照する。
 
-`CompanionInstructions` (`Services/Companion/CompanionInstructions.swift`) はパスとロードコマンド文字列の生成を集約するヘルパ。複数の呼び出し元で同じパターンを再生成しないよう、ハードコードを 1 箇所に閉じ込める ([ADR 0022](../../decisions/0022-companion-instructions-as-files.md))。
+起動プロンプト文字列はコンパニオン index から一意に決まるパターンで生成される。ハードコードを 1 箇所に閉じ込める ([ADR 0022](../../decisions/0022-companion-instructions-as-files.md))。
 
 ## 自動起動シーケンス
 

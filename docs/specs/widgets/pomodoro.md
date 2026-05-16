@@ -11,7 +11,7 @@ impacts: []
 conventions:
   - docs/LAYOUT.md
   - docs/specs/widgets/README.md
-last_updated: 2026-05-02
+last_updated: 2026-05-16
 ---
 
 # ポモドーロタイマー
@@ -65,24 +65,14 @@ popover や展開パネルでの開閉はせず、すべての操作要素を横
 
 ## 状態モデル
 
-```swift
-enum PomodoroPhase {
-    case focus
-    case rest
-}
+| プロパティ | 意味 |
+|---|---|
+| `phase` | 現在のフェーズ (`focus` / `rest`) |
+| `remainingSeconds` | 現在のフェーズの残り秒数 |
+| `isRunning` | 計測中なら true |
+| `isEditing` | 残り時間編集中フラグ |
 
-@Observable
-final class PomodoroState {
-    var phase: PomodoroPhase     // 現在のフェーズ
-    var remainingSeconds: Int    // 現在のフェーズの残り秒数
-    var isRunning: Bool          // 計測中なら true
-    var isEditing: Bool          // 残り時間編集中フラグ
-}
-```
-
-`PomodoroPhase` は `PomodoroState` のネスト型ではなく **独立した enum** として
-別ファイル (`Aidea/Aidea/Widgets/Pomodoro/PomodoroPhase.swift`) に置く
-([conventions/coding-style.md](../../conventions/coding-style.md) の「1 ファイル 1 型」原則)。
+フェーズ (`focus` / `rest`) と状態はそれぞれ独立した型として定義する ([conventions/coding-style.md](../../conventions/coding-style.md) の「1 ファイル 1 型」原則)。
 
 各フェーズの初期残り秒数:
 

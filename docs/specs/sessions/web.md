@@ -12,12 +12,12 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-23
+last_updated: 2026-05-16
 ---
 
 # Session 内部状態: Web
 
-`web` Tool の Session は `WebSessionState` (`@Observable`) として状態を保持する。
+`web` Tool の Session は `WebSessionState` として状態を保持する。
 **ペイン移動で WKWebView の状態 (ページ・Cookie・スクロール位置) が失われない** ことを保証する。
 
 共通 UI ルールは [ui-rules.md](./ui-rules.md) を参照。

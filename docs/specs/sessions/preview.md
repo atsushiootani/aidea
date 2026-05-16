@@ -13,12 +13,12 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-23
+last_updated: 2026-05-16
 ---
 
 # Session 内部状態: Preview
 
-`preview` Tool の Session は `PreviewSessionState` (`@Observable`) として状態を保持する。
+`preview` Tool の Session は `PreviewSessionState` として状態を保持する。
 ファイル/リソースを NSTextView / NSImage / WebView (drawio) で表示する。
 
 Tool 仕様は [../tools/preview.md](../tools/preview.md) を、共通 UI ルールは [ui-rules.md](./ui-rules.md) を参照。

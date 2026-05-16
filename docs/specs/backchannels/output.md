@@ -9,7 +9,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-05
+last_updated: 2026-05-16
 ---
 
 # Backchannel Output 仕様
@@ -48,7 +48,7 @@ Claude がレスポンスのテキストを `.aidea/backchannels/<companion-inde
 
 ### OutputState
 
-`OutputWatcher` からの通知を受け取り、コンパニオン別の出力履歴を保持する `@Observable` クラス。`history: [Int: [OutputEntry]]` でインデックスをキーとして蓄積する。
+ファイル監視からの通知を受け取り、コンパニオン別の出力履歴をインデックスをキーとして蓄積する。
 
 ---
 

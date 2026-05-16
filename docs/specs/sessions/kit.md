@@ -11,12 +11,12 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-23
+last_updated: 2026-05-16
 ---
 
 # Session 内部状態: Kit
 
-`kit` Tool の Session は `KitSessionState` (`@Observable`) として状態を保持する。
+`kit` Tool の Session は `KitSessionState` として状態を保持する。
 **ペイン移動で状態が失われない** ことを保証する。
 
 Tool 仕様 (UI / 操作) は [../tools/kit.md](../tools/kit.md) を参照。

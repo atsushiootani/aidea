@@ -18,7 +18,7 @@ impacts:
   - docs/specs/skills/concier-schedule-voice.md
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-06
+last_updated: 2026-05-16
 ---
 
 # Backchannel 仕様
@@ -85,7 +85,7 @@ Aidea は `.aidea/` ディレクトリを共有バスとして使用し、FSEven
 
 ### ディレクトリ作成責務
 
-- **親 `.aidea/backchannels/`**: Aidea 側 (`BackchannelSetup.setup`) が初回セットアップで作成する。FSEvents ストリームを確立するため親ディレクトリの事前存在が必要 (不在時でも監視開始は失敗しないが、stream 再確立のコストを避けるために予め作る)
+- **親 `.aidea/backchannels/`**: Aidea 側が初回セットアップで作成する。FSEvents ストリームを確立するため親ディレクトリの事前存在が必要 (不在時でも監視開始は失敗しないが、stream 再確立のコストを避けるために予め作る)
 - **Companion 別サブディレクトリ `<companion-index>/`**: Aidea 側では **事前作成しない**。送信元の Claude が書き出す直前に `mkdir -p` 相当で作成する (ADR 0024)。使わない Companion のディレクトリが空作成されるのを避けるため
 
 ---
@@ -98,8 +98,6 @@ Aidea は Claude セッション起動時に、`companionIndex` から派生し�
 ```
 .aidea/claude/companions/<index>/instructions.md を読んで従ってね
 ```
-
-文字列の生成は `Services/Companion/CompanionInstructions.swift` (`loadCommand(for:)`) に集約される。
 
 ### コンパニオン側の指示書
 
@@ -143,9 +141,9 @@ instructions.md 内から相対参照 (`./persona.md` など) で他ファイル
 | `companions/<index>/instructions.md` | コンパニオンごとの起動指示 (エントリーポイント) | `.aidea/claude/companions/<0..8>/` |
 | `companions/<index>/*.md` | 段階的開示用の補助ファイル (persona / workflow など) | 同上 |
 
-`BackchannelSetup.setup()` が初回セットアップ時に Bundle 内の既知ファイルを `.aidea/claude/` にコピーする (`aidea.md` / `speech.md` / `handoff.md` / `output.md` / `schedule-voice.md` / `companions/<0..8>/instructions.md` を `Backchannels/companion-instructions.md` から複製)。さらに `.aidea/config/concier-schedule.yaml` が不在なら Bundle テンプレ (`concier-schedule.yaml`) をコピーする。**既存ファイルは上書きしない** (ユーザ編集の保護)。
+初回セットアップ時に Bundle 内の既知ファイルを `.aidea/claude/` にコピーする (`aidea.md` / `speech.md` / `handoff.md` / `output.md` / `schedule-voice.md` / `companions/<0..8>/instructions.md`)。さらに `.aidea/config/concier-schedule.yaml` が不在なら Bundle テンプレをコピーする。**既存ファイルは上書きしない** (ユーザ編集の保護)。
 
-`aidea.md` 内には Aidea が自動管理するコンパニオン名簿セクション (`<!-- aidea:companions:start -->` / `<!-- aidea:companions:end -->` で囲まれた領域) が含まれる。`BackchannelSetup.setup()` が aidea.md を初回コピーした後、`WorkspaceSnapshotManager.apply()` の末尾と `CompanionEditView` のリネーム確定時に `CompanionRosterWriter.writeRoster(...)` が呼ばれ、最新の `CompanionStore.companions[].name` でこの領域が書き換えられる。詳細は [companion-roster.md](./companion-roster.md) を参照。
+`aidea.md` 内には Aidea が自動管理するコンパニオン名簿セクション (`<!-- aidea:companions:start -->` / `<!-- aidea:companions:end -->` で囲まれた領域) が含まれる。初回コピー後、スナップショット復元時とコンパニオンのリネーム確定時に名簿セクションが最新のコンパニオン名に更新される。詳細は [companion-roster.md](./companion-roster.md) を参照。
 
 ---
 
@@ -157,7 +155,7 @@ Aidea は `.aidea/backchannels/` ディレクトリを FSEvents で **再帰監�
 | ファイルパターン | ハンドラ | 参照仕様 |
 |-----------------|---------|---------|
 | `backchannels/<0..8>/speech-*.txt` | SpeechWatcher → VoicevoxService | [voicevox.md](./voicevox.md) |
-| `backchannels/<0..8>/handoff-*.json` | HandoffWatcher → HandoffDispatcher → (宛先の) ClaudeSessionState | [handoff.md](./handoff.md) |
+| `backchannels/<0..8>/handoff-*.json` | ハンドオフハンドラ | [handoff.md](./handoff.md) |
 | `backchannels/<0..8>/output-*.txt` | OutputWatcher → OutputState | [output.md](./output.md) |
 
 ### ハンドラ通過条件

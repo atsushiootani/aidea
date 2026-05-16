@@ -14,7 +14,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-01
+last_updated: 2026-05-16
 ---
 
 # Tool 仕様: Claude
@@ -103,7 +103,7 @@ Backchannel の詳細は [backchannels/backchannel.md](../backchannels/backchann
 
 ## 実行中判定 `isBusy` (issue #45)
 
-`ClaudeSessionState` に `@Observable` な `isBusy: Bool` を公開する。Companion アイコンの表情切替 ([../companions/companion.md#表情・状態表示-issue-45](../companions/companion.md#表情・状態表示-issue-45)) が外部から参照する。
+Claude セッションは `isBusy: Bool` を外部公開する。Companion アイコンの表情切替 ([../companions/companion.md#表情・状態表示-issue-45](../companions/companion.md#表情・状態表示-issue-45)) が外部から参照する。
 
 ### 判定ロジック
 
@@ -148,7 +148,7 @@ Backchannel の詳細は [backchannels/backchannel.md](../backchannels/backchann
 
 - **SSoT**: `SpeechQueue.currentlySpeakingIndex: Int?` ([../backchannels/voicevox.md](../backchannels/voicevox.md))
 - **注入**: Claude セッション生成 / 復元時に `state.speechQueue = speechState.queue` で weak 参照を持たせる (`AideaApp.activateCompanion` / `sendRecommendedPrompt` / `dispatchHandoff` / `CompanionView.launchCompanion` / `WorkspaceSnapshotManager.apply`)
-- **tracking**: `SpeechQueue` 自身が `@Observable` なので、`isSpeaking` を読むスコープに観測が自動伝播する (ClaudeSessionState に別途 stored な state を持たせない)
+- **tracking**: 再生キューの Observable 追跡により、`isSpeaking` を読むスコープに状態変化が自動伝播する
 
 ### 外部参照箇所
 

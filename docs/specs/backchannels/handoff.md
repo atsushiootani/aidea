@@ -13,7 +13,7 @@ impacts:
   - docs/specs/backchannels/companion-roster.md
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-03
+last_updated: 2026-05-16
 ---
 
 # Backchannel: コンパニオン間ハンドオフ
@@ -148,9 +148,8 @@ name 検索のマッチ例:
 
 解決で得た `index` の Companion が `sessionID == nil` の場合:
 
-1. [companion.md の未起動時起動フロー](../companions/companion.md#起動フロー-claude-セッション未起動) を再利用する (`registry.createSession` → `ClaudeSessionState.companionPrompt` にセット → `store.bind`)
-2. Claude CLI の起動と `companionPrompt` の自動送信は `ClaudeSessionState.autoStartClaude` が担うため、ハンドオフ側は PTY ready を検知してから **ファイル参照メッセージ**を送信する
-3. PTY ready 検知は既存の `autoStartClaude` の状態監視を踏襲する (詳細は実装時に `ClaudeSessionState` と合わせて詰める)
+1. [companion.md の未起動時起動フロー](../companions/companion.md#起動フロー-claude-セッション未起動) を再利用して Claude セッションを起動し紐付ける
+2. PTY ready を検知してから **ファイル参照メッセージ**を送信する
 
 ### 自分自身宛 (`from == to`)
 
@@ -253,7 +252,7 @@ Aidea から以下のような短いメッセージが届くことがあるよ�
 |---|---|
 | **HandoffMessage** | `handoff-*.json` をデコードする Codable 構造体。`from` は `Int` (0..8) 必須、`to` は `Int` / `String` どちらも受け付ける enum (`.index(Int)` / `.name(String)`) |
 | **HandoffWatcher** | FSEvents で `.aidea/backchannels/<0..8>/handoff-*.json` を再帰監視。親ディレクトリ名 (`<from>`) を読み取り、JSON `from` と一致することを検証してから `(HandoffMessage, ファイル URL, companionIndex)` を HandoffDispatcher に投げる。ファイルは削除せず残す |
-| **HandoffDispatcher** | 宛先解決 → Companion 自動起動 (必要時) → `ClaudeSessionState.sendMessage(".aidea/backchannels/<from>/{filename} の作業をやってね")` でファイル参照メッセージを送信 → タブアクティブ化。`message` 本文は PTY に流さない (受信側 Claude がファイルから読む) |
+| **HandoffDispatcher** | 宛先解決 → Companion 自動起動 (必要時) → ファイル参照メッセージを送信 → タブアクティブ化。`message` 本文は PTY に流さない (受信側 Claude がファイルから読む) |
 
 配置: `Services/Backchannel/Handoff/` ディレクトリ (既存) に 3 ファイルを収める。
 

@@ -138,11 +138,7 @@ PTY の `cwd` は **追跡しない** (MVP)。`cd` 後に表示された相対�
 
 #### Preview 起動
 
-検出 + 実在確認後、以下を呼ぶ:
-
-```swift
-SessionRegistry.openPreviewAsSibling(for: absoluteURL, title: relativePath)
-```
+検出 + 実在確認後、同じペインの右隣に新規 Preview タブを挿入する (`openPreviewAsSibling`)。
 
 - `title` は projectRoot からの相対パス (絶対パスは長くタブで読みにくいため)
 - **同じペインの右隣に新規 Preview タブを挿入する** (`openPreviewAsSibling`)。ターミナルで作業中に他ペインへフォーカスを奪われない方が体感が自然なため。Filer / Kit のダブルクリックが使う `openPreview` (別ペイン配置) とはここが異なる

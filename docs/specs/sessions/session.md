@@ -13,7 +13,7 @@ impacts:
   - docs/specs/sessions/*
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-21
+last_updated: 2026-05-16
 ---
 
 # Session と SessionState
@@ -70,12 +70,12 @@ Aidea の Session 実体は、**汎用クラス `Session`** と **Tool ごとに
 
 ## Session クラス
 
-`Aidea/Tools/Session.swift` で定義される **汎用 `@Observable` クラス**。全 Tool で共通の 1 クラスで、Session 実体ごとにインスタンスが作られる。
+全 Tool で共通の汎用 Observable クラス。Session 実体ごとにインスタンスが作られる。
 
 - `id: SessionID` — Window 内で一意の識別子
 - `state: any SessionState` — Tool 固有の状態への参照
-- `activate()` / `deactivate()` — ライフサイクルイベントの **発火責任者**。中で `state.didBecomeActive` / `state.didResignActive` に委譲する
-- **AppKit 知識を持たない**: NSView や `makeFirstResponder` といった AppKit API を直接扱わない (ADR 0020)
+- アクティブ化/非アクティブ化 — ライフサイクルイベントの **発火責任者**。内部で SessionState 側のライフサイクルメソッドに委譲する
+- **AppKit 知識を持たない**: NSView や makeFirstResponder といった AppKit API を直接扱わない (ADR 0020)
 
 ---
 

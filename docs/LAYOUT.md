@@ -104,6 +104,17 @@ docs/
 - **新しい機能群を追加するとき**: `specs/<新機能群>/` を切って `README.md` を置き、`specs/README.md` の一覧表に1行追加する (本ファイルの更新は不要)
 - **命名**: kebab-case 全小文字 (`recommend-mode.md` `scene.md`)
 
+#### specs に書いてはいけないもの (実装詳細禁止ルール)
+
+以下は `docs/specs/` ファイルに記述してはいけない。目的は「実装の知識なしに specs を読める」ようにして、認知負荷を下げること。
+
+- **Swift プロパティラッパ** — `@Observable`、`@Published`、`@State`、`@StateObject` など
+- **メソッド呼び出し** — `Foo.bar()` / `method(param:)` 形式のシグネチャや呼び出し
+- **Swift コードブロック** — ```` ```swift ```` フェンスで囲まれたコード片 (bash/JSON/Markdown などの非 Swift コードブロックは可)
+- **内部ソースファイルパス** — `Services/Companion/Foo.swift` のようなソースコードへのパス
+
+実装の詳細は `docs/conventions/` または `docs/decisions/` に記述するか、ソースコードを直接参照する。`/aidea.docs-healthcheck` がこの禁止パターンを自動チェックする。
+
 ### `docs/plans/` — 実装計画 (git 管理外)
 
 - **用途**: ある時点の実装計画スナップショット。セッション固有の作業メモで、陳腐化しやすいため **`.gitignore` で git 管理から外している**

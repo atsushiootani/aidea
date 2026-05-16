@@ -9,7 +9,7 @@ impacts:
   - docs/specs/companions/recommend-mode.md
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-17
+last_updated: 2026-05-16
 ---
 
 # Frontchannel 仕様
@@ -35,11 +35,7 @@ PTY の `send(txt:)` で Claude セッションに直接プロンプトを送る
 既存の `PersistentTerminalView.send(txt:)` を使用して PTY にプロンプトを送る。
 ユーザーがキーボードで打ったのと同等。
 
-```swift
-claudeSessionState.terminalView.send(txt: message + "\r")
-```
-
-- Claude CLI は `\r` (CR) で送信を受け付ける
+- Claude CLI は CR (`\r`) で送信を受け付ける
 - セッションが未起動の場合は自動起動し、起動完了を待ってから送信
 
 ---

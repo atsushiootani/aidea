@@ -65,25 +65,12 @@ AppKit 系 `SessionState` のフォーカス制御を担う **非永続ヘルパ
 
 ### API
 
-```swift
-final class SessionFocusBridge {
-    /// View 側 (NSViewRepresentable) が `makeNSView` で呼ぶ。
-    /// nil 代入も有効 (子 View 切替で純 SwiftUI コンテンツに変わる場合等)。
-    func setView(_ view: NSView?)
-
-    /// SessionState の didBecomeActive から呼ぶ (契約 C1)。
-    /// view が nil なら pending を立てて待機する。
-    func activate()
-
-    /// SessionState の didResignActive から呼ぶ (契約 C2)。
-    /// 自分配下の NSView が firstResponder のときだけ解放する。
-    func deactivate()
-
-    /// View 側の onDisappear から呼ぶ (契約 C3)。
-    /// deactivate と同じ判定で firstResponder を解放する。
-    func releaseIfOurs()
-}
-```
+| メソッド | 役割 |
+|---|---|
+| `setView` | View 側 (NSViewRepresentable) の makeNSView で呼ぶ。nil 代入も有効 |
+| `activate` | 契約 C1 の履行。view が nil なら pending を立てて待機する |
+| `deactivate` | 契約 C2 の履行。自分配下の NSView が firstResponder のときだけ解放する |
+| `releaseIfOurs` | 契約 C3 の履行。deactivate と同じ判定で firstResponder を解放する |
 
 ### 内部挙動の要点
 
@@ -125,22 +112,6 @@ Session ルートビューがビュー階層から消える (`onDisappear` 相�
 | **AppKit 系** | View ルートに `.sessionFocusCleanup(state)` modifier を 1 行付与。modifier の `onDisappear` で `state.focusBridge.releaseIfOurs()` を呼ぶ |
 | **純 SwiftUI 系** | 何もしない (SwiftUI が `.focused()` バインドの自動クリーンアップで対応) |
 
-`.sessionFocusCleanup` modifier の概略:
-
-```swift
-extension View {
-    func sessionFocusCleanup(_ state: any SessionState) -> some View {
-        onDisappear {
-            (state as? FocusBridgeOwner)?.focusBridge.releaseIfOurs()
-        }
-    }
-}
-
-protocol FocusBridgeOwner {
-    var focusBridge: SessionFocusBridge { get }
-}
-```
-
 AppKit 系 SessionState が `FocusBridgeOwner` に準拠することで、modifier 側で型判定して bridge を呼べる。
 
 ---
@@ -156,25 +127,6 @@ AppKit 系 Session で、`SessionFocusBridge` が保持する `view` 参照の *
 - **代入時のラップ**: `DispatchQueue.main.async { state.focusBridge.setView(view) }` で SwiftUI の update cycle と分離する
 - **`updateNSView` での再代入は不要**: NSView インスタンスは Representable のライフサイクル中ずっと同じ
 - **`dismantleNSView` では何もしない**: NSView は SessionState 所有で生き続けるため、参照を残しても dangling にならない。Session ルートの `.sessionFocusCleanup` (契約 C3) が firstResponder の解放だけ責任を持つ
-
-### コード例
-
-```swift
-struct TerminalNSViewRepresentable: NSViewRepresentable {
-    let state: TerminalSessionState
-
-    func makeNSView(context: Context) -> PersistentTerminalView {
-        let view = state.terminalView   // State の lazy property から取得
-        DispatchQueue.main.async {
-            state.focusBridge.setView(view)  // 契約 C1 用に bridge に登録
-        }
-        return view
-    }
-
-    func updateNSView(_ nsView: PersistentTerminalView, context: Context) {}
-    static func dismantleNSView(_ nsView: PersistentTerminalView, coordinator: ()) {}
-}
-```
 
 ### 子 View 切替時の更新
 

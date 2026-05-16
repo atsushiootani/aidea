@@ -12,7 +12,7 @@ impacts:
   - docs/specs/aspects/persistence.md
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-22
+last_updated: 2026-05-16
 ---
 
 # Architecture
@@ -34,7 +34,7 @@ Aidea の技術スタックとコード構造。動機と原則は [../foundatio
 - **AppKit** — `NSViewRepresentable` / `NSViewControllerRepresentable` 経由で `WKWebView` / `SwiftTerm` / `NSOutlineView` / `NSTextView` をラップ
 - **WebKit** — `WKWebView`、`isInspectable = true`
 - **CoreServices** — `FSEventStream` でファイルシステム監視
-- **Observation** — `@Observable` マクロで State 管理
+- **Observation** — Observable パターンで State 管理
 - **Foundation** / **Security** — Apple 標準
 
 ## 外部依存
@@ -108,7 +108,7 @@ Session 概念の詳細は [sessions/ui-rules.md#概念モデル](./sessions/ui-
 | `Tools/` | `Tool` enum / `SessionID` / `SessionState` protocol などの **種別定義** |
 | `Sessions/` | 各 Tool の `SessionState` 実装と `SessionRegistry` (実体・状態管理) |
 | `Services/` | 副作用層 (ファイル I/O、プロセス起動、監視、ローダ) |
-| `Models/` | 純粋データ構造 (`@Observable` でない) |
+| `Models/` | 純粋データ構造 (Observable 状態を持たない) |
 | `Views/` | SwiftUI / AppKit ラッパ View (`Views/Sessions/` に各 Session ビュー、`Views/Layout/` にペインコンテナ、`Views/Common/` に共通パーツ) |
 | `Utilities/` | 純粋関数・ヘルパー |
 | `Resources/` | アセット / Backchannel リソースなど |

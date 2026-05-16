@@ -1,6 +1,6 @@
 ---
 title: レコメンドモード
-description: Cmd+Enter で起動するコンパニオンプロンプト選択 UI・RecommendState/RecommendStore・Scene 解決とキー操作
+description: Cmd+Enter で起動するコンパニオンプロンプト選択 UI・Scene 解決・プロンプトストア・キー操作の仕様
 derived_from:
   - docs/specs/frontchannels/frontchannel.md
   - docs/specs/frontchannels/scene.md
@@ -19,7 +19,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-23
+last_updated: 2026-05-16
 ---
 
 # レコメンドモード
@@ -81,16 +81,7 @@ last_updated: 2026-04-23
 
 ## レコメンドプロンプトの提供
 
-各ビュー（Tool の SessionState）が「**現在の Scene 識別子**」を提供する。Scene に紐付くプロンプト一覧自体は `RecommendStore` (起動時に `default-workspace.json` から流入する) が SSoT。
-
-### プロトコル
-
-```swift
-protocol SessionState {
-    /// 現在の Scene 識別子を返す
-    func currentScene() -> String?
-}
-```
+各セッションが「**現在の Scene 識別子**」を提供する。Scene に紐付くプロンプト一覧自体はプロンプトストア (起動時に `default-workspace.json` から流入する) が SSoT。
 
 ### 初期定義 (Bundle 同梱の `default-workspace.json` の `recommends` に格納)
 
@@ -138,33 +129,13 @@ protocol SessionState {
 
 ## 状態管理
 
-レコメンドモードの状態は `RecommendState` が持つ (@Observable)。
+レコメンドモードのランタイム状態 (アクティブ中か / 選択中のコンパニオン / 選択中のプロンプト / 表示中プロンプト一覧) はレコメンド状態オブジェクトが保持する。Scene ごとのプロンプト一覧とデフォルトコンパニオンはプロンプトストアがインメモリで管理する。
 
-```swift
-@Observable
-final class RecommendState {
-    var isActive: Bool              // レコメンドモード中か
-    var selectedCompanionIndex: Int // 選択中のコンパニオン
-    var selectedPromptIndex: Int    // 選択中のプロンプト
-    var prompts: [String]           // 現在表示中のプロンプト一覧
-}
-```
+各セッション View の下部にプロンプト編集 UI が挿入され、表示中 Scene のプロンプト追加/削除とデフォルトコンパニオン切替ができる。
 
-### 実装コンポーネント
+Scene キー (`"git:prPreview"` `"git:workingChanges"` 等) は各セッションが文脈に応じて生成し、プロンプトストアで対応エントリを引く。エントリが無ければ空配列 (Cmd+Enter 無反応)。
 
-| 型 | ファイル | 責務 |
-|---|---|---|
-| `RecommendState` | `Services/Frontchannel/RecommendState.swift` | レコメンドモードのランタイム状態。`activate / deactivate` と `moveUp/Down/Left/Right` でプロンプト・コンパニオン選択をループ移動させる |
-| `RecommendStore` | `Services/Frontchannel/RecommendStore.swift` | Scene ごとの `SceneConfig` をインメモリで保持する `enum` の static API。永続化は `WorkspaceSnapshotManager` 経由で `workspace.json` v7 に統合される |
-| `SceneConfig` | `Services/Frontchannel/RecommendStore.swift` | Scene ごとの `prompts: [String]` と `defaultCompanionIndex: Int` を保持する Codable |
-| `ScenePromptsEditorView` | `Views/Common/ScenePromptsEditorView.swift` | 各セッションの本体 View 下部に挿入される編集 UI。表示中 Scene の `prompts` 追加/削除と `defaultCompanionIndex` の切替を行う |
-
-`SessionRegistry.view(for:)` は **Git / GitDiff 以外**の各セッション View を `VStack` で本体 + `ScenePromptsEditorView` の縦並びにラップする統一パターンを取る。GitDiff は `GitDiffSessionContainer` 側で挿入済みのため二重挿入しない。
-
-Scene キー (`"git:prPreview"` `"git:workingChanges"` 等) は各 SessionState の `currentScene()` が文脈に応じて生成し、
-`RecommendStore.prompts(for:)` で対応エントリを引く。エントリが無ければ空配列 (Cmd+Enter 無反応)。
-
-`default-workspace.json` から流入する初期エントリが SSoT。Swift コード内にデフォルトプロンプトのハードコードは置かない (詳細は [../frontchannels/scene.md](../frontchannels/scene.md))。
+`default-workspace.json` から流入する初期エントリが SSoT。コード内にデフォルトプロンプトのハードコードは置かない (詳細は [../frontchannels/scene.md](../frontchannels/scene.md))。
 
 ---
 

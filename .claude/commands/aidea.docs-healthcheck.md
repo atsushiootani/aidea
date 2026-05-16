@@ -55,7 +55,18 @@ Aidea の設計ドキュメント (`docs/decisions/` と `docs/specs/`) の健�
 
 詳細ルール (ADR の `impacts` / `syncs_with` 空固定など個別制約も含む) は [docs/LAYOUT.md](../../docs/LAYOUT.md) の「frontmatter 規約」節を SSoT とする。LAYOUT.md に書かれている制約はすべてチェック対象。
 
-### 4. 結果の報告
+### 4. 実装詳細チェック (specs/)
+
+[docs/LAYOUT.md](../../docs/LAYOUT.md) の「実装詳細禁止ルール」節に従い、`docs/specs/` 配下のファイルに以下の禁止パターンが含まれていないかチェックする:
+
+- **Swift プロパティラッパ**: `@Observable`、`@Published`、`@State`、`@StateObject` 等の文字列がコード内外問わず登場する
+- **メソッド呼び出し**: バッククォート内で `.xxx()` 形式 (例: `` `Foo.bar()` `` / `` `method(param:)` ``) が続くパターン
+- **Swift コードブロック**: ```` ```swift ```` フェンスで始まるコードブロック
+- **内部ソースファイルパス**: `Services/`・`Sessions/`・`Views/`・`Models/`・`Utilities/` で始まり `.swift` で終わるパス
+
+フラグが立った場合は、該当箇所を概念的な説明に書き換えるか「実装の詳細はソースコードを参照」として削除する。`docs/specs/architecture.md` はコード構造を記述する文書のため、型名・ディレクトリ構成の記述は許可するが、メソッド呼び出しと Swift デコレータは禁止とする。
+
+### 5. 結果の報告
 
 - **decisions セクション** / **specs セクション** / **frontmatter セクション** に分けて、フラグが立った項目を列挙する
   - 各項目: **ファイル (file:line)** / **フラグ種別** / **問題の要点** / **README の対応方針に沿った提案**

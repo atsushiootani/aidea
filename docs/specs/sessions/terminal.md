@@ -11,12 +11,12 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-06
+last_updated: 2026-05-16
 ---
 
 # Session 内部状態: Terminal
 
-`terminal` Tool の Session は `TerminalSessionState` (`@Observable`) として状態を保持する。
+`terminal` Tool の Session は `TerminalSessionState` として状態を保持する。
 **ペイン移動で PTY バッファを含む状態が失われない** ことを保証する。
 
 Tool 仕様は [../tools/terminal.md](../tools/terminal.md) を、共通 UI ルールは [ui-rules.md](./ui-rules.md) を参照。

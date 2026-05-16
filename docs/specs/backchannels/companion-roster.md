@@ -10,7 +10,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-03
+last_updated: 2026-05-16
 ---
 
 # Backchannel: コンパニオン名簿の自動同期
@@ -109,31 +109,24 @@ aidea.md 全体の構造は次のとおり (Bundle 同梱の `Aidea/Resources/Ba
 
 ## 更新タイミング
 
-`CompanionRosterWriter.writeRoster(projectRoot:companions:)` (新規) を以下の 2 経路から呼び出す:
+以下の 2 経路で名簿を更新する:
 
-| 経路 | タイミング | 呼び出し元 |
-|---|---|---|
-| **スナップショット復元 (起動時 + リロード時)** | `WorkspaceSnapshotManager.apply()` の末尾、`CompanionStore.companions` セット直後 | `AideaApp.init()` 経由 |
-| **コンパニオンの編集確定時** | `CompanionStore.update(_:)` で `companions[index].name` が変化した瞬間 | `CompanionEditView` の OK ハンドラ |
+| 経路 | タイミング |
+|---|---|
+| **スナップショット復元 (起動時 + リロード時)** | スナップショット適用の末尾、コンパニオン配列セット直後 |
+| **コンパニオンの編集確定時** | 編集シートの OK 確定で name が変化した瞬間 |
 
-`AideaApp.init()` の起動シーケンス上、`BackchannelSetup.setup(projectRoot:)` が `WorkspaceSnapshotManager.apply()` より先に走ることで `.aidea/claude/aidea.md` がコピー済みになる。Bundle 同梱テンプレに既にデフォルトの roster ブロックが含まれているため、apply() 末尾の `writeRoster` 呼び出しは差分なし (no-op) で完結することが多い。`workspace.json` でユーザがコンパニオンをリネーム済みの場合のみ、apply() の末尾で aidea.md の roster がユーザ設定に追従する。
+起動シーケンス上、Backchannel の初回セットアップが先に走ることで `.aidea/claude/aidea.md` がコピー済みになる。Bundle 同梱テンプレに既にデフォルトの roster ブロックが含まれているため、スナップショット適用末尾の名簿更新は差分なし (no-op) で完結することが多い。`workspace.json` でユーザがコンパニオンをリネーム済みの場合のみ、適用末尾で aidea.md の roster がユーザ設定に追従する。
 
-両経路とも `CompanionStore.companions` の最新スナップショットを渡す。`writeRoster` は内部で差分を判定し、aidea.md に書き出す内容が現在と同一なら **書き込みをスキップ** する (mtime 更新を避け、不要な FSEvents を発生させない)。
+名簿更新処理は内部で差分を判定し、aidea.md に書き出す内容が現在と同一なら **書き込みをスキップ** する (mtime 更新を避け、不要な FSEvents を発生させない)。
 
-### `update(_:)` でのフック
-
-`CompanionStore.update(_:)` 自身は永続化や副作用を持たない (純粋なインメモリ更新)。aidea.md への反映は呼び出し側で行う:
-
-- `CompanionEditView` の編集確定 → `update(_:)` → 直後に `CompanionRosterWriter.writeRoster(...)` を呼ぶ
-- `bind` / `unbind` / `unbindSession` などセッション紐付けのみ変更する API では呼ばない (name は変わらないため)
-
-`WorkspaceSnapshotManager.apply()` 等から `update(_:)` を経由して name が変わるパスでも、apply() 末尾で writeRoster を一度だけ呼ぶことで包括的にカバーされる。
+セッション紐付け (bind/unbind) のみ変更する場合は名前が変わらないため名簿を更新しない。
 
 ---
 
 ## 書き換えアルゴリズム
 
-`CompanionRosterWriter.writeRoster(projectRoot:companions:)` の挙動:
+名簿更新処理の挙動:
 
 1. `aideaURL = projectRoot + ".aidea/claude/aidea.md"` を解決
 2. ファイルが存在しなければ **no-op** (BackchannelSetup が未実行 or ユーザが削除した。次回 setup 時に再生成される)
@@ -178,15 +171,7 @@ handoff.md には次の一文を追記する (本仕様への参照)。本文の
 
 ---
 
-## Aidea 側の実装コンポーネント
-
-| コンポーネント | 配置 | 責務 |
-|---|---|---|
-| `CompanionRosterWriter` | `Services/Backchannel/CompanionRosterWriter.swift` (新規) | aidea.md のマーカー領域を読み書きする純関数的ヘルパ。プロジェクトルートと `[CompanionConfig]` を受け取り、必要に応じて aidea.md を更新する。テスト容易性のため `static func` で公開し、`@Observable` 状態は持たない |
-| `WorkspaceSnapshotManager` | 既存 | `apply()` 末尾で `CompanionStore.companions` セット後に `writeRoster` を呼ぶ |
-| `CompanionEditView` | 既存 | OK ハンドラで `CompanionStore.update(_:)` 後に `writeRoster` を呼ぶ |
-
-`CompanionRosterWriter` は外部依存を持たず、`Foundation` のみで完結する。VOICEVOX や FSEvents との連携は不要。
+実装の詳細はソースコードを参照。
 
 ### Bundle テンプレの更新
 

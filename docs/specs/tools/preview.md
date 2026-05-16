@@ -82,7 +82,6 @@ Session 内部状態は [sessions/preview.md](../sessions/preview.md) を参照�
 - **edit モード**: 通常のコードブロックとして表示 (生テキスト)
 - パース失敗時はエラーメッセージを赤文字で表示
 - ネットワーク接続が必要 (drawio embed と同様、オフライン対応は将来検討)
-- 実装: `Views/Sessions/Preview/MermaidView.swift`
 
 #### view / edit モード切替 UI
 
@@ -132,15 +131,6 @@ Markdown は `MarkdownContainer` で **view / edit の 2 モード**を扱う。
 
 - Anthropic API キーを **macOS Keychain** に保存 (サービス: `com.aidea.anthropic-api-key`)
 - 初回翻訳時またはメニュー「Aidea → API キー設定...」で NSSecureTextField ダイアログを表示
-
-#### 実装ファイル
-
-| ファイル | 役割 |
-|---|---|
-| `Services/Translation/TranslationService.swift` | キャッシュ確認 → API 呼び出し → 保存のオーケストレーション |
-| `Services/Translation/ClaudeTranslator.swift` | Claude API (URLSession) との通信、API キー管理 |
-| `Services/Translation/TranslationCache.swift` | `.aidea/ja/` のキャッシュ管理、mtime 鮮度判定 |
-| `Services/Translation/LanguageDetector.swift` | NLLanguageRecognizer による英語判定 |
 
 #### UI 表示箇所
 
@@ -253,11 +243,6 @@ open "aidea://open?path=$(python3 -c "import urllib.parse,sys; print(urllib.pars
 ### 既存コード
 - `PreviewSessionState.url: URL?` `title: String?` を保持
 - `PreviewSessionView` が state.url の拡張子を見て SwiftUI 分岐
-
-### drawio 実装ファイル
-- `Views/Sessions/Preview/DrawioPreview.swift` — View/Edit モード切替、保存/キャンセル UI
-- `Views/Sessions/Preview/DrawioStaticView.swift` — `.drawio.svg` の静的表示 / `.drawio` の chrome=0 レンダリング
-- `Views/Sessions/Preview/DrawioEditor.swift` — `embed.diagrams.net` embed mode の WKWebView ラッパ、postMessage プロトコル仲介
 
 ### 依存追加の有無
 - **外部依存追加なし** (embed.diagrams.net をオンラインで使用、WebKit は既に使用中)

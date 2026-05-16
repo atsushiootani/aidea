@@ -128,14 +128,7 @@ last_updated: 2026-04-22
 
 ## activeSessionHistory への追加要件
 
-本機能の導入に合わせて、`SessionRegistry.destroySession(_:)` が呼ばれたとき (= タブクローズ時) に `activeSessionHistory` から該当 SessionID を削除する。
-
-```swift
-func destroySession(_ id: SessionID) {
-    sessions.removeAll { $0.id == id }
-    activeSessionHistory.removeAll { $0 == id }   // ← 新規追加
-}
-```
+本機能の導入に合わせて、セッション破棄 (= タブクローズ時) に `activeSessionHistory` からも該当 SessionID を削除する。
 
 これにより:
 - Switcher に「既に存在しない Session」が表示されない

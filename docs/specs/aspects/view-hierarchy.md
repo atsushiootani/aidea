@@ -48,33 +48,33 @@ last_updated: 2026-05-06
 
 ```
 NSWindow (メインウィンドウ)
-└─ ContentView                                    [Views/Layout/ContentView.swift]
+└─ ContentView
    └─ VStack(spacing: 0)
-      ├─ AppHeaderView                            [Views/Layout/AppHeaderView.swift]
+      ├─ AppHeaderView
       │  └─ HStack(spacing: 8)
-      │     ├─ CompanionView                      [Views/Companion/CompanionView.swift]
+      │     ├─ CompanionView
       │     │  └─ VStack
       │     │     ├─ HStack (9 個のアイコン横並び)
       │     │     │  └─ ForEach companions
       │     │     │     └─ VStack (companionIcon)
       │     │     │        ├─ Button (60x60 アイコン画像 + stateOverlay)
       │     │     │        └─ Text (Companion 名)
-      │     │     └─ RecommendBubbleView          [Views/Companion/RecommendBubbleView.swift]
+      │     │     └─ RecommendBubbleView
       │     │        (recommend.isActive 時のみ。選択 Companion 直下に offset 表示)
       │     ├─ speechToggleButton (読み上げ ON/OFF)
       │     ├─ Spacer
-      │     └─ WidgetView                         [Widgets/WidgetView.swift]
+      │     └─ WidgetView
       │        └─ HStack (ヘッダ常駐 widget を右端に並べる)
-      │           ├─ QuickMemoButton              [Widgets/QuickMemo/QuickMemoButton.swift]
+      │           ├─ QuickMemoButton
       │           │  (✏️ ボタン。タップで QuickMemoView popover を開く)
-      │           ├─ TimerView                    [Widgets/Pomodoro/TimerView.swift]
+      │           ├─ TimerView
       │           │  (フェーズアイコン + 残り時間 + Start/Pause + Reset + 進捗ゲージを常時表示)
-      │           └─ FocusTimerView               [Widgets/FocusTimer/FocusTimerView.swift]
+      │           └─ FocusTimerView
       │              (砂時計/ベルアイコン + 残り時間 + Start/Pause + Reset + 進捗ゲージを常時表示)
       ├─ Divider
-      └─ SplitLayoutView                          [Views/Layout/SplitLayoutView.swift]
+      └─ SplitLayoutView
          (NSViewControllerRepresentable — 以下は AppKit 側)
-         └─ LayoutContainerViewController        [Views/Layout/LayoutContainerViewController.swift]
+         └─ LayoutContainerViewController
             └─ NSSplitViewController             ※LayoutNode の split 毎に再帰
                └─ NSHostingController(PaneView)  ※LayoutNode の leaf 毎
                   └─ (PaneView の階層へ続く)
@@ -84,8 +84,8 @@ NSWindow (メインウィンドウ)
 
 | トリガ | View | 親 |
 |---|---|---|
-| Companion 名タップ | `CompanionEditView` (`Views/Companion/CompanionEditView.swift`) | `CompanionView` の `.sheet` |
-| CompanionEditView の「speech 履歴を見る」ボタン | `SpeechHistoryView` (`Views/Companion/SpeechHistoryView.swift`) | `CompanionEditView` の `.sheet` |
+| Companion 名タップ | `CompanionEditView` | `CompanionView` の `.sheet` |
+| CompanionEditView の「speech 履歴を見る」ボタン | `SpeechHistoryView` | `CompanionEditView` の `.sheet` |
 | ScenePromptsEditorView の Companion アイコン | Popover (Companion ピッカー) | `ScenePromptsEditorView` (Session 下部) |
 
 ### トップダウンビュー
@@ -200,12 +200,12 @@ NSWindow (メインウィンドウ)
 全 Session View を ZStack で常時レンダリングする ([ADR 0019](../../decisions/0019-all-tabs-zstack-rendering.md))。
 
 ```
-PaneView                                          [Views/Layout/PaneView.swift]
+PaneView
 └─ VStack(spacing: 0)
    ├─ tabBar : HStack
    │  ├─ ScrollView (.horizontal)
    │  │  └─ HStack
-   │  │     ├─ TabSlotView (index: 0)             [Views/Layout/TabSlotView.swift]
+   │  │     ├─ TabSlotView (index: 0)
    │  │     ├─ ForEach tabs
    │  │     │  ├─ tabItem (HStack: tabIcon + Text + xButton)
    │  │     │  └─ TabSlotView (index: i+1)
@@ -215,7 +215,7 @@ PaneView                                          [Views/Layout/PaneView.swift]
    └─ sessionStack : ZStack (全 Tab 常時レンダリング)
       ├─ emptyTab                                 ※pane.tabs が空のとき
       └─ ForEach pane.tabs
-         └─ SessionRegistry.view(for: id)         [Sessions/SessionRegistry.swift#view(for:)]
+         └─ SessionRegistry.view(for: id)
             (アクティブ以外は opacity(0) + allowsHitTesting(false))
             └─ (Session View の階層へ続く)
 ```
@@ -233,10 +233,10 @@ NSView の representable) を背景に敷く。Cmd+T も同じ NSMenu を共用�
 編集するエディタ ([recommend-mode.md](../companions/recommend-mode.md))。
 
 ```
-SessionRegistry.view(for: id)                     [Sessions/SessionRegistry.swift]
+SessionRegistry.view(for: id)
 └─ VStack(spacing: 0)
    ├─ <Tool>SessionView                            ※Tool 毎に下表
-   └─ ScenePromptsEditorView                       [Views/Common/ScenePromptsEditorView.swift]
+   └─ ScenePromptsEditorView
       └─ HStack
          ├─ companionMenu (デフォルト Companion アイコン Button → Popover)
          ├─ ForEach prompts (promptTag)
@@ -250,14 +250,14 @@ SessionRegistry.view(for: id)                     [Sessions/SessionRegistry.swif
 
 | Tool | 本体 View (ファイル) | 内側の構造 |
 |---|---|---|
-| `filer` | `FilerSessionView` (`Sessions/Filer/FilerSessionView.swift`) | `NSViewControllerRepresentable` → `FileTreeViewController` の `NSStackView { navigateBar (NSStackView { backToProjectButton, rootSelectorButton }), searchField, NSScrollView { NSOutlineView }, summaryLabel }` |
-| `kit` | `KitSessionView` (`Sessions/Kit/KitSessionView.swift`) | `ScrollView` → `LazyVStack(pinnedViews: [.sectionHeaders])` の 4 セクション (Agents / Skills / Commands / MCP Servers) |
-| `terminal` | `TerminalSessionView` (`Sessions/Terminal/TerminalSessionView.swift`) | `NSViewRepresentable` → `PersistentTerminalView` (SwiftTerm `LocalProcessTerminalView`) |
-| `claude` | `ClaudeSessionView` (`Sessions/Claude/ClaudeSessionView.swift`) | `NSViewRepresentable` → `PersistentTerminalView` (Terminal と共用) |
-| `web` | `WebSessionView` (`Sessions/Web/WebSessionView.swift`) | `NSViewRepresentable` → `WKWebView` |
-| `preview` | `PreviewSessionView` (`Sessions/Preview/PreviewSessionView.swift`) | 拡張子で分岐: `DrawioPreview` / `MarkdownContainer` / `NSTextPreview` (`NSTextView`) / `Image` (NSImage) / placeholder |
-| `git` | `GitSessionView` (`Sessions/Git/GitSessionView.swift`) | `NSViewControllerRepresentable` → `GitFileListViewController` (`branchBadge` + `picker(NSSegmentedControl)` + `NSScrollView { GitOutlineView }`) |
-| `gitDiff` | `GitDiffSessionContainer` (`Sessions/Git/GitDiffSessionView.swift`) | `VStack { GitDiffSessionView, ScenePromptsEditorView }`。`GitDiffSessionView` は `NSViewRepresentable` → `GitDiffWebView` (`WKWebView` + diff2html) |
+| `filer` | `FilerSessionView` | `NSViewControllerRepresentable` → `FileTreeViewController` の `NSStackView { navigateBar (NSStackView { backToProjectButton, rootSelectorButton }), searchField, NSScrollView { NSOutlineView }, summaryLabel }` |
+| `kit` | `KitSessionView` | `ScrollView` → `LazyVStack(pinnedViews: [.sectionHeaders])` の 4 セクション (Agents / Skills / Commands / MCP Servers) |
+| `terminal` | `TerminalSessionView` | `NSViewRepresentable` → `PersistentTerminalView` (SwiftTerm `LocalProcessTerminalView`) |
+| `claude` | `ClaudeSessionView` | `NSViewRepresentable` → `PersistentTerminalView` (Terminal と共用) |
+| `web` | `WebSessionView` | `NSViewRepresentable` → `WKWebView` |
+| `preview` | `PreviewSessionView` | 拡張子で分岐: `DrawioPreview` / `MarkdownContainer` / `NSTextPreview` (`NSTextView`) / `Image` (NSImage) / placeholder |
+| `git` | `GitSessionView` | `NSViewControllerRepresentable` → `GitFileListViewController` (`branchBadge` + `picker(NSSegmentedControl)` + `NSScrollView { GitOutlineView }`) |
+| `gitDiff` | `GitDiffSessionContainer` (実装の詳細はソースコードを参照) | `VStack { GitDiffSessionView, ScenePromptsEditorView }`。`GitDiffSessionView` は `NSViewRepresentable` → `GitDiffWebView` (`WKWebView` + diff2html) |
 
 PreviewSessionView の Markdown は `MarkdownContainer` がさらに `MarkdownPreview`
 (純 SwiftUI パーサ。`mermaid` ブロックは内部で `MermaidView` [WKWebView + CDN Mermaid.js] として描画)
@@ -272,13 +272,13 @@ drawio は `DrawioPreview` が `DrawioStaticView` (画像表示) と `DrawioEdit
 別 `NSWindow` / `NSPanel` で表示される View は ContentView 配下のツリーには
 登場しない。
 
-| View | ファイル | 表示形態 | 仕様 |
-|---|---|---|---|
-| `ActiveSessionSwitcherView` | `Views/Common/ActiveSessionSwitcherView.swift` | `borderless` NSWindow + `NSHostingView` ([ActiveSessionSwitcher.swift](../../../Aidea/Aidea/Sessions/ActiveSessionSwitcher.swift) が `level = .floating`) | [../window/active-session-switcher.md](../window/active-session-switcher.md) |
-| Tool 選択 NSMenu (Cmd+T / `+`) | `PaneView.showToolPickerMenu` | `NSMenu.popUp()` | — |
-| 「指定のアプリで開く」NSMenu | `FileTreeViewController.buildOpenWithMenu` | `NSMenu.popUp()` | [../tools/filer.md](../tools/filer.md) |
-| ファイル名入力ダイアログ | `Sessions/Filer/FileNameInputDialog.swift` | `NSAlert` + accessoryView | [../tools/filer.md](../tools/filer.md) |
-| 除外ルール / デコレーションルール ダイアログ | `Sessions/Filer/ExcludeRulesDialog.swift` / `DecorationRulesDialog.swift` | `NSAlert` accessoryView | [../tools/filer.md](../tools/filer.md) |
+| View | 表示形態 | 仕様 |
+|---|---|---|
+| `ActiveSessionSwitcherView` | `borderless` NSWindow + `NSHostingView` (level = `.floating`) | [../window/active-session-switcher.md](../window/active-session-switcher.md) |
+| Tool 選択 NSMenu (Cmd+T / `+`) | `NSMenu.popUp()` | — |
+| 「指定のアプリで開く」NSMenu | `NSMenu.popUp()` | [../tools/filer.md](../tools/filer.md) |
+| ファイル名入力ダイアログ | `NSAlert` + accessoryView | [../tools/filer.md](../tools/filer.md) |
+| 除外ルール / デコレーションルール ダイアログ | `NSAlert` accessoryView | [../tools/filer.md](../tools/filer.md) |
 
 ---
 
