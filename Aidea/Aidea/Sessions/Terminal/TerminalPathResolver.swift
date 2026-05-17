@@ -22,6 +22,12 @@ struct TerminalPathMatch: Equatable {
     let displayPath: String
 }
 
+/// projectRoot 起点 / プロジェクト内検索フォールバックを含むパス解決結果。
+enum FallbackMatchResult {
+    case single(TerminalPathMatch)
+    case ambiguous([URL])
+}
+
 /// 行テキストから ASCII のファイルパスを検出して projectRoot 起点で解決する純関数ヘルパ。
 /// SwiftTerm/UI 依存を持たず、Foundation のみで完結する (テスト容易性)。
 /// 仕様: docs/specs/tools/terminal.md#ファイルパスのクリック起動-issue-71
@@ -37,6 +43,70 @@ enum TerminalPathResolver {
             }
         }
         return nil
+    }
+
+    /// match() と同様だが、projectRoot 起点での解決に失敗した場合は
+    /// projectRoot 以下をファイル名一致 / 末尾パス一致でフォールバック検索する。
+    /// 仕様: docs/specs/tools/terminal.md#パス解決
+    static func matchWithFallback(in line: String, at column: Int, projectRoot: URL?) -> FallbackMatchResult? {
+        if let m = match(in: line, at: column, projectRoot: projectRoot) {
+            return .single(m)
+        }
+        guard let root = projectRoot else { return nil }
+        guard let candidate = detectCandidates(in: line).first(where: {
+            column >= $0.startColumn && column < $0.endColumn
+        }) else { return nil }
+        let found = searchProject(path: candidate.path, projectRoot: root)
+        switch found.count {
+        case 0:
+            return nil
+        case 1:
+            let url = found[0]
+            let relPath = url.path.hasPrefix(root.path + "/")
+                ? String(url.path.dropFirst(root.path.count + 1))
+                : url.path
+            return .single(TerminalPathMatch(
+                startColumn: candidate.startColumn,
+                endColumn: candidate.endColumn,
+                path: candidate.path,
+                line: candidate.line,
+                absoluteURL: url,
+                displayPath: relPath
+            ))
+        default:
+            return .ambiguous(found)
+        }
+    }
+
+    /// projectRoot 以下をファイル名一致 / 末尾パス一致で再帰検索する。
+    /// 結果は NSCache でキャッシュし、hover 時の繰り返し呼び出しを効率化する。
+    /// 隠しファイル (.git 等) と Xcode パッケージは除外する。
+    static func searchProject(path: String, projectRoot: URL) -> [URL] {
+        let cacheKey = "\(projectRoot.path)|\(path)" as NSString
+        if let cached = projectSearchCache.object(forKey: cacheKey) {
+            return cached as! [URL]
+        }
+        let normalized = path.hasPrefix("./") ? String(path.dropFirst(2)) : path
+        guard let enumerator = FileManager.default.enumerator(
+            at: projectRoot,
+            includingPropertiesForKeys: [.isRegularFileKey],
+            options: [.skipsHiddenFiles, .skipsPackageDescendants]
+        ) else {
+            projectSearchCache.setObject([] as NSArray, forKey: cacheKey)
+            return []
+        }
+        var results: [URL] = []
+        for case let url as URL in enumerator {
+            guard (try? url.resourceValues(forKeys: [.isRegularFileKey]))?.isRegularFile == true else { continue }
+            let relativePath = url.path.hasPrefix(projectRoot.path + "/")
+                ? String(url.path.dropFirst(projectRoot.path.count + 1))
+                : url.path
+            if relativePath == normalized || relativePath.hasSuffix("/" + normalized) {
+                results.append(url)
+            }
+        }
+        projectSearchCache.setObject(results as NSArray, forKey: cacheKey)
+        return results
     }
 
     /// 行内のすべてのパス候補を実在確認込みで列挙する (デバッグ・将来用)。
@@ -126,5 +196,11 @@ enum TerminalPathResolver {
         // NSRegularExpression は Swift Regex と違い、lookbehind/lookahead を ICU で使える
         let pattern = #"(?<![A-Za-z0-9._\-/])([A-Za-z0-9._\-/]+\.[A-Za-z0-9]{2,})(?::([0-9]+))?(?![A-Za-z0-9._\-/])"#
         return try? NSRegularExpression(pattern: pattern, options: [])
+    }()
+
+    private static let projectSearchCache: NSCache<NSString, NSArray> = {
+        let cache = NSCache<NSString, NSArray>()
+        cache.countLimit = 200
+        return cache
     }()
 }

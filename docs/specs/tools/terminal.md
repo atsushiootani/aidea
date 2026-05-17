@@ -13,7 +13,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-06
+last_updated: 2026-05-17
 ---
 
 # Tool 仕様: Terminal
@@ -130,11 +130,15 @@ mouseDown と mouseUp の位置が **threshold (4 pt) 以下** に収まり、�
 
 #### パス解決
 
-1. 検出した `path` が絶対パス (`/` 始まり) なら **そのまま**
-2. 相対パスなら `WorkspaceState.projectRoot` を起点に絶対化する
-3. 解決後の URL が `FileManager.fileExists` でファイルとして実在しなければ **無音で無視** (URL クリックの失敗時挙動と同じ)
+1. 検出した `path` が絶対パス (`/` 始まり) なら **そのまま** → 実在すれば Preview で開く
+2. 相対パスなら `WorkspaceState.projectRoot` を起点に絶対化 → 実在すれば Preview で開く
+3. 上記で見つからない場合: **プロジェクト内検索** でフォールバック解決
+   - ファイル名一致 / 末尾パス一致で `projectRoot` 以下を再帰検索 (隠しファイル・Xcode パッケージは除く)
+   - **1 件のみマッチ** → そのファイルを Preview で開く
+   - **複数マッチ** → クリック位置近傍に **NSMenu** を表示し、ユーザが選んだものを開く
+4. それでも見つからない場合: **無音で無視** (URL クリックの失敗時挙動と同じ)
 
-PTY の `cwd` は **追跡しない** (MVP)。`cd` 後に表示された相対パスは projectRoot 起点に解決されるため不正確になり得るが、Claude や `grep -rn` 等の主要出力源は projectRoot 起点が大半なので許容する。`hostCurrentDirectoryUpdate` を実装した cwd 追跡は別 issue で扱う (将来拡張)。
+PTY の `cwd` は **追跡しない**。`cd` 後に表示された相対パスや Claude が出力したファイル名のみのパスも、プロジェクト内検索フォールバック (手順 3) で解決できる。`hostCurrentDirectoryUpdate` による cwd 追跡はプロジェクト内検索方式で代替するため実装しない。
 
 #### Preview 起動
 
@@ -159,7 +163,8 @@ issue #71 の `(want)` 項目。Preview 側のコード/テキストビューが
 - mouseMoved を `addLocalMonitorForEvents` で観測し、座標→セル変換でホバー位置の文字を取得する
 - そのセルが SwiftTerm 標準の URL 検出範囲内、または `TerminalPathResolver` がパスとして検出した範囲内なら `NSCursor.pointingHand.set()` を呼ぶ
 - ターゲット外に出たら `NSCursor.iBeam.set()` (ターミナル既定) に戻す
-- 実在しないファイルパス候補 (regex は通るが `fileExists` が false) もカーソルは変えない (クリックしても何も起きないため)
+- projectRoot 起点では実在しないが、プロジェクト内検索で 1 件以上マッチするファイルパス候補もカーソルを変える
+- プロジェクト内検索でも見つからないパス候補はカーソルを変えない (クリックしても何も起きないため)
 - SwiftTerm 内部の mouseMoved 経由 URL 自動オープンは引き続き抑制 (issue #54 対策、既存挙動を維持)
 
 ### 実装コンポーネント
@@ -168,7 +173,7 @@ issue #71 の `(want)` 項目。Preview 側のコード/テキストビューが
 |---|---|
 | `PersistentTerminalView` (拡張) | mouseDown/mouseUp/mouseMoved を捕捉し、(1) クリック判定 (tap vs drag)、(2) ホバーカーソル変化、(3) パス検出時の Preview 起動を行う |
 | `TerminalLinkGuard` (拡張) | `requestOpenLink` プロキシ。クリック判定 OK のときに URL を `NSWorkspace.shared.open` (Cmd 修飾チェックは外す) |
-| `TerminalPathResolver` (新規) | regex 定義・projectRoot 起点の絶対化・実在確認を担う純関数ヘルパ。`Foundation` のみで完結し、SwiftTerm/UI 依存を持たない (テスト容易性) |
+| `TerminalPathResolver` (新規) | regex 定義・projectRoot 起点の絶対化・実在確認・プロジェクト内検索フォールバックを担う純関数ヘルパ。`Foundation` のみで完結し、SwiftTerm/UI 依存を持たない (テスト容易性) |
 
 ---
 
@@ -181,9 +186,10 @@ issue #71 の `(want)` 項目。Preview 側のコード/テキストビューが
 - クリック起動は Terminal Tool / Claude Tool の両方で同じ挙動 (PersistentTerminalView 共用)
 - クリック起動は mouseDown→mouseUp の距離が threshold (4 pt) 以下かつドラッグなしのときのみ発火
 - URL とファイルパスの両方が **単純クリック** で開く (Cmd 修飾は不要・押されていても同じ挙動)
-- クリックターゲット (URL / 実在するファイルパス) 上では `NSCursor.pointingHand` でクリック可能であることを示す
-- ファイルパスのクリック起動は `WorkspaceState.projectRoot` を相対パスの起点とする
-- 検出パスがファイルとして実在しない場合は無音で無視 (URL クリックの失敗時挙動に揃える)
+- クリックターゲット (URL / ファイルパス候補) 上では `NSCursor.pointingHand` でクリック可能であることを示す
+- ファイルパスのクリック起動は `WorkspaceState.projectRoot` を相対パスの起点とし、見つからない場合はプロジェクト内検索でフォールバック解決する
+- プロジェクト内検索で複数候補がある場合はクリック位置近傍に NSMenu を表示してユーザに選択させる
+- 検出パスがプロジェクト内検索でも見つからない場合は無音で無視 (URL クリックの失敗時挙動に揃える)
 - ファイルパスから開く Preview は **ターミナルと同じペインの右隣** に新規タブで挿入する (`openPreviewAsSibling`)
 
 ### Never
@@ -191,6 +197,6 @@ issue #71 の `(want)` 項目。Preview 側のコード/テキストビューが
 - 非対話シェルから直接プロセスを exec しない（ADR 0008）
 - ドラッグ選択中の mouseUp でクリック起動を発火しない (テキスト選択を優先)
 - SwiftTerm 標準の mouseMoved 経由 URL 自動オープンを許可しない (mouseUp 必須)
-- PTY の `cwd` 追跡で相対パスを解決しない (MVP では projectRoot 固定)
+- PTY の `cwd` 追跡で相対パスを解決しない (プロジェクト内検索フォールバックで代替するため)
 - `:行数` を Preview に引き渡さない (MVP)
 - `TerminalLinkGuard.requestOpenLink` で scheme を持たない link 文字列を `NSWorkspace.shared.open` に渡さない (SwiftTerm の link detector がファイルパスを link として渡してきても、Preview 起動は `handlePathClickIfNeeded` が担うため。`open` に渡すと Finder が `-50` ダイアログを出してしまう)
