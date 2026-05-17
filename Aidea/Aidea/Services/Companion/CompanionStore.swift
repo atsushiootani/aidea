@@ -50,6 +50,11 @@ final class CompanionStore {
         companions.first { $0.sessionID == sessionID }?.name
     }
 
+    /// SessionID に紐付くコンパニオン設定を返す（アイコン取得など複数フィールドが必要なときに）
+    func companion(for sessionID: SessionID) -> CompanionConfig? {
+        companions.first { $0.sessionID == sessionID }
+    }
+
     /// アイコンインデックスに対応するコンパニオン設定を返す (9 個固定なので必ず存在)
     func companion(forIndex index: Int) -> CompanionConfig {
         companions[index]

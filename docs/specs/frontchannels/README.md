@@ -8,7 +8,7 @@ impacts:
   - docs/specs/frontchannels/*
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-20
+last_updated: 2026-05-17
 ---
 
 # Frontchannels (Aidea → Claude 通信) インデックス
@@ -21,6 +21,7 @@ Aidea が PTY の `send(txt:)` 経由で Claude にプロンプトを送る通�
 |---|---|
 | [frontchannel.md](./frontchannel.md) | PTY への送信メカニズム全般 |
 | [scene.md](./scene.md) | レコメンドプロンプトを解決する Scene 識別子の仕様 |
+| [voice-input.md](./voice-input.md) | AppHeader 🎤 ボタンから音声入力ダイアログ経由で active Claude へ送信する入力経路 |
 
 ## 関連
 

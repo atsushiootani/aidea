@@ -145,6 +145,7 @@ struct AideaApp: App {
             toolMenu
             pomodoroMenu
             focusTimerMenu
+            voiceInputMenu
             CommandMenu("Aidea") {
                 Button("読み上げ ON/OFF") {
                     speechState.toggle()
@@ -232,6 +233,20 @@ struct AideaApp: App {
                 .keyboardShortcut("f", modifiers: [.command, .option])
             Button("リセット") { focusTimerState.reset() }
                 .keyboardShortcut("f", modifiers: [.command, .option, .shift])
+        }
+    }
+
+    /// 音声入力メニュー (docs/specs/frontchannels/voice-input.md)
+    /// アクティブセッションが Claude のときだけ ⌘ ⌥ V でダイアログを開ける。
+    /// disabled 条件は VoiceInputButton と完全に一致させる。
+    @CommandsBuilder
+    private var voiceInputMenu: some Commands {
+        CommandMenu("音声入力") {
+            Button("音声入力ダイアログを開く") {
+                VoiceInputLauncher.present(registry: registry, companionStore: companionStore)
+            }
+            .keyboardShortcut("v", modifiers: [.command, .option])
+            .disabled((registry.activeSession?.state as? ClaudeSessionState) == nil)
         }
     }
 

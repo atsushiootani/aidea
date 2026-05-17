@@ -19,11 +19,13 @@ syncs_with:
   - docs/specs/window/shortcuts.md
   - docs/specs/window/active-session-switcher.md
   - docs/specs/companions/recommend-mode.md
+  - docs/specs/frontchannels/voice-input.md
 impacts: []
 conventions:
   - docs/LAYOUT.md
   - docs/specs/aspects/README.md
-last_updated: 2026-05-06---
+last_updated: 2026-05-17
+---
 
 # キー操作・マウス操作一覧
 
@@ -97,6 +99,14 @@ Aidea の全キーボードショートカットとマウス操作のリファ�
 |------|-----------|
 | ⌘ ⌥ F | 没入防止タイマー 開始 / 一時停止 |
 | ⌘ ⌥ ⇧ F | 没入防止タイマー リセット (30 分に戻す) |
+
+### 音声入力 (frontchannel)
+
+| キー | アクション |
+|------|-----------|
+| ⌘ ⌥ V | 音声入力ダイアログを開く (アクティブセッションが Claude のときのみ有効) |
+
+詳細: [../frontchannels/voice-input.md](../frontchannels/voice-input.md)
 
 ### その他
 

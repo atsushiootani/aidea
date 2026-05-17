@@ -10,13 +10,14 @@ syncs_with:
   - docs/specs/companions/companion.md
   - docs/specs/companions/recommend-mode.md
   - docs/specs/companions/speech-history.md
+  - docs/specs/frontchannels/voice-input.md
   - docs/specs/widgets/*
   - docs/specs/window/active-session-switcher.md
 impacts: []
 conventions:
   - docs/LAYOUT.md
   - docs/specs/aspects/README.md
-last_updated: 2026-05-06
+last_updated: 2026-05-17
 ---
 
 # View 階層 (UI コンポーネント親子関係)
@@ -62,6 +63,8 @@ NSWindow (メインウィンドウ)
       │     │     └─ RecommendBubbleView          [Views/Companion/RecommendBubbleView.swift]
       │     │        (recommend.isActive 時のみ。選択 Companion 直下に offset 表示)
       │     ├─ speechToggleButton (読み上げ ON/OFF)
+      │     ├─ VoiceInputButton                  [Views/Input/VoiceInputButton.swift]
+      │     │  (🎤 ボタン。アクティブ Claude セッションへ音声入力テキストを送信)
       │     ├─ Spacer
       │     └─ WidgetView                         [Widgets/WidgetView.swift]
       │        └─ HStack (ヘッダ常駐 widget を右端に並べる)
@@ -99,7 +102,7 @@ NSWindow (メインウィンドウ)
 ┌─ NSWindow / ContentView ───────────────────────────────────────────────┐
 │ ┌─ AppHeaderView ────────────────────────────────────────────────────┐ │
 │ │ ┌─ CompanionView ────────────────────────────┐  ┌──────┐           │ │
-│ │ │ [1] [2] [3] [4] [5] [6] [7] [8] [9]        │  │  🔊  │  Spacer   │ │
+│ │ │ [1] [2] [3] [4] [5] [6] [7] [8] [9]        │  │ 🔊 🎤 │ Spacer   │ │
 │ │ └────────────────────────────────────────────┘  └──────┘           │ │
 │ └────────────────────────────────────────────────────────────────────┘ │
 │ ── Divider ─────────────────────────────────────────────────────────── │
@@ -134,7 +137,7 @@ NSWindow (メインウィンドウ)
 ```
 ┌─ NSWindow / ContentView ───────────────────────────────────────────────┐
 │ ┌─ AppHeaderView ────────────────────────────────────────────────────┐ │
-│ │ [Companion×9]   [🔊]                                               │ │
+│ │ [Companion×9]   [🔊][🎤]                                           │ │
 │ └────────────────────────────────────────────────────────────────────┘ │
 │ ┌─ SplitLayoutView (HSplit) ────────────┬───────────────────────────┐ │
 │ │ ┌─ PaneView A ──────────────────────┐ │ ┌─ PaneView B ───────────┐ │ │
