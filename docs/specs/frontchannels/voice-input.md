@@ -112,23 +112,25 @@ AppHeaderView
 
 ### Dictation の自動起動
 
-ダイアログを開いた瞬間に macOS Dictation を**自動 ON にする**。実装は **Caps Lock 2 度押しの CGEvent POST** を使う (key code `0x39`)。
+ダイアログを開いた瞬間に macOS Dictation を**自動 ON にする**。実装は **⌘ ⌥ ⇧ V (Cmd+Option+Shift+V) を CGEvent で 1 度だけ POST** する方式を使う (V の virtual key code は `0x09`)。
 
-- ダイアログを表示し NSTextField にフォーカスを当てたあと、`CGEventPost` で `Caps Lock` キーの down/up を 2 回連続でグローバルイベントタップに送る
-  - down イベントには `.maskAlphaShift` を立てる (Caps Lock 押下中状態の再現)
-- 2 回押しの間隔は **100ms 程度** (macOS Dictation の double-tap 認識窓に収まる範囲)
-- ユーザのシステム設定 (キーボード > 音声入力 (Dictation)) で **「Caps Lock キーを 2 回押す」** に設定されている前提で動作する
+- ダイアログを表示し NSTextField にフォーカスを当てたあと、`CGEventPost` で `V` キーの down/up を 1 ペア、修飾フラグ `[.maskCommand, .maskAlternate, .maskShift]` 付きでグローバルイベントタップに送る
+- ユーザのシステム設定 (キーボード > 音声入力 (Dictation) > ショートカット) で **「カスタムショートカット → ⌘ ⌥ ⇧ V」** に設定されている前提で動作する
+- Aidea 自身のダイアログ起動は ⌘ ⌥ V で、Shift の有無で衝突しないように選んでいる (ダイアログを開く → 中で ⌘ ⌥ ⇧ V を発火 → Dictation 起動)
 - ショートカットが変更されている / 無効化されているユーザでは自動 ON が空振りするが、ダイアログ内 NSTextField にフォーカスがあれば**手動で自分のショートカットを押せば Dictation は起動できる**ためフォールバックされる
 - 完全な自動起動が必要なら Speech.framework 直接統合を検討するが、本 spec では対象外
 
-#### なぜ Control 2 度押しではなく Caps Lock 2 度押しか
+#### キーストローク変遷 (なぜ double-tap でなくユニーク 1 回押しか)
 
-旧仕様は Control キー 2 度押し (`key code 0x3B`, `.maskControl`) だったが、ユーザがシステム設定 (キーボード > 修飾キー) で **Ctrl と Caps Lock を入れ替えている** ケースで自動起動が空振りする問題があった。
+| 試行 | キー | 結果 |
+|---|---|---|
+| 試行 1 | Control キー 2 度押し (`0x3B`, `.maskControl`) | 修飾キーリマップ (Ctrl↔CapsLock 入れ替え) があるユーザで Dictation 検出ロジックに刺さらず空振り |
+| 試行 2 | Caps Lock キー 2 度押し (`0x39`, `.maskAlphaShift`) | CGEvent 経路で double-tap の発火タイミングが安定せず、ユーザ環境で起動しなかった |
+| 採用 | ⌘ ⌥ ⇧ V を 1 回押し (`0x09`, `[.maskCommand, .maskAlternate, .maskShift]`) | ユニーク修飾キー組合せの 1 回押しなので double-tap 検出窓・toggle 特殊性・リマップ階層の影響を受けず一貫して発火 |
 
-- macOS のキー リマップ (修飾キーを変更) は CGEvent.post の出口 (HID イベントタップ) より**上の階層**で解釈される
-- そのため CGEvent で仮想キー `0x3B` (物理 Left Control 位置) を投げても、Dictation 側の検出ロジックが「Caps Lock 位置の Control 2 度押し」を期待していると噛み合わない
-- Caps Lock 2 度押しなら CGEvent でキーコード `0x39` を直接送ればよく、修飾キーリマップの有無に関わらず Dictation の検出ルートに刺さる
-- ユーザにシステム設定でショートカットを「Caps Lock を 2 回」に変えてもらう必要があるが、その代わりリマップ問題は根本的に解消される
+- macOS のキーリマップ (修飾キーを変更) は CGEvent.post の出口 (HID イベントタップ) より**上の階層**で解釈されるため、物理位置依存のキーコード経路は環境依存が出やすい
+- ユニーク修飾キー組合せの 1 回押しなら、Dictation のホットキーディスパッチはアプリ非依存のグローバルハンドラに直行するので、リマップや double-tap 検出窓に左右されない
+- 引き換えに、ユーザは Dictation ショートカットを「カスタムショートカット → ⌘ ⌥ ⇧ V」へ自分で割り当てる必要がある (一度設定すれば永続)
 
 ---
 

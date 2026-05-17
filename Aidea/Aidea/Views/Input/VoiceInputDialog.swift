@@ -7,12 +7,15 @@ import AppKit
 import CoreGraphics
 
 /// 音声入力ダイアログ。NSAlert + NSTextField のシンプルな入力ダイアログで、
-/// 表示直後に macOS Dictation (Caps Lock 2 度押し) を CGEvent で自動起動する。
-/// 旧仕様は Control 2 度押しだったが、修飾キーリマップ (Ctrl↔CapsLock 入れ替え) が
-/// 効いているユーザでは仮想キー 0x3B (Left Control) を POST しても Dictation 側の
-/// 検出ルートに刺さらない (CGEvent.post は HID 層直下に出るがリマップは HID より上位で
-/// 解釈される)。`Caps Lock 2 度押し` ショートカットなら物理 Caps Lock キーを直接送れて、
-/// リマップ設定に依存せず一貫して発火する。
+/// 表示直後に macOS Dictation のカスタムショートカット (⌘ ⌥ ⇧ V) を CGEvent で
+/// 自動起動する。
+/// 経緯: 旧仕様は「Control 2 度押し」→「Caps Lock 2 度押し」と試したが、
+/// double-tap 検出ロジックが CGEvent.post 経路では一貫して発火しないケースがあった。
+/// ユニーク修飾キー組合せ (Cmd+Shift+Opt+V) を 1 回押しだけ送る方式に切り替え、
+/// 修飾キーリマップやキー toggle の特殊性に依存しない経路を取る。
+/// ユーザは macOS の Dictation 設定で「カスタムショートカット」を ⌘ ⌥ ⇧ V に
+/// 割り当てておく必要がある。Aidea 自身のダイアログ起動は ⌘ ⌥ V なので Shift の
+/// 有無で衝突しない。
 /// 仕様: docs/specs/frontchannels/voice-input.md
 enum VoiceInputDialog {
 
@@ -56,7 +59,7 @@ enum VoiceInputDialog {
         defer { NotificationCenter.default.removeObserver(observer) }
 
         // 表示直後にテキストフィールドへフォーカスを当て、続けて Dictation の
-        // Caps Lock 2 度押しを CGEvent で POST する。makeFirstResponder 直後だと
+        // カスタムショートカット (⌘ ⌥ ⇧ V) を CGEvent で POST する。makeFirstResponder 直後だと
         // ウィンドウのフォーカス遷移と競合するため、わずかに遅らせる。
         DispatchQueue.main.async {
             alert.window.makeFirstResponder(textField)
@@ -71,37 +74,24 @@ enum VoiceInputDialog {
         return nil
     }
 
-    /// macOS Dictation の起動ショートカット (Caps Lock キー 2 度押し) を CGEvent で POST する。
-    /// ユーザのシステム設定 (キーボード > 音声入力) で「Caps Lock キーを 2 回」になっている前提。
-    /// ショートカットが変更されている場合は無効化されるが、ユーザは自分の手で
-    /// Dictation を起動できるので致命的ではない。
-    /// 2 度押しの間隔は 100ms (macOS Dictation の double-tap 認識窓に収まる範囲)。
+    /// macOS Dictation の起動ショートカット (⌘ ⌥ ⇧ V) を CGEvent で 1 度だけ POST する。
+    /// ユーザのシステム設定 (キーボード > 音声入力 (Dictation) のショートカット) で
+    /// 「カスタムショートカット → ⌘ ⌥ ⇧ V」が設定されている前提。
+    /// ショートカットが未設定 / 別キーになっている場合は無効化されるが、ユーザは
+    /// 自分の手で Dictation を起動できるので致命的ではない。
+    /// double-tap 方式 (Control 2 度 / Caps Lock 2 度) は CGEvent 経路で発火が
+    /// 不安定だったため、ユニークな修飾キー組合せの 1 回押しに切り替えている。
     private static func triggerDictationShortcut() {
         let source = CGEventSource(stateID: .combinedSessionState)
-        let capsLockKeyCode: CGKeyCode = 0x39  // Caps Lock
+        let vKeyCode: CGKeyCode = 0x09  // V (US 配列の virtual key code)
+        let modifiers: CGEventFlags = [.maskCommand, .maskAlternate, .maskShift]
 
-        // 1 回目の Caps Lock down/up
-        postCapsLockTap(source: source, keyCode: capsLockKeyCode)
-
-        // 100ms 後に 2 回目の Caps Lock down/up を POST する
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            postCapsLockTap(source: source, keyCode: capsLockKeyCode)
-        }
-    }
-
-    /// Caps Lock キーの down + up を 1 ペアで POST する (1 タップ分)。
-    /// Caps Lock は通常 toggle 扱いで CGEvent でも flag 管理が特殊なので、
-    /// down のときに `.maskAlphaShift` を立てて「Caps Lock 押下中」を再現する。
-    /// 修飾キーリマップ (Ctrl↔CapsLock 入れ替え) を行っていても、Dictation の
-    /// 「Caps Lock 2 度押し」検出は物理 Caps Lock キー (key code 0x39) のイベント自体を
-    /// 監視するため、CGEvent で 0x39 を POST すればリマップに関係なく発火する。
-    private static func postCapsLockTap(source: CGEventSource?, keyCode: CGKeyCode) {
-        if let down = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: true) {
-            down.flags = .maskAlphaShift
+        if let down = CGEvent(keyboardEventSource: source, virtualKey: vKeyCode, keyDown: true) {
+            down.flags = modifiers
             down.post(tap: .cghidEventTap)
         }
-        if let up = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: false) {
-            up.flags = []
+        if let up = CGEvent(keyboardEventSource: source, virtualKey: vKeyCode, keyDown: false) {
+            up.flags = modifiers
             up.post(tap: .cghidEventTap)
         }
     }
