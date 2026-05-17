@@ -201,12 +201,12 @@ Aidea は **App Sandbox は無効** ([CLAUDE.md](../../../CLAUDE.md) の「重�
 
 App Sandbox 無効方針と矛盾しない。Hardened Runtime 側のマイク許可フラグであり、App Sandbox の `com.apple.security.app-sandbox = true` を伴わない。
 
-### ADR 0026 (保留) との関係
+### ADR 0027 (保留) との関係
 
-- ADR [0026: Terminal/Claude セッションでの Dictation 対応を保留](../../decisions/0026-microphone-permission.md) で `NSMicrophoneUsageDescription` を**一度削除した**経緯がある
-- ADR 0026 の保留理由は **SwiftTerm 上の Dictation** が動かなかったことであり、`NSTextField` での Dictation は試行 1 で動作確認済み
-- 本 spec は SwiftTerm を経由しない**別ルート** (NSAlert + NSTextField) で Dictation を利用する設計なので、ADR 0026 と矛盾しない
-- ADR 0026 は「保留」のまま据え置く (SwiftTerm 内 Dictation は別件として後日再開)
+- ADR [0027: Terminal/Claude セッションでの Dictation 対応を保留](../../decisions/0027-microphone-permission.md) で `NSMicrophoneUsageDescription` を**一度削除した**経緯がある
+- ADR 0027 の保留理由は **SwiftTerm 上の Dictation** が動かなかったことであり、`NSTextField` での Dictation は試行 1 で動作確認済み
+- 本 spec は SwiftTerm を経由しない**別ルート** (NSAlert + NSTextField) で Dictation を利用する設計なので、ADR 0027 と矛盾しない
+- ADR 0027 は「保留」のまま据え置く (SwiftTerm 内 Dictation は別件として後日再開)
 
 ---
 
@@ -241,7 +241,7 @@ Aidea 側で TCC のフラグを別途 UserDefaults に複製する必要はな�
 | `Aidea/Aidea/Views/Input/VoiceInputButton.swift` (新規) | ボタン本体 |
 | `Aidea/Aidea/Views/Input/VoiceInputDialog.swift` (新規) | NSAlert + NSTextField wrapper |
 | `Aidea/Aidea/AideaApp.swift` | `CommandMenu("音声入力")` を追加し `⌘ ⌥ V` を `voiceInputButton` と同じ起動経路にバインド |
-| `Aidea/Aidea/Services/Permissions/MicrophonePermission.swift` (新規復活) | TCC 要求ヘルパ (ADR 0026 で消したもの) |
+| `Aidea/Aidea/Services/Permissions/MicrophonePermission.swift` (新規復活) | TCC 要求ヘルパ (ADR 0027 で消したもの) |
 | [aspects/view-hierarchy.md](../aspects/view-hierarchy.md) | `AppHeaderView` の階層図に `VoiceInputButton` を追加 |
 | [frontchannels/README.md](./README.md) | 本 spec へのリンク追加 |
 
@@ -252,7 +252,7 @@ Aidea 側で TCC のフラグを別途 UserDefaults に複製する必要はな�
 | 案 | 不採用理由 |
 |---|---|
 | Speech.framework で独自録音 → 文字起こし | OS の Dictation と二重実装になり責務肥大。まずは macOS Dictation 連携で MVP を作る |
-| SwiftTerm 内で直接 Dictation を起動 | ADR 0026 で保留済み。技術的ハードルが高い |
+| SwiftTerm 内で直接 Dictation を起動 | ADR 0027 で保留済み。技術的ハードルが高い |
 | 音声入力ボタンを `WidgetView` に入れる | speechToggle と対称配置にすべきで、frontchannel 制御は左寄せ (CompanionView 近く) が直感的。WidgetView (右端) は機能群が違う |
 | ショートカットを `⌘ ⇧ ⌥ M` (読み上げトグル `⌘ ⌥ M` とペア化) | 修飾 3 つは押下コストが高い。`⌘ ⌥ V` (V=Voice) の方が直感的かつ片手で押せる |
 | ショートカットを `⌘ ⇧ M` | macOS の他アプリ (メール送信など) で慣習的に使われがちで衝突しやすい |
@@ -266,4 +266,4 @@ Aidea 側で TCC のフラグを別途 UserDefaults に複製する必要はな�
 - [../window/dialogs.md](../window/dialogs.md) — ダイアログ共通規約 (Esc/Enter, リアルタイムバリデーション)
 - [../aspects/view-hierarchy.md](../aspects/view-hierarchy.md) — `AppHeaderView` の階層
 - [../aspects/persistence.md](../aspects/persistence.md) — 永続化データ一覧
-- ADR [0026: Terminal/Claude セッションでの Dictation 対応を保留](../../decisions/0026-microphone-permission.md) — 経緯と知見
+- ADR [0027: Terminal/Claude セッションでの Dictation 対応を保留](../../decisions/0027-microphone-permission.md) — 経緯と知見

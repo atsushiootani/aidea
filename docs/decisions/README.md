@@ -44,7 +44,7 @@ Aidea の設計判断を 1 件ずつ記録する。フォーマットは [Michae
 | [0023](./0023-companion-handoff.md) | コンパニオン間ハンドオフは Aidea オーケストレータ方式で実装する | 提案 |
 | [0024](./0024-backchannel-per-companion-archive.md) | Backchannel メッセージは Companion 別ディレクトリに保存し削除しない | 提案 |
 | [0025](./0025-github-actions-ci.md) | GitHub Actions で xcodebuild CI を構築する | 採用 |
-| [0026](./0026-microphone-permission.md) | Terminal/Claude セッションでの Dictation 対応を保留 | 保留 |
+| [0027](./0027-microphone-permission.md) | Terminal/Claude セッションでの Dictation 対応を保留 | 保留 |
 
 ## 状態の値
 
