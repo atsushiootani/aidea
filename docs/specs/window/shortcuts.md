@@ -10,10 +10,11 @@ syncs_with:
   - docs/specs/widgets/pomodoro.md
   - docs/specs/widgets/focus-timer.md
   - docs/specs/window/active-session-switcher.md
+  - docs/specs/frontchannels/voice-input.md
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-06
+last_updated: 2026-05-17
 ---
 
 # グローバルショートカット
@@ -82,3 +83,13 @@ Window 全体で有効なキーボードショートカット。
 |---|---|
 | **⌘ ⌥ F** | 没入防止タイマー 開始 / 一時停止 |
 | **⌘ ⌥ ⇧ F** | 没入防止タイマー リセット |
+
+## 音声入力
+
+`AideaApp.body.commands` の `CommandMenu("音声入力")` で実装する。詳細は [../frontchannels/voice-input.md](../frontchannels/voice-input.md)。
+
+| キー | 動作 |
+|---|---|
+| **⌘ ⌥ V** | 音声入力ダイアログを開く (アクティブセッションが Claude のときのみ有効。それ以外は disabled) |
+
+`AppHeaderView` のマイクボタン押下と完全に同じ起動経路を共有する (ダイアログ仕様 / マイク権限フロー / 送信先解決は voice-input.md を参照)。

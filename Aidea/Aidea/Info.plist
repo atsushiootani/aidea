@@ -22,6 +22,8 @@
 	<string></string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>音声入力ダイアログでの macOS Dictation 利用にマイクへのアクセスが必要です。Aidea 本体は録音しません。</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

@@ -15,6 +15,7 @@ struct AppHeaderView: View {
         HStack(spacing: 8) {
             CompanionView()
             speechToggleButton
+            VoiceInputButton()
             Spacer()
             WidgetView()
         }

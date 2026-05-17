@@ -8,7 +8,7 @@ impacts:
   - docs/decisions/*
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-13
+last_updated: 2026-05-17
 ---
 
 # Architecture Decision Records
@@ -45,10 +45,11 @@ Aidea の設計判断を 1 件ずつ記録する。フォーマットは [Michae
 | [0024](./0024-backchannel-per-companion-archive.md) | Backchannel メッセージは Companion 別ディレクトリに保存し削除しない | 提案 |
 | [0025](./0025-github-actions-ci.md) | GitHub Actions で xcodebuild CI を構築する | 採用 |
 | [0026](./0026-use-git-info-exclude-instead-of-gitignore.md) | .aidea/ の除外設定を .gitignore ではなく .git/info/exclude に書く | 採用 |
+| [0027](./0027-microphone-permission.md) | Terminal/Claude セッションでの Dictation 対応を保留 | 保留 |
 
 ## 状態の値
 
-`提案` / `採用` / `暫定` / `確定` / `廃止` / `置換 (→ NNNN)`
+`提案` / `採用` / `暫定` / `確定` / `保留` / `廃止` / `置換 (→ NNNN)`
 
 ## 新規追加
 
