@@ -1,12 +1,12 @@
 ---
 title: 音声入力 (Voice Input)
 description: AppHeader のマイクボタンから音声入力ダイアログを開き、アクティブな Claude セッションへテキストを送信する frontchannel 入力経路
-derived_from: []
-syncs_with:
+derived_from:
   - docs/specs/frontchannels/frontchannel.md
+  - docs/specs/window/dialogs.md
+syncs_with:
   - docs/specs/aspects/view-hierarchy.md
   - docs/specs/aspects/keybindings.md
-  - docs/specs/window/dialogs.md
   - docs/specs/window/shortcuts.md
 impacts: []
 conventions:
