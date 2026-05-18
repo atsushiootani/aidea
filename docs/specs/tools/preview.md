@@ -14,7 +14,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-05
+last_updated: 2026-05-18
 ---
 
 # Tool 仕様: Preview
@@ -60,6 +60,15 @@ Session 内部状態は [sessions/preview.md](../sessions/preview.md) を参照�
 - `.md` / `.markdown` を `MarkdownPreview` で表示
 - 見出し (`# ~ ####`) / コードブロック / Mermaid 図 / 箇条書き / 水平線 / frontmatter / インライン (bold・italic・リンク・`code`) をサポート
 - 外部依存なし (SwiftUI `Text(.init(String))` のネイティブ Markdown に委譲)
+
+#### runShellScript — シェルスクリプトコードブロックの実行
+
+- view モードで表示中のシェルスクリプトコードブロック右上に `▶` 実行ボタンを表示する
+- 対象言語: `bash` / `sh` / `zsh` / `shell` / `fish` / `ksh` / `csh` / `tcsh`
+- 実行ボタン押下時の挙動:
+  - 既存の Terminal セッションがあれば、そのタブをアクティブ化してコマンドを PTY へ送信する
+  - Terminal セッションがなければ、新規 Terminal タブを作成してシェル起動後 (800ms 待機) にコマンドを送信する
+- edit モード中は実行ボタンを表示しない (コードブロックはテキストとして編集する)
 
 #### 見出し内インラインコード
 

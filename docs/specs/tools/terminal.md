@@ -13,7 +13,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-06
+last_updated: 2026-05-18
 ---
 
 # Tool 仕様: Terminal
@@ -169,6 +169,16 @@ issue #71 の `(want)` 項目。Preview 側のコード/テキストビューが
 | `PersistentTerminalView` (拡張) | mouseDown/mouseUp/mouseMoved を捕捉し、(1) クリック判定 (tap vs drag)、(2) ホバーカーソル変化、(3) パス検出時の Preview 起動を行う |
 | `TerminalLinkGuard` (拡張) | `requestOpenLink` プロキシ。クリック判定 OK のときに URL を `NSWorkspace.shared.open` (Cmd 修飾チェックは外す) |
 | `TerminalPathResolver` (新規) | regex 定義・projectRoot 起点の絶対化・実在確認を担う純関数ヘルパ。`Foundation` のみで完結し、SwiftTerm/UI 依存を持たない (テスト容易性) |
+
+---
+
+## openTerminalAndRun — Preview からのコマンド実行
+
+Markdown Preview の実行ボタン押下時に呼ばれる。既存 Terminal セッションを再利用するか、なければ新規作成する。
+
+1. 既存の Terminal セッションを検索し、最初に見つかったものをアクティブ化してコマンドを PTY に送信する
+2. Terminal セッションが存在しない場合は新規 Terminal タブを作成し、シェル起動完了 (800ms 待機) 後にコマンドを送信する
+3. 送信するコマンドは前後の空白を除去し、末尾に改行 (`\r`) を付けて実行する
 
 ---
 

@@ -22,6 +22,8 @@ struct MarkdownPreview: View {
     let baseURL: URL?
     /// ローカルファイルへのリンクがクリックされたときに呼ばれる (resolved 絶対 URL)
     let onLinkTap: ((URL) -> Void)?
+    /// シェルスクリプトコードブロックの実行ボタンが押されたときに呼ばれる (コマンド本文)
+    let onRunScript: ((String) -> Void)?
     /// 目次 (ToC) の上部に確保する追加のマージン (親側にフローティングボタン等がある場合)
     let tocTopInset: CGFloat
     /// オプション: 親から受け取るスクロールコントローラ。キー操作でスクロールさせるときに使う。
@@ -37,12 +39,14 @@ struct MarkdownPreview: View {
         text: String,
         baseURL: URL? = nil,
         onLinkTap: ((URL) -> Void)? = nil,
+        onRunScript: ((String) -> Void)? = nil,
         tocTopInset: CGFloat = 0,
         scrollController: ScrollController? = nil
     ) {
         self.text = text
         self.baseURL = baseURL
         self.onLinkTap = onLinkTap
+        self.onRunScript = onRunScript
         self.tocTopInset = tocTopInset
         self.scrollController = scrollController
     }
@@ -158,16 +162,32 @@ struct MarkdownPreview: View {
             .padding(.leading, CGFloat(indent) * 16)
         case .mermaid(let source):
             MermaidView(diagram: source)
-        case .code(let text):
-            Text(text)
-                .font(.system(.callout, design: .monospaced))
-                .foregroundStyle(.primary)
-                .padding(8)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(Color.secondary.opacity(0.12))
-                )
+        case .code(let text, let language):
+            let isShell = Self.shellLanguages.contains(language)
+            ZStack(alignment: .topTrailing) {
+                Text(text)
+                    .font(.system(.callout, design: .monospaced))
+                    .foregroundStyle(.primary)
+                    .padding(8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(Color.secondary.opacity(0.12))
+                    )
+                if isShell, let run = onRunScript {
+                    Button {
+                        run(text)
+                    } label: {
+                        Image(systemName: "play.fill")
+                            .font(.system(size: 10))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 4)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                    .help("ターミナルで実行")
+                }
+            }
         case .table(let header, let rows):
             tableView(header: header, rows: rows)
         case .paragraph(let text):
@@ -225,6 +245,11 @@ struct MarkdownPreview: View {
             return result + t
         }
     }
+
+    /// 実行ボタンを表示するシェル言語識別子の集合
+    private static let shellLanguages: Set<String> = [
+        "bash", "sh", "zsh", "shell", "fish", "ksh", "csh", "tcsh"
+    ]
 
     /// テキストをバッククォートコードスパンで分割して (テキスト, コードフラグ) のリストを返す
     private static func parseInlineSegments(_ text: String) -> [(text: String, isCode: Bool)] {
@@ -367,6 +392,7 @@ struct MarkdownPreview: View {
         var inCodeBlock = false
         var codeBuffer: [String] = []
         var isMermaidBlock = false
+        var currentLang = ""
         var inFrontmatter = false
         var frontmatterBuffer: [String] = []
 
@@ -398,14 +424,16 @@ struct MarkdownPreview: View {
             if raw.trimmingCharacters(in: .whitespaces).hasPrefix("```") {
                 if inCodeBlock {
                     let content = codeBuffer.joined(separator: "\n")
-                    result.append(isMermaidBlock ? .mermaid(content) : .code(content))
+                    result.append(isMermaidBlock ? .mermaid(content) : .code(content, language: currentLang))
                     codeBuffer = []
                     inCodeBlock = false
                     isMermaidBlock = false
+                    currentLang = ""
                 } else {
                     let lang = String(raw.trimmingCharacters(in: .whitespaces).dropFirst(3))
                         .trimmingCharacters(in: .whitespaces).lowercased()
                     isMermaidBlock = lang == "mermaid"
+                    currentLang = lang
                     inCodeBlock = true
                 }
                 i += 1
@@ -489,7 +517,7 @@ struct MarkdownPreview: View {
 
         if !codeBuffer.isEmpty {
             let content = codeBuffer.joined(separator: "\n")
-            result.append(isMermaidBlock ? .mermaid(content) : .code(content))
+            result.append(isMermaidBlock ? .mermaid(content) : .code(content, language: currentLang))
         }
         if !frontmatterBuffer.isEmpty {
             result.append(.frontmatter(frontmatterBuffer.joined(separator: "\n")))
@@ -691,7 +719,7 @@ enum MarkdownLine {
     case heading(level: Int, text: String)
     case bullet(text: String, indent: Int)
     case checkbox(text: String, checked: Bool, indent: Int)
-    case code(String)
+    case code(String, language: String)
     case mermaid(String)
     case table(header: [String], rows: [[String]])
     case paragraph(String)

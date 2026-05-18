@@ -24,7 +24,7 @@ impacts: []
 conventions:
   - docs/LAYOUT.md
   - docs/specs/aspects/README.md
-last_updated: 2026-05-17
+last_updated: 2026-05-18
 ---
 
 # キー操作・マウス操作一覧
@@ -256,6 +256,12 @@ Aidea の全キーボードショートカットとマウス操作のリファ�
 | J | 日本語翻訳 (英語表示中かつ非キャッシュファイル時のみ) | Markdown |
 | ⌘ E | drawio 編集モードトグル | drawio |
 | Esc | drawio 編集キャンセル | drawio |
+
+### マウス操作
+
+| 操作 | アクション | 対象コンテンツ |
+|------|-----------|---|
+| `▶` ボタンクリック | シェルスクリプトコードブロックをターミナルで実行 | Markdown (view モード、シェル言語) |
 
 ---
 
