@@ -304,6 +304,41 @@ final class SessionRegistry {
         setActiveTab(paneID: pane.id, tabIndex: pane.tabs.count - 1)
     }
 
+    /// Markdown Preview の実行ボタンから呼ばれる。
+    /// 既存 Terminal セッションがあればコマンドを送信し、なければ新規作成して送信する。
+    func openTerminalAndRun(_ command: String) {
+        let trimmed = command.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
+        // 既存の Terminal セッションを探して送信
+        for pane in layout.allPanes {
+            for (index, id) in pane.tabs.enumerated() where id.tool == .terminal {
+                if let s = session(for: id),
+                   let terminalState = s.state as? TerminalSessionState {
+                    setActiveTab(paneID: pane.id, tabIndex: index)
+                    terminalState.terminalView.send(txt: trimmed + "\r")
+                    return
+                }
+            }
+        }
+
+        // Terminal セッションがなければ新規作成
+        let callerPane = activePane
+        let targetPane = layout.allPanes.first { $0 !== callerPane } ?? layout.allPanes.first
+        guard let pane = targetPane else { return }
+
+        let instance = layout.nextSessionInstance(of: .terminal)
+        let newSession = createSession(tool: .terminal, instance: instance)
+        guard let terminalState = newSession.state as? TerminalSessionState else { return }
+        pane.tabs.append(newSession.id)
+        setActiveTab(paneID: pane.id, tabIndex: pane.tabs.count - 1)
+
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 800_000_000)
+            terminalState.terminalView.send(txt: trimmed + "\r")
+        }
+    }
+
     /// 削除されたファイル/ディレクトリを表示していた Preview タブを閉じる
     func closePreviewsForDeleted(_ deleted: URL, isDirectory: Bool) {
         let deletedPath = deleted.path

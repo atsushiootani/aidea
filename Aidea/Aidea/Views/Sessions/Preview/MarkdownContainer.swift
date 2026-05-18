@@ -116,6 +116,9 @@ struct MarkdownContainer: View {
                     text: loadedText,
                     baseURL: url.deletingLastPathComponent(),
                     onLinkTap: onLinkTap,
+                    onRunScript: { [registry] command in
+                        registry.openTerminalAndRun(command)
+                    },
                     tocTopInset: toolbarHeight,
                     scrollController: scrollController
                 )
