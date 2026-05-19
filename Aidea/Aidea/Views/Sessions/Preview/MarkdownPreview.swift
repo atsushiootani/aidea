@@ -227,22 +227,38 @@ struct MarkdownPreview: View {
         .padding(.top, level <= 2 ? 8 : 4)
     }
 
-    /// 見出しレベルに応じたフォントでインラインコードスパンを等幅レンダリング
-    private func headingText(level: Int, text: String) -> Text {
-        let size: CGFloat
-        let weight: Font.Weight
+    /// 見出しレベルに応じたフォントサイズ・ウェイトを返す
+    private static func headingFontParams(for level: Int) -> (size: CGFloat, weight: Font.Weight) {
         switch level {
-        case 1: size = 26; weight = .bold
-        case 2: size = 22; weight = .bold
-        case 3: size = 18; weight = .semibold
-        case 4: size = 15; weight = .semibold
-        default: size = 13; weight = .semibold
+        case 1: return (26, .bold)
+        case 2: return (22, .bold)
+        case 3: return (18, .semibold)
+        case 4: return (15, .semibold)
+        default: return (13, .semibold)
         }
-        return Self.parseInlineSegments(text).reduce(Text("")) { result, segment in
-            let t: Text = segment.isCode
-                ? Text(segment.text).font(.system(size: size, weight: weight, design: .monospaced))
-                : Text(.init(segment.text)).font(.system(size: size, weight: weight))
-            return result + t
+    }
+
+    /// 見出しレベルに応じたフォントでインラインコードスパンを等幅・背景色付きでレンダリング
+    @ViewBuilder
+    private func headingText(level: Int, text: String) -> some View {
+        let (size, weight) = Self.headingFontParams(for: level)
+        let segments = Self.parseInlineSegments(text)
+        HStack(spacing: 0) {
+            ForEach(Array(segments.enumerated()), id: \.offset) { _, segment in
+                if segment.isCode {
+                    Text(segment.text)
+                        .font(.system(size: size, weight: weight, design: .monospaced))
+                        .padding(.horizontal, 3)
+                        .padding(.vertical, 1)
+                        .background(
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(Color.secondary.opacity(0.15))
+                        )
+                } else {
+                    Text(.init(segment.text))
+                        .font(.system(size: size, weight: weight))
+                }
+            }
         }
     }
 

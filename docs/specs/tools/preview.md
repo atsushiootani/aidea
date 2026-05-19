@@ -14,7 +14,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-18
+last_updated: 2026-05-19
 ---
 
 # Tool 仕様: Preview
@@ -74,6 +74,7 @@ Session 内部状態は [sessions/preview.md](../sessions/preview.md) を参照�
 
 - 見出し行 (`` # ~ #### ``) 内のバッククォートコードスパン (`` `code` ``) は等幅フォントで表示する
 - 見出しの文字サイズ・ウェイトはそのままに、コードスパン部分のみ `monospaced` デザインを適用する
+- コードスパン部分には薄いグレー背景 (`Color.secondary.opacity(0.15)`) と角丸 (radius 3) を付与し、インラインコードブロックと視覚的に一貫したスタイルにする
 - 目次 (ToC) 表示では、バッククォート記号を除いたプレーンテキストで表示する
 
 #### frontmatter 表示
