@@ -3,8 +3,7 @@ title: Stale Docs 通知 (post-commit hook)
 description: Swift ファイル変更コミット時に docs/specs 未更新を検出して開発者へ警告する仕組みの仕様
 derived_from:
   - docs/decisions/0028-stale-docs-notification-via-hook.md
-syncs_with:
-  - docs/specs/aspects/README.md
+syncs_with: []
 impacts: []
 conventions:
   - docs/LAYOUT.md
