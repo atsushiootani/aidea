@@ -1,0 +1,13 @@
+#!/bin/sh
+# docs/specs の更新漏れ検出: Swift ファイル変更コミット時に docs/specs 未更新を警告する
+# コミットはブロックしない (exit 0)
+
+CHANGED=$(git diff-tree --no-commit-id -r --name-only HEAD)
+
+CHANGED_SWIFT=$(printf '%s\n' "$CHANGED" | grep '\.swift$' | grep -v 'Tests\.swift$' | grep -v '/Tests/' || true)
+CHANGED_SPECS=$(printf '%s\n' "$CHANGED" | grep '^docs/specs/' || true)
+
+if [ -n "$CHANGED_SWIFT" ] && [ -z "$CHANGED_SPECS" ]; then
+    printf '\n⚠️  [Aidea] Swift ファイルが変更されましたが、docs/specs/ の更新がありません。\n' >&2
+    printf '   仕様変更を伴う場合は docs/specs/ も更新してください。\n\n' >&2
+fi
