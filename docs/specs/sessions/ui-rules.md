@@ -6,6 +6,7 @@ derived_from:
   - docs/decisions/0014-no-ctrl-number-shortcuts.md
 syncs_with:
   - docs/specs/sessions/session.md
+  - docs/specs/aspects/view-hierarchy.md
 impacts:
   - docs/specs/tools/*
   - docs/specs/sessions/*

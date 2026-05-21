@@ -8,7 +8,7 @@ impacts:
   - docs/specs/*
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-06
+last_updated: 2026-05-21
 ---
 
 # Aidea Specs
@@ -79,6 +79,7 @@ specs は「コードベースと 1:1 対応するストック情報」が原則
 
 6. **aspects（横断的関心事）との整合性**
    - 機能群の変更が [aspects/](./aspects/README.md) に反映されていないものをフラグ（詳細は [aspects/README.md](./aspects/README.md) の更新ルールを参照）
+   - [view-hierarchy.md](./aspects/view-hierarchy.md) に記載されたファイルパスが `Aidea/Aidea/` 配下に実在するかを確認する
 
 ### フラグへの対応
 

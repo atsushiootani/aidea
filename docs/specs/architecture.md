@@ -5,7 +5,8 @@ derived_from:
   - docs/foundation/vision.md
   - docs/decisions/0001-swift-swiftui.md
   - docs/decisions/0006-only-swiftterm-dependency.md
-syncs_with: []
+syncs_with:
+  - docs/specs/aspects/view-hierarchy.md
 impacts:
   - docs/specs/sessions/terminal.md
   - docs/specs/sessions/web.md

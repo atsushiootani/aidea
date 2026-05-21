@@ -16,6 +16,7 @@ syncs_with:
   - docs/specs/sessions/preview.md
   - docs/specs/sessions/terminal.md
   - docs/specs/sessions/web.md
+  - docs/specs/aspects/view-hierarchy.md
 impacts: []
 conventions:
   - docs/LAYOUT.md

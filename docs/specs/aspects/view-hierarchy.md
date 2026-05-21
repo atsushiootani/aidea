@@ -17,7 +17,7 @@ impacts: []
 conventions:
   - docs/LAYOUT.md
   - docs/specs/aspects/README.md
-last_updated: 2026-05-17
+last_updated: 2026-05-21
 ---
 
 # View 階層 (UI コンポーネント親子関係)
@@ -90,6 +90,7 @@ NSWindow (メインウィンドウ)
 | Companion 名タップ | `CompanionEditView` (`Views/Companion/CompanionEditView.swift`) | `CompanionView` の `.sheet` |
 | CompanionEditView の「speech 履歴を見る」ボタン | `SpeechHistoryView` (`Views/Companion/SpeechHistoryView.swift`) | `CompanionEditView` の `.sheet` |
 | ScenePromptsEditorView の Companion アイコン | Popover (Companion ピッカー) | `ScenePromptsEditorView` (Session 下部) |
+| `QuickMemoButton` タップ | `QuickMemoView` (`Widgets/QuickMemo/QuickMemoView.swift`) | `QuickMemoButton` の `.popover` |
 
 ### トップダウンビュー
 
@@ -253,14 +254,14 @@ SessionRegistry.view(for: id)                     [Sessions/SessionRegistry.swif
 
 | Tool | 本体 View (ファイル) | 内側の構造 |
 |---|---|---|
-| `filer` | `FilerSessionView` (`Sessions/Filer/FilerSessionView.swift`) | `NSViewControllerRepresentable` → `FileTreeViewController` の `NSStackView { navigateBar (NSStackView { backToProjectButton, rootSelectorButton }), searchField, NSScrollView { NSOutlineView }, summaryLabel }` |
-| `kit` | `KitSessionView` (`Sessions/Kit/KitSessionView.swift`) | `ScrollView` → `LazyVStack(pinnedViews: [.sectionHeaders])` の 4 セクション (Agents / Skills / Commands / MCP Servers) |
-| `terminal` | `TerminalSessionView` (`Sessions/Terminal/TerminalSessionView.swift`) | `NSViewRepresentable` → `PersistentTerminalView` (SwiftTerm `LocalProcessTerminalView`) |
-| `claude` | `ClaudeSessionView` (`Sessions/Claude/ClaudeSessionView.swift`) | `NSViewRepresentable` → `PersistentTerminalView` (Terminal と共用) |
-| `web` | `WebSessionView` (`Sessions/Web/WebSessionView.swift`) | `NSViewRepresentable` → `WKWebView` |
-| `preview` | `PreviewSessionView` (`Sessions/Preview/PreviewSessionView.swift`) | 拡張子で分岐: `DrawioPreview` / `MarkdownContainer` / `NSTextPreview` (`NSTextView`) / `Image` (NSImage) / placeholder |
-| `git` | `GitSessionView` (`Sessions/Git/GitSessionView.swift`) | `NSViewControllerRepresentable` → `GitFileListViewController` (`branchBadge` + `picker(NSSegmentedControl)` + `NSScrollView { GitOutlineView }`) |
-| `gitDiff` | `GitDiffSessionContainer` (`Sessions/Git/GitDiffSessionView.swift`) | `VStack { GitDiffSessionView, ScenePromptsEditorView }`。`GitDiffSessionView` は `NSViewRepresentable` → `GitDiffWebView` (`WKWebView` + diff2html) |
+| `filer` | `FilerSessionView` (`Views/Sessions/Filer/FilerSessionView.swift`) | `NSViewControllerRepresentable` → `FileTreeViewController` の `NSStackView { navigateBar (NSStackView { backToProjectButton, rootSelectorButton }), searchField, NSScrollView { NSOutlineView }, summaryLabel }` |
+| `kit` | `KitSessionView` (`Views/Sessions/Kit/KitSessionView.swift`) | `ScrollView` → `LazyVStack(pinnedViews: [.sectionHeaders])` の 4 セクション (Agents / Skills / Commands / MCP Servers) |
+| `terminal` | `TerminalSessionView` (`Views/Sessions/Terminal/TerminalSessionView.swift`) | `NSViewRepresentable` → `PersistentTerminalView` (SwiftTerm `LocalProcessTerminalView`) |
+| `claude` | `ClaudeSessionView` (`Views/Sessions/Claude/ClaudeSessionView.swift`) | `NSViewRepresentable` → `PersistentTerminalView` (Terminal と共用) |
+| `web` | `WebSessionView` (`Views/Sessions/Web/WebSessionView.swift`) | `NSViewRepresentable` → `WKWebView` |
+| `preview` | `PreviewSessionView` (`Views/Sessions/Preview/PreviewSessionView.swift`) | 拡張子で分岐: `DrawioPreview` / `MarkdownContainer` / `NSTextPreview` (`NSTextView`) / `Image` (NSImage) / placeholder |
+| `git` | `GitSessionView` (`Views/Sessions/Git/GitSessionView.swift`) | `NSViewControllerRepresentable` → `GitFileListViewController` (`branchBadge` + `picker(NSSegmentedControl)` + `NSScrollView { GitOutlineView }`) |
+| `gitDiff` | `GitDiffSessionContainer` (`Views/Sessions/Git/GitDiffSessionView.swift`) | `VStack { GitDiffSessionView, ScenePromptsEditorView }`。`GitDiffSessionView` は `NSViewRepresentable` → `GitDiffWebView` (`WKWebView` + diff2html) |
 
 PreviewSessionView の Markdown は `MarkdownContainer` がさらに `MarkdownPreview`
 (純 SwiftUI パーサ。`mermaid` ブロックは内部で `MermaidView` [WKWebView + CDN Mermaid.js] として描画)
@@ -282,6 +283,7 @@ drawio は `DrawioPreview` が `DrawioStaticView` (画像表示) と `DrawioEdit
 | 「指定のアプリで開く」NSMenu | `FileTreeViewController.buildOpenWithMenu` | `NSMenu.popUp()` | [../tools/filer.md](../tools/filer.md) |
 | ファイル名入力ダイアログ | `Sessions/Filer/FileNameInputDialog.swift` | `NSAlert` + accessoryView | [../tools/filer.md](../tools/filer.md) |
 | 除外ルール / デコレーションルール ダイアログ | `Sessions/Filer/ExcludeRulesDialog.swift` / `DecorationRulesDialog.swift` | `NSAlert` accessoryView | [../tools/filer.md](../tools/filer.md) |
+| 音声入力ダイアログ | `Views/Input/VoiceInputDialog.swift` | `NSAlert` + `NSTextField` (Dictation 自動起動) | [../frontchannels/voice-input.md](../frontchannels/voice-input.md) |
 
 ---
 

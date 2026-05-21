@@ -39,6 +39,7 @@ Aidea の設計ドキュメント (`docs/decisions/` と `docs/specs/`) の健�
 - コードにあるのに specs に書かれていない機能・概念
 - 永続化データの抜け ([docs/specs/aspects/persistence.md](../../docs/specs/aspects/persistence.md) との突き合わせ)
 - aspects（横断的関心事）との整合性 — 機能群の変更が [docs/specs/aspects/](../../docs/specs/aspects/README.md) に反映されているか（詳細は aspects/README.md の更新ルールを参照）
+  - **view-hierarchy.md のファイルパス検証**: ツリー図・テーブルに記載されたファイルパス (`Views/Sessions/Filer/FilerSessionView.swift` 等) が `Aidea/Aidea/` 配下に実在するかを `find` で確認する
 
 ### 3. frontmatter 整合性チェック
 
