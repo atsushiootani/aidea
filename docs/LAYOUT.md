@@ -7,7 +7,7 @@ impacts:
   - docs/README.md
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-11
+last_updated: 2026-05-21
 ---
 
 # docs ディレクトリ構成とファイル配置ルール
@@ -36,7 +36,7 @@ docs/
 ├── specs/             # プロダクト仕様 (設計ストック・コードと 1:1 対応)
 │   ├── README.md      # 内のインデックス・機能群ごとのサブディレクトリ一覧
 │   ├── architecture.md
-│   ├── aspects/
+│   ├── aspects/       # View 親子関係 AA 図 (view-hierarchy.md) · キー操作 · 永続化 · ソート規約 など横断的関心事
 │   ├── glossary.md
 │   └── <機能群>/       # backchannels / frontchannels / companions / sessions / tools / widgets / window など (→ README.md 参照)
 │
