@@ -11,7 +11,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-01
+last_updated: 2026-05-22
 ---
 
 # Session 内部状態: Git
@@ -34,6 +34,9 @@ Tool 仕様は [../tools/git.md](../tools/git.md) を、共通 UI ルールは [
 | `registry` | `weak var SessionRegistry?` | Diff ビュー連携用 | — |
 | `onSelectedPathChanged` | `((String?) -> Void)?` (ObservationIgnored) | 選択変更コールバック | — |
 | `onViewedChanged` | `(() -> Void)?` (ObservationIgnored) | 既読状態変更コールバック | — |
+| `onReloadCompleted` | `(() -> Void)?` (ObservationIgnored) | バックグラウンドリロード完了コールバック (View が `outlineView.reloadData()` を呼ぶトリガー) | — |
+| `isLoading` | `Bool` | バックグラウンドリロード中かどうか | — |
+| `hasMoreFiles` | `Bool` | 表示上限 (50 件) を超える変更ファイルが存在する場合 `true`。View が「さらに表示」ボタンを出す判断に使う | — |
 
 ## Scene とレコメンドプロンプト
 
