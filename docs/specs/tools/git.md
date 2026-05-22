@@ -15,7 +15,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-05
+last_updated: 2026-05-22
 ---
 
 # Tool 仕様: Git
@@ -58,6 +58,7 @@ Session 内部状態は [sessions/git.md](../sessions/git.md) / [sessions/git-di
 - NSOutlineView ベースのディレクトリツリー (Filer と同じ表示パターン)
 - **変更のあるファイルだけ**を表示 (変更のないファイル/ディレクトリは非表示)
 - 変更ディレクトリは変更ファイルを祖先に持つものだけ展開可能
+- **初期表示は最大 50 件**: 変更ファイル数が 50 を超える場合は最初の 50 件のみ表示し、超過分は「さらに表示」ボタンで 50 件ずつ追加ロードする
 - **並び順**: 各階層は Filer と同じ Finder 互換自然順 (ファイル/ディレクトリを区別せず混在)。詳細は [aspects/sort-order.md](../aspects/sort-order.md) を参照
 - **デコレーション**: Filer と同じデコレーションルール (`FilerSessionState.defaultDecorationRules` + `userDecorationRules`) を適用する
   - **ファイルアイコン**: デコレーションルールが解決したファイル種別アイコン (`.swift` → `swift`、`.md` → `doc.text` 等)。マッチするルールがない場合はステータスアイコンにフォールバック
@@ -92,6 +93,12 @@ R100	old_name.swift	new_name.swift
 - FSEvents でプロジェクトルート配下を監視 (Filer と共有可能)
 - `.git` 配下の変更検知でファイル一覧を再取得 (デバウンス 500ms)
 - モード切替時も即座に再取得
+
+### スレッド要件
+
+- ファイル一覧の再取得・numstat の計算など重い処理は**バックグラウンドスレッド**で実行し、メインスレッドをブロックしない
+- 結果の `@Observable` プロパティ更新はメインスレッドで行う
+- 再取得が連続して発生した場合、最新のリクエストのみ結果を反映する (前回の結果は破棄)
 
 ---
 

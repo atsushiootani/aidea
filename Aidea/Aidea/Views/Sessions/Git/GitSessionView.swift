@@ -15,7 +15,11 @@ struct GitSessionView: NSViewControllerRepresentable {
         let vc = GitFileListViewController()
         vc.state = state
         vc.loadViewIfNeeded()
-        vc.reload()
+        // コールバック登録後にリロードを開始する
+        state.onReloadCompleted = { [weak vc] in
+            vc?.applyReload()
+        }
+        state.reload()
         // bridge に NSView 参照を登録 (SwiftUI update cycle と分離)。
         // 契約 C1 (アクティブ化時フォーカス) と SessionRegistry の click-to-activate 両方の用途。
         let outlineView = vc.outlineView
@@ -61,6 +65,7 @@ final class GitFileListViewController: NSViewController, NSOutlineViewDataSource
     private let scrollView = NSScrollView()
     private let branchBadge = BranchBadgeView()
     private var picker: NSSegmentedControl?
+    private var loadMoreButton: NSButton?
     private let watcher = FileWatcher()
     private var reloadWorkItem: DispatchWorkItem?
     /// Diff 追従による選択変更中は true（無限ループ防止）
@@ -99,10 +104,18 @@ final class GitFileListViewController: NSViewController, NSOutlineViewDataSource
 
         branchBadge.translatesAutoresizingMaskIntoConstraints = false
 
+        let loadMoreBtn = NSButton(title: "さらに表示", target: self, action: #selector(loadMore))
+        loadMoreBtn.bezelStyle = .recessed
+        loadMoreBtn.controlSize = .small
+        loadMoreBtn.isHidden = true
+        loadMoreBtn.translatesAutoresizingMaskIntoConstraints = false
+        self.loadMoreButton = loadMoreBtn
+
         let container = NSView()
         container.addSubview(picker)
         container.addSubview(branchBadge)
         container.addSubview(scrollView)
+        container.addSubview(loadMoreBtn)
         picker.translatesAutoresizingMaskIntoConstraints = false
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
@@ -116,7 +129,11 @@ final class GitFileListViewController: NSViewController, NSOutlineViewDataSource
             scrollView.topAnchor.constraint(equalTo: branchBadge.bottomAnchor, constant: 4),
             scrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: loadMoreBtn.topAnchor),
+            loadMoreBtn.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            loadMoreBtn.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            loadMoreBtn.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            loadMoreBtn.heightAnchor.constraint(equalToConstant: 26),
         ])
         self.view = container
 
@@ -135,7 +152,7 @@ final class GitFileListViewController: NSViewController, NSOutlineViewDataSource
                   self.state?.registry?.activeSessionID?.tool == .git else { return }
             self.state?.mode = mode
             self.picker?.selectedSegment = GitMode.allCases.firstIndex(of: mode) ?? 0
-            self.reload()
+            self.state?.reload()
             // GitDiff も連動
             self.switchDiffMode(mode)
         }
@@ -162,11 +179,34 @@ final class GitFileListViewController: NSViewController, NSOutlineViewDataSource
         }
     }
 
+    /// バックグラウンドリロードを開始する (UI 更新は applyReload() で行う)
     func reload() {
         state?.reload()
+    }
+
+    /// リロード完了後に UI を反映する (onReloadCompleted から呼ばれる)
+    func applyReload() {
         updateBranchLabel()
         outlineView.reloadData()
         outlineView.expandItem(nil, expandChildren: true)
+        updateLoadMoreButton()
+    }
+
+    /// 「さらに表示」ボタンの表示状態とラベルを更新する
+    private func updateLoadMoreButton() {
+        guard let state else { loadMoreButton?.isHidden = true; return }
+        if state.hasMoreFiles {
+            loadMoreButton?.isHidden = false
+        } else {
+            loadMoreButton?.isHidden = true
+        }
+    }
+
+    @objc private func loadMore() {
+        state?.loadMoreFiles()
+        outlineView.reloadData()
+        outlineView.expandItem(nil, expandChildren: true)
+        updateLoadMoreButton()
     }
 
     /// モードに応じてブランチラベルと合計行数を更新する
@@ -192,7 +232,7 @@ final class GitFileListViewController: NSViewController, NSOutlineViewDataSource
     private func scheduleReload() {
         reloadWorkItem?.cancel()
         let work = DispatchWorkItem { [weak self] in
-            self?.reload()
+            self?.state?.reload()
         }
         reloadWorkItem = work
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: work)
@@ -200,7 +240,7 @@ final class GitFileListViewController: NSViewController, NSOutlineViewDataSource
 
     @objc private func modeChanged(_ sender: NSSegmentedControl) {
         state?.mode = GitMode.allCases[sender.selectedSegment]
-        reload()
+        state?.reload()
     }
 
     @objc private func handleDoubleClick() {
