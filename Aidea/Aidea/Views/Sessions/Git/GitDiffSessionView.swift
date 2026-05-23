@@ -259,8 +259,9 @@ struct GitDiffSessionView: NSViewRepresentable {
                             if (cur) cur.style.background = 'rgb(30, 60, 110)';
                             this.focusEl = el;
                             if (cur) {
-                                const name = cur.textContent.trim();
-                                if (name !== this.focusName) {
+                                const nameEl = cur.querySelector('.d2h-file-name');
+                                const name = nameEl ? nameEl.textContent.trim() : '';
+                                if (name && name !== this.focusName) {
                                     this.focusName = name;
                                     window.webkit.messageHandlers.focusFile.postMessage(name);
                                 }
@@ -328,6 +329,10 @@ struct GitDiffSessionView: NSViewRepresentable {
                         const nextEl = wrappers[nextIdx];
                         window._aidea.setFocus(nextEl);
                     });
+
+                    // 初期フォーカスを先頭ファイルに設定（スクロール前でも Enter が機能するよう）
+                    const firstWrapper = document.querySelector('.d2h-file-wrapper');
+                    if (firstWrapper) { window._aidea.setFocus(firstWrapper); }
                 }
             </script>
         </body>
