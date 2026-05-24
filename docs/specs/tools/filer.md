@@ -558,7 +558,7 @@ DerivedData
 - 行内のアイコン / 色 ポップアップは NSAlert モーダル中でも selection event が届くよう `NSMenu.popUpContextMenu(_:with:for:)` (NSEvent ベース) で表示する。`menu.popUp(positioning:at:in:)` 経路は NSAlert モーダル下では target/action 配信が走らず handler が呼ばれないため不可
 - アンドゥは `FilerSessionState.undoManager: UndoManager` で管理。各操作 (rename / move / delete / create / paste) が成功した時点で `registerUndo(withTarget:handler:)` で逆操作を登録する。複数選択操作は `beginUndoGrouping` / `endUndoGrouping` で 1 グループにまとめる
 - Cmd+Z / Cmd+Shift+Z は **`AideaApp.registerKeyEventMonitor` の `NSEvent.addLocalMonitorForEvents` で先取り**し、active session が `filer` のときだけ `FilerSessionState.undoManager.undo()` / `redo()` を呼ぶ。SwiftUI の Edit メニューは `@Environment(\.undoManager)` を見て AppKit 側 `NSResponder.undoManager` を見ないため、`performKeyEquivalent` 段階で disabled 判定 → beep を起こされる前にイベントを横取りする必要がある
-- ページ移動 ([pageMoveSelection](#pagemoveselection--ページ単位の選択移動-issue-121)) は `FilerOutlineView.keyDown(with:)` 内で **PageUp / PageDown / Ctrl+V / Ctrl+Z** を捕捉する。1 ページの行数は `enclosingScrollView?.contentView.bounds.height / rowHeight` を Int 化 (最低 1) して算出し、`max(0, min(numberOfRows - 1, current ± pageRows))` でクランプして `selectRowIndexes(_:byExtendingSelection: false)` + `scrollRowToVisible(_:)` を呼ぶ
+- ページ移動 ([pageMoveSelection](#pagemoveselection--ページ単位の選択移動-issue-121)) はキーダウン処理で **PageUp / PageDown / Ctrl+V / Ctrl+Z** を捕捉する。1 ページの行数はスクロールビューの高さを行高で割って算出し (最低 1)、範囲をクランプしてスクロール付きで選択行を移動する
 - 共通の `EmacsNavigation.handle` は `allowPageNav: false` のままとし、Ctrl+V/Z は Filer 側で独自処理する (共通ヘルパは selection 追従の概念を持たないため、Filer 拡張版として上書きする方針)
 
 ---

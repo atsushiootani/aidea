@@ -58,28 +58,28 @@ AppKit 系 `SessionState` のフォーカス制御を担う **非永続ヘルパ
 
 ### 責務
 
-- 内包する NSView 参照 (`view: NSView?`) と `pendingActivation: Bool` フラグを保持
-- View 側 (NSViewRepresentable) からの `setView(_:)` 呼び出しで参照を更新する
-- `activate()` / `deactivate()` / `releaseIfOurs()` の 3 メソッドで契約 C1 / C2 / C3 を履行する
-- AppKit Window API (`window.makeFirstResponder` 等) はこの中だけに閉じる
+- 内包する NSView 参照と `pendingActivation` フラグを保持
+- View 側から View 参照の更新を受け取り、内部状態を同期する
+- activate / deactivate / releaseIfOurs の 3 操作で契約 C1 / C2 / C3 を履行する
+- AppKit Window フォーカス API (`window.makeFirstResponder` 等) はこの中だけに閉じる
 
-### API
+### 操作一覧
 
 `SessionFocusBridge` は以下の操作を提供する:
 
-| メソッド | 呼び出し元 | 動作 |
+| 操作 | 呼び出し元 | 動作 |
 |---|---|---|
-| `setView(_:)` | View 側 (NSViewRepresentable の makeNSView) | 内包する NSView 参照を更新する。nil も有効 |
-| `activate()` | SessionState の didBecomeActive (契約 C1) | view が non-nil なら makeFirstResponder を呼ぶ。nil なら pending を立てて待機 |
-| `deactivate()` | SessionState の didResignActive (契約 C2) | 自分配下の NSView が firstResponder のときだけ解放する |
-| `releaseIfOurs()` | View 側の onDisappear (契約 C3) | deactivate と同じ判定で firstResponder を解放する |
+| **View 参照の更新** | View 側 (AppKit ブリッジの初期化時) | 内包する NSView 参照を更新する。nil も有効 |
+| **activate** | SessionState のアクティブ化 (契約 C1) | view が non-nil なら makeFirstResponder を呼ぶ。nil なら pending を立てて待機 |
+| **deactivate** | SessionState の非アクティブ化 (契約 C2) | 自分配下の NSView が firstResponder のときだけ解放する |
+| **releaseIfOurs** | View 側の消滅時 (契約 C3) | deactivate と同じ判定で firstResponder を解放する |
 
 ### 内部挙動の要点
 
-- `setView(_:)` で値が更新され、かつ `pendingActivation == true` かつ新しい view が non-nil なら、その場で `makeFirstResponder` を発火して pending を解消する
-- `activate()` は `view` が nil なら `pendingActivation = true` を立てるだけで何もしない (後の `setView` で解消される)
-- `deactivate()` / `releaseIfOurs()` は **`window.firstResponder` が `view` 自身またはその子孫の場合だけ** `makeFirstResponder(nil)` を呼ぶ。それ以外は何もしない
-- `view` を弱参照 (`weak`) で保持し、NSView の所有は SessionState 側 (lazy property) に任せる
+- View 参照が更新され、かつ `pendingActivation` が true かつ新しい view が non-nil なら、その場で `makeFirstResponder` を発火して pending を解消する
+- activate は `view` が nil なら `pendingActivation = true` を立てるだけで何もしない (後の View 参照更新で解消される)
+- deactivate / releaseIfOurs は **`window.firstResponder` が `view` 自身またはその子孫の場合だけ** `makeFirstResponder(nil)` を呼ぶ。それ以外は何もしない
+- `view` を弱参照で保持し、NSView の所有は SessionState 側 (lazy property) に任せる
 
 ---
 

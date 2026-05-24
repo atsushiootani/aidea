@@ -35,7 +35,7 @@ Session 概念自体の位置づけは [ui-rules.md#概念モデル](./ui-rules.
 - 末尾が最新、先頭が最古
 - 同一 SessionID は **1 度しか含まれない** (新たに active になった時点で古い位置から削除して末尾に追加)
 - **最大 50 件**。超えたら古い方から自動破棄
-- **Tab クローズで該当 SessionID を履歴から除去** (`destroySession(_:)` 内で実施)
+- **Tab クローズで該当 SessionID を履歴から除去** (セッション破棄処理内で実施)
 - **`workspace.json` (v5) に永続化される**。詳細は [persistence.md](../aspects/persistence.md#workspacejson-レイアウトsession-状態コンパニオンレコメンド統合) を参照
 
 利用箇所:
