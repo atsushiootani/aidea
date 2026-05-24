@@ -98,11 +98,6 @@ Claude セッションは Companion と 1:1 で紐付くため、Scene 識別子
 
 ## SessionState プロトコル
 
-```swift
-protocol SessionState {
-    /// 現在の Scene 識別子を返す
-    func currentScene() -> String?
-}
-```
+各ビューの SessionState は `currentScene()` を実装し、現在の Scene 識別子 (`String?`) を返す。
 
 `recommendedPrompts()` は廃止 (初期値の二重管理を防ぐため)。RecommendState は `currentScene()` で識別子を取得し、RecommendStore から対応するプロンプトを引く。

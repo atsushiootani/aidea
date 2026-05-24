@@ -16,7 +16,7 @@ last_updated: 2026-05-22
 
 # Session 内部状態: Git
 
-`git` Tool の Session は `GitSessionState` (`@Observable`) として状態を保持する。
+`git` Tool の Session は `GitSessionState` として状態を保持する。
 Working changes / PR Preview の 2 モードで、変更ファイルツリーを管理する。
 
 Tool 仕様は [../tools/git.md](../tools/git.md) を、共通 UI ルールは [ui-rules.md](./ui-rules.md) を参照。

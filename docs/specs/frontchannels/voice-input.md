@@ -150,15 +150,10 @@ AppHeaderView
 [Handoff](../backchannels/handoff.md) の送信経路と**同じ** `sendMessageWhenReady` を使う。
 ([frontchannel.md](./frontchannel.md) と handoff の dispatch 実装の標準パターン)
 
-```swift
-claudeSessionState.sendMessageWhenReady(trimmedText)
-// isReady なら即 sendMessage → terminalView.send(txt: text + "\r")
-// 未 ready なら pendingMessages に積み、起動完了時に flush
-```
-
-- 送信前に前後の whitespace を `trimmingCharacters(in: .whitespacesAndNewlines)` で除去
-- 改行 `\r` は `sendMessage` 側で自動付加 (二重付加しない)
-- `sendMessage` ではなく `sendMessageWhenReady` を使う理由: handoff / focus-timer / recommend と同じ堅牢な経路を採用し、Claude 起動状態の変動に追従するため
+- `sendMessageWhenReady` を使って PTY に送信する。Claude 起動済みなら即送信、未起動なら起動完了後に自動送信する
+- 送信前に前後の空白文字を除去する
+- 改行は送信側で自動付加 (二重付加しない)
+- handoff / focus-timer / recommend と同じ堅牢な送信経路を採用し、Claude 起動状態の変動に追従する
 - 送信成功後、ダイアログを閉じる
 
 ### 空入力・空白のみ
@@ -230,18 +225,17 @@ Aidea 側で TCC のフラグを別途 UserDefaults に複製する必要はな�
 
 ---
 
-## 影響範囲 (実装時に更新が必要なファイル)
+## 影響範囲
 
-| ファイル | 更新内容 |
+| 変更対象 | 更新内容 |
 |---|---|
-| `Aidea/Aidea/Views/Layout/AppHeaderView.swift` | `voiceInputButton` 追加 |
-| `Aidea/Aidea/Info.plist` | `NSMicrophoneUsageDescription` 追加 |
-| `Aidea/Aidea/Aidea.entitlements` (新規) | `com.apple.security.device.audio-input` を追加 (Hardened Runtime 下で TCC にマイク要求を登録するため) |
-| `Aidea/Aidea.xcodeproj/project.pbxproj` | Debug/Release の `CODE_SIGN_ENTITLEMENTS` に上記 entitlements を指定 |
-| `Aidea/Aidea/Views/Input/VoiceInputButton.swift` (新規) | ボタン本体 |
-| `Aidea/Aidea/Views/Input/VoiceInputDialog.swift` (新規) | NSAlert + NSTextField wrapper |
-| `Aidea/Aidea/AideaApp.swift` | `CommandMenu("音声入力")` を追加し `⌘ ⌥ V` を `voiceInputButton` と同じ起動経路にバインド |
-| `Aidea/Aidea/Services/Permissions/MicrophonePermission.swift` (新規復活) | TCC 要求ヘルパ (ADR 0027 で消したもの) |
+| `AppHeaderView` | 音声入力ボタン追加 |
+| `Info.plist` | マイク使用説明文 (`NSMicrophoneUsageDescription`) 追加 |
+| Entitlements | `com.apple.security.device.audio-input` を追加 (Hardened Runtime 下でマイク TCC 要求) |
+| `VoiceInputButton` (新規) | ボタン本体 |
+| `VoiceInputDialog` (新規) | NSAlert + NSTextField ラッパ |
+| `AideaApp` | 音声入力 CommandMenu を追加し `⌘⌥V` にバインド |
+| `MicrophonePermission` (新規復活) | TCC 要求ヘルパ (ADR 0027 で削除したもの) |
 | [aspects/view-hierarchy.md](../aspects/view-hierarchy.md) | `AppHeaderView` の階層図に `VoiceInputButton` を追加 |
 | [frontchannels/README.md](./README.md) | 本 spec へのリンク追加 |
 

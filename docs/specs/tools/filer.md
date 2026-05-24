@@ -56,7 +56,7 @@ Filer の表示順がワークスペース全体 (Git / Kit 等) の List UI の
 
 ### 実装箇所
 
-- `Services/Filer/FileTreeLoader.swift` の `load(directory:parent:)` — 子エントリ取得直後に `String.naturalAscending` でソート
+- `FileTreeLoader` — 子エントリ取得直後に `String.naturalAscending` でソート
 
 ---
 
@@ -111,8 +111,8 @@ Filer の表示順がワークスペース全体 (Git / Kit 等) の List UI の
 
 ### 実装箇所
 
-- `Services/Filer/FileTreeLoader.swift` — `isSymbolicLinkKey` 取得 + 解決先の `isDirectoryKey` 再評価
-- `Views/Sessions/Filer/FileTreeViewController.swift` (展開系) — シンボリックリンク自身についてのみ祖先解決先チェックを実施し、循環時は展開を抑止
+- `FileTreeLoader` — シンボリックリンクキーの取得と解決先の再評価
+- `FileTreeViewController` (展開系) — シンボリックリンク自身についてのみ祖先解決先チェックを実施し、循環時は展開を抑止
 
 ---
 

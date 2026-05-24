@@ -56,8 +56,7 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 |---|---|---|
 | `aidea.projectRoot` | String | 最後に開いていたプロジェクトのパス。起動時復元用 |
 
-管理: `Services/Workspace/WorkspaceState.swift`
-読込: `init()` (起動時)、書込: `setProjectRoot(_:)` (ディレクトリ変更時)
+管理: `WorkspaceState` (起動時に読込、ディレクトリ変更時に書込)
 
 ### Keychain (機密情報)
 
@@ -65,8 +64,8 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 |---|---|
 | `com.aidea.anthropic-api-key` | Anthropic API キー (翻訳・ディレクトリ概要生成機能で使用) |
 
-管理: `Utilities/KeychainHelper.swift` (`save` / `load` / `delete`)
-利用: `Services/Translation/ClaudeTranslator.swift` / `Services/Filer/DirectorySummaryService.swift`
+管理: `KeychainHelper` (保存・読込・削除)
+利用: 翻訳サービス / ディレクトリ概要生成サービス
 
 ### Bundle Resources (`Aidea/Resources/`)
 
@@ -133,9 +132,9 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 
 ### `workspace.json` (統合スナップショット)
 
-- **管理**: `Services/Workspace/WorkspaceSnapshotManager.swift`
+- **管理**: `WorkspaceSnapshotManager`
 - **フォーマット**: JSON (`version: 8`)
-- **初期値の SSoT**: Bundle 同梱の `Aidea/Resources/default-workspace.json` (ハードコード排除)
+- **初期値の SSoT**: Bundle 同梱の `default-workspace.json` (ハードコード排除)
 - **読込フロー** (`WorkspaceSnapshotManager.load(projectRoot:)`):
   1. `<projectRoot>/.aidea/workspace.json` が存在 → 読込・マイグレーション適用
   2. 不在 → Bundle 同梱の `default-workspace.json` を読込・初期スナップショットとして返す
@@ -227,11 +226,11 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 - `version` は現行スキーマバージョンと一致
 - `companions` には必ず 9 要素 (index 0〜8) を含め、`sessionID` は全て `null`
 - レイアウト・companion 名称・recommend プロンプト等の **デフォルト値はすべてここに集約**。Swift コード側へのハードコードは禁止
-- v8 以降は `companions[].initialPrompt` を含めない (ファイル化したため)。指示書テンプレ本文は `Aidea/Resources/Backchannels/companion-instructions.md` (Bundle 同梱) が SSoT
+- v8 以降は `companions[].initialPrompt` を含めない (ファイル化したため)。指示書テンプレ本文は Bundle 同梱のテンプレが SSoT
 
 ### `.aidea/ja/<path>` (翻訳キャッシュ)
 
-- **管理**: `Services/Translation/TranslationCache.swift`
+- **管理**: `TranslationCache`
 - **フォーマット**: Markdown (翻訳結果そのまま)
 - **鮮度判定**: 元ファイルとの mtime 比較で再翻訳要否を決める
 
@@ -266,18 +265,18 @@ Claude → Aidea 方向の通信は**ファイル経由**で行う。詳細は [
 4. SpeechQueue が VOICEVOX Service (localhost:50021) に投げて読み上げ
 ```
 
-### 関連クラス
+### 関連コンポーネント
 
-| ファイル | 役割 |
+| コンポーネント | 役割 |
 |---|---|
-| `Services/Backchannel/BackchannelSetup.swift` | Bundle → `.aidea/claude/` の初期コピー (`aidea.md` / `speech.md` / `handoff.md` / `output.md` / コンパニオン指示書 9 個) |
-| `Services/Backchannel/Speech/SpeechWatcher.swift` | `.aidea/backchannels/<0..8>/speech-*.txt` の FSEvents 再帰監視 |
-| `Services/Backchannel/Speech/SpeechState.swift` | Speech 状態管理と SpeechQueue への投入 |
-| `Services/Backchannel/Speech/SpeechQueue.swift` | VOICEVOX 合成 → AVAudioPlayer 再生キュー |
-| `Services/Backchannel/Handoff/HandoffWatcher.swift` | `.aidea/backchannels/<0..8>/handoff-*.json` の FSEvents 再帰監視 |
-| `Services/Backchannel/Handoff/HandoffState.swift` | Handoff 状態管理 + Dispatcher 呼び出し |
-| `Services/Backchannel/Output/OutputWatcher.swift` | `.aidea/backchannels/<0..8>/output-*.txt` の FSEvents 再帰監視 |
-| `Services/Backchannel/Output/OutputState.swift` | Output 履歴蓄積 (コンパニオン別インメモリ) |
+| `BackchannelSetup` | Bundle → `.aidea/claude/` の初期コピー (`aidea.md` / `speech.md` / `handoff.md` / `output.md` / コンパニオン指示書 9 個) |
+| `SpeechWatcher` | `.aidea/backchannels/<0..8>/speech-*.txt` の FSEvents 再帰監視 |
+| `SpeechState` | Speech 状態管理と SpeechQueue への投入 |
+| `SpeechQueue` | VOICEVOX 合成 → AVAudioPlayer 再生キュー |
+| `HandoffWatcher` | `.aidea/backchannels/<0..8>/handoff-*.json` の FSEvents 再帰監視 |
+| `HandoffState` | Handoff 状態管理 + Dispatcher 呼び出し |
+| `OutputWatcher` | `.aidea/backchannels/<0..8>/output-*.txt` の FSEvents 再帰監視 |
+| `OutputState` | Output 履歴蓄積 (コンパニオン別インメモリ) |
 
 詳細は [../backchannels/](../backchannels/README.md) を参照。
 

@@ -32,11 +32,7 @@ Obsidian vault を読み書きして、デイリーノートや AI との対話�
 
 ### 手段 1: URL スキーム (`obsidian://`) — 採用
 
-```swift
-// 特定のノートを Obsidian で開く
-let url = URL(string: "obsidian://open?vault=MyVault&file=daily/2026-04-08")!
-NSWorkspace.shared.open(url)
-```
+`NSWorkspace` 経由で `obsidian://` URL を開く。
 
 | URL | 動作 |
 |---|---|
@@ -47,12 +43,6 @@ NSWorkspace.shared.open(url)
 ### 手段 2: Vault を直接読み書き — 採用
 
 Obsidian の vault はただの Markdown ファイルディレクトリ。`FileManager` で直接書き込めば Obsidian 側でもリアルタイム反映。
-
-```swift
-let vaultURL = URL(fileURLWithPath: "/Users/atsushi/Obsidian/MyVault")
-let noteURL = vaultURL.appendingPathComponent("daily/\(todayString).md")
-try markdown.write(to: noteURL, atomically: true, encoding: .utf8)
-```
 
 ### 手段 3: Local REST API プラグイン — 将来検討
 

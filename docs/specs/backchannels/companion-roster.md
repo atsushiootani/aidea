@@ -182,9 +182,9 @@ handoff.md には次の一文を追記する (本仕様への参照)。本文の
 
 | コンポーネント | 配置 | 責務 |
 |---|---|---|
-| `CompanionRosterWriter` | `Services/Backchannel/CompanionRosterWriter.swift` (新規) | aidea.md のマーカー領域を読み書きする純関数的ヘルパ。プロジェクトルートと `[CompanionConfig]` を受け取り、必要に応じて aidea.md を更新する。テスト容易性のため `static func` で公開し、`@Observable` 状態は持たない |
-| `WorkspaceSnapshotManager` | 既存 | `apply()` 末尾で `CompanionStore.companions` セット後に `writeRoster` を呼ぶ |
-| `CompanionEditView` | 既存 | OK ハンドラで `CompanionStore.update(_:)` 後に `writeRoster` を呼ぶ |
+| `CompanionRosterWriter` | aidea.md のマーカー領域を読み書きする純関数的ヘルパ。プロジェクトルートとコンパニオン設定リストを受け取り、必要に応じて aidea.md を更新する |
+| `WorkspaceSnapshotManager` | スナップショット復元後にロスター書き込みを実行する |
+| `CompanionEditView` | コンパニオン設定を更新した後にロスター書き込みを実行する |
 
 `CompanionRosterWriter` は外部依存を持たず、`Foundation` のみで完結する。VOICEVOX や FSEvents との連携は不要。
 

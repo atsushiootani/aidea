@@ -162,7 +162,7 @@ v8 以降、読み上げ機能は各 Companion の `.aidea/claude/companions/<in
 
 ### 読み上げ中 Companion の UI 反映 (issue #45)
 
-`SpeechQueue` に `@Observable` な `currentlySpeakingIndex: Int?` を持たせ、**現在 VOICEVOX で再生中の speech の送信元 companionIndex** を公開する。
+`SpeechQueue` は**現在 VOICEVOX で再生中の speech の送信元 companionIndex** を `currentlySpeakingIndex` として公開する。
 
 | タイミング | `currentlySpeakingIndex` |
 |---|---|
@@ -201,8 +201,8 @@ v8 以降、読み上げ機能は各 Companion の `.aidea/claude/companions/<in
 |---------------|------|
 | **SpeechWatcher** | FSEvents で `.aidea/backchannels/<0..8>/speech-*.txt` を再帰監視。親ディレクトリが 0..8 の整数であること (不一致は警告ログのみで無視) を検証してから、ファイル読み取り → 1 行目のスピーカーIDをパース → `(speakerId?, companionIndex, text)` を SpeechQueue に投入。読み上げ後もファイルは残す |
 | **VoicevoxService** | VOICEVOX REST API クライアント (audio_query → synthesis)。`speaker` 引数でスピーカー指定 |
-| **SpeechQueue** | `(speakerId?, companionIndex, text)` をキューに積み、VOICEVOX → AVAudioPlayer で順番に再生。再生中エントリの `companionIndex` を `@Observable currentlySpeakingIndex: Int?` として外部公開 (issue #45) |
-| **SpeechState** | 読み上げ ON/OFF 状態管理 (@Observable)、ヘッダ UI と接続 |
+| **SpeechQueue** | `(speakerId?, companionIndex, text)` をキューに積み、VOICEVOX → AVAudioPlayer で順番に再生。再生中エントリの `companionIndex` を `currentlySpeakingIndex` として外部公開 (issue #45) |
+| **SpeechState** | 読み上げ ON/OFF 状態管理、ヘッダ UI と接続 |
 
 ---
 
@@ -231,13 +231,13 @@ v8 以降、読み上げ機能は各 Companion の `.aidea/claude/companions/<in
 #### 動作
 
 - クリック時に `SpeechState.toggle()` を呼び、`isEnabled` を反転する
-- アイコンは `SpeechState.isEnabled` を見て切り替える (`@Observable` 駆動)
+- アイコンは `SpeechState.isEnabled` を見て切り替える
 - ツールチップで `読み上げ ON/OFF` を提示する
 
 #### ショートカット
 
 - **`⌥⌘M`** で読み上げを ON/OFF トグルする (M = Mute)
-- `AideaApp.swift` の「Aidea」`CommandMenu` に **「読み上げ ON/OFF」** 項目を追加し、`.keyboardShortcut("m", modifiers: [.command, .option])` を付与する
+- アプリメニューの「Aidea」メニューに **「読み上げ ON/OFF」** 項目を追加し、`⌥⌘M` ショートカットを付与する
 - メニュー項目のラベルは状態に応じて切り替えず固定 (`読み上げ ON/OFF`)。状態はヘッダのアイコンで提示する
 - アクションは `SpeechState.toggle()` を呼ぶ (UI ボタンと同じ経路)
 

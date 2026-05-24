@@ -7,7 +7,7 @@ impacts:
   - docs/README.md
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-21
+last_updated: 2026-05-24
 ---
 
 # docs ディレクトリ構成とファイル配置ルール
@@ -103,6 +103,21 @@ docs/
 - **構成**: トップレベル (`architecture.md` / `glossary.md`) と **機能群ごとのサブディレクトリ**で構成される。現在のサブディレクトリ一覧は [specs/README.md](./specs/README.md) を参照。
 - **新しい機能群を追加するとき**: `specs/<新機能群>/` を切って `README.md` を置き、`specs/README.md` の一覧表に1行追加する (本ファイルの更新は不要)
 - **命名**: kebab-case 全小文字 (`recommend-mode.md` `scene.md`)
+
+### 実装詳細禁止ルール
+
+`specs/` には**実装知識がなくても読める**記述だけを書く。以下のパターンは禁止。
+
+| 禁止パターン | 例 | 理由 |
+|---|---|---|
+| Swift プロパティラッパ | `@Observable` / `@Published` / `@State` / `@StateObject` / `@FocusState` | Swift 特有の実装技術 |
+| Swift コードブロック | ` ```swift ` で始まるコードブロック | 実装コードそのもの |
+| 内部ソースファイルパス | `Services/Foo.swift` / `Views/Bar.swift` / `Models/Baz.swift` | コードベースの知識が必要 |
+| 括弧付きメソッドシグネチャ | `loadCommand(for:)` / `update(_:)` / `entrypointURL(projectRoot:index:)` | 実装レベルの API 詳細 |
+
+**例外**: `architecture.md` はクラス名・ディレクトリ構成の記述を許可する (`view-hierarchy.md` も View 名・ファイルパスの列挙を許可する)。
+
+このルールは `/aidea.docs-healthcheck` の「実装詳細チェック」で機械的に検証される。
 
 ### `docs/plans/` — 実装計画 (git 管理外)
 

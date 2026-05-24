@@ -43,8 +43,7 @@ last_updated: 2026-05-05
 
 | 要素 | 詳細 |
 |------|------|
-| 型 | `SpeechHistoryView` (`struct View`) |
-| ファイル | `Views/Companion/SpeechHistoryView.swift` |
+| 型 | `SpeechHistoryView` |
 | 引数 | `companionIndex: Int`, `projectRoot: URL?` |
 
 ### 表示内容

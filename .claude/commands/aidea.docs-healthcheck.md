@@ -56,9 +56,42 @@ Aidea の設計ドキュメント (`docs/decisions/` と `docs/specs/`) の健�
 
 詳細ルール (ADR の `impacts` / `syncs_with` 空固定など個別制約も含む) は [docs/LAYOUT.md](../../docs/LAYOUT.md) の「frontmatter 規約」節を SSoT とする。LAYOUT.md に書かれている制約はすべてチェック対象。
 
-### 4. 結果の報告
+### 4. 実装詳細チェック
 
-- **decisions セクション** / **specs セクション** / **frontmatter セクション** に分けて、フラグが立った項目を列挙する
+対象: `docs/specs/` 配下の全 Markdown (`architecture.md` と `view-hierarchy.md` は除外)。
+
+以下のコマンドを実行し、1 件でもマッチしたらフラグを立てる:
+
+```bash
+# Swift プロパティラッパ
+grep -rn '@Observable\|@Published\|@State\b\|@StateObject\|@FocusState' docs/specs/ \
+  --include='*.md' \
+  --exclude='architecture.md' \
+  --exclude='view-hierarchy.md'
+
+# Swift コードブロック
+grep -rn '^\`\`\`swift' docs/specs/ \
+  --include='*.md' \
+  --exclude='architecture.md'
+
+# 内部ソースファイルパス (.swift 参照)
+grep -rn '\bServices/\|\bViews/\|\bModels/\|\bUtilities/\|\bSessions/' docs/specs/ \
+  --include='*.md' \
+  --exclude='architecture.md' \
+  --exclude='view-hierarchy.md' \
+  | grep '\.swift'
+
+# 括弧付きメソッドシグネチャ (バッククォート内)
+grep -rn '`[A-Za-z][A-Za-z0-9]*([^`]*):`\|`[A-Za-z][A-Za-z0-9]*(_:)' docs/specs/ \
+  --include='*.md' \
+  --exclude='architecture.md'
+```
+
+フラグが立ったら、[docs/LAYOUT.md](../../docs/LAYOUT.md) の「実装詳細禁止ルール」節に従って削除・概念的な説明に置き換える提案を出す。
+
+### 6. 結果の報告
+
+- **decisions セクション** / **specs セクション** / **frontmatter セクション** / **実装詳細セクション** に分けて、フラグが立った項目を列挙する
   - 各項目: **ファイル (file:line)** / **フラグ種別** / **問題の要点** / **README の対応方針に沿った提案**
 - 各 README の「フラグへの対応」表に従い、ユーザ確認が必要なものは問い合わせ、明確なものは修正提案を出す
 - frontmatter の違反は LAYOUT.md の規約に沿って修正提案を出す

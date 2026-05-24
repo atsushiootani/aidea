@@ -86,14 +86,7 @@ Window
 | **Ctrl + V** | ページダウン | `pageDown` |
 | **Ctrl + Z** | ページアップ | `pageUp` |
 
-実装は `Aidea/Utilities/EmacsNavigation.swift` の `EmacsNavigation.handle(event:responder:)` を使う。
-NSOutlineView / NSTableView サブクラスは `keyDown(with:)` 内で以下のように呼び出す:
-
-```swift
-if EmacsNavigation.handle(event: event, responder: self) { return }
-```
-
-SwiftUI 主体の Session も同等のショートカットを提供する (将来 `onKeyPress` で実装)。
+`EmacsNavigation` ヘルパを使い、NSOutlineView / NSTableView サブクラスの `keyDown` 処理に統合する。SwiftUI 主体の Session も同等のショートカットを提供する。
 
 ---
 

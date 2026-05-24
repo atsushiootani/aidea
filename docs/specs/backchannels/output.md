@@ -48,7 +48,7 @@ Claude がレスポンスのテキストを `.aidea/backchannels/<companion-inde
 
 ### OutputState
 
-`OutputWatcher` からの通知を受け取り、コンパニオン別の出力履歴を保持する `@Observable` クラス。`history: [Int: [OutputEntry]]` でインデックスをキーとして蓄積する。
+`OutputWatcher` からの通知を受け取り、コンパニオン別の出力履歴を保持する状態管理クラス。インデックスをキーとして出力エントリを蓄積する。
 
 ---
 
