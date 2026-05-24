@@ -73,12 +73,8 @@ Session 内部状態は [sessions/git.md](../sessions/git.md) / [sessions/git-di
 
 ### データ取得
 
-```swift
-// Working Changes
-Process: git diff --name-status
-// PR Preview
-Process: git diff main...HEAD --name-status
-```
+- Working Changes: `git diff --name-status`
+- PR Preview: `git diff main...HEAD --name-status`
 
 出力パース例:
 ```
@@ -97,7 +93,7 @@ R100	old_name.swift	new_name.swift
 ### スレッド要件
 
 - ファイル一覧の再取得・numstat の計算など重い処理は**バックグラウンドスレッド**で実行し、メインスレッドをブロックしない
-- 結果の `@Observable` プロパティ更新はメインスレッドで行う
+- 結果のプロパティ更新はメインスレッドで行う
 - 再取得が連続して発生した場合、最新のリクエストのみ結果を反映する (前回の結果は破棄)
 
 ---
@@ -123,12 +119,8 @@ Git ツールのファイル一覧からダブルクリック / Enter で開か�
 
 ### diff 取得
 
-```swift
-// Working Changes モードから開いた場合
-Process: git diff <file>
-// PR Preview モードから開いた場合
-Process: git diff main...HEAD -- <file>
-```
+- Working Changes モードから開いた場合: `git diff <file>`
+- PR Preview モードから開いた場合: `git diff main...HEAD -- <file>`
 
 ### diff2html 統合
 
@@ -166,9 +158,6 @@ diff2html の JS/CSS は **オンライン CDN** (`https://cdn.jsdelivr.net/npm/
 #### 実装
 - `git diff <file>` のパッチ出力からハンクを抽出
 - 対象ハンクを逆パッチ (`git apply --reverse`) でワーキングツリーに適用
-  ```swift
-  Process: echo "<reverse-patch>" | git apply --reverse
-  ```
 - 適用後、diff 表示を再取得して更新
 
 #### 制約
@@ -222,45 +211,13 @@ issue #26 では 2 つの Tool が必要:
 
 ## 実装メモ
 
-### 新規ファイル
-
-```
-Models/Git/
-  GitChangedFile.swift       // ステータス (M/A/D/R) + パス + ツリーノード
-  GitFileTreeNode.swift      // ディレクトリ/ファイルのツリー構造ノード
-
-Services/Git/
-  GitService.swift           // Process で git コマンド実行
-
-Sessions/Git/
-  GitSessionState.swift      // モード + 変更ファイル一覧
-  GitDiffSessionState.swift  // ファイルパス + diff コンテンツ + モード
-
-Views/Sessions/Git/
-  GitSessionView.swift       // NSOutlineView + セグメントピッカー
-  GitDiffSessionView.swift   // WKWebView + diff2html + Discard ボタン
-```
-
-### Tool enum 追加
-
-```swift
-enum Tool {
-    // 既存
-    case filer, kit, terminal, web, preview
-    // 追加
-    case git       // シングルトン
-    case gitDiff   // マルチインスタンス
-}
-```
+詳細な実装構造はソースコードを参照。
 
 ### シングルトン制約
-- Filer と同じく PaneView の `isAddable` で `.git` を条件付き非表示にする
+- `.git` は Filer と同様の「シングルトン制約」で多重起動を防ぐ
 
 ### GitDiff の開き方
-- Git ツールのダブルクリック → `registry.openPreview` と同じパターンだが、
-  Preview ではなく GitDiff Session を作成する
-- `registry.openGitDiff(for: filePath, mode: .workingChanges | .prPreview)`
-  のような専用メソッドを SessionRegistry に追加
+- Git ツールのダブルクリック → Preview と同じパターンで GitDiff Session を作成する
 
 ---
 

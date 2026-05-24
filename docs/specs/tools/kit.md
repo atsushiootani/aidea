@@ -242,21 +242,8 @@ Kit は項目の表示名 (例: `diagram.architecture`) を title に渡すこ�
   frontmatter を `FrontmatterParser` で抽出)
 
 ### ディレクトリ移行
-旧:
-```
-Models/Skills/ Models/Commands/ Models/Mcps/
-Services/Skills/ Services/Commands/ Services/Mcps/
-Sessions/Skills/ Sessions/Commands/ Sessions/Mcps/
-Views/Sessions/Skills/ Views/Sessions/Commands/ Views/Sessions/Mcps/
-```
 
-新:
-```
-Models/Kit/ (Skill, Command, McpServer, Agent をここに集約)
-Services/Kit/ (各 Loader をここに集約)
-Sessions/Kit/KitSessionState.swift
-Views/Sessions/Kit/KitSessionView.swift
-```
+Skills / Commands / Mcps に分散していたモデル・サービス・ビューを Kit ディレクトリに統合した。`KitSessionState` と `KitSessionView` もここに集約する。
 
 ---
 

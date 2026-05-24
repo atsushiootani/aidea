@@ -18,7 +18,7 @@ last_updated: 2026-05-05
 
 # Session 内部状態: GitDiff
 
-`gitDiff` Tool の Session は `GitDiffSessionState` (`@Observable`) として状態を保持する。
+`gitDiff` Tool の Session は `GitDiffSessionState` として状態を保持する。
 Git ツール経由で開かれる差分ビュー (diff2html レンダリング)。
 
 Tool 仕様の背景は [../tools/git.md](../tools/git.md) を、共通 UI ルールは [ui-rules.md](./ui-rules.md) を参照。

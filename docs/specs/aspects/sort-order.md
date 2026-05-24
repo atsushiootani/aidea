@@ -36,49 +36,30 @@ Aidea の全 List UI は **Finder と同じ自然順 (`String.localizedStandardC
 
 ### 共通ヘルパ
 
-`Aidea/Utilities/String+NaturalOrder.swift` の `String.naturalAscending(_:) -> Bool` を全箇所で使う。
-
-```swift
-extension String {
-    /// Finder 互換の自然順で昇順比較。
-    /// 全 List UI のソートはこれに揃える (詳細: docs/specs/aspects/sort-order.md)。
-    func naturalAscending(_ other: String) -> Bool {
-        localizedStandardCompare(other) == .orderedAscending
-    }
-}
-```
-
-`localizedStandardCompare` を直接呼ぶコードは新規追加しない。共通ヘルパを使うことで:
+`String.naturalAscending(_:)` (Finder 互換自然順の昇順比較ヘルパ) を全箇所で使う。`localizedStandardCompare` を直接呼ぶコードは新規追加しない。共通ヘルパを使うことで:
 
 - Aidea のソート規約に従っていることがコード上で一目でわかる
 - 将来比較関数を差し替えるときに 1 箇所で済む
 
 ## 適用箇所
 
-| 機能 | 実装箇所 | 並び替えキー | 備考 |
-|---|---|---|---|
-| Filer のディレクトリ直下 | `Services/Filer/FileTreeLoader.swift` | エントリ名 | ファイル/ディレクトリ混在 (issue #122) |
-| Git ファイルツリー (Working Changes / PR Preview) | `Models/Git/GitFileTreeNode.swift` | エントリ名 | ファイル/ディレクトリ混在 (Filer と完全一致) |
-| Git diff のセクション順 | `Services/Git/GitService.swift` `sortDiffByPath(_:)` | ファイルパス | staged/unstaged のタイブレークは安定ソートで staged 先 |
-| Kit / Skills | `Services/Kit/SkillsLoader.swift` | `Skill.name` | 同名タイブレーク: PROJECT を前に置く |
-| Kit / Commands | `Services/Kit/CommandsLoader.swift` | `Command.name` | 同名タイブレーク: PROJECT を前に置く |
-| Kit / Agents | `Services/Kit/AgentsLoader.swift` | `Agent.name` | 同名タイブレーク: PROJECT を前に置く |
-| Kit / MCP Servers | `Services/Kit/McpLoader.swift` | `McpServer.name` | タイブレーク不要 (USER のみ) |
-| Kit / 名前グループ化キー | `Views/Sessions/Kit/KitSessionView.swift` `groupByPrefix(_:name:)` | グループキー | `.`/`-` 前方一致グループ |
+| 機能 | 並び替えキー | 備考 |
+|---|---|---|
+| Filer のディレクトリ直下 | エントリ名 | ファイル/ディレクトリ混在 (issue #122) |
+| Git ファイルツリー (Working Changes / PR Preview) | エントリ名 | ファイル/ディレクトリ混在 (Filer と完全一致) |
+| Git diff のセクション順 | ファイルパス | staged/unstaged のタイブレークは安定ソートで staged 先 |
+| Kit / Skills | `Skill.name` | 同名タイブレーク: PROJECT を前に置く |
+| Kit / Commands | `Command.name` | 同名タイブレーク: PROJECT を前に置く |
+| Kit / Agents | `Agent.name` | 同名タイブレーク: PROJECT を前に置く |
+| Kit / MCP Servers | `McpServer.name` | タイブレーク不要 (USER のみ) |
+| Kit / 名前グループ化キー | グループキー | `.`/`-` 前方一致グループ |
 
 新しい List UI を追加するときも本ヘルパに揃える。`<` 演算子による生の文字列比較は使わない。
 
 ## 例外: 同名タイブレーク (Kit Loader)
 
 Skills / Commands / Agents は USER と PROJECT スコープが両方マッチした場合に同じ `name` を持つことがあり、
-**PROJECT を前に置く** (PROJECT が USER を上書きする関係性を可視化)。`naturalAscending` で同値判定された場合のみタイブレークが効く:
-
-```swift
-loaded.sorted { lhs, rhs in
-    if lhs.name == rhs.name { return lhs.scope == .project }  // PROJECT を前に
-    return lhs.name.naturalAscending(rhs.name)
-}
-```
+**PROJECT を前に置く** (PROJECT が USER を上書きする関係性を可視化)。`naturalAscending` で同値判定された場合のみタイブレークが効く。
 
 MCP Servers は USER のみのため、タイブレーク条件を持たず `naturalAscending` のみ。
 

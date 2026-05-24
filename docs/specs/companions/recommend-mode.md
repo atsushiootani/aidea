@@ -86,12 +86,7 @@ last_updated: 2026-04-23
 
 ### プロトコル
 
-```swift
-protocol SessionState {
-    /// 現在の Scene 識別子を返す
-    func currentScene() -> String?
-}
-```
+各ビューの SessionState は `currentScene()` メソッドを実装し、現在の Scene 識別子 (`String?`) を返す。
 
 ### 初期定義 (Bundle 同梱の `default-workspace.json` の `recommends` に格納)
 
@@ -139,26 +134,23 @@ protocol SessionState {
 
 ## 状態管理
 
-レコメンドモードの状態は `RecommendState` が持つ (@Observable)。
+レコメンドモードの状態は `RecommendState` が持つ。
 
-```swift
-@Observable
-final class RecommendState {
-    var isActive: Bool              // レコメンドモード中か
-    var selectedCompanionIndex: Int // 選択中のコンパニオン
-    var selectedPromptIndex: Int    // 選択中のプロンプト
-    var prompts: [String]           // 現在表示中のプロンプト一覧
-}
-```
+| プロパティ | 用途 |
+|---|---|
+| `isActive` | レコメンドモード中か |
+| `selectedCompanionIndex` | 選択中のコンパニオン |
+| `selectedPromptIndex` | 選択中のプロンプト |
+| `prompts` | 現在表示中のプロンプト一覧 |
 
 ### 実装コンポーネント
 
-| 型 | ファイル | 責務 |
-|---|---|---|
-| `RecommendState` | `Services/Frontchannel/RecommendState.swift` | レコメンドモードのランタイム状態。`activate / deactivate` と `moveUp/Down/Left/Right` でプロンプト・コンパニオン選択をループ移動させる |
-| `RecommendStore` | `Services/Frontchannel/RecommendStore.swift` | Scene ごとの `SceneConfig` をインメモリで保持する `enum` の static API。永続化は `WorkspaceSnapshotManager` 経由で `workspace.json` v7 に統合される |
-| `SceneConfig` | `Services/Frontchannel/RecommendStore.swift` | Scene ごとの `prompts: [String]` と `defaultCompanionIndex: Int` を保持する Codable |
-| `ScenePromptsEditorView` | `Views/Common/ScenePromptsEditorView.swift` | 各セッションの本体 View 下部に挿入される編集 UI。表示中 Scene の `prompts` 追加/削除と `defaultCompanionIndex` の切替を行う |
+| 型 | 責務 |
+|---|---|
+| `RecommendState` | レコメンドモードのランタイム状態。有効化・無効化とプロンプト・コンパニオン選択のループ移動を管理する |
+| `RecommendStore` | Scene ごとの設定 (`SceneConfig`) をインメモリで保持する静的 API。永続化は `WorkspaceSnapshotManager` 経由で `workspace.json` v7 に統合される |
+| `SceneConfig` | Scene ごとのプロンプト一覧とデフォルトコンパニオン index を保持するデータ構造 |
+| `ScenePromptsEditorView` | 各セッションの本体 View 下部に挿入される編集 UI。表示中 Scene のプロンプト追加/削除とデフォルトコンパニオンの切替を行う |
 
 `SessionRegistry.view(for:)` は **Git / GitDiff 以外**の各セッション View を `VStack` で本体 + `ScenePromptsEditorView` の縦並びにラップする統一パターンを取る。GitDiff は `GitDiffSessionContainer` 側で挿入済みのため二重挿入しない。
 

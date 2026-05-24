@@ -70,7 +70,7 @@ Aidea の Session 実体は、**汎用クラス `Session`** と **Tool ごとに
 
 ## Session クラス
 
-`Aidea/Tools/Session.swift` で定義される **汎用 `@Observable` クラス**。全 Tool で共通の 1 クラスで、Session 実体ごとにインスタンスが作られる。
+全 Tool で共通の**汎用クラス**。Session 実体ごとにインスタンスが作られる。
 
 - `id: SessionID` — Window 内で一意の識別子
 - `state: any SessionState` — Tool 固有の状態への参照
@@ -81,7 +81,7 @@ Aidea の Session 実体は、**汎用クラス `Session`** と **Tool ごとに
 
 ## SessionState プロトコル
 
-`Aidea/Tools/Tool.swift` で定義される **プロトコル**。Tool ごとに 1 つの具体実装クラスが存在する。
+Tool ごとに 1 つの具体実装クラスが準拠する**プロトコル**。
 
 - Tool 固有のデータと振る舞いを保持する場所
 - `didBecomeActive(session:)` / `didResignActive(session:)` のフックメソッドを実装する (default 実装は no-op)

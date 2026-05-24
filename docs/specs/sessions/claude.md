@@ -18,7 +18,7 @@ last_updated: 2026-04-24
 
 # Session 内部状態: Claude
 
-`claude` Tool の Session は `ClaudeSessionState` (`@Observable`) として状態を保持する。
+`claude` Tool の Session は `ClaudeSessionState` として状態を保持する。
 Terminal と同じ PTY ベースだが、起動後に `claude` CLI と Backchannel 指示を自動送信する。
 
 Tool 仕様は [../tools/claude.md](../tools/claude.md) を、共通 UI ルールは [ui-rules.md](./ui-rules.md) を参照。
@@ -50,7 +50,7 @@ Backchannel の詳細は [../backchannels/backchannel.md](../backchannels/backch
 
 どちらの経路でも、`terminalView` の lazy 生成時に `autoStartClaude` が参照する。
 
-`CompanionInstructions` (`Services/Companion/CompanionInstructions.swift`) はパスとロードコマンド文字列の生成を集約するヘルパ。複数の呼び出し元で同じパターンを再生成しないよう、ハードコードを 1 箇所に閉じ込める ([ADR 0022](../../decisions/0022-companion-instructions-as-files.md))。
+`CompanionInstructions` はパスとロードコマンド文字列の生成を集約するヘルパ。複数の呼び出し元で同じパターンを再生成しないよう、ハードコードを 1 箇所に閉じ込める ([ADR 0022](../../decisions/0022-companion-instructions-as-files.md))。
 
 ## 自動起動シーケンス
 

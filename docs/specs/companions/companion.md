@@ -52,7 +52,7 @@ last_updated: 2026-05-05
 
 ### `CompanionConfig`
 
-1 体のコンパニオン設定 + 起動状態。`Models/Companion/CompanionConfig.swift` の `Codable` 構造体。
+1 体のコンパニオン設定 + 起動状態を表すデータ構造。
 
 | プロパティ | 型 | 意味 |
 |---|---|---|
@@ -73,7 +73,7 @@ Aidea が起動時に PTY へ送る文字列は `companionIndex` から派生す
 .aidea/claude/companions/<index>/instructions.md を読んで従ってね
 ```
 
-これを生成・パス解決するヘルパが `Services/Companion/CompanionInstructions.swift` に集約される (`loadCommand(for:)` / `entrypointURL(projectRoot:index:)`)。
+この文字列の生成とパス解決は、コンパニオン指示書ヘルパに集約される。
 
 ### `CompanionIconPresets`
 
@@ -88,14 +88,13 @@ Aidea が起動時に PTY へ送る文字列は `companionIndex` から派生す
 
 `-smile` / `-thinking` は issue #45 で追加された表情セット。読み上げ中と実行中の表示切替に使う (詳細は後述の「表情・状態表示」節)。
 
-ただし **コンパニオンのデフォルト名 / icon の値そのもの** は `Aidea/Resources/default-workspace.json` (Bundle 同梱) の `companions[]` が SSoT。`CompanionIconPresets` は Assets 上のアイコンリソース対応表のみを担う。デフォルトの instructions.md 本文は `Aidea/Resources/Backchannels/companion-instructions.md` (Bundle 同梱、1 ファイルを 9 個に複製) が SSoT。
+ただし **コンパニオンのデフォルト名 / icon の値そのもの** は Bundle 同梱の `default-workspace.json` の `companions[]` が SSoT。`CompanionIconPresets` は Assets 上のアイコンリソース対応表のみを担う。デフォルトの instructions.md 本文は Bundle 同梱のテンプレ (1 ファイルを 9 個に複製) が SSoT。
 
 ---
 
 ## ストア (`CompanionStore`)
 
-`Services/Companion/CompanionStore.swift` の `@Observable` クラス。
-9 個固定のコンパニオン配列をインメモリで保持し、永続化は [`WorkspaceSnapshotManager`](../../../Aidea/Aidea/Services/Workspace/WorkspaceSnapshotManager.swift) 経由で `.aidea/workspace.json` に書き出される (詳細は [../aspects/persistence.md](../aspects/persistence.md))。
+9 個固定のコンパニオン配列をインメモリで保持し、永続化は `WorkspaceSnapshotManager` 経由で `.aidea/workspace.json` に書き出される (詳細は [../aspects/persistence.md](../aspects/persistence.md))。
 
 ### 状態
 
@@ -131,11 +130,11 @@ Aidea が起動時に PTY へ送る文字列は `companionIndex` から派生す
 
 ## View 構成
 
-| 型 | ファイル | 責務 |
-|---|---|---|
-| `CompanionView` | `Views/Companion/CompanionView.swift` | ヘッダに 9 体並べる本体。アイコンタップで起動/フォーカス、ラベルタップで編集 sheet を開く。レコメンドモード中は選択コンパニオンの下に `RecommendBubbleView` を表示 |
-| `CompanionEditView` | `Views/Companion/CompanionEditView.swift` | 名前・アイコンを編集する sheet (`update(_:)` を呼ぶ)。「指示書を開く」ボタンで `SessionRegistry.openPreview` 経由で `.aidea/claude/companions/<index>/instructions.md` を Preview セッションとして開く (markdown view + 編集モード) |
-| `RecommendBubbleView` | `Views/Companion/RecommendBubbleView.swift` | `RecommendState.prompts` を縦に並べ、選択中をアクセントカラーでハイライトする吹き出し |
+| 型 | 責務 |
+|---|---|
+| `CompanionView` | ヘッダに 9 体並べる本体。アイコンタップで起動/フォーカス、ラベルタップで編集 sheet を開く。レコメンドモード中は選択コンパニオンの下に `RecommendBubbleView` を表示 |
+| `CompanionEditView` | 名前・アイコンを編集する sheet。「指示書を開く」ボタンで `.aidea/claude/companions/<index>/instructions.md` を Preview セッションとして開く (markdown view + 編集モード) |
+| `RecommendBubbleView` | レコメンドプロンプト一覧を縦に並べ、選択中をアクセントカラーでハイライトする吹き出し |
 
 ---
 
@@ -223,11 +222,11 @@ SF Symbol オーバーレイの組み合わせで表現する。
 
 ### 依存する状態源
 
-| 状態 | 参照する `@Observable` | 新規/既存 |
+| 状態 | 状態源 | 新規/既存 |
 |---|---|---|
 | `sessionID == nil` | `CompanionStore.companions[N].sessionID` | 既存 |
 | `isBusy` | `ClaudeSessionState.isBusy` | **新規** (issue #45 で追加) |
-| `isSpeaking` | `ClaudeSessionState.isSpeaking` (facade) → `SpeechQueue.currentlySpeakingIndex` | **新規** (issue #45 で追加、voicevox.md の将来拡張枠を具体化) |
+| `isSpeaking` | `ClaudeSessionState.isSpeaking` → `SpeechQueue.currentlySpeakingIndex` | **新規** (issue #45 で追加、voicevox.md の将来拡張枠を具体化) |
 
 - `ClaudeSessionState.isBusy`: PTY 出力が続いている間 true。静止を検知したら false。詳細は [../tools/claude.md](../tools/claude.md) を参照
 - `ClaudeSessionState.isSpeaking`: `SpeechQueue.currentlySpeakingIndex == companionIndex` を返す computed facade。`CompanionView` は `isBusy` と対称に ClaudeSessionState から read し、SpeechQueue の Observable tracking が自動で伝播する。詳細は [../backchannels/voicevox.md](../backchannels/voicevox.md) を参照
@@ -241,7 +240,7 @@ SF Symbol オーバーレイの組み合わせで表現する。
 
 ### 境界
 
-- **Always**: 状態は `@Observable` の変化に駆動される Pure SwiftUI (タイマー polling しない)。優先順位判定は `CompanionView` の 1 箇所に集約
+- **Always**: 状態変化に駆動されて UI が自動更新される (タイマー polling しない)。優先順位判定は `CompanionView` の 1 箇所に集約
 - **Never**: 表情切替のために companion の永続状態 (`workspace.json`) を書き換えない。`isBusy` / `currentlySpeakingIndex` はランタイム情報のみ
 
 ---

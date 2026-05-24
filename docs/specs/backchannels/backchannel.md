@@ -99,7 +99,7 @@ Aidea は Claude セッション起動時に、`companionIndex` から派生し�
 .aidea/claude/companions/<index>/instructions.md を読んで従ってね
 ```
 
-文字列の生成は `Services/Companion/CompanionInstructions.swift` (`loadCommand(for:)`) に集約される。
+この文字列の生成は、コンパニオン指示書の起動コマンド生成ヘルパに集約される。
 
 ### コンパニオン側の指示書
 
