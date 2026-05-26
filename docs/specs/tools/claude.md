@@ -9,12 +9,13 @@ derived_from:
   - docs/specs/backchannels/backchannel.md
 syncs_with:
   - docs/specs/sessions/claude.md
+  - docs/specs/sessions/terminal.md
   - docs/specs/aspects/keybindings.md
   - docs/specs/companions/companion.md
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-01
+last_updated: 2026-05-26
 ---
 
 # Tool 仕様: Claude
@@ -61,19 +62,29 @@ Backchannel の詳細は [backchannels/backchannel.md](../backchannels/backchann
 
 ## 起動フロー
 
+tmux の有無と既存セッションの有無で 3 経路に分岐する。詳細な状態遷移は [sessions/claude.md#自動起動シーケンス](../sessions/claude.md#自動起動シーケンス) を参照。
+
+| 経路 | 条件 | PTY 内側で起動するもの | autoStartClaude |
+|------|------|-----------------------|---------------|
+| **A. tmux 新規** | tmux 検出 + 既存セッションなし | tmux 経由の zsh | 実行 |
+| **B. tmux 再 attach** | tmux 検出 + 既存セッションあり | 既存 tmux セッション (claude TUI が継続中) | **スキップ** (再送禁止) |
+| **C. tmux 未インストール** | tmux 検出なし | 直接 zsh -l | 実行 |
+
+経路 A / C の自動送信タイミング:
+
 ```
-1. zsh -c "cd '{projectRoot}' && exec zsh -l" で対話シェルを起動
-2. 1 秒後: send("claude\n") で claude を起動
-3. 5 秒後: send("{companionPrompt}") で Companion 指示書読み込みコマンドを送信
-4. 5.3 秒後: send("\r") で submit
-5. 6.0 秒後: isReady フラグを true にセット (Frontchannel からの sendMessage が安全に使える状態)
+1. PTY で zsh 起動 (経路 A は tmux 経由、経路 C は直接)
+2. +1.0s: send("claude\n") で claude を起動
+3. +5.0s: send("{companionPrompt}") で Companion 指示書読み込みコマンドを送信
+4. +5.3s: send("\r") で submit
+5. +6.0s: isReady フラグを true にセット (Frontchannel からの sendMessage が安全に使える状態)
 ```
 
 ### 自動送信のタイミング
 
 | ステップ | 遅延 | 内容 |
 |---------|------|------|
-| zsh 起動 | 0s | PTY プロセス開始 |
+| zsh 起動 | 0s | PTY プロセス開始 (tmux 経由 or 直接) |
 | claude 送信 | +1.0s | `claude\n` を PTY に送信 |
 | companionPrompt 送信 | +5.0s | `CompanionInstructions.loadCommand(for:)` が生成した固定パターン文字列 (`.aidea/claude/companions/<index>/instructions.md を読んで従ってね`) を PTY に送信 |
 | Enter 送信 | +5.3s | `\r` を送って submit させる |
@@ -84,6 +95,16 @@ Backchannel の詳細は [backchannels/backchannel.md](../backchannels/backchann
 - companionPrompt が空の場合はステップ 3-4 をスキップし、isReady は `+1.3s` でセット
 - 本文と `\r` を分離するのは、Claude Code (Ink 製 TUI) が bracketed paste を有効にしており、両者を一度に送ると `\r` も paste の一部とみなされ submit されないため。本文の入力処理が終わる間 (≈0.3s) を挟む
 - v8 以降、Aidea が送るのは固定パターン文字列のみ。Claude が Read ツールで `instructions.md` 本文を取りに行く (ADR 0022)。Claude 側は `instructions.md` 冒頭から `.aidea/claude/aidea.md` / `speech.md` / `handoff.md` 等を段階的に読み込む
+- 経路 B (再 attach) では autoStartClaude を **完全にスキップ** し、`isReady=true` だけを即セットする。既に起動中の Claude TUI に `claude\n` を再送すると入力欄に "claude" 文字列が入力されてしまうため
+
+### tmux による永続化
+
+Claude セッションも Terminal と同様に tmux で PTY を永続化する (Terminal の仕様は [sessions/terminal.md#永続化](../sessions/terminal.md#永続化) を参照)。
+
+- セッション名: `aidea-claude-<companionIndex>-<slug>-<hash>` (Terminal の `aidea-<slug>-<hash>-<instance>` と prefix で分離)
+- Aidea 終了時: PTY (tmux クライアント) が閉じるが、tmux サーバと claude プロセスは継続
+- 再起動後の再 attach: 同名 tmux セッションに自動 attach し、autoStartClaude をスキップする
+- tmux 未インストール時: 経路 C にフォールバック (永続化なし)
 
 ---
 
@@ -185,7 +206,10 @@ Backchannel の詳細は [backchannels/backchannel.md](../backchannels/backchann
 - 対話シェル内で `send()` により claude を起動する（非対話シェルからの exec ではない）
 - Backchannel 指示はコンパニオンの `instructions.md` 経由で `.aidea/claude/*.md` を読むよう Claude に伝える形で行う (v8 以降、ADR 0022)
 - PersistentTerminalView は Terminal ツールと共用する
+- tmux 検出時はセッション名 prefix `aidea-claude-` で Terminal と分離する
+- 再 attach 経路 (tmux has-session が成功する経路) では autoStartClaude を実行しない
 
 ### Never
 - 非対話シェルから直接 claude を exec しない（ADR 0008）
 - claude の起動完了を出力パースで検知しない（固定遅延で対応）
+- 既存 tmux セッションに対して `claude\n` や `companionPrompt` を再送しない (TUI 入力欄に文字列が漏れるため)
