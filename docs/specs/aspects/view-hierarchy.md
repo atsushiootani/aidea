@@ -17,7 +17,7 @@ impacts: []
 conventions:
   - docs/LAYOUT.md
   - docs/specs/aspects/README.md
-last_updated: 2026-05-22
+last_updated: 2026-05-26
 ---
 
 # View 階層 (UI コンポーネント親子関係)
@@ -194,6 +194,7 @@ NSWindow (メインウィンドウ)
 | `RecommendBubbleView` | `CompanionView` の選択中アイコン直下 (吹き出し) | `RecommendState.isActive` (Cmd+Enter で起動) |
 | `CompanionEditView` | ウィンドウ全体の sheet | Companion 名ラベルをタップ |
 | Tool 選択 NSMenu | `+` ボタン直下 / 任意位置 | `+` ボタン押下 / Cmd+T |
+| ファイルパス選択 NSMenu | `PersistentTerminalView` 内のクリック位置近傍 | ターミナル / Claude ビューでファイルパスをクリックした際、プロジェクト内検索で複数候補がヒット |
 | `ActiveSessionSwitcherView` | 別 NSWindow (`level = .floating`、メインウィンドウ中央) | Ctrl+Tab |
 
 ---
