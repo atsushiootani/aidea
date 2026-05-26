@@ -27,7 +27,7 @@ Aidea の**プロダクト仕様 (設計ストック)**。コードベースと 
 | [companions/](./companions/) | **中** | コンパニオン (9 体のアイコン) とレコメンドモード |
 | [backchannels/](./backchannels/) | **中** | 裏側処理 (読み上げ / VOICEVOX 連携など) |
 | [sessions/](./sessions/) | **中** | Session 概念の詳細 (概念モデル・アクティブ切替・UI ルール) |
-| [widgets/](./widgets/) | **中** | ヘッダ常駐型の小さな補助機能 (ポモドーロ / 没入防止タイマー 等) |
+| [widgets/](./widgets/) | **中** | ヘッダ常駐型の小さな補助機能 (ポモドーロ / クイックメモ 等) |
 | [skills/](./skills/) | **低中** | Claude Code スキルの仕様 (concier スケジュールリマインド / docs-graph など) |
 | [window/](./window/) | **中低** | Window 全体の振る舞い (ダイアログ・グローバルショートカット) |
 | [glossary.md](./glossary.md) | **低中** | 用語集 |

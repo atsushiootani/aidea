@@ -21,7 +21,6 @@ struct AideaApp: App {
     @State private var handoffState: HandoffState
     @State private var outputState: OutputState
     @State private var pomodoroState: PomodoroState
-    @State private var focusTimerState: FocusTimerState
     @State private var quickMemoState: QuickMemoState
     /// Ctrl+Tab で起動する Active Session Switcher (Window レベル singleton)
     @State private var sessionSwitcher = ActiveSessionSwitcher()
@@ -75,25 +74,6 @@ struct AideaApp: App {
             speech.queue.enqueue(text, speakerId: nil, companionIndex: 6)
         }
 
-        // 没入防止タイマー: 時間切れで concier 役 (companionIndex = 6) に読み上げ +
-        // frontchannel でメッセージ送信 (docs/specs/widgets/focus-timer.md)
-        let focusTimer = FocusTimerState()
-        focusTimer.onExpiry = {
-            if speech.isEnabled {
-                speech.queue.enqueue(
-                    "没入防止タイマーが切れました。そろそろメンバーに相談しましょう",
-                    speakerId: nil,
-                    companionIndex: 6
-                )
-            }
-            AideaApp.sendFocusTimerAlert(
-                companionStore: companions,
-                registry: reg,
-                layout: lay,
-                speechState: speech
-            )
-        }
-
         _workspace = State(initialValue: ws)
         _layout = State(initialValue: lay)
         _registry = State(initialValue: reg)
@@ -104,7 +84,6 @@ struct AideaApp: App {
         _handoffState = State(initialValue: handoff)
         _outputState = State(initialValue: output)
         _pomodoroState = State(initialValue: pomodoro)
-        _focusTimerState = State(initialValue: focusTimer)
         _quickMemoState = State(initialValue: QuickMemoState())
     }
 
@@ -120,7 +99,6 @@ struct AideaApp: App {
                 .environment(handoffState)
                 .environment(outputState)
                 .environment(pomodoroState)
-                .environment(focusTimerState)
                 .environment(quickMemoState)
                 .environment(tabPickerAnchor)
                 .onAppear {
@@ -144,7 +122,6 @@ struct AideaApp: App {
             tabMenu
             toolMenu
             pomodoroMenu
-            focusTimerMenu
             voiceInputMenu
             CommandMenu("Aidea") {
                 Button("読み上げ ON/OFF") {
@@ -225,17 +202,6 @@ struct AideaApp: App {
         }
     }
 
-    /// 没入防止タイマーメニュー (docs/specs/widgets/focus-timer.md)
-    @CommandsBuilder
-    private var focusTimerMenu: some Commands {
-        CommandMenu("没入防止タイマー") {
-            Button("開始 / 一時停止") { focusTimerState.toggleRun() }
-                .keyboardShortcut("f", modifiers: [.command, .option])
-            Button("リセット") { focusTimerState.reset() }
-                .keyboardShortcut("f", modifiers: [.command, .option, .shift])
-        }
-    }
-
     /// 音声入力メニュー (docs/specs/frontchannels/voice-input.md)
     /// アクティブセッションが Claude のときだけ ⌘ ⌥ V でダイアログを開ける。
     /// disabled 条件は VoiceInputButton と完全に一致させる。
@@ -249,6 +215,7 @@ struct AideaApp: App {
             .disabled((registry.activeSession?.state as? ClaudeSessionState) == nil)
         }
     }
+
 
     // MARK: - File menu action
 
@@ -613,43 +580,6 @@ struct AideaApp: App {
         switch target {
         case .index(let i): return "index=\(i)"
         case .name(let s): return "name=\"\(s)\""
-        }
-    }
-
-    /// 没入防止タイマー時間切れ時に companion index 6 へ frontchannel でメッセージを送る。
-    /// 未起動の場合は起動してから sendMessageWhenReady で flush する。
-    private static func sendFocusTimerAlert(
-        companionStore: CompanionStore,
-        registry: SessionRegistry,
-        layout: LayoutConfig,
-        speechState: SpeechState
-    ) {
-        let message = "没入防止タイマーが切れました。今のタスクについてメンバーに相談することをお勧めします。詰まっていること・進捗・試したことを整理してみましょう。"
-        let index = 6
-        let companion = companionStore.companion(forIndex: index)
-
-        if let sessionID = companion.sessionID,
-           let session = registry.session(for: sessionID),
-           let claudeState = session.state as? ClaudeSessionState {
-            registry.activateSession(sessionID)
-            claudeState.sendMessage(message)
-            return
-        }
-
-        let instance = layout.nextSessionInstance(of: .claude)
-        let session = registry.createSession(tool: .claude, instance: instance)
-        if let claudeState = session.state as? ClaudeSessionState {
-            claudeState.companionPrompt = CompanionInstructions.loadCommand(for: index)
-            claudeState.companionIndex = index
-            claudeState.speechQueue = speechState.queue
-        }
-        companionStore.bind(index: index, sessionID: session.id)
-        if let pane = registry.activePane ?? layout.allPanes.first {
-            pane.tabs.append(session.id)
-            registry.setActiveTab(paneID: pane.id, tabIndex: pane.tabs.count - 1)
-        }
-        if let claudeState = session.state as? ClaudeSessionState {
-            claudeState.sendMessageWhenReady(message)
         }
     }
 

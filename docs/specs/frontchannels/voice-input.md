@@ -153,7 +153,7 @@ AppHeaderView
 - `sendMessageWhenReady` を使って PTY に送信する。Claude 起動済みなら即送信、未起動なら起動完了後に自動送信する
 - 送信前に前後の空白文字を除去する
 - 改行は送信側で自動付加 (二重付加しない)
-- handoff / focus-timer / recommend と同じ堅牢な送信経路を採用し、Claude 起動状態の変動に追従する
+- handoff / recommend と同じ堅牢な送信経路を採用し、Claude 起動状態の変動に追従する
 - 送信成功後、ダイアログを閉じる
 
 ### 空入力・空白のみ

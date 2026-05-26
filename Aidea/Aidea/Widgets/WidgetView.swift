@@ -14,7 +14,6 @@ struct WidgetView: View {
         HStack(spacing: 4) {
             QuickMemoButton()
             TimerView()
-            FocusTimerView()
         }
     }
 }

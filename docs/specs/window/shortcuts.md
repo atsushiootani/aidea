@@ -8,7 +8,6 @@ syncs_with:
   - docs/specs/aspects/keybindings.md
   - docs/specs/widgets/quick-memo.md
   - docs/specs/widgets/pomodoro.md
-  - docs/specs/widgets/focus-timer.md
   - docs/specs/window/active-session-switcher.md
   - docs/specs/frontchannels/voice-input.md
 impacts: []
@@ -74,15 +73,6 @@ Window 全体で有効なキーボードショートカット。
 |---|---|
 | **⌘ ⌥ P** | ポモドーロタイマー 開始 / 一時停止 |
 | **⌘ ⌥ ⇧ P** | ポモドーロタイマー リセット |
-
-## 没入防止タイマー
-
-`AideaApp.body.commands` の `CommandMenu("没入防止タイマー")` で実装する。詳細は [../widgets/focus-timer.md](../widgets/focus-timer.md)。
-
-| キー | 動作 |
-|---|---|
-| **⌘ ⌥ F** | 没入防止タイマー 開始 / 一時停止 |
-| **⌘ ⌥ ⇧ F** | 没入防止タイマー リセット |
 
 ## 音声入力
 

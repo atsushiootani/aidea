@@ -43,8 +43,7 @@ Aidea ヘッダ右端の ✏️ ボタン (または Cmd+M) で即座にメモ�
 WidgetView
 └─ HStack
    ├─ QuickMemoButton  ← 今回追加 (✏️ アイコン)
-   ├─ TimerView        (ポモドーロ)
-   └─ FocusTimerView   (没入防止タイマー)
+   └─ TimerView        (ポモドーロ)
 ```
 
 ### Popover 内レイアウト
