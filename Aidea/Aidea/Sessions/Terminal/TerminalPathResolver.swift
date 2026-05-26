@@ -5,6 +5,14 @@
 
 import Foundation
 
+/// プロジェクト内検索フォールバックの結果。
+/// `TerminalPathResolver.matchWithFallback` が返す3値。
+enum TerminalPathFallbackResult {
+    case none
+    case single(TerminalPathMatch)
+    case multiple([TerminalPathMatch])
+}
+
 /// ターミナル出力中のファイルパス検出結果。
 /// `TerminalPathResolver` が行内のテキストから実在するパスを抽出して返す。
 struct TerminalPathMatch: Equatable {
@@ -37,6 +45,32 @@ enum TerminalPathResolver {
             }
         }
         return nil
+    }
+
+    /// 行内の col 位置に重なるパス候補を、プロジェクト内検索フォールバックを含めて解決する。
+    /// 1. 絶対パス / projectRoot 起点の直接解決を試みる
+    /// 2. 見つからず非絶対パスなら projectRoot 以下を再帰検索 (ファイル名一致 / 末尾パス一致)
+    /// 仕様: docs/specs/tools/terminal.md#パス解決
+    static func matchWithFallback(in line: String, at column: Int, projectRoot: URL?) -> TerminalPathFallbackResult {
+        for candidate in detectCandidates(in: line) {
+            guard column >= candidate.startColumn && column < candidate.endColumn else { continue }
+            if let match = resolve(candidate: candidate, projectRoot: projectRoot) {
+                return .single(match)
+            }
+            guard !candidate.path.hasPrefix("/"), let root = projectRoot else {
+                return .none
+            }
+            let found = searchProject(for: candidate.path, projectRoot: root)
+            switch found.count {
+            case 0:
+                return .none
+            case 1:
+                return .single(makeMatch(candidate: candidate, url: found[0], projectRoot: root))
+            default:
+                return .multiple(found.map { makeMatch(candidate: candidate, url: $0, projectRoot: root) })
+            }
+        }
+        return .none
     }
 
     /// 行内のすべてのパス候補を実在確認込みで列挙する (デバッグ・将来用)。
@@ -113,6 +147,72 @@ enum TerminalPathResolver {
             path: candidate.path,
             line: candidate.line,
             absoluteURL: absoluteURL,
+            displayPath: displayPath
+        )
+    }
+
+    /// NSCache の値を保持するためのラッパークラス (NSCache は AnyObject を要求するため)。
+    private final class URLArrayBox: NSObject {
+        let urls: [URL]
+        init(_ urls: [URL]) { self.urls = urls }
+    }
+
+    /// プロジェクト内検索のキャッシュ。キー = "projectRootPath\0candidatePath"。
+    private static let searchCache = NSCache<NSString, URLArrayBox>()
+
+    /// `candidatePath` で projectRoot 以下を再帰検索し、一致するファイルの URL 一覧を返す。
+    /// ファイル名一致 (candidatePath にディレクトリ成分なし) または末尾パス一致で検索する。
+    /// .gitignore は考慮せず、node_modules 等を含めた全ファイルを対象とする。
+    /// 結果は NSCache でキャッシュし、同一セッション内の再探索コストを削減する。
+    private static func searchProject(for candidatePath: String, projectRoot: URL) -> [URL] {
+        let normalized = candidatePath.hasPrefix("./") ? String(candidatePath.dropFirst(2)) : candidatePath
+        let cacheKey = "\(projectRoot.path)\0\(normalized)" as NSString
+        if let cached = searchCache.object(forKey: cacheKey) {
+            return cached.urls
+        }
+
+        let hasDirectoryComponents = normalized.contains("/")
+        let suffix = "/" + normalized
+        let fileName = (normalized as NSString).lastPathComponent
+        var results: [URL] = []
+
+        let enumerator = FileManager.default.enumerator(
+            at: projectRoot,
+            includingPropertiesForKeys: [.isRegularFileKey],
+            options: [.skipsPackageDescendants]
+        )
+        while let url = enumerator?.nextObject() as? URL {
+            guard (try? url.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true else { continue }
+            if hasDirectoryComponents {
+                if url.path.hasSuffix(suffix) {
+                    results.append(url)
+                }
+            } else {
+                if url.lastPathComponent == fileName {
+                    results.append(url)
+                }
+            }
+        }
+
+        searchCache.setObject(URLArrayBox(results), forKey: cacheKey)
+        return results
+    }
+
+    /// URL と Candidate から TerminalPathMatch を生成するヘルパー。
+    private static func makeMatch(candidate: Candidate, url: URL, projectRoot: URL) -> TerminalPathMatch {
+        let displayPath: String
+        let rootPrefix = projectRoot.path + "/"
+        if url.path.hasPrefix(rootPrefix) {
+            displayPath = String(url.path.dropFirst(rootPrefix.count))
+        } else {
+            displayPath = url.path
+        }
+        return TerminalPathMatch(
+            startColumn: candidate.startColumn,
+            endColumn: candidate.endColumn,
+            path: candidate.path,
+            line: candidate.line,
+            absoluteURL: url,
             displayPath: displayPath
         )
     }

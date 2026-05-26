@@ -13,7 +13,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-18
+last_updated: 2026-05-26
 ---
 
 # Tool 仕様: Terminal
@@ -69,7 +69,7 @@ Session 内部状態は [sessions/terminal.md](../sessions/terminal.md) を参�
 ペイン間移動時に NSView が一時的に detach される（superview = nil, bounds = 0）際、
 SwiftTerm がバッファをクリアしてしまう問題を回避するサブクラス。
 
-- `layout()` / `setFrameSize()` / `setBoundsSize()` で bounds < 10pt のときスキップ
+- bounds が 10pt 未満のときレイアウト処理をスキップ
 - PTY プロセスは初回アクセス時に 1 回だけ起動し、以降はキャッシュを返す
 
 ---
@@ -89,7 +89,7 @@ SwiftTerm がバッファをクリアしてしまう問題を回避するサブ�
 | 種別 | 検出 | アクション |
 |---|---|---|
 | URL | SwiftTerm 標準の URL/OSC 8 ハイパーリンク検出 | `NSWorkspace.shared.open(url)` でブラウザ起動 |
-| ファイルパス | Aidea 独自の regex 検出 + 実在確認 (issue #71) | `SessionRegistry.openPreviewAsSibling(for:title:)` でターミナルと同じペインの右隣に Preview タブを開く |
+| ファイルパス | Aidea 独自の regex 検出 + 実在確認 (issue #71) | ターミナルと同じペインの右隣に Preview タブを開く |
 
 クリックターゲット (URL またはファイルパス) 上にマウスがホバーしたとき、カーソルを `NSCursor.pointingHand` (指マーク) に変えてクリック可能であることを示す。ターゲットから外れたら通常 (`NSCursor.iBeam`) に戻す。
 
@@ -130,25 +130,28 @@ mouseDown と mouseUp の位置が **threshold (4 pt) 以下** に収まり、�
 
 #### パス解決
 
-1. 検出した `path` が絶対パス (`/` 始まり) なら **そのまま**
-2. 相対パスなら `WorkspaceState.projectRoot` を起点に絶対化する
-3. 解決後の URL が `FileManager.fileExists` でファイルとして実在しなければ **無音で無視** (URL クリックの失敗時挙動と同じ)
-
-PTY の `cwd` は **追跡しない** (MVP)。`cd` 後に表示された相対パスは projectRoot 起点に解決されるため不正確になり得るが、Claude や `grep -rn` 等の主要出力源は projectRoot 起点が大半なので許容する。`hostCurrentDirectoryUpdate` を実装した cwd 追跡は別 issue で扱う (将来拡張)。
+1. 検出した `path` が絶対パス (`/` 始まり) なら **そのまま実在確認** → 実在すれば Preview で開く
+2. 相対パスなら `WorkspaceState.projectRoot` を起点に絶対化し、実在すれば Preview で開く
+3. 上記で見つからない場合: **プロジェクト内検索** フォールバック
+   - `projectRoot` 以下を再帰的に検索し、ファイル名一致または末尾パス一致するファイルを列挙する
+   - 検索範囲は `.gitignore` の内容を**考慮しない** (`node_modules` 等も含めて全検索)
+   - **1 件のみマッチ** → そのファイルを Preview で開く
+   - **複数マッチ** → クリック位置近傍に **NSMenu ポップアップ** を表示し、ユーザが選んだものを開く
+4. それでも見つからない場合: **無音で無視** (URL クリックの失敗時挙動と同じ)
 
 #### Preview 起動
 
 検出 + 実在確認後、以下を呼ぶ:
 
-Preview を同じペインの右隣に新規タブとして開く (`openPreviewAsSibling`)。
+Preview を同じペインの右隣に新規タブとして開く。
 
 - `title` は projectRoot からの相対パス (絶対パスは長くタブで読みにくいため)
-- **同じペインの右隣に新規 Preview タブを挿入する** (`openPreviewAsSibling`)。ターミナルで作業中に他ペインへフォーカスを奪われない方が体感が自然なため。Filer / Kit のダブルクリックが使う `openPreview` (別ペイン配置) とはここが異なる
+- **同じペインの右隣に新規 Preview タブを挿入する**。ターミナルで作業中に他ペインへフォーカスを奪われない方が体感が自然なため。Filer / Kit のダブルクリックが使う「別ペイン配置で開く」とはここが異なる
 - 既存の Preview dedupe 規約 ([sessions/active-session.md#preview-を開くときの呼び出し規約](../sessions/active-session.md#preview-を開くときの呼び出し規約)) に従い、同じ URL の Preview がすでに存在すれば新規作成せずアクティブ化する
 
 #### `:行数` 指定の行ジャンプ (将来拡張)
 
-issue #71 の `(want)` 項目。Preview 側のコード/テキストビューが現状行ジャンプ機構を持たない (Markdown のみ `scrollTo("line-\(N)")` 対応) ため、**MVP では行番号を検出はするが Preview への引き渡しは行わない** (= ファイルを開くだけ)。Preview 側に行ジャンプ API が追加された段階で `SessionRegistry.openPreview(for:title:line:)` 等の拡張を検討する (別 issue)。
+issue #71 の `(want)` 項目。Preview 側のコード/テキストビューが現状行ジャンプ機構を持たないため、**MVP では行番号を検出はするが Preview への引き渡しは行わない** (= ファイルを開くだけ)。Preview 側に行ジャンプ機能が追加された段階で Preview 起動 API の拡張を検討する (別 issue)。
 
 ### ホバー時カーソル変化
 
@@ -156,8 +159,9 @@ issue #71 の `(want)` 項目。Preview 側のコード/テキストビューが
 
 - mouseMoved を `addLocalMonitorForEvents` で観測し、座標→セル変換でホバー位置の文字を取得する
 - そのセルが SwiftTerm 標準の URL 検出範囲内、または `TerminalPathResolver` がパスとして検出した範囲内なら `NSCursor.pointingHand.set()` を呼ぶ
+- ファイルパス判定には**プロジェクト内検索フォールバック**も含む — 直接解決できない相対パスでも、プロジェクト内に候補が存在する場合は指マークを表示する
 - ターゲット外に出たら `NSCursor.iBeam.set()` (ターミナル既定) に戻す
-- 実在しないファイルパス候補 (regex は通るが `fileExists` が false) もカーソルは変えない (クリックしても何も起きないため)
+- 実在しないファイルパス候補 (regex は通るが直接解決も検索もヒットしない) はカーソルを変えない (クリックしても何も起きないため)
 - SwiftTerm 内部の mouseMoved 経由 URL 自動オープンは引き続き抑制 (issue #54 対策、既存挙動を維持)
 
 ### 実装コンポーネント
@@ -189,16 +193,18 @@ Markdown Preview の実行ボタン押下時に呼ばれる。既存 Terminal �
 - クリック起動は Terminal Tool / Claude Tool の両方で同じ挙動 (PersistentTerminalView 共用)
 - クリック起動は mouseDown→mouseUp の距離が threshold (4 pt) 以下かつドラッグなしのときのみ発火
 - URL とファイルパスの両方が **単純クリック** で開く (Cmd 修飾は不要・押されていても同じ挙動)
-- クリックターゲット (URL / 実在するファイルパス) 上では `NSCursor.pointingHand` でクリック可能であることを示す
-- ファイルパスのクリック起動は `WorkspaceState.projectRoot` を相対パスの起点とする
-- 検出パスがファイルとして実在しない場合は無音で無視 (URL クリックの失敗時挙動に揃える)
-- ファイルパスから開く Preview は **ターミナルと同じペインの右隣** に新規タブで挿入する (`openPreviewAsSibling`)
+- クリックターゲット (URL / 実在するファイルパス / フォールバック検索でヒットするパス) 上では `NSCursor.pointingHand` でクリック可能であることを示す
+- ファイルパスのクリック起動は `WorkspaceState.projectRoot` を相対パスの一次解決の起点とし、見つからない場合はプロジェクト内検索フォールバックに進む
+- 直接解決もフォールバック検索もヒットしない場合は無音で無視 (URL クリックの失敗時挙動に揃える)
+- フォールバック検索で複数候補が見つかった場合は NSMenu ポップアップを表示してユーザに選択させる
+- ファイルパスから開く Preview は **ターミナルと同じペインの右隣** に新規タブで挿入する
 
 ### Never
 - Terminal ツールから `claude` を自動起動しない（Claude ツールの責務）
 - 非対話シェルから直接プロセスを exec しない（ADR 0008）
 - ドラッグ選択中の mouseUp でクリック起動を発火しない (テキスト選択を優先)
 - SwiftTerm 標準の mouseMoved 経由 URL 自動オープンを許可しない (mouseUp 必須)
-- PTY の `cwd` 追跡で相対パスを解決しない (MVP では projectRoot 固定)
+- PTY の `cwd` 追跡で相対パスを解決しない (projectRoot 起点 + プロジェクト内検索で代替)
 - `:行数` を Preview に引き渡さない (MVP)
+- フォールバック検索は projectRoot が未設定の場合、または絶対パスが対象の場合は実行しない
 - `TerminalLinkGuard.requestOpenLink` で scheme を持たない link 文字列を `NSWorkspace.shared.open` に渡さない (SwiftTerm の link detector がファイルパスを link として渡してきても、Preview 起動は `handlePathClickIfNeeded` が担うため。`open` に渡すと Finder が `-50` ダイアログを出してしまう)
