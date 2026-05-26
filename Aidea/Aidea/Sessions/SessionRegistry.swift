@@ -6,6 +6,7 @@
 import SwiftUI
 import AppKit
 import Observation
+import SwiftTerm
 
 /// Session 実体のライフサイクルを管理するレジストリ。
 /// sessions 配列で全 Session を公開し、Active Pane + Active Tab から
