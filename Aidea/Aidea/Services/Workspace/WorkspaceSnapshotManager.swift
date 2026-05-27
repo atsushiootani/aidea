@@ -392,13 +392,13 @@ final class WorkspaceSnapshotManager {
 
         // Claude セッションの ensureSession + companionPrompt / companionIndex 再注入
         // (sessionID != nil な companion それぞれに対して)
-        // v8 以降は CompanionInstructions.loadCommand(for:) で固定パターン文字列を生成 (ADR 0022)
+        // agent.md が存在すればエージェント定義コマンドを、なければ instructions.md コマンドにフォールバック (ADR 0029)
         if let companionStore {
             for companion in companionStore.companions {
                 guard let sessionID = companion.sessionID else { continue }
                 let session = registry.ensureSession(for: sessionID)
                 if let state = session.state as? ClaudeSessionState {
-                    state.companionPrompt = CompanionInstructions.loadCommand(for: companion.index)
+                    state.companionPrompt = CompanionInstructions.startupCommand(for: companion.index, projectRoot: projectRoot)
                     state.companionIndex = companion.index
                     state.speechQueue = speechQueue
                 }
