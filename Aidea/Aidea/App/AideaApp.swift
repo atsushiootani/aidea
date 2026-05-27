@@ -304,7 +304,7 @@ struct AideaApp: App {
             let instance = layout.nextSessionInstance(of: .claude)
             let session = registry.createSession(tool: .claude, instance: instance)
             if let state = session.state as? ClaudeSessionState {
-                state.companionPrompt = CompanionInstructions.loadCommand(for: index)
+                state.companionPrompt = CompanionInstructions.startupCommand(for: index, projectRoot: workspace.projectRoot)
                 state.companionIndex = index
                 state.speechQueue = speechState.queue
             }
@@ -361,6 +361,7 @@ struct AideaApp: App {
         let recommend = self.recommendState
         let speechState = self.speechState
         let quickMemo = self.quickMemoState
+        let projectRoot = self.workspace.projectRoot
         NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
             // レコメンドモード中のキー操作
             if recommend.isActive {
@@ -370,7 +371,7 @@ struct AideaApp: App {
                 case 123: recommend.moveLeft(); return nil      // ←
                 case 124: recommend.moveRight(); return nil     // →
                 case 36:  // Enter - 送信
-                    Self.sendRecommendedPrompt(recommend: recommend, companionStore: companionStore, registry: registry, layout: layout, speechState: speechState)
+                    Self.sendRecommendedPrompt(recommend: recommend, companionStore: companionStore, registry: registry, layout: layout, speechState: speechState, projectRoot: projectRoot)
                     return nil
                 case 53:  // Esc - キャンセル
                     recommend.deactivate()
@@ -443,7 +444,7 @@ struct AideaApp: App {
     }
 
     /// レコメンドモードで選択されたプロンプトをコンパニオンに送信する
-    private static func sendRecommendedPrompt(recommend: RecommendState, companionStore: CompanionStore, registry: SessionRegistry, layout: LayoutConfig, speechState: SpeechState) {
+    private static func sendRecommendedPrompt(recommend: RecommendState, companionStore: CompanionStore, registry: SessionRegistry, layout: LayoutConfig, speechState: SpeechState, projectRoot: URL?) {
         guard let prompt = recommend.selectedPrompt else {
             recommend.deactivate()
             return
@@ -466,7 +467,7 @@ struct AideaApp: App {
         let instance = layout.nextSessionInstance(of: .claude)
         let session = registry.createSession(tool: .claude, instance: instance)
         if let claudeState = session.state as? ClaudeSessionState {
-            claudeState.companionPrompt = CompanionInstructions.loadCommand(for: index)
+            claudeState.companionPrompt = CompanionInstructions.startupCommand(for: index, projectRoot: projectRoot)
             claudeState.companionIndex = index
             claudeState.speechQueue = speechState.queue
         }
@@ -501,7 +502,7 @@ struct AideaApp: App {
         let state = handoffState
         let speech = speechState
         handoffState.start(projectRoot: projectRoot) { message, url, fromIndex in
-            Self.dispatchHandoff(message, handoffURL: url, fromIndex: fromIndex, companionStore: store, registry: reg, layout: lay, handoffState: state, speechState: speech)
+            Self.dispatchHandoff(message, handoffURL: url, fromIndex: fromIndex, companionStore: store, registry: reg, layout: lay, handoffState: state, speechState: speech, projectRoot: projectRoot)
         }
     }
 
@@ -520,7 +521,8 @@ struct AideaApp: App {
         registry: SessionRegistry,
         layout: LayoutConfig,
         handoffState: HandoffState,
-        speechState: SpeechState
+        speechState: SpeechState,
+        projectRoot: URL?
     ) {
         guard let index = resolveHandoffTarget(message.to, in: companionStore) else {
             handoffState.reportError("ハンドオフ先が解決できません: \(describeTarget(message.to))")
@@ -543,7 +545,7 @@ struct AideaApp: App {
         let instance = layout.nextSessionInstance(of: .claude)
         let session = registry.createSession(tool: .claude, instance: instance)
         if let claudeState = session.state as? ClaudeSessionState {
-            claudeState.companionPrompt = CompanionInstructions.loadCommand(for: index)
+            claudeState.companionPrompt = CompanionInstructions.startupCommand(for: index, projectRoot: projectRoot)
             claudeState.companionIndex = index
             claudeState.speechQueue = speechState.queue
         }

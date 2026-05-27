@@ -190,7 +190,7 @@ struct CompanionView: View {
         let session = registry.createSession(tool: .claude, instance: instance)
         let id = session.id
         if let state = session.state as? ClaudeSessionState {
-            state.companionPrompt = CompanionInstructions.loadCommand(for: companion.index)
+            state.companionPrompt = CompanionInstructions.startupCommand(for: companion.index, projectRoot: workspace.projectRoot)
             state.companionIndex = companion.index
             state.speechQueue = speech.queue
         }

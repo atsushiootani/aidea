@@ -8,7 +8,7 @@ impacts:
   - docs/decisions/*
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-20
+last_updated: 2026-05-27
 ---
 
 # Architecture Decision Records
@@ -47,6 +47,7 @@ Aidea の設計判断を 1 件ずつ記録する。フォーマットは [Michae
 | [0026](./0026-use-git-info-exclude-instead-of-gitignore.md) | .aidea/ の除外設定を .gitignore ではなく .git/info/exclude に書く | 採用 |
 | [0027](./0027-microphone-permission.md) | Terminal/Claude セッションでの Dictation 対応を保留 | 保留 |
 | [0028](./0028-stale-docs-notification-via-hook.md) | docs/specs の更新漏れ検出に git post-commit hook を採用 | 採用 |
+| [0029](./0029-companion-as-agent-definition.md) | コンパニオンのエージェント定義に agent.md を採用 | 採用 |
 
 ## 状態の値
 
