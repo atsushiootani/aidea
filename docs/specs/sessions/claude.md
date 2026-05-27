@@ -3,6 +3,7 @@ title: Session 内部状態: Claude
 description: ClaudeSessionState の状態 (companionPrompt / companionIndex / cached)・companionPrompt のセット経路・自動起動シーケンス・コンパニオン紐付け・Scene とレコメンドプロンプト・instructions.md ロード方式
 derived_from:
   - docs/specs/sessions/ui-rules.md
+  - docs/specs/sessions/terminal.md
   - docs/decisions/0008-no-claude-autostart.md
   - docs/decisions/0022-companion-instructions-as-files.md
   - docs/specs/frontchannels/scene.md
@@ -13,7 +14,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-24
+last_updated: 2026-05-26
 ---
 
 # Session 内部状態: Claude
@@ -29,8 +30,8 @@ Backchannel の詳細は [../backchannels/backchannel.md](../backchannels/backch
 | プロパティ | 型 | 用途 | ペイン移動で保持 |
 |---|---|---|---|
 | `companionPrompt` | `String?` | 起動後 PTY に `send()` される文字列。v8 以降は `CompanionInstructions.loadCommand(for:)` で生成される固定パターン (`.aidea/claude/companions/<index>/instructions.md を読んで従ってね`) | ✅ |
-| `companionIndex` | `Int?` | 紐付く Companion の index (0…8)。Scene 識別子 `claude:<index>` および `companionPrompt` 文字列の解決に使う | ✅ |
-| `isReady` | `Bool` | `autoStartClaude` のシーケンス完了 (claude 起動 + companionPrompt 送信 + Enter) を経て Frontchannel (`sendMessage`) を受け付け可能になったかどうか。`sendMessageWhenReady` が判定に使う | — |
+| `companionIndex` | `Int?` | 紐付く Companion の index (0…8)。Scene 識別子 `claude:<index>` および `companionPrompt` 文字列の解決に使う。tmux セッション名の採番にも使う | ✅ |
+| `isReady` | `Bool` | `autoStartClaude` のシーケンス完了 (claude 起動 + companionPrompt 送信 + Enter) を経て Frontchannel (`sendMessage`) を受け付け可能になったかどうか。`sendMessageWhenReady` が判定に使う。**tmux 再 attach 経路では autoStart をスキップしてただちに `true` に遷移する** | — |
 | `isBusy` | `Bool` | PTY 出力が続いている (Claude がプロンプト処理中) 状態。Companion アイコンの実行中表示で参照 (issue #45)。判定ロジックは [../tools/claude.md#実行中判定-isbusy-issue-45](../tools/claude.md#実行中判定-isbusy-issue-45) を参照 | — |
 | `cached` | `PersistentTerminalView?` (ObservationIgnored) | PTY + SwiftTerm 端末 View。Terminal と共用 | ✅ |
 | `terminalView` | `PersistentTerminalView` (computed) | `cached` の lazy アクセサ | — |
@@ -54,8 +55,26 @@ Backchannel の詳細は [../backchannels/backchannel.md](../backchannels/backch
 
 ## 自動起動シーケンス
 
+tmux の有無と既存セッションの有無で 3 経路に分岐する。判定は `terminalView` の lazy 生成時に行う。
+
+| 経路 | 条件 | 起動コマンド | autoStartClaude |
+|---|---|---|---|
+| **A. tmux 新規** | tmux 検出 ✅ + 既存セッションなし | `exec <tmux> new-session -A -s aidea-claude-<idx>-<slug>-<hash> -c <dir>` | 実行する |
+| **B. tmux 再 attach** | tmux 検出 ✅ + 既存セッション ✅ | 同上 (`-A` により attach される) | **スキップ** し `isReady=true` を即セット |
+| **C. tmux 未インストール** | tmux 検出 ❌ | `cd '<dir>' && exec zsh -l` | 実行する |
+
+### tmux セッション名
+
+形式は `aidea-claude-<companionIndex>-<slug>-<hash>`。Terminal の `aidea-<slug>-<hash>-<instance>` と prefix で分離するため衝突しない。
+
+- `<companionIndex>`: 紐付く Companion の index (0…8)。Companion ごとに別 tmux セッションを持つ
+- `<slug>`: プロジェクトルートのディレクトリ名を小文字英数・ハイフン区切りに正規化
+- `<hash>`: フルパスから生成した短いハッシュ (同名ディレクトリ区別用)
+
+### 経路 A: 新規起動 (autoStartClaude)
+
 ```
-1. zsh -c "cd '{projectRoot}' && exec zsh -l" で対話シェルを起動
+1. tmux new-session で tmux セッションを新規作成 (zsh が起動)
 2. +1.0s: send("claude\n") で Claude CLI を起動
 3. +5.0s: send("{companionPrompt}") で Companion 指示書読み込みコマンドを送信 (v8 以降の固定パターン、ADR 0022)
 4. +5.3s: send("\r") で submit させる
@@ -68,7 +87,24 @@ Backchannel の詳細は [../backchannels/backchannel.md](../backchannels/backch
 - ADR 0008 により、非対話シェルから直接 `claude` を exec せず、**対話シェル内で `send()`** する
 - ハンドオフ / レコメンドプロンプトのように起動直後に Frontchannel へ送信したい場合は、固定 asyncAfter で待たず `sendMessageWhenReady` を使う。ready=false の間は内部で積んで `+6.0s` で flush される
 
-## コンパニオンとの紐付け
+### 経路 B: 再 attach (autoStartClaude スキップ)
+
+tmux セッションが既存の場合、内部で `claude` TUI が既に起動 (Aidea 終了時に PTY だけ閉じられた状態) しているはず。ここで `send("claude\n")` を再送すると **TUI の入力欄に "claude" という文字列が入力されてしまう** ため、autoStart シーケンスをまるごとスキップする。
+
+```
+1. tmux new-session -A で既存セッションに attach (zsh プロンプトではなく claude TUI が表示される)
+2. isReady=true を即座にセット (Frontchannel からの sendMessage を受け付け可能)
+```
+
+- `companionPrompt` は **再送しない**。再 attach 時の Claude TUI には既に同じ Companion の起動時指示が読み込まれている前提
+- ハンドオフ受信などで `sendMessageWhenReady` を経由する場合も、isReady=true なので即時送信される
+- 判定は tmux 起動コマンド組み立て時点で `tmux has-session -t <name>` を実行し、exit code で判定する
+
+### 経路 C: tmux なし (フォールバック)
+
+tmux が探索パス (`/opt/homebrew/bin/tmux` → `/usr/local/bin/tmux` → `/usr/bin/tmux`) のいずれにも見つからない場合は従来通り `cd <dir> && exec zsh -l` で直接起動し、経路 A と同じ autoStartClaude を実行する。Aidea 終了で claude プロセスは消滅する (永続化なし)。
+
+
 
 `CompanionStore.activeSessionMap` が UUID → SessionID を保持し、本 Session と 1:1 対応する。
 詳細は [../companions/companion.md](../companions/companion.md) を参照。

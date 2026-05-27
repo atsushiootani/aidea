@@ -470,7 +470,7 @@ final class SessionRegistry {
             state.registry = self
             return state
         case .claude:
-            let state = ClaudeSessionState(workspace: workspace)
+            let state = ClaudeSessionState(workspace: workspace, instance: id.instance)
             state.registry = self
             return state
         case .web:

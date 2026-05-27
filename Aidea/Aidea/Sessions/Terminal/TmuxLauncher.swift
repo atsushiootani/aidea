@@ -5,7 +5,7 @@
 import Foundation
 
 /// tmux の有無を検出し、安定したセッション名と起動コマンドを生成するユーティリティ。
-/// 仕様: docs/specs/sessions/terminal.md#永続化
+/// 仕様: docs/specs/sessions/terminal.md#永続化 / docs/specs/sessions/claude.md#自動起動シーケンス
 enum TmuxLauncher {
 
     private static let searchPaths = [
@@ -23,23 +23,42 @@ enum TmuxLauncher {
     static var isAvailable: Bool { path != nil }
 
     /// 安定したセッション名を生成する。
-    /// 形式: `aidea-<slug>-<hash>-<instance>`
+    /// 形式: `<prefix>-<slug>-<hash>-<instance>`
+    /// - prefix: Tool 種別の接頭辞 (Terminal は "aidea"、Claude は "aidea-claude")
     /// - slug: プロジェクトルートのディレクトリ名を小文字英数・ハイフン正規化したもの
     /// - hash: フルパスの短縮ハッシュ (同名ディレクトリ間の衝突回避)
-    static func sessionName(projectRoot: URL?, instance: Int) -> String {
+    static func sessionName(prefix: String = "aidea", projectRoot: URL?, instance: Int) -> String {
         let rootPath = projectRoot?.path ?? FileManager.default.homeDirectoryForCurrentUser.path
         let slug = slugify(projectRoot?.lastPathComponent ?? "home")
         let hash = shortHash(rootPath)
-        return "aidea-\(slug)-\(hash)-\(instance)"
+        return "\(prefix)-\(slug)-\(hash)-\(instance)"
     }
 
     /// tmux 経由の起動コマンドを返す。同名セッションが存在すれば attach、なければ新規作成。
-    static func launchCommand(projectRoot: URL?, instance: Int, tmuxPath: String) -> String {
+    static func launchCommand(prefix: String = "aidea", projectRoot: URL?, instance: Int, tmuxPath: String) -> String {
         let dir = projectRoot?.path ?? FileManager.default.homeDirectoryForCurrentUser.path
-        let name = sessionName(projectRoot: projectRoot, instance: instance)
+        let name = sessionName(prefix: prefix, projectRoot: projectRoot, instance: instance)
         let escapedDir = shellEscape(dir)
         let escapedName = shellEscape(name)
         return "exec '\(tmuxPath)' new-session -A -s '\(escapedName)' -c '\(escapedDir)'"
+    }
+
+    /// 指定 tmux セッションが既に存在するか同期判定する。
+    /// `tmux has-session -t <name>` の exit code (0 = 存在) で判定する。
+    /// PTY 起動前の経路分岐 (Claude の再 attach 判定) に使う。
+    static func hasSession(name: String, tmuxPath: String) -> Bool {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: tmuxPath)
+        process.arguments = ["has-session", "-t", name]
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        do {
+            try process.run()
+            process.waitUntilExit()
+            return process.terminationStatus == 0
+        } catch {
+            return false
+        }
     }
 
     // MARK: - Private helpers

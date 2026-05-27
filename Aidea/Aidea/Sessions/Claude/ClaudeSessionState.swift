@@ -16,9 +16,13 @@ final class ClaudeSessionState: SessionState, FocusBridgeOwner {
     /// フォーカス契約 C1/C2/C3 を担う非永続ヘルパ (仕様は focus-contract.md)
     let focusBridge = SessionFocusBridge()
     @ObservationIgnored private var cached: PersistentTerminalView?
+    /// tmux セッション名の採番 fallback に使うインスタンス番号 (SessionID.instance と一致)。
+    /// 通常は `companionIndex` を採番に使うが、companionIndex が nil の場合に使う。
+    @ObservationIgnored private let instance: Int
 
-    init(workspace: WorkspaceState) {
+    init(workspace: WorkspaceState, instance: Int = 0) {
         self.workspace = workspace
+        self.instance = instance
     }
 
     /// SessionRegistry への弱参照 (クリック時のアクティブ化用)
@@ -136,10 +140,33 @@ final class ClaudeSessionState: SessionState, FocusBridgeOwner {
         }
         var env = Terminal.getEnvironmentVariables(termName: "xterm-256color")
         env.append("SHELL=/bin/zsh")
-        let path = workspace.projectRoot?.path
-            ?? FileManager.default.homeDirectoryForCurrentUser.path
-        let escaped = path.replacingOccurrences(of: "'", with: "'\\''")
-        let command = "cd '\(escaped)' && exec zsh -l"
+        // tmux の有無 / 既存セッションの有無で 3 経路に分岐 (仕様: sessions/claude.md#自動起動シーケンス)
+        // - A: tmux 検出 + has-session なし → tmux 新規作成、autoStartClaude 実行
+        // - B: tmux 検出 + has-session あり → tmux 再 attach、autoStartClaude スキップ
+        // - C: tmux 未インストール → 直接 zsh -l (フォールバック)
+        let tmuxInstance = companionIndex ?? instance
+        let isReattach: Bool
+        let command: String
+        if let tmux = TmuxLauncher.path {
+            let name = TmuxLauncher.sessionName(
+                prefix: "aidea-claude",
+                projectRoot: workspace.projectRoot,
+                instance: tmuxInstance
+            )
+            isReattach = TmuxLauncher.hasSession(name: name, tmuxPath: tmux)
+            command = TmuxLauncher.launchCommand(
+                prefix: "aidea-claude",
+                projectRoot: workspace.projectRoot,
+                instance: tmuxInstance,
+                tmuxPath: tmux
+            )
+        } else {
+            isReattach = false
+            let dir = workspace.projectRoot?.path
+                ?? FileManager.default.homeDirectoryForCurrentUser.path
+            let escaped = dir.replacingOccurrences(of: "'", with: "'\\''")
+            command = "cd '\(escaped)' && exec zsh -l"
+        }
         terminal.startProcess(
             executable: "/bin/zsh",
             args: ["-c", command],
@@ -170,7 +197,14 @@ final class ClaudeSessionState: SessionState, FocusBridgeOwner {
             self?.markBusy()
         }
         cached = terminal
-        autoStartClaude(terminal: terminal)
+        if isReattach {
+            // 経路 B: 既存 tmux セッションに attach。claude TUI が既に起動中の前提で
+            // autoStartClaude は呼ばない (`claude\n` を再送すると TUI 入力欄に文字列が漏れる)。
+            // Frontchannel からの sendMessage は即時受け付けるため isReady=true を即セット。
+            markReady()
+        } else {
+            autoStartClaude(terminal: terminal)
+        }
         return terminal
     }
 

@@ -42,12 +42,14 @@ tmux が利用可能な場合 (探索順: `/opt/homebrew/bin/tmux` → `/usr/loc
 
 | 項目 | 詳細 |
 |---|---|
-| セッション名 | `aidea-<project-slug>-<path-hash>-<instance>` 形式。`project-slug` はプロジェクトルートのディレクトリ名を小文字英数・ハイフン区切りに正規化したもの。`path-hash` はフルパスから生成した短いハッシュ (同名ディレクトリを区別するため) |
+| セッション名 | `aidea-<project-slug>-<path-hash>-<instance>` 形式。`project-slug` はプロジェクトルートのディレクトリ名を小文字英数・ハイフン区切りに正規化したもの。`path-hash` はフルパスから生成した短いハッシュ (同名ディレクトリを区別するため)。Claude セッションは prefix `aidea-claude-` を使い ([sessions/claude.md#tmux-セッション名](./claude.md#tmux-セッション名))、衝突しない |
 | 起動コマンド | `exec <tmux> new-session -A -s <name> -c <dir>` — 同名セッションが存在すれば attach、なければ新規作成 |
 | Aidea 終了時 | PTY (tmux クライアント) が閉じられるが、tmux サーバは生存しシェルプロセスが継続する |
 | 再起動後の再接続 | Aidea 再起動後に同じ `instance` 番号でターミナルタブを作ると (`nextSessionInstance` は起動時に既存タブがなければ 0 から採番し直す)、同名の tmux セッションに自動 attach する |
 
 tmux が見つからない場合は既存どおり `cd <dir> && exec zsh -l` で直接起動する (フォールバック)。
+
+TmuxLauncher は Claude セッションとも共用する。共通の `path` / `launchCommand` / `hasSession` ヘルパは Terminal と Claude で同じ実装を参照する。
 
 ### PTY バッファ
 
