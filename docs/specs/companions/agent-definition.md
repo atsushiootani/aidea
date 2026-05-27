@@ -6,7 +6,6 @@ derived_from:
   - docs/decisions/0029-companion-as-agent-definition.md
 syncs_with:
   - docs/specs/companions/companion.md
-  - docs/specs/aspects/persistence.md
 impacts: []
 conventions:
   - docs/LAYOUT.md
@@ -107,7 +106,7 @@ BackchannelSetup などから参照して新規プロジェクトのサンプル
 ```
 
 コマンド生成ロジックは起動直前に同期的にファイル存在確認を行う。
-存在確認には `FileManager.default.fileExists(atPath:)` を使用する。
+存在確認には OS 標準のファイル存在チェック API を同期的に使用する。
 
 ---
 

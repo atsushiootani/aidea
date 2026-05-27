@@ -4,10 +4,8 @@ description: コンパニオン起動時に instructions.md の代わりに agen
 status: 採用
 derived_from:
   - docs/decisions/0022-companion-instructions-as-files.md
-syncs_with:
-  - docs/specs/companions/agent-definition.md
-impacts:
-  - docs/specs/companions/companion.md
+syncs_with: []
+impacts: []
 replaces: []
 replaced_by: []
 conventions:

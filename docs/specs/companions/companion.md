@@ -1,11 +1,13 @@
 ---
 title: コンパニオン
-description: ヘッダの 9 体アイコン・index 識別の CompanionConfig/CompanionStore 仕様・workspace.json v8 経由の永続化・起動フロー・instructions.md 外部化
+description: ヘッダの 9 体アイコン・index 識別の CompanionConfig/CompanionStore 仕様・workspace.json v8 経由の永続化・起動フロー・instructions.md/agent.md 外部化
 derived_from:
   - docs/specs/frontchannels/frontchannel.md
   - docs/specs/sessions/ui-rules.md
   - docs/decisions/0022-companion-instructions-as-files.md
+  - docs/decisions/0029-companion-as-agent-definition.md
 syncs_with:
+  - docs/specs/companions/agent-definition.md
   - docs/specs/companions/recommend-mode.md
   - docs/specs/companions/speech-history.md
   - docs/specs/aspects/persistence.md
@@ -18,7 +20,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-05
+last_updated: 2026-05-27
 ---
 
 # コンパニオン
