@@ -7,20 +7,19 @@ import Foundation
 
 /// Backchannel の初期設定を行うユーティリティ。
 /// Bundle 内の Backchannels リソース (.md) を `.aidea/claude/` にコピーする。
-/// 共有指示書 (`aidea.md` / `speech.md`) は初回のみコピー、コンパニオン指示書 (`companions/<0..8>/instructions.md`) は
-/// 既存ファイルを上書きしない方針で毎回確認・補填する (ADR 0022)。
+/// 共有指示書 (`aidea.md` / `speech.md` / `handoff.md` / `output.md` / `context.md` / `remind.md`) は初回のみコピー、
+/// コンパニオン指示書 (`companions/<0..8>/instructions.md`) は既存ファイルを上書きしない方針で毎回確認・補填する (ADR 0022)。
 enum BackchannelSetup {
 
     /// 既知の共有 Backchannel 機能ファイル名（拡張子なし）
-    private static let knownFeatures = ["speech", "aidea", "handoff", "output", "context", "schedule-voice"]
+    private static let knownFeatures = ["speech", "aidea", "handoff", "output", "context", "remind"]
 
     /// コンパニオン指示書 Bundle テンプレ名（拡張子なし）
     private static let companionInstructionsTemplate = "companion-instructions"
 
     /// Backchannel のセットアップを実行する。
-    /// - 共有指示書 (`aidea.md` / `speech.md`) は `.aidea/claude/` 不在時のみコピー
+    /// - 共有指示書は `.aidea/claude/` 不在時のみコピー
     /// - コンパニオン指示書は毎回 9 個分の存在を確認し、不在の index に Bundle テンプレを複製
-    /// - スケジュールリマインド設定テンプレ (`concier-schedule.yaml`) は `.aidea/config/` 不在時のみコピー
     static func setup(projectRoot: URL) {
         let claudeDir = projectRoot.appending(path: ".aidea/claude")
         let backchannelsDir = projectRoot.appending(path: ".aidea/backchannels")
@@ -30,13 +29,13 @@ enum BackchannelSetup {
             try? FileManager.default.createDirectory(at: claudeDir, withIntermediateDirectories: true)
             try? FileManager.default.createDirectory(at: backchannelsDir, withIntermediateDirectories: true)
             copyResources(to: claudeDir)
+        } else {
+            // 既存ワークスペースにも後発機能の指示書 (例: remind.md) を補填する
+            backfillMissingFeatures(to: claudeDir)
         }
 
         // コンパニオン指示書は v8 で追加された機能のため、既存 .aidea/claude/ にも適用する
         ensureCompanionInstructions(projectRoot: projectRoot)
-
-        // スケジュールリマインド設定テンプレは不在時のみコピー
-        ensureScheduleConfig(projectRoot: projectRoot)
     }
 
     /// Bundle 内の共有指示書を .aidea/claude/ にコピーする
@@ -48,15 +47,16 @@ enum BackchannelSetup {
         }
     }
 
-    /// `.aidea/config/concier-schedule.yaml` を Bundle テンプレから生成する。
+    /// 既存 `.aidea/claude/` に未配置の共有指示書だけを Bundle から補填する。
+    /// 後発機能 (remind.md など) を既存ユーザの環境にも自動で行き渡らせるための経路。
     /// 既存ファイルは上書きしない (ユーザ編集の保護)。
-    private static func ensureScheduleConfig(projectRoot: URL) {
-        guard let source = Bundle.main.url(forResource: "concier-schedule", withExtension: "yaml") else { return }
-        let configDir = projectRoot.appending(path: ".aidea/config")
-        let dest = configDir.appending(path: "concier-schedule.yaml")
-        if FileManager.default.fileExists(atPath: dest.path) { return }
-        try? FileManager.default.createDirectory(at: configDir, withIntermediateDirectories: true)
-        try? FileManager.default.copyItem(at: source, to: dest)
+    private static func backfillMissingFeatures(to destination: URL) {
+        for feature in knownFeatures {
+            let dest = destination.appending(path: "\(feature).md")
+            if FileManager.default.fileExists(atPath: dest.path) { continue }
+            guard let source = Bundle.main.url(forResource: feature, withExtension: "md") else { continue }
+            try? FileManager.default.copyItem(at: source, to: dest)
+        }
     }
 
     /// `.aidea/claude/companions/<0..8>/instructions.md` を Bundle テンプレから生成する。

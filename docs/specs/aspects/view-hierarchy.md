@@ -12,12 +12,13 @@ syncs_with:
   - docs/specs/companions/speech-history.md
   - docs/specs/frontchannels/voice-input.md
   - docs/specs/widgets/*
+  - docs/specs/backchannels/remind.md
   - docs/specs/window/active-session-switcher.md
 impacts: []
 conventions:
   - docs/LAYOUT.md
   - docs/specs/aspects/README.md
-last_updated: 2026-05-26
+last_updated: 2026-05-27
 ---
 
 # View 階層 (UI コンポーネント親子関係)
@@ -68,6 +69,8 @@ NSWindow (メインウィンドウ)
       │     ├─ Spacer
       │     └─ WidgetView                         [Widgets/WidgetView.swift]
       │        └─ HStack (ヘッダ常駐 widget を右端に並べる)
+      │           ├─ RemindView                   [Widgets/Remind/RemindView.swift]
+      │           │  (カレンダーアイコン + 次予定 1 件。タップで RemindPopoverView を開く → backchannels/remind.md)
       │           ├─ QuickMemoButton              [Widgets/QuickMemo/QuickMemoButton.swift]
       │           │  (✏️ ボタン。タップで QuickMemoView popover を開く)
       │           └─ TimerView                    [Widgets/Pomodoro/TimerView.swift]
@@ -89,6 +92,7 @@ NSWindow (メインウィンドウ)
 | CompanionEditView の「speech 履歴を見る」ボタン | `SpeechHistoryView` (`Views/Companion/SpeechHistoryView.swift`) | `CompanionEditView` の `.sheet` |
 | ScenePromptsEditorView の Companion アイコン | Popover (Companion ピッカー) | `ScenePromptsEditorView` (Session 下部) |
 | `QuickMemoButton` タップ | `QuickMemoView` (`Widgets/QuickMemo/QuickMemoView.swift`) | `QuickMemoButton` の `.popover` |
+| `RemindView` タップ | `RemindPopoverView` (`Widgets/Remind/RemindPopoverView.swift`) | `RemindView` の `.popover` |
 
 ### トップダウンビュー
 
@@ -100,9 +104,9 @@ NSWindow (メインウィンドウ)
 ```
 ┌─ NSWindow / ContentView ───────────────────────────────────────────────┐
 │ ┌─ AppHeaderView ────────────────────────────────────────────────────┐ │
-│ │ ┌─ CompanionView ────────────────────────────┐  ┌──────┐           │ │
-│ │ │ [1] [2] [3] [4] [5] [6] [7] [8] [9]        │  │ 🔊 🎤 │ Spacer   │ │
-│ │ └────────────────────────────────────────────┘  └──────┘           │ │
+│ │ ┌─ CompanionView ──────────────┐ ┌────┐  Sp.  ┌─ WidgetView ─────┐ │ │
+│ │ │ [1] [2] [3] … [9]            │ │🔊 🎤│       │ [📅] [✏️] [⏱]     │ │ │
+│ │ └──────────────────────────────┘ └────┘       └──────────────────┘ │ │
 │ └────────────────────────────────────────────────────────────────────┘ │
 │ ── Divider ─────────────────────────────────────────────────────────── │
 │ ┌─ SplitLayoutView ──────────────────────────────────────────────────┐ │
@@ -136,7 +140,7 @@ NSWindow (メインウィンドウ)
 ```
 ┌─ NSWindow / ContentView ───────────────────────────────────────────────┐
 │ ┌─ AppHeaderView ────────────────────────────────────────────────────┐ │
-│ │ [Companion×9]   [🔊][🎤]                                           │ │
+│ │ [Companion×9]   [🔊][🎤]                          [📅][✏️][⏱ Pomo] │ │
 │ └────────────────────────────────────────────────────────────────────┘ │
 │ ┌─ SplitLayoutView (HSplit) ────────────┬───────────────────────────┐ │
 │ │ ┌─ PaneView A ──────────────────────┐ │ ┌─ PaneView B ───────────┐ │ │

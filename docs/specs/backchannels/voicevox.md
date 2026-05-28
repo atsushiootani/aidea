@@ -11,10 +11,10 @@ syncs_with:
 impacts:
   - docs/specs/tools/claude.md
   - docs/specs/companions/speech-history.md
-  - docs/specs/skills/concier-schedule-voice.md
+  - docs/specs/backchannels/remind.md
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-06
+last_updated: 2026-05-27
 ---
 
 # Backchannel: VOICEVOX 読み上げ

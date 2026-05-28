@@ -22,6 +22,7 @@ struct AideaApp: App {
     @State private var outputState: OutputState
     @State private var pomodoroState: PomodoroState
     @State private var quickMemoState: QuickMemoState
+    @State private var remindState: RemindState
     /// Ctrl+Tab で起動する Active Session Switcher (Window レベル singleton)
     @State private var sessionSwitcher = ActiveSessionSwitcher()
     /// Cmd+T のツール選択メニューを各ペインの「+」ボタン直下に表示するためのアンカー管理
@@ -85,6 +86,7 @@ struct AideaApp: App {
         _outputState = State(initialValue: output)
         _pomodoroState = State(initialValue: pomodoro)
         _quickMemoState = State(initialValue: QuickMemoState())
+        _remindState = State(initialValue: RemindState())
     }
 
     var body: some Scene {
@@ -100,6 +102,7 @@ struct AideaApp: App {
                 .environment(outputState)
                 .environment(pomodoroState)
                 .environment(quickMemoState)
+                .environment(remindState)
                 .environment(tabPickerAnchor)
                 .onAppear {
                     registerTerminationObserver()
@@ -107,6 +110,7 @@ struct AideaApp: App {
                     sessionSwitcher.install(registry: registry, companionStore: companionStore)
                     startHandoff()
                     startOutput()
+                    startRemind()
                 }
                 .onOpenURL { url in
                     handleExternalOpen(url)
@@ -488,6 +492,16 @@ struct AideaApp: App {
     private func startOutput() {
         guard let projectRoot = workspace.projectRoot else { return }
         outputState.start(projectRoot: projectRoot)
+    }
+
+    // MARK: - Remind
+
+    /// RemindState の監視を開始する。projectRoot が未設定なら何もしない。
+    /// 発火時に SpeechQueue (= speechState.queue) へ enqueue するため、引数で渡す。
+    /// 詳細: docs/specs/backchannels/remind.md
+    private func startRemind() {
+        guard let projectRoot = workspace.projectRoot else { return }
+        remindState.start(projectRoot: projectRoot, speechQueue: speechState.queue)
     }
 
     // MARK: - Handoff

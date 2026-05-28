@@ -17,3 +17,5 @@ docs/plans/
 
 /quickmemo
 /quickmemo/
+
+.playwright-mcp/
