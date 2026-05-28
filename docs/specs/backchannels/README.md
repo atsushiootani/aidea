@@ -8,7 +8,7 @@ impacts:
   - docs/specs/backchannels/*
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-05
+last_updated: 2026-05-27
 ---
 
 # Backchannels (Claude → Aidea 通信) インデックス
@@ -24,6 +24,7 @@ Claude が `.aidea/backchannels/` にファイルを書き出して Aidea に通
 | [handoff.md](./handoff.md) | Handoff メッセージによる Companion 間タスク受け渡し |
 | [output.md](./output.md) | Output メッセージによるレスポンス全文の出力記録 |
 | [context.md](./context.md) | Context による作業コンテキストの書き出し・読み込み (セッション間記憶保持) |
+| [remind.md](./remind.md) | Remind メッセージによる遅延発火型の音声リマインド (トリガ時刻 = ファイル名のタイムスタンプ) |
 | [companion-roster.md](./companion-roster.md) | aidea.md 内のコンパニオン名簿セクションを Aidea が `companions[].name` に追従して自動更新する仕様 |
 
 ## 関連

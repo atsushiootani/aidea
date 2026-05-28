@@ -5,11 +5,12 @@ derived_from:
   - docs/LAYOUT.md
 syncs_with:
   - docs/specs/aspects/view-hierarchy.md
+  - docs/specs/backchannels/remind.md
 impacts:
   - docs/specs/widgets/*
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-02
+last_updated: 2026-05-27
 ---
 
 # Widgets
@@ -45,10 +46,13 @@ AppHeaderView
    ├─ speechToggleButton     ※既存 (読み上げ ON/OFF)
    ├─ Spacer                 ※既存
    └─ WidgetView             (右端の widget 集約コンテナ)
+      ├─ RemindView          (リマインド → backchannels/remind.md ※UI 配置のみ Widget)
       ├─ QuickMemoButton     (クイックメモ → widgets/quick-memo.md)
       ├─ TimerView           (ポモドーロ → widgets/pomodoro.md)
       └─ …                   (今後追加される widget はここに並ぶ)
 ```
+
+> **注**: `RemindView` はデータ仕様としては Backchannel 系 ([../backchannels/remind.md](../backchannels/remind.md)) に属するが、UI 配置上はヘッダ常駐の小機能として `WidgetView` の中に並べる。Backchannel ドメイン側と UI 側を別レイヤに分け、ファイルパスは [../aspects/view-hierarchy.md](../aspects/view-hierarchy.md) を参照する。
 
 - `WidgetView` は `CompanionView` と兄弟。`Spacer` の後ろ (= 右端) に置く
 - 各 widget は `WidgetView` の子としてヘッダ右端にインライン表示する。操作 UI は popover ではなくヘッダ上に常時並べる

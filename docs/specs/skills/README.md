@@ -8,7 +8,7 @@ impacts:
   - docs/specs/skills/*
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-06
+last_updated: 2026-05-27
 ---
 
 # Skills 仕様
@@ -21,5 +21,4 @@ last_updated: 2026-05-06
 
 | ファイル | 内容 |
 |---|---|
-| [concier-schedule-voice.md](./concier-schedule-voice.md) | concier-chan によるスケジュール音声リマインド機能 |
 | [docs-graph.md](./docs-graph.md) | docs/ 配下の frontmatter を読み取りドキュメント間の依存関係を Mermaid グラフとして出力するスキル |

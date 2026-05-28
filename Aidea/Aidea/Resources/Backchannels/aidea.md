@@ -7,6 +7,7 @@
 - 音声で返答したいとき → `.aidea/claude/speech.md`
 - 他の Companion にタスクを受け渡したいとき → `.aidea/claude/handoff.md`
 - レスポンスを記録として残したいとき → `.aidea/claude/output.md`
+- リマインドしたいとき → `.aidea/claude/remind.md`
 
 ## ワークスペースのコンパニオン一覧
 

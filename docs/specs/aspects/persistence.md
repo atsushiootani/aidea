@@ -12,6 +12,7 @@ syncs_with:
   - docs/specs/backchannels/handoff.md
   - docs/specs/backchannels/output.md
   - docs/specs/backchannels/context.md
+  - docs/specs/backchannels/remind.md
   - docs/specs/backchannels/companion-roster.md
   - docs/specs/frontchannels/scene.md
   - docs/specs/companions/companion.md
@@ -23,13 +24,12 @@ syncs_with:
   - docs/specs/sessions/active-session.md
   - docs/specs/tools/preview.md
   - docs/specs/window/active-session-switcher.md
-  - docs/specs/skills/concier-schedule-voice.md
   - docs/specs/widgets/quick-memo.md
 impacts: []
 conventions:
   - docs/LAYOUT.md
   - docs/specs/aspects/README.md
-last_updated: 2026-05-13
+last_updated: 2026-05-27
 ---
 
 # Persistence (データ永続化)
@@ -79,8 +79,7 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 | `Backchannels/handoff.md` | Companion 間ハンドオフ機能の指示書 (同上)。詳細は [../backchannels/handoff.md](../backchannels/handoff.md) |
 | `Backchannels/output.md` | output 記録機能の指示書 (同上)。詳細は [../backchannels/output.md](../backchannels/output.md) |
 | `Backchannels/companion-instructions.md` | コンパニオン指示書 (`instructions.md`) のデフォルトテンプレ。`BackchannelSetup` が 9 個に複製して `.aidea/claude/companions/<0..8>/instructions.md` に配置 (既存ファイルは上書きしない) |
-| `Backchannels/schedule-voice.md` | スケジュールリマインド機能の指示書。`BackchannelSetup` が `.aidea/claude/` にコピー |
-| `Backchannels/concier-schedule.yaml` | スケジュールリマインド設定テンプレ。`BackchannelSetup` が `.aidea/config/concier-schedule.yaml` に配置 (既存ファイルは上書きしない) |
+| `Backchannels/remind.md` | リマインド機能の指示書。`BackchannelSetup` が `.aidea/claude/` にコピー |
 
 **設計ポリシー**: ハードコードしがちなデフォルト値 (初期レイアウト・コンパニオン定義・レコメンドプロンプト等) は Swift コード側に二重管理せず、Bundle 同梱の JSON / Markdown を **唯一のソース** とする。
 
@@ -94,7 +93,8 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 │   │   ├── speech-*.txt      # 読み上げ対象テキスト (処理後も残す / 履歴)
 │   │   ├── handoff-*.json    # Companion 0 が送信したハンドオフ (処理後も残す、[../backchannels/handoff.md](../backchannels/handoff.md))
 │   │   ├── output-*.txt      # レスポンス全文の出力記録 (処理後も残す / 履歴、[../backchannels/output.md](../backchannels/output.md))
-│   │   └── context.txt       # セッション間記憶保持用コンテキスト (上書き更新、[../backchannels/context.md](../backchannels/context.md))
+│   │   ├── context.txt       # セッション間記憶保持用コンテキスト (上書き更新、[../backchannels/context.md](../backchannels/context.md))
+│   │   └── remind-*.txt      # 遅延発火型リマインド (発火後 `.fired.txt` にリネーム、[../backchannels/remind.md](../backchannels/remind.md))
 │   ├── 1/                    # Companion 1
 │   │   └── ...
 │   └── ...                   # 0..8 (必要に応じて Claude が mkdir で作成)
@@ -103,17 +103,13 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 │   ├── speech.md             # speech 機能の指示書 (共有)
 │   ├── handoff.md            # Companion 間ハンドオフの指示書 (共有)
 │   ├── output.md             # output 記録機能の指示書 (共有)
-│   ├── schedule-voice.md     # スケジュールリマインド機能の指示書 (共有)
+│   ├── remind.md             # リマインド機能の指示書 (共有)
 │   └── companions/           # コンパニオン別の指示書 (v8 新設)
 │       ├── 0/
 │       │   ├── instructions.md  # ← Aidea が起動時に "読んで" と指示するエントリーポイント
 │       │   └── *.md             # (任意) 段階的開示の参照先
 │       ├── 1/instructions.md
 │       └── ...                  # 0…8 の 9 ディレクトリ固定
-├── config/                   # 機能別設定ファイル (ユーザ編集可)
-│   └── concier-schedule.yaml # スケジュールリマインドの設定 (初回起動時に Bundle テンプレからコピー)
-├── state/                    # ランタイム状態 (Claude が自律管理)
-│   └── concier-notified.json # スケジュールリマインドの既読フラグ
 └── ja/                       # 英語ドキュメントの日本語翻訳キャッシュ
     └── <相対パス>/<filename>
 ```
@@ -121,8 +117,6 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 - `projectRoot` が変わるたびに `ensureAideaDirectory()` が `.aidea/` と `.aidea/ja/` を生成し、**`.git/info/exclude` (ローカル専用 ignore) に `.aidea/` を追記** する。`.git/info/` が存在しない非 git プロジェクトでは追記をスキップする
 - `.aidea/claude/*.md` と `.aidea/backchannels/` は初回のみ `BackchannelSetup.setup()` が作成・複製する
 - `.aidea/claude/companions/<0..8>/instructions.md` も `BackchannelSetup.setup()` が `Backchannels/companion-instructions.md` を 9 個に複製する (既存ファイルは上書きしない)
-- `.aidea/config/concier-schedule.yaml` は `BackchannelSetup.setup()` が不在時のみ Bundle テンプレ `Backchannels/concier-schedule.yaml` からコピーする
-- `.aidea/state/concier-notified.json` は `cc.schedule-voice` スキルが初回実行時に自動生成する (Aidea は管理しない)
 - `.aidea/claude/aidea.md` 内のマーカー領域 (`<!-- aidea:companions:start --> ... <!-- aidea:companions:end -->`) は `CompanionRosterWriter` が `WorkspaceSnapshotManager.apply()` 末尾と `CompanionEditView` のリネーム確定時に runtime 更新する (詳細: [../backchannels/companion-roster.md](../backchannels/companion-roster.md))
 - v2 以前の旧ファイル `.aidea/companions.json` / `.aidea/recommends.json` は起動時に `WorkspaceSnapshotManager` が `workspace.json` v3 に統合して自動削除する
 
@@ -269,7 +263,7 @@ Claude → Aidea 方向の通信は**ファイル経由**で行う。詳細は [
 
 | コンポーネント | 役割 |
 |---|---|
-| `BackchannelSetup` | Bundle → `.aidea/claude/` の初期コピー (`aidea.md` / `speech.md` / `handoff.md` / `output.md` / コンパニオン指示書 9 個) |
+| `BackchannelSetup` | Bundle → `.aidea/claude/` の初期コピー (`aidea.md` / `speech.md` / `handoff.md` / `output.md` / `remind.md` / コンパニオン指示書 9 個) |
 | `SpeechWatcher` | `.aidea/backchannels/<0..8>/speech-*.txt` の FSEvents 再帰監視 |
 | `SpeechState` | Speech 状態管理と SpeechQueue への投入 |
 | `SpeechQueue` | VOICEVOX 合成 → AVAudioPlayer 再生キュー |
@@ -277,6 +271,8 @@ Claude → Aidea 方向の通信は**ファイル経由**で行う。詳細は [
 | `HandoffState` | Handoff 状態管理 + Dispatcher 呼び出し |
 | `OutputWatcher` | `.aidea/backchannels/<0..8>/output-*.txt` の FSEvents 再帰監視 |
 | `OutputState` | Output 履歴蓄積 (コンパニオン別インメモリ) |
+| `RemindWatcher` | `.aidea/backchannels/<0..8>/remind-{YYYYMMDDTHHmmss}.txt` の FSEvents 再帰監視 + 起動時スキャン |
+| `RemindScheduler` | トリガ時刻まで待機して SpeechQueue に投入、発火後にファイルを `.fired.txt` リネーム |
 
 詳細は [../backchannels/](../backchannels/README.md) を参照。
 
@@ -296,6 +292,7 @@ Claude → Aidea 方向の通信は**ファイル経由**で行う。詳細は [
 | Claude から handoff 受信時 | `<n>/handoff-*.json` → 宛先解決 → 送信 (ファイルは残す、ADR 0024) | `HandoffWatcher` |
 | Claude から output 受信時 | `<n>/output-*.txt` → OutputState の履歴に蓄積 (ファイルは残す、ADR 0024) | `OutputWatcher` |
 | Claude がコンテキスト書き出し時 | `<n>/context.txt` → 上書き更新 (セッション間記憶保持、[../backchannels/context.md](../backchannels/context.md)) | Claude 自律管理 (Aidea 側監視なし) |
+| Claude から remind 受信時 | `<n>/remind-{ts}.txt` → トリガ時刻まで待機し SpeechQueue 投入 → ファイルを `.fired.txt` リネーム ([../backchannels/remind.md](../backchannels/remind.md)) | `RemindWatcher` + `RemindScheduler` |
 | 終了時 / バックグラウンド化時 | `workspace.json` (4 グループ統合) 保存 | `AideaApp.registerTerminationObserver()` |
 
 ---

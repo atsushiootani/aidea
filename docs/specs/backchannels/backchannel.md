@@ -10,15 +10,15 @@ syncs_with:
   - docs/specs/backchannels/handoff.md
   - docs/specs/backchannels/output.md
   - docs/specs/backchannels/context.md
+  - docs/specs/backchannels/remind.md
   - docs/specs/backchannels/companion-roster.md
   - docs/specs/aspects/persistence.md
   - docs/specs/companions/companion.md
 impacts:
   - docs/specs/tools/claude.md
-  - docs/specs/skills/concier-schedule-voice.md
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-06
+last_updated: 2026-05-27
 ---
 
 # Backchannel 仕様
@@ -52,7 +52,7 @@ Aidea は `.aidea/` ディレクトリを共有バスとして使用し、FSEven
 ├── claude/
 │   ├── aidea.md              # Aidea 環境の共通指示 (instructions.md から参照される土台)
 │   ├── speech.md             # 読み上げ機能の定義 (同上)
-│   ├── schedule-voice.md     # スケジュールリマインド機能の定義 (同上)
+│   ├── remind.md             # リマインド機能の定義 (同上)
 │   ├── {feature}.md          # 将来の共有機能ごとに 1 ファイル
 │   └── companions/
 │       ├── 0/
@@ -66,14 +66,11 @@ Aidea は `.aidea/` ディレクトリを共有バスとして使用し、FSEven
 │   │   ├── handoff-{timestamp}.json   # Companion 0 が送信したハンドオフ
 │   │   ├── output-{timestamp}.txt     # レスポンス全文の出力記録
 │   │   ├── context.txt               # セッション間記憶保持用コンテキスト (上書き更新)
+│   │   ├── remind-{timestamp}.txt     # 遅延発火型リマインド ({timestamp} = トリガ時刻)
 │   │   └── notify-{timestamp}.txt     # 通知バナー用テキスト (将来)
 │   ├── 1/
 │   │   └── ...
 │   └── ...                            # 0…8 の 9 ディレクトリ (必要時に Claude が mkdir で作成)
-├── config/                       # 機能別設定ファイル (ユーザ編集可)
-│   └── concier-schedule.yaml     # スケジュールリマインドの設定 (初回起動時に Bundle テンプレからコピー)
-├── state/                        # ランタイム状態 (Claude が自律管理)
-│   └── concier-notified.json     # スケジュールリマインドの既読フラグ
 └── workspace.json                # 既存: レイアウト永続化
 ```
 
@@ -138,12 +135,12 @@ instructions.md 内から相対参照 (`./persona.md` など) で他ファイル
 | `handoff.md` | コンパニオン間ハンドオフ機能の定義 ([handoff.md](./handoff.md)) | 同上 |
 | `output.md` | output 記録機能の定義 ([output.md](./output.md)) | 同上 |
 | `context.md` | コンテキスト記憶機能の定義 ([context.md](./context.md)) | 同上 |
-| `schedule-voice.md` | スケジュールリマインド機能の定義 ([skills/concier-schedule-voice.md](../skills/concier-schedule-voice.md)) | 同上 |
+| `remind.md` | リマインド機能の定義 ([remind.md](./remind.md)) | 同上 |
 | `{feature}.md` | 将来の共有機能 | 同上 |
 | `companions/<index>/instructions.md` | コンパニオンごとの起動指示 (エントリーポイント) | `.aidea/claude/companions/<0..8>/` |
 | `companions/<index>/*.md` | 段階的開示用の補助ファイル (persona / workflow など) | 同上 |
 
-`BackchannelSetup.setup()` が初回セットアップ時に Bundle 内の既知ファイルを `.aidea/claude/` にコピーする (`aidea.md` / `speech.md` / `handoff.md` / `output.md` / `schedule-voice.md` / `companions/<0..8>/instructions.md` を `Backchannels/companion-instructions.md` から複製)。さらに `.aidea/config/concier-schedule.yaml` が不在なら Bundle テンプレ (`concier-schedule.yaml`) をコピーする。**既存ファイルは上書きしない** (ユーザ編集の保護)。
+`BackchannelSetup.setup()` が初回セットアップ時に Bundle 内の既知ファイルを `.aidea/claude/` にコピーする (`aidea.md` / `speech.md` / `handoff.md` / `output.md` / `context.md` / `remind.md` / `companions/<0..8>/instructions.md` を `Backchannels/companion-instructions.md` から複製)。**既存ファイルは上書きしない** (ユーザ編集の保護)。
 
 `aidea.md` 内には Aidea が自動管理するコンパニオン名簿セクション (`<!-- aidea:companions:start -->` / `<!-- aidea:companions:end -->` で囲まれた領域) が含まれる。`BackchannelSetup.setup()` が aidea.md を初回コピーした後、`WorkspaceSnapshotManager.apply()` の末尾と `CompanionEditView` のリネーム確定時に `CompanionRosterWriter.writeRoster(...)` が呼ばれ、最新の `CompanionStore.companions[].name` でこの領域が書き換えられる。詳細は [companion-roster.md](./companion-roster.md) を参照。
 
@@ -159,6 +156,7 @@ Aidea は `.aidea/backchannels/` ディレクトリを FSEvents で **再帰監�
 | `backchannels/<0..8>/speech-*.txt` | SpeechWatcher → VoicevoxService | [voicevox.md](./voicevox.md) |
 | `backchannels/<0..8>/handoff-*.json` | HandoffWatcher → HandoffDispatcher → (宛先の) ClaudeSessionState | [handoff.md](./handoff.md) |
 | `backchannels/<0..8>/output-*.txt` | OutputWatcher → OutputState | [output.md](./output.md) |
+| `backchannels/<0..8>/remind-{YYYYMMDDTHHmmss}.txt` | RemindWatcher → RemindScheduler → SpeechQueue (時刻到達時) | [remind.md](./remind.md) |
 
 ### ハンドラ通過条件
 
@@ -177,6 +175,7 @@ Aidea は `.aidea/backchannels/` ディレクトリを FSEvents で **再帰監�
 | **Handoff** | `<n>/handoff-{timestamp}.json` | JSON | Companion 間タスク受け渡し ([handoff.md](./handoff.md)) |
 | **Output** | `<n>/output-{timestamp}.txt` | プレーンテキスト | レスポンス全文の出力記録 ([output.md](./output.md)) |
 | **Context** | `<n>/context.txt` | Markdown | セッション間記憶保持用コンテキスト ([context.md](./context.md)) |
+| **Remind** | `<n>/remind-{timestamp}.txt` | プレーンテキスト | 遅延発火型音声リマインド ({timestamp} = トリガ時刻、発火後 `.fired.txt` にリネーム、[remind.md](./remind.md)) |
 | Notification | `<n>/notify-{timestamp}.txt` | プレーンテキスト | 通知バナー表示 |
 | Action | `<n>/action-{timestamp}.json` | JSON | UI 操作の指示 |
 | Status | `<n>/status.json` | JSON | Claude の作業状態表示 |
