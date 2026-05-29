@@ -122,7 +122,7 @@ struct GitDiffSessionView: NSViewRepresentable {
                   let root = diffState.workspace.projectRoot else { return }
             let url = root.appendingPathComponent(filePath)
             guard FileManager.default.fileExists(atPath: url.path) else { return }
-            registry.openPreview(for: url)
+            registry.openPreviewAsSibling(for: url)
         }
         return webView
     }
