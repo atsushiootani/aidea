@@ -10,7 +10,7 @@ impacts:
   - docs/specs/widgets/*
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-27
+last_updated: 2026-05-29
 ---
 
 # Widgets
@@ -22,7 +22,7 @@ last_updated: 2026-05-27
 
 | ファイル | 内容 |
 |---|---|
-| [quick-memo.md](./quick-memo.md) | クイックメモ (Cmd+M で popover を開き quickmemo/todo/ に保存) |
+| [quick-memo.md](./quick-memo.md) | クイックメモ (Cmd+M で popover を開き `.aidea/widgets/quickmemo/memo.md` に上書き保存) |
 | [pomodoro.md](./pomodoro.md) | ポモドーロタイマー (25 分作業 / 5 分休憩を交互に計測する) |
 
 ## 位置付け

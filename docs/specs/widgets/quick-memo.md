@@ -1,6 +1,6 @@
 ---
 title: クイックメモ
-description: Cmd+M でヘッダ右端のボタンから即座にメモ入力 popover を開き、quickmemo/todo/ 配下に Markdown ファイルとして保存する Widget 仕様
+description: Cmd+M でヘッダ右端のボタンから即座にメモ入力 popover を開き、.aidea/widgets/quickmemo/memo.md に上書き保存する Widget 仕様
 derived_from: []
 syncs_with:
   - docs/specs/aspects/keybindings.md
@@ -11,13 +11,13 @@ impacts: []
 conventions:
   - docs/LAYOUT.md
   - docs/specs/widgets/README.md
-last_updated: 2026-05-06
+last_updated: 2026-05-29
 ---
 
 # クイックメモ
 
 Aidea ヘッダ右端の ✏️ ボタン (または Cmd+M) で即座にメモ入力用 popover を開き、
-入力したテキストを `<projectRoot>/quickmemo/todo/` 配下に Markdown ファイルとして保存する Widget。
+入力したテキストを `<projectRoot>/.aidea/widgets/quickmemo/memo.md` に**上書き保存**する Widget。
 
 ---
 
@@ -27,7 +27,8 @@ Aidea ヘッダ右端の ✏️ ボタン (または Cmd+M) で即座にメモ�
 |---|---|
 | 起動ショートカット | **Cmd+M** |
 | UI 形式 | ✏️ ボタン押下 (または Cmd+M) で popover 表示 |
-| 保存先 | `<projectRoot>/quickmemo/todo/<timestamp>.md` |
+| 保存先 | `<projectRoot>/.aidea/widgets/quickmemo/memo.md` (固定 1 ファイル) |
+| 書き込み方式 | **上書き**。既存内容は失われる |
 | 空メモの扱い | 空白のみは保存せず破棄。保存ボタンを無効化 |
 
 ---
@@ -77,42 +78,66 @@ WidgetView
 ### 保存先
 
 ```
-<projectRoot>/quickmemo/todo/<timestamp>.md
+<projectRoot>/.aidea/widgets/quickmemo/memo.md
 ```
 
-- `<timestamp>` のフォーマット: `yyyy-MM-dd_HHmmss`
-- 例: `2026-05-06_143022.md`
-- `quickmemo/todo/` ディレクトリが存在しない場合は自動生成する
+- **固定 1 ファイル**。タイムスタンプは付けない。常に同じファイル名で上書き
+- ファイル名は `memo.md` (kebab-case の慣行はあるが、ファイル名としては短く `memo.md`)
+- `.aidea/widgets/quickmemo/` ディレクトリが存在しない場合は自動生成する
+- `.aidea/` 配下のため Aidea が管理する `.git/info/exclude` (ローカル専用 ignore) でコミット対象から外れる
 
 ### ファイル内容
 
 入力されたテキストをそのまま Markdown ファイルとして書き出す。
 メタデータ (タイムスタンプ・タイトル等) は付加しない。
 
+### 上書き運用
+
+- 保存時に既存の `memo.md` の内容は **完全に置き換わる** (履歴は残らない)
+- popover を開いた時に既存の `memo.md` を **読み込んで TextEditor に表示する** (前回の内容を継続編集できる)
+- 同じファイルを継続的に育てる「**1 枚の付箋**」モデル
+
+### popover オープン時の読込
+
+- popover が表示されたタイミングで `.aidea/widgets/quickmemo/memo.md` を読み込んで `TextEditor` の初期テキストにする
+- ファイルが存在しない場合は空欄から始める
+- 読み込みに失敗した場合 (パーミッション等) も空欄で開く (popover 表示を妨げない)
+
 ### 保存タイミング
 
-「保存」ボタン押下または Cmd+Return 時に即時書き出す。
+「保存」ボタン押下または Cmd+Return 時に **memo.md を現在の `memoText` で上書き**する。
 失敗した場合はファイルを作成せず、popover はそのまま閉じない (ユーザに問題が伝わるよう保持する)。
+
+### キャンセル時の挙動
+
+- Esc / キャンセルボタンで popover を閉じた場合、**`memo.md` は変更しない**
+- 編集途中の `memoText` は破棄される (次に開いた時はファイルの内容から再読込される)
 
 ---
 
 ## 状態管理
 
 - `isPresented: Bool` — popover の表示状態
-- `memoText: String` — 入力中のテキスト
+- `memoText: String` — 編集中のテキスト
 
 popover を閉じた後 (保存・キャンセル共通) に `memoText` を空文字にリセットする。
+次回 open 時にファイルから再読込されるため、メモリ上に内容を保持し続ける必要はない。
 
 ---
 
 ## 永続化
 
-クイックメモ自体の状態 (開閉・入力中テキスト) は**永続化しない**。
-アプリ再起動で常に「未入力・閉じた状態」から開始する。
+クイックメモの **入力中の状態** (popover の開閉・編集中テキスト) は**メモリ上のみ**で保持し、
+アプリ再起動で常に「閉じた状態」から開始する。
 
-保存済みファイル (`quickmemo/todo/*.md`) はプロジェクトルートに保存するが、
-`.aidea/` 配下ではないため `.aidea/.gitignore` の対象外。
-ユーザのプロジェクト側 `.gitignore` で管理を決める。
+**保存済みファイル** (`.aidea/widgets/quickmemo/memo.md`) は `.aidea/` 配下に置く。
+ユーザの「**1 枚の付箋**」として永続化され、popover を開くたびに前回の内容が復元される。
+
+`.aidea/` 全体は Aidea が `.git/info/exclude` (ローカル専用 ignore) に追記するため、
+**共有 `.gitignore` の編集は不要**でリポジトリに混入しない (詳細: [../aspects/persistence.md](../aspects/persistence.md))。
+
+`.aidea/widgets/` は **新カテゴリ**: 「ヘッダ Widget が永続化するユーザ編集可能なテキストファイル」を入れる。
+今後 Widget が増えたら `.aidea/widgets/<widget-name>/` に並べる。
 
 ---
 

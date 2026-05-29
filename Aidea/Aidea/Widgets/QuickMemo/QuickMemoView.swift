@@ -22,7 +22,12 @@ struct QuickMemoView: View {
                 .font(.body)
                 .focused($isEditorFocused)
                 .overlay(placeholder, alignment: .topLeading)
-                .onAppear { isEditorFocused = true }
+                .onAppear {
+                    if let root = workspace.projectRoot {
+                        quickMemo.load(projectRoot: root)
+                    }
+                    isEditorFocused = true
+                }
 
             HStack {
                 Button("キャンセル") {

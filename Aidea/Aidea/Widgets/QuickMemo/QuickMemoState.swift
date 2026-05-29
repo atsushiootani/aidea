@@ -7,7 +7,7 @@ import Foundation
 import Observation
 
 /// クイックメモの状態管理。
-/// isPresented で popover の開閉を制御し、保存時に quickmemo/todo/ へファイルを書き出す。
+/// isPresented で popover の開閉を制御し、open 時に memo.md を読み込み、save 時に上書きする。
 /// docs/specs/widgets/quick-memo.md 参照。
 @MainActor
 @Observable
@@ -31,17 +31,27 @@ final class QuickMemoState {
         memoText = ""
     }
 
-    /// メモを <projectRoot>/quickmemo/todo/<timestamp>.md に保存して popover を閉じる。
+    /// popover オープン時に <projectRoot>/.aidea/widgets/quickmemo/memo.md を読み込む。
+    /// ファイルが無い・読み込み失敗時は空欄から始める。
+    func load(projectRoot: URL) {
+        let file = Self.memoFileURL(projectRoot: projectRoot)
+        if let text = try? String(contentsOf: file, encoding: .utf8) {
+            memoText = text
+        } else {
+            memoText = ""
+        }
+    }
+
+    /// メモを <projectRoot>/.aidea/widgets/quickmemo/memo.md に上書き保存して popover を閉じる。
     /// 保存失敗時は popover を閉じない。
     func save(projectRoot: URL) {
         let trimmed = memoText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
 
-        let dir = projectRoot.appendingPathComponent("quickmemo/todo", isDirectory: true)
+        let file = Self.memoFileURL(projectRoot: projectRoot)
+        let dir = file.deletingLastPathComponent()
         do {
             try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-            let timestamp = Self.timestampString()
-            let file = dir.appendingPathComponent("\(timestamp).md")
             try memoText.write(to: file, atomically: true, encoding: .utf8)
             isPresented = false
             memoText = ""
@@ -50,9 +60,9 @@ final class QuickMemoState {
         }
     }
 
-    private static func timestampString() -> String {
-        let fmt = DateFormatter()
-        fmt.dateFormat = "yyyy-MM-dd_HHmmss"
-        return fmt.string(from: Date())
+    private static func memoFileURL(projectRoot: URL) -> URL {
+        projectRoot
+            .appendingPathComponent(".aidea/widgets/quickmemo", isDirectory: true)
+            .appendingPathComponent("memo.md")
     }
 }
