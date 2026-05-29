@@ -13,7 +13,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-05
+last_updated: 2026-05-29
 ---
 
 # Session 内部状態: GitDiff
@@ -61,11 +61,14 @@ PR Preview モードも同様に、`git diff main...HEAD` の出力をファイ�
 
 ## プレビュージャンプ
 
-`focusedFile` が設定されている状態で **Enter** を押すと、対象ファイルを `SessionRegistry.openPreview(for:)` で Preview タブに開く。
+`focusedFile` が設定されている状態で **Enter** を押すと、対象ファイルを `SessionRegistry.openPreviewAsSibling(for:)` で Preview タブに開く。
 
 - `workspace.projectRoot` と `focusedFile` からフルパス URL を構築する
 - ファイルが存在しない場合 (削除済み・リネーム後の旧パス等) は何もしない
-- Preview の開き先ペインは `openPreview` の通常ルーティング (opposite pane / dedupe) に従う
+- Preview は **GitDiff と同じペインの右隣に新規タブとして挿入**される (GitDiff 作業中に他ペインへフォーカスを奪われない方が体感が自然なため、`PersistentTerminalView` と同じポリシー)
+- 同じ URL の Preview が既に存在する場合は dedupe (新規作成せずアクティブ化)
+
+挙動の詳細は [active-session.md#preview-内から-preview-を開く場合-sibling-配置](./active-session.md#preview-内から-preview-を開く場合-sibling-配置) を参照。
 
 ## 追加制約
 

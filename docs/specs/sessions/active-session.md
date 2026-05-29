@@ -14,7 +14,7 @@ impacts:
   - docs/specs/window/active-session-switcher.md
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-05
+last_updated: 2026-05-29
 ---
 
 # アクティブ Session の仕組み
@@ -102,6 +102,7 @@ Preview 内のリンククリックや翻訳ボタンから別のファイルを
 - `MarkdownContainer` — Markdown 内のリンククリック / 翻訳版の表示
 - `PreviewSessionView` — テキストファイルの翻訳版の表示
 - `PersistentTerminalView` — ターミナル出力中のファイルパス クリック起動 (issue #71)。ターミナル作業中に他ペインへフォーカスを奪われない方が体感が自然なため `openPreview` ではなくこちらを使う
+- `GitDiffSessionView` — Enter キーでフォーカスファイルを Preview に開く ([git-diff.md#プレビュージャンプ](./git-diff.md#プレビュージャンプ))。GitDiff 作業中に他ペインへフォーカスを奪われない方が体感が自然なため、ターミナルと同じポリシー
 
 ### TabSlot にドラッグ&ドロップで Preview を開く場合 (slot 指定配置)
 
