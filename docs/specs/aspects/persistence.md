@@ -1,6 +1,6 @@
 ---
 title: Persistence (データ永続化)
-description: UserDefaults / Keychain / Bundle Resources / .aidea/ / quickmemo/todo/ のデータ永続化と初期値テンプレ仕様を機能群横断で集約
+description: UserDefaults / Keychain / Bundle Resources / .aidea/ のデータ永続化と初期値テンプレ仕様を機能群横断で集約 (.aidea/widgets/ 含む)
 derived_from:
   - docs/specs/architecture.md
   - docs/decisions/0022-companion-instructions-as-files.md
@@ -36,13 +36,12 @@ last_updated: 2026-05-27
 
 Aidea が **どのデータをどこに、どのタイミングで保存するか** の仕様。
 
-保存先は大きく 5 種類:
+保存先は大きく 4 種類:
 
 1. **UserDefaults** — アプリ全体のユーザ設定 (最小限)
 2. **Keychain** — 機密情報 (API キー)
 3. **Bundle Resources** — アプリ同梱の初期値テンプレ・指示書 (読み取り専用)
-4. **`<projectRoot>/.aidea/`** — プロジェクト固有の状態・リソース・通信データ (メイン)
-5. **`<projectRoot>/quickmemo/todo/`** — クイックメモの保存先 (`.aidea/` 外のプロジェクト直下)
+4. **`<projectRoot>/.aidea/`** — プロジェクト固有の状態・リソース・通信データ・Widget 永続テキスト (メイン)
 
 `~/Library/Application Support/Aidea/` は **現時点では使用していない**。プロジェクト固有の情報は `.aidea/` 配下に集約することで、プロジェクトをまたいだ干渉を防いでいる。
 
@@ -110,6 +109,9 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 │       │   └── *.md             # (任意) 段階的開示の参照先
 │       ├── 1/instructions.md
 │       └── ...                  # 0…8 の 9 ディレクトリ固定
+├── widgets/                  # Widget が永続化するユーザ編集可能テキスト
+│   └── quickmemo/
+│       └── memo.md           # クイックメモ (固定 1 ファイル、上書き運用 / widgets/quick-memo.md)
 └── ja/                       # 英語ドキュメントの日本語翻訳キャッシュ
     └── <相対パス>/<filename>
 ```
@@ -119,6 +121,7 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 - `.aidea/claude/companions/<0..8>/instructions.md` も `BackchannelSetup.setup()` が `Backchannels/companion-instructions.md` を 9 個に複製する (既存ファイルは上書きしない)
 - `.aidea/claude/aidea.md` 内のマーカー領域 (`<!-- aidea:companions:start --> ... <!-- aidea:companions:end -->`) は `CompanionRosterWriter` が `WorkspaceSnapshotManager.apply()` 末尾と `CompanionEditView` のリネーム確定時に runtime 更新する (詳細: [../backchannels/companion-roster.md](../backchannels/companion-roster.md))
 - v2 以前の旧ファイル `.aidea/companions.json` / `.aidea/recommends.json` は起動時に `WorkspaceSnapshotManager` が `workspace.json` v3 に統合して自動削除する
+- `.aidea/widgets/` 配下は **Widget が初回保存時に自動生成** する (Aidea 起動時の一括初期化は行わない)。Widget が永続化するユーザ編集可能テキストを置くカテゴリで、現状は `quickmemo/memo.md` のみ。今後 Widget が増えたら `.aidea/widgets/<widget-name>/` に並べる
 
 ---
 
@@ -293,6 +296,7 @@ Claude → Aidea 方向の通信は**ファイル経由**で行う。詳細は [
 | Claude から output 受信時 | `<n>/output-*.txt` → OutputState の履歴に蓄積 (ファイルは残す、ADR 0024) | `OutputWatcher` |
 | Claude がコンテキスト書き出し時 | `<n>/context.txt` → 上書き更新 (セッション間記憶保持、[../backchannels/context.md](../backchannels/context.md)) | Claude 自律管理 (Aidea 側監視なし) |
 | Claude から remind 受信時 | `<n>/remind-{ts}.txt` → トリガ時刻まで待機し SpeechQueue 投入 → ファイルを `.fired.txt` リネーム ([../backchannels/remind.md](../backchannels/remind.md)) | `RemindWatcher` + `RemindScheduler` |
+| クイックメモ保存時 | `.aidea/widgets/quickmemo/memo.md` を上書き (親ディレクトリ自動生成、[../widgets/quick-memo.md](../widgets/quick-memo.md)) | `QuickMemoState.save()` |
 | 終了時 / バックグラウンド化時 | `workspace.json` (4 グループ統合) 保存 | `AideaApp.registerTerminationObserver()` |
 
 ---
