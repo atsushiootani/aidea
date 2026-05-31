@@ -5,9 +5,7 @@ node_modules/
 *.log
 *.profraw
 *.profdata
-.claude/.simplify-ignore-cache/
-.claude/worktrees/
-.claude/scheduled_tasks.lock
+.claude/
 .obsidian
 .aidea/
 

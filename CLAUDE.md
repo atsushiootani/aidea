@@ -9,7 +9,7 @@
 Aidea/             → macOS アプリ本体 (Xcode プロジェクト)
 docs/              → 設計ドキュメント (specs / conventions / foundation / decisions)
 skills/            → agent-skills 由来の参照リソース
-.claude/           → このプロジェクト固有のスキル/コマンド
+.claude/           → ローカル個人のスキル/コマンド (gitignore、共有しない)
 ```
 
 旧 agent-skills の説明は [CLAUDE.agent-skills.md](./CLAUDE.agent-skills.md) に退避。
