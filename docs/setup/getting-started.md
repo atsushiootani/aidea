@@ -9,7 +9,7 @@ syncs_with: []
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-11
+last_updated: 2026-05-31
 ---
 
 # Aidea を使い始める (Getting Started)
@@ -195,7 +195,65 @@ Companion を起動すると Aidea が自動で以下のプロンプトを最初
 
 これにより Claude が `instructions.md` を読み込み、上記の指示に従い始める。
 
-### 8-4. アイコンの状態表示
+### 8-4. (発展) キャラ本体を `.claude/agents/` に切り出す
+
+`instructions.md` を肥大化させずに、口調・担当範囲・tools 制約など**キャラ本体の定義**を Claude Code 標準の subagent ファイル (`.claude/agents/<name>.md`) に切り出すと、Aidea を使わない (素の Claude Code で起動する) ときも同じキャラ運用ができる。
+
+#### 設計の振り分け
+
+| 置き場所 | 内容 | 理由 |
+|---|---|---|
+| `.claude/agents/<name>.md` | 口調 / 担当範囲 / 役割 / `tools` / `model` などキャラ本体 | Claude Code 標準。`claude --agent <name>` 起動でも `Agent({subagent_type: "<name>"})` 呼び出しでも同じ定義が読まれる |
+| `.aidea/claude/companions/<index>/instructions.md` | Aidea 起点情報のみ (`aidea.md` 参照 / `speech.md` 参照 + VOICEVOX speaker ID / 起動文面 / 上記 agents への段階的参照) | Aidea ハーネス固有 (PTY 起動時に Aidea がこのファイルだけを最初に流し込む) |
+
+#### `.claude/agents/<name>.md` の形式
+
+Claude Code 標準の YAML frontmatter を使う:
+
+```markdown
+---
+name: doc-chan
+description: ドキュメント作成・整理・編集を担当する気品あるキャラ。仕様書 / 設計書 / メモ / README / ブログ記事 など文章全般。
+---
+
+# doc-chan
+
+ドキュメント担当。
+
+## 口調
+
+気品のある喋り方。落ち着いたトーンで丁寧に。
+
+## 担当範囲
+
+- 仕様書・設計書・ADR の作成・編集
+- README やオンボーディング文書
+- ブログ記事 / Notion 記事の下書き・推敲
+```
+
+- `name` は Companion 名と一致させる (Aidea の `aidea.md` 内 companions ロスタとも揃える)
+- `description` は「いつこのキャラに任せるか」を 1-2 文で。サブエージェントとして自動委譲の判断材料にも使われる
+- `tools` / `model` / `permissionMode` フィールドで権限・モデル・ツール制約も指定可能 (省略時は親継承)
+
+#### `instructions.md` 側の段階的参照
+
+キャラ本体を agents 側に置いたら、`instructions.md` は薄く保ち、段階的開示として agents への参照を入れる:
+
+```markdown
+.aidea/claude/aidea.md の指示に従ってね
+.aidea/claude/speech.md の指示に従い、ID:107(東北ずん子)で読み上げてね
+.claude/agents/doc-chan.md を読んで、キャラ設定 (口調・担当範囲) に従ってね
+
+最初のプロンプトの読み上げ文面は "ドックちゃん スタンバイです！" にして
+```
+
+これで Aidea 経由で起動しても agents の内容が読まれ、Aidea を使わずに `claude --agent doc-chan` や Agent tool で呼んでも同じキャラとして振る舞う。
+
+#### 共有とローカル所有の境界
+
+[CLAUDE.md トップレベル構成](../../CLAUDE.md) のとおり `.claude/` は**ローカル個人のスキル/コマンド** (gitignore 対象、共有しない)。チームで使い回す場合は、各メンバーが自分の `.claude/agents/<name>.md` を整備する運用にする (本節を参考に各自セットアップ)。
+
+### 8-5. アイコンの状態表示
 
 起動後のアイコンは状態に応じて表情とオーバーレイが変わる ([詳細](../specs/companions/companion.md#表情状態表示-issue-45))。
 
