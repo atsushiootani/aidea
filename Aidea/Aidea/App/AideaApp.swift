@@ -11,6 +11,7 @@ import AppKit
 /// 起動時にワークスペーススナップショットを読み込み、終了時に保存する。
 @main
 struct AideaApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var workspace: WorkspaceState
     @State private var registry: SessionRegistry
     @State private var layout: LayoutConfig
@@ -32,6 +33,8 @@ struct AideaApp: App {
     @State private var lockToken: String?
     /// 前面化要求の購読 observer (解除用)
     @State private var activationObserver: NSObjectProtocol?
+    /// 「最近開いたディレクトリを開く」で MRU ランチャーを sheet 表示するか
+    @State private var showLauncher = false
 
     init() {
         let ws = WorkspaceState()
@@ -113,36 +116,58 @@ struct AideaApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .environment(workspace)
-                .environment(registry)
-                .environment(layout)
-                .environment(speechState)
-                .environment(companionStore)
-                .environment(recommendState)
-                .environment(handoffState)
-                .environment(outputState)
-                .environment(pomodoroState)
-                .environment(quickMemoState)
-                .environment(remindState)
-                .environment(schedulerState)
-                .environment(tabPickerAnchor)
-                .onAppear {
-                    registerTerminationObserver()
-                    registerKeyEventMonitor()
-                    sessionSwitcher.install(registry: registry, companionStore: companionStore)
-                    startHandoff()
-                    startOutput()
-                    startRemind()
-                    startScheduler()
-                    observeActivationRequests()
-                }
-                .onOpenURL { url in
-                    handleExternalOpen(url)
-                }
+            if workspace.projectRoot == nil {
+                // 素起動 (リポジトリ未指定): MRU ランチャーを出す (ADR 0030 / window/multi-instance.md)。
+                // 選択したリポジトリは新プロセスで開き、ランチャーのこのプロセスは終了する。
+                WorkspaceLauncherView(onSelect: { url in
+                    WorkspaceLauncher.openInNewProcess(projectRoot: url)
+                    NSApp.terminate(nil)
+                })
+            } else {
+                ContentView()
+                    // 複数インスタンスを見分けられるよう、ウィンドウタイトルにリポジトリ名を出す。
+                    // Cmd+Tab はアプリ単位集約で別名にできないが、Cmd+` / Exposé / Dock では区別できる。
+                    .navigationTitle(workspace.projectRoot.map { "Aidea — \($0.lastPathComponent)" } ?? "Aidea")
+                    .environment(workspace)
+                    .environment(registry)
+                    .environment(layout)
+                    .environment(speechState)
+                    .environment(companionStore)
+                    .environment(recommendState)
+                    .environment(handoffState)
+                    .environment(outputState)
+                    .environment(pomodoroState)
+                    .environment(quickMemoState)
+                    .environment(remindState)
+                    .environment(schedulerState)
+                    .environment(tabPickerAnchor)
+                    .sheet(isPresented: $showLauncher) {
+                        // 「最近開いたディレクトリを開く」: 選択リポジトリは新プロセスで開き、現プロセスは継続する。
+                        WorkspaceLauncherView(onSelect: { url in
+                            WorkspaceLauncher.openInNewProcess(projectRoot: url)
+                            showLauncher = false
+                        })
+                    }
+                    .onAppear {
+                        registerTerminationObserver()
+                        registerKeyEventMonitor()
+                        sessionSwitcher.install(registry: registry, companionStore: companionStore)
+                        startHandoff()
+                        startOutput()
+                        startRemind()
+                        startScheduler()
+                        observeActivationRequests()
+                    }
+                    .onOpenURL { url in
+                        handleExternalOpen(url)
+                    }
+            }
         }
         .commands {
             CommandGroup(replacing: .newItem) {
+                Button("最近開いたディレクトリを開く...") {
+                    showLauncher = true
+                }
                 Button("ディレクトリを開く...") {
                     openDirectory()
                 }
