@@ -23,6 +23,7 @@ struct AideaApp: App {
     @State private var pomodoroState: PomodoroState
     @State private var quickMemoState: QuickMemoState
     @State private var remindState: RemindState
+    @State private var schedulerState: SchedulerState
     /// Ctrl+Tab で起動する Active Session Switcher (Window レベル singleton)
     @State private var sessionSwitcher = ActiveSessionSwitcher()
     /// Cmd+T のツール選択メニューを各ペインの「+」ボタン直下に表示するためのアンカー管理
@@ -87,6 +88,7 @@ struct AideaApp: App {
         _pomodoroState = State(initialValue: pomodoro)
         _quickMemoState = State(initialValue: QuickMemoState())
         _remindState = State(initialValue: RemindState())
+        _schedulerState = State(initialValue: SchedulerState())
     }
 
     var body: some Scene {
@@ -103,6 +105,7 @@ struct AideaApp: App {
                 .environment(pomodoroState)
                 .environment(quickMemoState)
                 .environment(remindState)
+                .environment(schedulerState)
                 .environment(tabPickerAnchor)
                 .onAppear {
                     registerTerminationObserver()
@@ -111,6 +114,7 @@ struct AideaApp: App {
                     startHandoff()
                     startOutput()
                     startRemind()
+                    startScheduler()
                 }
                 .onOpenURL { url in
                     handleExternalOpen(url)
@@ -502,6 +506,72 @@ struct AideaApp: App {
     private func startRemind() {
         guard let projectRoot = workspace.projectRoot else { return }
         remindState.start(projectRoot: projectRoot, speechQueue: speechState.queue)
+    }
+
+    // MARK: - Scheduler
+
+    /// SchedulerState を起動する。発火時 (定刻 / 手動「今すぐ実行」の両方) は `dispatchScheduledJob` が
+    /// ジョブの companionIndex の Companion セッションへ command を送信する (未起動なら起動して ready 後送信)。
+    /// startHandoff と同じ「ローカルキャプチャ → callback」パターン。
+    /// 詳細: docs/specs/widgets/scheduler.md
+    private func startScheduler() {
+        guard let projectRoot = workspace.projectRoot else { return }
+        let store = companionStore
+        let reg = registry
+        let lay = layout
+        let speech = speechState
+        schedulerState.start(projectRoot: projectRoot) { companionIndex, command in
+            Self.dispatchScheduledJob(
+                companionIndex: companionIndex, command: command,
+                companionStore: store, registry: reg, layout: lay,
+                speechState: speech, projectRoot: projectRoot
+            )
+        }
+    }
+
+    /// スケジューラジョブを `companionIndex` の Companion セッションへ送信する。
+    /// - 起動済みなら activateSession → sendMessageWhenReady (即時 or 保留を自動選択)
+    /// - 未起動なら Claude セッションを生成・bind・tab 追加し、`sendMessageWhenReady` で ready 後に送信
+    /// dispatchHandoff の踏襲だが、宛先 index は解決済みで、送る本文は `command` 文字列そのもの。
+    /// docs/specs/widgets/scheduler.md / handoff.md 参照。
+    @MainActor
+    private static func dispatchScheduledJob(
+        companionIndex index: Int,
+        command: String,
+        companionStore: CompanionStore,
+        registry: SessionRegistry,
+        layout: LayoutConfig,
+        speechState: SpeechState,
+        projectRoot: URL?
+    ) {
+        guard index >= 0, index < companionStore.companions.count else { return }
+        let companion = companionStore.companion(forIndex: index)
+
+        // 起動済み → アクティブ化して ready 状態に応じて送信
+        if let sessionID = companion.sessionID,
+           let session = registry.session(for: sessionID),
+           let claudeState = session.state as? ClaudeSessionState {
+            registry.activateSession(sessionID)
+            claudeState.sendMessageWhenReady(command)
+            return
+        }
+
+        // 未起動 → 起動してから ready 後に送信
+        let instance = layout.nextSessionInstance(of: .claude)
+        let session = registry.createSession(tool: .claude, instance: instance)
+        if let claudeState = session.state as? ClaudeSessionState {
+            claudeState.companionPrompt = CompanionInstructions.startupCommand(for: index, projectRoot: projectRoot)
+            claudeState.companionIndex = index
+            claudeState.speechQueue = speechState.queue
+        }
+        companionStore.bind(index: index, sessionID: session.id)
+        if let pane = registry.activePane ?? layout.allPanes.first {
+            pane.tabs.append(session.id)
+            registry.setActiveTab(paneID: pane.id, tabIndex: pane.tabs.count - 1)
+        }
+        if let claudeState = session.state as? ClaudeSessionState {
+            claudeState.sendMessageWhenReady(command)
+        }
     }
 
     // MARK: - Handoff

@@ -12,6 +12,7 @@ import SwiftUI
 struct WidgetView: View {
     var body: some View {
         HStack(spacing: 4) {
+            SchedulerView()
             RemindView()
             QuickMemoButton()
             TimerView()
