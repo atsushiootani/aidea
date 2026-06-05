@@ -13,23 +13,24 @@ final class WorkspaceState {
     /// 現在開いているプロジェクトのルートディレクトリ
     var projectRoot: URL?
 
-    private static let projectRootKey = "aidea.projectRoot"
-
-    /// UserDefaults から前回の projectRoot を復元する
+    /// 起動引数 `--project-root` で開くべきリポジトリが渡されればそれを採用する。
+    /// 引数が無い素起動時は projectRoot を確定せず、MRU ランチャー (WorkspaceLauncherView) を出す。
     init() {
-        if let path = UserDefaults.standard.string(forKey: Self.projectRootKey),
-           FileManager.default.fileExists(atPath: path) {
-            let url = URL(fileURLWithPath: path, isDirectory: true)
-            self.projectRoot = url
-            Self.ensureAideaDirectory(at: url)
+        if let argRoot = Self.launchProjectRoot() {
+            self.projectRoot = argRoot
+            Self.ensureAideaDirectory(at: argRoot)
         }
     }
 
-    /// projectRoot を更新して UserDefaults にも保存する
-    func setProjectRoot(_ url: URL) {
-        self.projectRoot = url
-        UserDefaults.standard.set(url.path, forKey: Self.projectRootKey)
-        Self.ensureAideaDirectory(at: url)
+    /// 起動引数 `--project-root <path>` から開くべきリポジトリを取り出す。
+    /// 新プロセス起動 (WorkspaceLauncher) のときに `open -n --args` 経由で渡される。実在ディレクトリのみ返す。
+    static func launchProjectRoot() -> URL? {
+        let args = CommandLine.arguments
+        guard let idx = args.firstIndex(of: "--project-root"), idx + 1 < args.count else { return nil }
+        let path = args[idx + 1]
+        var isDir: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: path, isDirectory: &isDir), isDir.boolValue else { return nil }
+        return URL(fileURLWithPath: path, isDirectory: true)
     }
 
     /// `.aidea/` と `.aidea/ja/` を作成し、`.git/info/exclude` に `.aidea/` を追記する。
