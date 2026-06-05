@@ -69,6 +69,8 @@ NSWindow (メインウィンドウ)
       │     ├─ Spacer
       │     └─ WidgetView                         [Widgets/WidgetView.swift]
       │        └─ HStack (ヘッダ常駐 widget を右端に並べる)
+      │           ├─ SchedulerView                [Widgets/Scheduler/SchedulerView.swift]
+      │           │  (時計アイコン + 集約状態(未実行/次回/停止)。タップで SchedulerPopoverView を開く → widgets/scheduler.md)
       │           ├─ RemindView                   [Widgets/Remind/RemindView.swift]
       │           │  (カレンダーアイコン + 次予定 1 件。タップで RemindPopoverView を開く → backchannels/remind.md)
       │           ├─ QuickMemoButton              [Widgets/QuickMemo/QuickMemoButton.swift]
@@ -93,6 +95,7 @@ NSWindow (メインウィンドウ)
 | ScenePromptsEditorView の Companion アイコン | Popover (Companion ピッカー) | `ScenePromptsEditorView` (Session 下部) |
 | `QuickMemoButton` タップ | `QuickMemoView` (`Widgets/QuickMemo/QuickMemoView.swift`) | `QuickMemoButton` の `.popover` |
 | `RemindView` タップ | `RemindPopoverView` (`Widgets/Remind/RemindPopoverView.swift`) | `RemindView` の `.popover` |
+| `SchedulerView` タップ | `SchedulerPopoverView` (`Widgets/Scheduler/SchedulerPopoverView.swift`) | `SchedulerView` の `.popover` |
 
 ### トップダウンビュー
 
@@ -105,7 +108,7 @@ NSWindow (メインウィンドウ)
 ┌─ NSWindow / ContentView ───────────────────────────────────────────────┐
 │ ┌─ AppHeaderView ────────────────────────────────────────────────────┐ │
 │ │ ┌─ CompanionView ──────────────┐ ┌────┐  Sp.  ┌─ WidgetView ─────┐ │ │
-│ │ │ [1] [2] [3] … [9]            │ │🔊 🎤│       │ [📅] [✏️] [⏱]     │ │ │
+│ │ │ [1] [2] [3] … [9]            │ │🔊 🎤│       │ [🕐] [📅] [✏️] [⏱]     │ │ │
 │ │ └──────────────────────────────┘ └────┘       └──────────────────┘ │ │
 │ └────────────────────────────────────────────────────────────────────┘ │
 │ ── Divider ─────────────────────────────────────────────────────────── │

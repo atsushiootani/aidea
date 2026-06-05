@@ -109,6 +109,10 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 │       │   └── *.md             # (任意) 段階的開示の参照先
 │       ├── 1/instructions.md
 │       └── ...                  # 0…8 の 9 ディレクトリ固定
+├── config/                   # ユーザが宣言的に編集する機能設定 (JSON)
+│   └── scheduler.json        # 定時スケジューラのジョブ定義 (jobs[]、[../widgets/scheduler.md](../widgets/scheduler.md))
+├── state/                    # 機能の自動管理ランタイム状態 (JSON、ユーザは通常編集しない)
+│   └── scheduler.json        # 定時スケジューラの lastRun マップ (jobId→YYYY-MM-DD、[../widgets/scheduler.md](../widgets/scheduler.md))
 ├── widgets/                  # Widget が永続化するユーザ編集可能テキスト
 │   └── quickmemo/
 │       └── memo.md           # クイックメモ (固定 1 ファイル、上書き運用 / widgets/quick-memo.md)
@@ -122,6 +126,8 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 - `.aidea/claude/aidea.md` 内のマーカー領域 (`<!-- aidea:companions:start --> ... <!-- aidea:companions:end -->`) は `CompanionRosterWriter` が `WorkspaceSnapshotManager.apply()` 末尾と `CompanionEditView` のリネーム確定時に runtime 更新する (詳細: [../backchannels/companion-roster.md](../backchannels/companion-roster.md))
 - v2 以前の旧ファイル `.aidea/companions.json` / `.aidea/recommends.json` は起動時に `WorkspaceSnapshotManager` が `workspace.json` v3 に統合して自動削除する
 - `.aidea/widgets/` 配下は **Widget が初回保存時に自動生成** する (Aidea 起動時の一括初期化は行わない)。Widget が永続化するユーザ編集可能テキストを置くカテゴリで、現状は `quickmemo/memo.md` のみ。今後 Widget が増えたら `.aidea/widgets/<widget-name>/` に並べる
+- `.aidea/config/scheduler.json` は**ユーザが宣言的に編集**する定時スケジューラの設定 (ジョブ配列)。不在時はジョブ無し扱い。`SchedulerStore` が起動時に読込のみ行い (ランタイム再読込なし)、popover からの ON/OFF トグルだけ read-modify-write する ([../widgets/scheduler.md](../widgets/scheduler.md))
+- `.aidea/state/scheduler.json` は**自動管理**の `lastRun` マップ (jobId→`YYYY-MM-DD`)。定刻発火・手動「今すぐ実行」時に `SchedulerStore` が `.prettyPrinted, .sortedKeys` + `.atomic` で書き出す。ディレクトリは書込時に自動生成
 
 ---
 
@@ -297,6 +303,9 @@ Claude → Aidea 方向の通信は**ファイル経由**で行う。詳細は [
 | Claude がコンテキスト書き出し時 | `<n>/context.txt` → 上書き更新 (セッション間記憶保持、[../backchannels/context.md](../backchannels/context.md)) | Claude 自律管理 (Aidea 側監視なし) |
 | Claude から remind 受信時 | `<n>/remind-{ts}.txt` → トリガ時刻まで待機し SpeechQueue 投入 → ファイルを `.fired.txt` リネーム ([../backchannels/remind.md](../backchannels/remind.md)) | `RemindWatcher` + `RemindScheduler` |
 | クイックメモ保存時 | `.aidea/widgets/quickmemo/memo.md` を上書き (親ディレクトリ自動生成、[../widgets/quick-memo.md](../widgets/quick-memo.md)) | `QuickMemoState.save()` |
+| 起動時 (scheduler) | `.aidea/config/scheduler.json` 読込 → 有効ジョブ登録 + 取りこぼし判定。`state/scheduler.json` で当日実行済みを照合 ([../widgets/scheduler.md](../widgets/scheduler.md)) | `SchedulerStore` + `SchedulerState` + `SchedulerEngine` |
+| スケジューラ発火 / 今すぐ実行時 | 指定 Companion へ command 送信 → `state/scheduler.json` の `lastRun[id]` を当日日付で更新 (`.atomic`) | `SchedulerState` + `SchedulerStore` |
+| スケジューラ ON/OFF トグル時 | `config/scheduler.json` の該当ジョブ `enabled` を read-modify-write | `SchedulerState.toggle()` |
 | 終了時 / バックグラウンド化時 | `workspace.json` (4 グループ統合) 保存 | `AideaApp.registerTerminationObserver()` |
 
 ---
