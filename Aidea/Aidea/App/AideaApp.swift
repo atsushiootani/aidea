@@ -28,9 +28,28 @@ struct AideaApp: App {
     @State private var sessionSwitcher = ActiveSessionSwitcher()
     /// Cmd+T のツール選択メニューを各ペインの「+」ボタン直下に表示するためのアンカー管理
     @State private var tabPickerAnchor = TabPickerAnchor()
+    /// 自プロセスが取得した排他ロックのトークン (前面化通知の購読に使う)。排他しない素起動時は nil
+    @State private var lockToken: String?
+    /// 前面化要求の購読 observer (解除用)
+    @State private var activationObserver: NSObjectProtocol?
 
     init() {
         let ws = WorkspaceState()
+
+        // 同一リポジトリの二重起動を排他する (ADR 0030 / window/multi-instance.md)。
+        // 既存プロセスが同じリポジトリを開いていれば、前面化要求だけして自プロセスは窓を出さず終了する。
+        var acquiredToken: String?
+        if let root = ws.projectRoot {
+            switch InstanceLock.acquire(for: root) {
+            case .heldByOther(let owner):
+                InstanceActivationChannel.requestActivation(token: owner.token)
+                exit(0)
+            case .acquired(let token):
+                acquiredToken = token
+                RecentProjectsStore.record(root)
+            }
+        }
+
         let lay = LayoutConfig()
         let reg = SessionRegistry(workspace: ws, layout: lay)
         let speech = SpeechState()
@@ -89,6 +108,7 @@ struct AideaApp: App {
         _quickMemoState = State(initialValue: QuickMemoState())
         _remindState = State(initialValue: RemindState())
         _schedulerState = State(initialValue: SchedulerState())
+        _lockToken = State(initialValue: acquiredToken)
     }
 
     var body: some Scene {
@@ -115,6 +135,7 @@ struct AideaApp: App {
                     startOutput()
                     startRemind()
                     startScheduler()
+                    observeActivationRequests()
                 }
                 .onOpenURL { url in
                     handleExternalOpen(url)
@@ -236,7 +257,8 @@ struct AideaApp: App {
         panel.prompt = "開く"
         panel.message = "プロジェクトルートを選択してください"
         if panel.runModal() == .OK, let url = panel.url {
-            workspace.setProjectRoot(url)
+            // 1 プロセス = 1 リポジトリ (ADR 0030)。別リポジトリは現プロセスで差し替えず、常に新プロセスで開く。
+            WorkspaceLauncher.openInNewProcess(projectRoot: url)
         }
     }
 
@@ -529,6 +551,18 @@ struct AideaApp: App {
         }
     }
 
+    // MARK: - Instance activation
+
+    /// 同一リポジトリを開こうとした別プロセスからの前面化要求を購読する。
+    /// 受信したら自ウィンドウを前面に出す。排他ロックを持たない素起動時 (lockToken == nil) は何もしない。
+    private func observeActivationRequests() {
+        guard let token = lockToken, activationObserver == nil else { return }
+        activationObserver = InstanceActivationChannel.observeActivation(token: token) {
+            NSApp.activate(ignoringOtherApps: true)
+            NSApp.windows.first?.makeKeyAndOrderFront(nil)
+        }
+    }
+
     /// スケジューラジョブを `companionIndex` の Companion セッションへ送信する。
     /// - 起動済みなら activateSession → sendMessageWhenReady (即時 or 保留を自動選択)
     /// - 未起動なら Claude セッションを生成・bind・tab 追加し、`sendMessageWhenReady` で ready 後に送信
@@ -714,6 +748,11 @@ struct AideaApp: App {
                   let path = components.queryItems?.first(where: { $0.name == "path" })?.value {
             let fileURL = URL(fileURLWithPath: path)
             registry.openPreview(for: fileURL, title: fileURL.lastPathComponent)
+        } else if url.scheme == "aidea", url.host == "open-workspace",
+                  let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+                  let path = components.queryItems?.first(where: { $0.name == "path" })?.value {
+            // 指定リポジトリを新プロセスで開く (既に開いていれば前面化)。ADR 0030 / multi-instance.md
+            WorkspaceLauncher.openInNewProcess(projectRoot: URL(fileURLWithPath: path, isDirectory: true))
         }
     }
 
@@ -734,6 +773,10 @@ struct AideaApp: App {
             queue: .main
         ) { _ in
             saveAction()
+            // 自プロセスの排他ロックを解放する (次回の同一リポジトリ起動が前面化でなく通常起動できるように)
+            if let root = workspace.projectRoot {
+                InstanceLock.release(for: root)
+            }
         }
         NotificationCenter.default.addObserver(
             forName: NSApplication.willResignActiveNotification,

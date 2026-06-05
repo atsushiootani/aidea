@@ -90,6 +90,7 @@ Swift + SwiftUI + WKWebView を採用。決め手は「WKWebView が本物の Sa
 
 - **構造軸** (含有関係): `window/` ⊃ `sessions/` ⊃ `tools/`
   - Window が Session を束ね、Session は Tool 種別を持つ
+  - **1 プロセス = 1 ウィンドウ = 1 リポジトリ**。複数リポジトリは複数プロセスで同時に開く ([ADR 0030](../decisions/0030-multiprocess-one-repo-per-process.md) / [window/multi-instance.md](./window/multi-instance.md))
 - **通信軸** (横断的関心): `frontchannels/` / `backchannels/`
   - Aidea と Claude の間の双方向通信チャネル
   - 主に claude tool が利用するが、構造軸とは独立した横断軸

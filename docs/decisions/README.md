@@ -48,6 +48,7 @@ Aidea の設計判断を 1 件ずつ記録する。フォーマットは [Michae
 | [0027](./0027-microphone-permission.md) | Terminal/Claude セッションでの Dictation 対応を保留 | 保留 |
 | [0028](./0028-stale-docs-notification-via-hook.md) | docs/specs の更新漏れ検出に git post-commit hook を採用 | 採用 |
 | [0029](./0029-companion-as-agent-definition.md) | コンパニオンのエージェント定義に agent.md を採用 | 採用 |
+| [0030](./0030-multiprocess-one-repo-per-process.md) | 複数リポジトリはマルチプロセスで開き 1プロセス=1リポジトリとする | 提案 |
 
 ## 状態の値
 

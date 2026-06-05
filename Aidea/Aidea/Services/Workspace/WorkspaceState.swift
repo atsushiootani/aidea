@@ -15,14 +15,29 @@ final class WorkspaceState {
 
     private static let projectRootKey = "aidea.projectRoot"
 
-    /// UserDefaults から前回の projectRoot を復元する
+    /// 起動引数 `--project-root` で開くべきリポジトリが渡されればそれを最優先で採用する。
+    /// 渡されない素起動時のみ、UserDefaults に残した前回の projectRoot を復元する。
     init() {
-        if let path = UserDefaults.standard.string(forKey: Self.projectRootKey),
-           FileManager.default.fileExists(atPath: path) {
+        if let argRoot = Self.launchProjectRoot() {
+            self.projectRoot = argRoot
+            Self.ensureAideaDirectory(at: argRoot)
+        } else if let path = UserDefaults.standard.string(forKey: Self.projectRootKey),
+                  FileManager.default.fileExists(atPath: path) {
             let url = URL(fileURLWithPath: path, isDirectory: true)
             self.projectRoot = url
             Self.ensureAideaDirectory(at: url)
         }
+    }
+
+    /// 起動引数 `--project-root <path>` から開くべきリポジトリを取り出す。
+    /// 新プロセス起動 (WorkspaceLauncher) のときに `open -n --args` 経由で渡される。実在ディレクトリのみ返す。
+    static func launchProjectRoot() -> URL? {
+        let args = CommandLine.arguments
+        guard let idx = args.firstIndex(of: "--project-root"), idx + 1 < args.count else { return nil }
+        let path = args[idx + 1]
+        var isDir: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: path, isDirectory: &isDir), isDir.boolValue else { return nil }
+        return URL(fileURLWithPath: path, isDirectory: true)
     }
 
     /// projectRoot を更新して UserDefaults にも保存する
