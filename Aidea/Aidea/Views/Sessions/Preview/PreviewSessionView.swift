@@ -5,6 +5,7 @@
 
 import SwiftUI
 import AppKit
+import AVKit
 
 /// Preview Session の SwiftUI View。state.url のファイルを表示する。
 struct PreviewSessionView: View {
@@ -31,6 +32,8 @@ struct PreviewSessionView: View {
         Group {
             if let url = state.url, isDrawioURL(url) {
                 DrawioPreview(url: url, state: state)
+            } else if let url = state.url, isVideoURL(url) {
+                VideoPreview(url: url)
             } else if let url = state.url, isMarkdownURL(url) {
                 MarkdownContainer(
                     url: url,
@@ -80,7 +83,7 @@ struct PreviewSessionView: View {
             // 純 SwiftUI コンテンツ (markdown view / image) は @FocusState + state.isActive で
             // 独立にフォーカスを取るため、bridge の状態は影響しない。
             fileWatcher.stop()
-            if let url = state.url, !isMarkdownURL(url), !isDrawioURL(url) {
+            if let url = state.url, !isMarkdownURL(url), !isDrawioURL(url), !isVideoURL(url) {
                 let watchedURL = url
                 fileWatcher.start(path: url.deletingLastPathComponent().path) { paths in
                     if paths.contains(watchedURL.path) {
@@ -204,6 +207,11 @@ struct PreviewSessionView: View {
 
         let result = await Task.detached(priority: .userInitiated) { () -> PreviewContent in
             let ext = url.pathExtension.lowercased()
+            let videoExts: Set<String> = ["mp4", "mov", "m4v", "mkv", "avi"]
+            if videoExts.contains(ext) {
+                // 動画は AVPlayer に直接渡すため、ここには到達しないはずだが念のため
+                return .message("動画プレーヤーを読み込めませんでした")
+            }
             let imageExts: Set<String> = ["png", "jpg", "jpeg", "gif", "heic", "webp", "bmp"]
             if imageExts.contains(ext) {
                 if let image = NSImage(contentsOf: url) {
@@ -234,6 +242,12 @@ struct PreviewSessionView: View {
         guard let url = url else { return false }
         let ext = url.pathExtension.lowercased()
         return ext == "md" || ext == "markdown"
+    }
+
+    /// 拡張子から動画ファイルか判定する
+    private func isVideoURL(_ url: URL) -> Bool {
+        let videoExts: Set<String> = ["mp4", "mov", "m4v", "mkv", "avi"]
+        return videoExts.contains(url.pathExtension.lowercased())
     }
 
     /// 先頭 8KB に NUL バイトが含まれていればバイナリとみなす

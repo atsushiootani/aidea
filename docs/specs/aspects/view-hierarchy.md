@@ -18,7 +18,7 @@ impacts: []
 conventions:
   - docs/LAYOUT.md
   - docs/specs/aspects/README.md
-last_updated: 2026-05-27
+last_updated: 2026-06-06
 ---
 
 # View 階層 (UI コンポーネント親子関係)
@@ -265,7 +265,7 @@ SessionRegistry.view(for: id)                     [Sessions/SessionRegistry.swif
 | `terminal` | `TerminalSessionView` (`Views/Sessions/Terminal/TerminalSessionView.swift`) | `NSViewRepresentable` → `PersistentTerminalView` (SwiftTerm `LocalProcessTerminalView`) |
 | `claude` | `ClaudeSessionView` (`Views/Sessions/Claude/ClaudeSessionView.swift`) | `NSViewRepresentable` → `PersistentTerminalView` (Terminal と共用) |
 | `web` | `WebSessionView` (`Views/Sessions/Web/WebSessionView.swift`) | `NSViewRepresentable` → `WKWebView` |
-| `preview` | `PreviewSessionView` (`Views/Sessions/Preview/PreviewSessionView.swift`) | 拡張子で分岐: `DrawioPreview` / `MarkdownContainer` / `NSTextPreview` (`NSTextView`) / `Image` (NSImage) / placeholder |
+| `preview` | `PreviewSessionView` (`Views/Sessions/Preview/PreviewSessionView.swift`) | 拡張子で分岐: `DrawioPreview` / `VideoPreview` (AVKit) / `MarkdownContainer` / `NSTextPreview` (`NSTextView`) / `Image` (NSImage) / placeholder |
 | `git` | `GitSessionView` (`Views/Sessions/Git/GitSessionView.swift`) | `NSViewControllerRepresentable` → `GitFileListViewController` (`branchBadge` + `picker(NSSegmentedControl)` + `NSScrollView { GitOutlineView }` + `loadMoreButton(NSButton, isHidden when !hasMoreFiles)`) |
 | `gitDiff` | `GitDiffSessionContainer` (`Views/Sessions/Git/GitDiffSessionView.swift`) | `VStack { GitDiffSessionView, ScenePromptsEditorView }`。`GitDiffSessionView` は `NSViewRepresentable` → `GitDiffWebView` (`WKWebView` + diff2html) |
 
@@ -274,6 +274,7 @@ PreviewSessionView の Markdown は `MarkdownContainer` がさらに `MarkdownPr
 と編集モード時の `EditableTextView` (NSTextView) を切り替える。
 drawio は `DrawioPreview` が `DrawioStaticView` (画像表示) と `DrawioEditor`
 (WKWebView) を切り替える。
+動画は `VideoPreview` (`AVKit.VideoPlayer` SwiftUI ラッパ) で再生する。
 
 ---
 
