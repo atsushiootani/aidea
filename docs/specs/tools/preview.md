@@ -1,6 +1,6 @@
 ---
 title: Tool 仕様: Preview
-description: Markdown / 画像 / drawio / テキストを読み取り専用で表示し、英語ドキュメントの日本語翻訳キャッシュも担う Preview Tool 仕様
+description: Markdown / 画像 / 動画 / drawio / テキストを読み取り専用で表示し、英語ドキュメントの日本語翻訳キャッシュも担う Preview Tool 仕様
 derived_from:
   - docs/decisions/0010-drawio-rendering-paths.md
   - docs/specs/sessions/ui-rules.md
@@ -14,7 +14,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-19
+last_updated: 2026-06-06
 ---
 
 # Tool 仕様: Preview
@@ -41,6 +41,7 @@ Session 内部状態は [sessions/preview.md](../sessions/preview.md) を参照�
 |---|---|---|
 | `.md` / `.markdown` | `MarkdownPreview` (軽量 SwiftUI パーサ) | 実装済 |
 | `.png` `.jpg` `.jpeg` `.gif` `.heic` `.webp` `.bmp` | `NSImage` + `Image(nsImage:)` | 実装済 |
+| `.mp4` `.mov` `.m4v` `.mkv` `.avi` | `VideoPreview` (AVKit プレーヤー) | 実装済 |
 | `.drawio.svg` / `.drawio` | `DrawioPreview` (後述) | 実装済 |
 | テキスト全般 (バイナリ判定で NUL を含まない) | `NSTextPreview` (NSTextView ラッパ) | 実装済 |
 | サイズ > 1MB | "ファイルが大きすぎます" メッセージ | 実装済 |
@@ -177,6 +178,15 @@ Preview タブにマウスカーソルを合わせると、ツールチップで
 
 ### renderImage — 画像表示
 - 対応拡張子を `NSImage` でロードして `ScrollView` + `Image(nsImage:)` で表示
+
+### renderVideo — 動画再生
+
+`.mp4` / `.mov` / `.m4v` / `.mkv` / `.avi` を AVKit のネイティブプレーヤーで表示する。
+
+- 再生・停止・シークバー・音量などの標準コントロールを表示する
+- ファイルを開いた時点で再生を開始しない (ユーザーが再生ボタンを押してから再生)
+- タブを切り替えるなどビューが非表示になったとき、再生を自動停止する
+- 動画ファイルはサイズ制限 (1 MB) および バイナリ判定を適用しない (ファイルは直接 AVPlayer へ渡す)
 
 ### renderDrawio — drawio 図の表示・編集
 
