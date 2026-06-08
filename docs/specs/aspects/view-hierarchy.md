@@ -69,14 +69,16 @@ NSWindow (メインウィンドウ)
       │     ├─ Spacer
       │     └─ WidgetView                         [Widgets/WidgetView.swift]
       │        └─ HStack (ヘッダ常駐 widget を右端に並べる)
-      │           ├─ SchedulerView                [Widgets/Scheduler/SchedulerView.swift]
-      │           │  (時計アイコン + 集約状態(未実行/次回/停止)。タップで SchedulerPopoverView を開く → widgets/scheduler.md)
-      │           ├─ RemindView                   [Widgets/Remind/RemindView.swift]
-      │           │  (カレンダーアイコン + 次予定 1 件。タップで RemindPopoverView を開く → backchannels/remind.md)
       │           ├─ QuickMemoButton              [Widgets/QuickMemo/QuickMemoButton.swift]
       │           │  (✏️ ボタン。タップで QuickMemoView popover を開く)
-      │           └─ TimerView                    [Widgets/Pomodoro/TimerView.swift]
-      │              (フェーズアイコン + 残り時間 + Start/Pause + Reset + 進捗ゲージを常時表示)
+      │           ├─ SchedulerView                [Widgets/Scheduler/SchedulerView.swift]
+      │           │  (時計アイコン + 集約状態(未実行/次回/停止)。タップで SchedulerPopoverView を開く → widgets/scheduler.md)
+      │           ├─ TimerView                    [Widgets/Pomodoro/TimerView.swift]
+      │           │  (フェーズアイコン + 残り時間 + Start/Pause + Reset + 進捗ゲージを常時表示)
+      │           ├─ RemindView                   [Widgets/Remind/RemindView.swift]
+      │           │  (カレンダーアイコン + 次予定 1 件。タップで RemindPopoverView を開く → backchannels/remind.md)
+      │           └─ ClockView                    [Widgets/Clock/ClockView.swift]
+      │              (現在日時 yyyy/MM/dd EEE HH:mm:ss を毎秒更新で表示 → widgets/clock.md)
       ├─ Divider
       └─ SplitLayoutView                          [Views/Layout/SplitLayoutView.swift]
          (NSViewControllerRepresentable — 以下は AppKit 側)
