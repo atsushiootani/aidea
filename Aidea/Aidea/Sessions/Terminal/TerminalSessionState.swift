@@ -28,6 +28,13 @@ final class TerminalSessionState: SessionState, FocusBridgeOwner {
     /// SessionRegistry への弱参照 (クリック時のアクティブ化用)
     weak var registry: SessionRegistry?
 
+    /// Terminal にコマンドを送る (起動時実行スケジューラ等から呼ぶ)。
+    /// terminalView アクセスで PTY (シェル) が未起動なら起動し、コマンド + 改行 (Enter 相当) を送る。
+    /// シェル初期化直後は取りこぼす可能性があるため、呼び出し側で起動を待ってから呼ぶこと。
+    func sendCommand(_ command: String) {
+        terminalView.send(txt: command + "\r")
+    }
+
     /// 契約 C1: bridge 経由で terminalView に firstResponder を移す。
     /// NSView 参照の登録は View 側 (TerminalSessionView.makeNSView) で行う。
     /// cached がまだ生成されていない (PTY 未起動) 場合は bridge が pending を立てて、

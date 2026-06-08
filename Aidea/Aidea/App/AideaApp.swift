@@ -157,6 +157,10 @@ struct AideaApp: App {
                         startRemind()
                         startScheduler()
                         observeActivationRequests()
+                        // 起動時 (onLaunch) ジョブを、セッション基盤が落ち着いてから実行する (ADR 0031)。
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                            schedulerState.runOnLaunchJobs()
+                        }
                     }
                     .onOpenURL { url in
                         handleExternalOpen(url)
@@ -567,12 +571,40 @@ struct AideaApp: App {
         let reg = registry
         let lay = layout
         let speech = speechState
-        schedulerState.start(projectRoot: projectRoot) { companionIndex, command in
-            Self.dispatchScheduledJob(
-                companionIndex: companionIndex, command: command,
-                companionStore: store, registry: reg, layout: lay,
-                speechState: speech, projectRoot: projectRoot
-            )
+        schedulerState.start(projectRoot: projectRoot) { target, command in
+            switch target {
+            case .claude(let index):
+                Self.dispatchScheduledJob(
+                    companionIndex: index, command: command,
+                    companionStore: store, registry: reg, layout: lay,
+                    speechState: speech, projectRoot: projectRoot
+                )
+            case .terminal:
+                Self.dispatchTerminalJob(command: command, registry: reg, layout: lay)
+            }
+        }
+    }
+
+    /// スケジューラの Terminal ジョブ: 新規 Terminal タブを起動し、PTY 準備後にコマンドを送る。
+    /// 送信先が `terminal` の定時 / 起動時 / 手動ジョブから共通で呼ばれる (ADR 0031)。
+    @MainActor
+    private static func dispatchTerminalJob(
+        command: String,
+        registry: SessionRegistry,
+        layout: LayoutConfig
+    ) {
+        let instance = layout.nextSessionInstance(of: .terminal)
+        let session = registry.createSession(tool: .terminal, instance: instance)
+        if let pane = registry.activePane ?? layout.allPanes.first {
+            pane.tabs.append(session.id)
+            registry.setActiveTab(paneID: pane.id, tabIndex: pane.tabs.count - 1)
+        }
+        // PTY (シェル) を起動し、初期化を少し待ってからコマンドを送る (起動直後の取りこぼし回避)。
+        if let termState = session.state as? TerminalSessionState {
+            _ = termState.terminalView
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                termState.sendCommand(command)
+            }
         }
     }
 

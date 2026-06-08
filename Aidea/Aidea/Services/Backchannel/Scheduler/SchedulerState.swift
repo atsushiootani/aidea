@@ -29,10 +29,10 @@ final class SchedulerState {
     private let engine = SchedulerEngine()
     @ObservationIgnored
     private var store: SchedulerStore?
-    /// 発火時のセッション送信処理 (companionIndex, command) を AideaApp が注入する。
-    /// 定刻発火・手動実行 (runNow) の両方から呼ぶ。
+    /// 発火時のセッション送信処理 (target, prompt) を AideaApp が注入する。
+    /// 定刻発火・手動実行 (runNow)・起動時実行 (runOnLaunchJobs) の全てから呼ぶ。
     @ObservationIgnored
-    private var dispatch: ((Int, String) -> Void)?
+    private var dispatch: ((SchedulerConfig.Target, String) -> Void)?
     /// システムスリープ復帰通知の購読トークン。
     @ObservationIgnored
     private var wakeObserver: NSObjectProtocol?
@@ -73,7 +73,7 @@ final class SchedulerState {
 
     /// プロジェクトルートを設定し、config/state をロードして Engine を起動する。
     /// `dispatch` は発火時のセッション送信処理 (companionIndex, command) で、AideaApp が注入する。
-    func start(projectRoot: URL, dispatch: @escaping (Int, String) -> Void) {
+    func start(projectRoot: URL, dispatch: @escaping (SchedulerConfig.Target, String) -> Void) {
         let store = SchedulerStore(projectRoot: projectRoot)
         self.store = store
         self.dispatch = dispatch
@@ -81,7 +81,7 @@ final class SchedulerState {
         let config = store.loadConfig()
         let runState = store.loadState()
         self.lastRun = runState.lastRun
-        self.jobs = config.validJobs().sorted { $0.time < $1.time }
+        self.jobs = config.validJobs().sorted { Self.sortKey($0) < Self.sortKey($1) }
 
         engine.onFire = { [weak self] job in
             self?.handleFire(job)
@@ -125,6 +125,14 @@ final class SchedulerState {
         handleFire(job)
     }
 
+    /// 起動時 (onLaunch) トリガーの有効ジョブを実行する。AideaApp が起動時 (セッション基盤準備後) に呼ぶ。
+    /// 毎起動で実行し、実行済み管理は行わない (spec: onLaunch は毎起動)。
+    func runOnLaunchJobs() {
+        for job in jobs where job.isEnabled && job.isOnLaunch {
+            handleFire(job)
+        }
+    }
+
     /// ジョブ単位の ON/OFF トグル。config を read-modify-write し、Engine の登録を更新する。
     func toggle(jobID: String) {
         guard let store else { return }
@@ -166,7 +174,7 @@ final class SchedulerState {
     private func persist(_ config: SchedulerConfig) {
         guard let store else { return }
         store.saveConfig(config)
-        jobs = config.validJobs().sorted { $0.time < $1.time }
+        jobs = config.validJobs().sorted { Self.sortKey($0) < Self.sortKey($1) }
         engine.schedule(jobs: jobs) { [weak self] id in
             self?.lastRun[id] == SchedulerStore.dateString()
         }
@@ -187,8 +195,11 @@ final class SchedulerState {
 
     /// 発火実処理: セッション送信 → lastRun を当日日付で更新 → state 永続化 → overdue 再計算。
     private func handleFire(_ job: SchedulerConfig.Job) {
-        dispatch?(job.companionIndex, job.prompt)
-        markDone(jobID: job.id)
+        dispatch?(job.target, job.prompt)
+        // 当日実行済み管理は定時ジョブのみ (onLaunch は毎起動・manual は都度なので記録しない)。
+        if job.isScheduled {
+            markDone(jobID: job.id)
+        }
     }
 
     /// 当日実行済みを記録し state を書き出す。
@@ -209,5 +220,14 @@ final class SchedulerState {
             jobs: jobs,
             isDoneToday: { [weak self] id in self?.lastRun[id] == today }
         )
+    }
+
+    /// ジョブ一覧の表示順キー。定時 (時刻順) → 起動時 → 手動 の順に並べる。
+    private static func sortKey(_ job: SchedulerConfig.Job) -> String {
+        switch job.trigger {
+        case .scheduled(let time, _): return "0" + time
+        case .onLaunch: return "1"
+        case .manual: return "2"
+        }
     }
 }

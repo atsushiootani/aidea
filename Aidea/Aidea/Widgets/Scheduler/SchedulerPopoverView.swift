@@ -47,7 +47,7 @@ struct SchedulerPopoverView: View {
 
     private var header: some View {
         HStack {
-            Text("定時スケジューラ")
+            Text("スケジューラ")
                 .font(.headline)
             Spacer()
             if editing == nil {
