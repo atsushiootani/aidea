@@ -6,7 +6,7 @@
 import SwiftUI
 
 /// `SchedulerPopoverView` のリスト 1 行ぶん。
-/// `name` / `time` / 曜日 / 送信先 Companion 名 / `prompt` / 本日の実行状態を表示し、
+/// `name` / トリガー (定時/起動時/手動) / 送信先 (Companion / Terminal) / `prompt` / 実行状態を表示し、
 /// 「今すぐ実行」「編集」「削除」ボタンと ON/OFF トグルを置く。
 /// docs/specs/widgets/scheduler.md 参照。
 struct SchedulerRowView: View {
@@ -21,28 +21,26 @@ struct SchedulerRowView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            // 1 行目: 状態アイコン + name + time + 曜日
+            // 1 行目: 状態アイコン + name + トリガー (定時 HH:mm 曜日 / 起動時 / 手動)
             HStack(spacing: 6) {
                 statusIcon
                 Text(job.displayName)
                     .font(.system(size: 13, weight: .semibold))
                     .lineLimit(1)
                 Spacer(minLength: 4)
-                Text(job.time)
-                    .font(.system(size: 12, weight: .semibold, design: .monospaced))
-                Text(job.weekdaysLabel)
-                    .font(.system(size: 11))
+                Text(job.triggerLabel)
+                    .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(.secondary)
             }
 
-            // 2 行目: 送信先 Companion / prompt
-            Text("→ \(companionName) / \(job.prompt)")
+            // 2 行目: 送信先 (Companion 名 / Terminal) / prompt
+            Text("→ \(targetName) / \(job.prompt)")
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .truncationMode(.middle)
 
-            // 3 行目: 本日状態 + 操作
+            // 3 行目: 実行状態 + 操作
             HStack(spacing: 6) {
                 Text(statusText)
                     .font(.system(size: 11))
@@ -92,16 +90,20 @@ struct SchedulerRowView: View {
         )
     }
 
-    /// 送信先 Companion 名 (index 範囲外なら "Companion N")
-    private var companionName: String {
-        let index = job.companionIndex
-        guard index >= 0, index < companionStore.companions.count else {
-            return "Companion \(index + 1)"
+    /// 送信先の表示名 (Claude は Companion 名、Terminal は "Terminal")
+    private var targetName: String {
+        switch job.target {
+        case .claude(let index):
+            guard index >= 0, index < companionStore.companions.count else {
+                return "Companion \(index + 1)"
+            }
+            return companionStore.companion(forIndex: index).name
+        case .terminal:
+            return "Terminal"
         }
-        return companionStore.companion(forIndex: index).name
     }
 
-    /// 状態アイコン: 未実行 ⚠ (orange) / 実行済み ✓ (green) / 待機 (grey clock)
+    /// 状態アイコン: 定時の 未実行⚠ / 実行済み✓ / それ以外はトリガー種別アイコン。
     @ViewBuilder
     private var statusIcon: some View {
         if scheduler.isOverdue(jobID: job.id) {
@@ -113,9 +115,18 @@ struct SchedulerRowView: View {
                 .font(.system(size: 12))
                 .foregroundStyle(.green)
         } else {
-            Image(systemName: "clock")
+            Image(systemName: triggerIcon)
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
+        }
+    }
+
+    /// トリガー種別の SF Symbol
+    private var triggerIcon: String {
+        switch job.trigger {
+        case .scheduled: return "clock"
+        case .onLaunch: return "bolt"
+        case .manual: return "hand.tap"
         }
     }
 
@@ -123,7 +134,11 @@ struct SchedulerRowView: View {
         if scheduler.isOverdue(jobID: job.id) { return "本日 未実行" }
         if scheduler.isDoneToday(jobID: job.id) { return "本日 実行済み" }
         if !job.isEnabled { return "停止中" }
-        return "待機中"
+        switch job.trigger {
+        case .scheduled: return "待機中"
+        case .onLaunch: return "起動時に実行"
+        case .manual: return "手動実行のみ"
+        }
     }
 
     private var statusColor: Color {

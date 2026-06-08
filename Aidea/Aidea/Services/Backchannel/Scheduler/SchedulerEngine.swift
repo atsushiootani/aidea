@@ -28,7 +28,8 @@ final class SchedulerEngine {
     func schedule(jobs jobList: [SchedulerConfig.Job], isDoneToday: @escaping (String) -> Bool) {
         cancelAll()
         self.isDoneToday = isDoneToday
-        for job in jobList where job.isEnabled {
+        // タイマー登録は定時 (scheduled) ジョブのみ。onLaunch / manual は時刻発火しない。
+        for job in jobList where job.isEnabled && job.isScheduled {
             jobs[job.id] = job
             scheduleNext(job, after: Date())
         }
@@ -60,7 +61,8 @@ final class SchedulerEngine {
         var result = Set<String>()
         let calendar = Calendar.current
         let todayWeekday = (calendar.component(.weekday, from: now) - 1) // 1=Sun → 0=Sun
-        for job in jobList where job.isEnabled {
+        // 取りこぼし (未実行通知) も定時ジョブのみが対象。
+        for job in jobList where job.isEnabled && job.isScheduled {
             guard job.activeWeekdays.contains(todayWeekday) else { continue }
             guard !isDoneToday(job.id) else { continue }
             guard let fireTime = todayFireTime(for: job, now: now, calendar: calendar) else { continue }
