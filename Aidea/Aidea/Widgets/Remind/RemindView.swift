@@ -23,9 +23,9 @@ struct RemindView: View {
                     .font(.system(size: 12))
                     .lineLimit(1)
                     .truncationMode(.tail)
+                    .fixedSize(horizontal: true, vertical: false)
             }
             .foregroundStyle(labelColor)
-            .frame(maxWidth: 200, alignment: .leading)
             .padding(.horizontal, 6)
             .padding(.vertical, 4)
             .contentShape(Rectangle())
