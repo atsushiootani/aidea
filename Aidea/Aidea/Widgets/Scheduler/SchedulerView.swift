@@ -18,15 +18,15 @@ struct SchedulerView: View {
             scheduler.isPopoverPresented.toggle()
         } label: {
             HStack(spacing: 4) {
-                Image(systemName: "clock")
+                Image(systemName: "terminal")
                     .font(.system(size: 14))
                 Text(labelText)
                     .font(.system(size: 12))
                     .lineLimit(1)
                     .truncationMode(.tail)
+                    .fixedSize(horizontal: true, vertical: false)
             }
             .foregroundStyle(labelColor)
-            .frame(maxWidth: 160, alignment: .leading)
             .padding(.horizontal, 6)
             .padding(.vertical, 4)
             .contentShape(Rectangle())
