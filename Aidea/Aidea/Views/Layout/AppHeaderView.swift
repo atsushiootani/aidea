@@ -32,17 +32,24 @@ struct AppHeaderView: View {
     /// 読み上げ ON/OFF トグル (issue #128)。コンパニオンビューの直右に配置し、
     /// クリックで `SpeechState.toggle()` を呼ぶ。アイコンは `isEnabled` を見て
     /// `speaker.wave.2.fill` / `speaker.slash.fill` を切り替える。
+    /// ボタン下部に対応ショートカット (⌥⌘M) を WidgetView と揃えた体裁で添える。
     private var speechToggleButton: some View {
-        Button {
-            speech.toggle()
-        } label: {
-            Image(systemName: speech.isEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill")
-                .font(.system(size: 18))
-                .foregroundStyle(speech.isEnabled ? Color.accentColor : Color.secondary)
-                .frame(width: 32, height: 32)
-                .contentShape(Rectangle())
+        VStack(spacing: 1) {
+            Button {
+                speech.toggle()
+            } label: {
+                Image(systemName: speech.isEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill")
+                    .font(.system(size: 18))
+                    .foregroundStyle(speech.isEnabled ? Color.accentColor : Color.secondary)
+                    .frame(width: 32, height: 32)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help(speech.isEnabled ? "読み上げ ON (クリックで OFF)" : "読み上げ OFF (クリックで ON)")
+
+            Text("⌥⌘M")
+                .font(.system(size: 8, design: .rounded))
+                .foregroundStyle(.tertiary)
         }
-        .buttonStyle(.plain)
-        .help(speech.isEnabled ? "読み上げ ON (クリックで OFF)" : "読み上げ OFF (クリックで ON)")
     }
 }

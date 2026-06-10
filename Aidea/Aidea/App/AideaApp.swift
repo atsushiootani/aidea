@@ -181,6 +181,7 @@ struct AideaApp: App {
             toolMenu
             pomodoroMenu
             voiceInputMenu
+            widgetMenu
             CommandMenu("Aidea") {
                 Button("読み上げ ON/OFF") {
                     speechState.toggle()
@@ -271,6 +272,17 @@ struct AideaApp: App {
             }
             .keyboardShortcut("v", modifiers: [.command, .option])
             .disabled((registry.activeSession?.state as? ClaudeSessionState) == nil)
+        }
+    }
+
+    /// ウィジェット操作メニュー (スケジューラ / カレンダー の popover を開く)
+    @CommandsBuilder
+    private var widgetMenu: some Commands {
+        CommandMenu("ウィジェット") {
+            Button("スケジューラを開く") { schedulerState.isPopoverPresented.toggle() }
+                .keyboardShortcut("s", modifiers: [.command, .option])
+            Button("カレンダーを開く") { remindState.isPopoverPresented.toggle() }
+                .keyboardShortcut("c", modifiers: [.command, .option])
         }
     }
 

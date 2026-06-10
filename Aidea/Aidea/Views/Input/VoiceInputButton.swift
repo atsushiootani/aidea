@@ -13,20 +13,27 @@ struct VoiceInputButton: View {
     @Environment(CompanionStore.self) private var companionStore
 
     var body: some View {
-        Button {
-            VoiceInputLauncher.present(registry: registry, companionStore: companionStore)
-        } label: {
-            Image(systemName: isEnabled ? "mic.fill" : "mic.slash.fill")
-                .font(.system(size: 18))
-                .foregroundStyle(isEnabled ? Color.accentColor : Color.secondary)
-                .frame(width: 32, height: 32)
-                .contentShape(Rectangle())
+        // ボタン下部に対応ショートカット (⌥⌘V) を WidgetView と揃えた体裁で添える。
+        VStack(spacing: 1) {
+            Button {
+                VoiceInputLauncher.present(registry: registry, companionStore: companionStore)
+            } label: {
+                Image(systemName: isEnabled ? "mic.fill" : "mic.slash.fill")
+                    .font(.system(size: 18))
+                    .foregroundStyle(isEnabled ? Color.accentColor : Color.secondary)
+                    .frame(width: 32, height: 32)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .disabled(!isEnabled)
+            .help(isEnabled
+                  ? "音声入力 (⌘ ⌥ V でも起動 / アクティブな Claude セッションへ送信)"
+                  : "音声入力はアクティブな Claude セッションがあるときに利用できます")
+
+            Text("⌥⌘V")
+                .font(.system(size: 8, design: .rounded))
+                .foregroundStyle(.tertiary)
         }
-        .buttonStyle(.plain)
-        .disabled(!isEnabled)
-        .help(isEnabled
-              ? "音声入力 (⌘ ⌥ V でも起動 / アクティブな Claude セッションへ送信)"
-              : "音声入力はアクティブな Claude セッションがあるときに利用できます")
     }
 
     /// アクティブセッションが Claude セッションであれば true (送信先がある状態)。
