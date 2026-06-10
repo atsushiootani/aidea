@@ -16,8 +16,13 @@ final class WebSessionState: SessionState, FocusBridgeOwner {
     /// フォーカス契約 C1/C2/C3 を担う非永続ヘルパ (仕様は focus-contract.md)
     let focusBridge = SessionFocusBridge()
     var url: URL = URL(string: "https://www.apple.com")!
+    /// 戻る/進むボタンの有効状態 (WKWebView の同名プロパティに KVO 追従)
+    var canGoBack: Bool = false
+    var canGoForward: Bool = false
     @ObservationIgnored private var cached: WKWebView?
     @ObservationIgnored private var urlObservation: NSKeyValueObservation?
+    @ObservationIgnored private var backObservation: NSKeyValueObservation?
+    @ObservationIgnored private var forwardObservation: NSKeyValueObservation?
 
     /// SessionRegistry への弱参照 (クリック時のアクティブ化用)
     weak var registry: SessionRegistry?
@@ -70,7 +75,30 @@ final class WebSessionState: SessionState, FocusBridgeOwner {
                 self.url = newURL
             }
         }
+        // ナビゲーションツールバーの戻る/進むボタンの有効状態に追従する
+        backObservation = webView.observe(\.canGoBack, options: [.new]) { [weak self] webView, _ in
+            let value = webView.canGoBack
+            Task { @MainActor in
+                self?.canGoBack = value
+            }
+        }
+        forwardObservation = webView.observe(\.canGoForward, options: [.new]) { [weak self] webView, _ in
+            let value = webView.canGoForward
+            Task { @MainActor in
+                self?.canGoForward = value
+            }
+        }
         cached = webView
         return webView
+    }
+
+    /// URL 欄の入力文字列を解釈してロードする (仕様: docs/specs/tools/web.md#url-欄の入力解釈)。
+    /// scheme なしは `https://` を補完し、URL として解釈できない入力は無視する。
+    func loadURLString(_ text: String) {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        let candidate = trimmed.contains("://") ? trimmed : "https://" + trimmed
+        guard let url = URL(string: candidate), url.host() != nil else { return }
+        webView.load(URLRequest(url: url))
     }
 }

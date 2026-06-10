@@ -88,7 +88,8 @@ SwiftTerm がバッファをクリアしてしまう問題を回避するサブ�
 
 | 種別 | 検出 | アクション |
 |---|---|---|
-| URL | SwiftTerm 標準の URL/OSC 8 ハイパーリンク検出 | `NSWorkspace.shared.open(url)` でブラウザ起動 |
+| URL (http/https) | SwiftTerm 標準の URL/OSC 8 ハイパーリンク検出 | `SessionRegistry.openWeb(for:)` で **Web Tool** に開く ([tools/web.md](./web.md#url-クリックルーティング-terminal--claude--web)) |
+| URL (その他 scheme) | 同上 | `NSWorkspace.shared.open(url)` で外部アプリ起動 |
 | ファイルパス | Aidea 独自の regex 検出 + 実在確認 (issue #71) | ターミナルと同じペインの右隣に Preview タブを開く |
 
 クリックターゲット (URL またはファイルパス) 上にマウスがホバーしたとき、カーソルを `NSCursor.pointingHand` (指マーク) に変えてクリック可能であることを示す。ターゲットから外れたら通常 (`NSCursor.iBeam`) に戻す。
@@ -102,7 +103,9 @@ mouseDown と mouseUp の位置が **threshold (4 pt) 以下** に収まり、�
 ### URL クリック
 
 - SwiftTerm の `TerminalViewDelegate.requestOpenLink` を `TerminalLinkGuard` でプロキシし、上記「クリック判定」を満たすときに起動する
-- 起動先は `NSWorkspace.shared.open(url)` (システム標準のブラウザ)
+- 起動先: **http / https** は `SessionRegistry.openWeb(for:)` で Web Tool に開く
+  (配置先は「カレントを除く最新のペイン」に常に新規タブ。詳細は [tools/web.md](./web.md#url-クリックルーティング-terminal--claude--web))。
+  それ以外の scheme は `NSWorkspace.shared.open(url)` (従来挙動)
 - OSC 8 ハイパーリンク (`\e]8;;<url>\e\\<text>\e]8;;\e\\`) と、SwiftTerm 標準の URL detector の両方に対応
 
 ### ファイルパスのクリック起動 (issue #71)
@@ -169,7 +172,7 @@ issue #71 の `(want)` 項目。Preview 側のコード/テキストビューが
 | コンポーネント | 役割 |
 |---|---|
 | `PersistentTerminalView` (拡張) | mouseDown/mouseUp/mouseMoved を捕捉し、(1) クリック判定 (tap vs drag)、(2) ホバーカーソル変化、(3) パス検出時の Preview 起動を行う |
-| `TerminalLinkGuard` (拡張) | `requestOpenLink` プロキシ。クリック判定 OK のときに URL を `NSWorkspace.shared.open` (Cmd 修飾チェックは外す) |
+| `TerminalLinkGuard` (拡張) | `requestOpenLink` プロキシ。クリック判定 OK のとき http/https は `SessionRegistry.openWeb(for:)`、その他 scheme は `NSWorkspace.shared.open` (Cmd 修飾チェックは外す) |
 | `TerminalPathResolver` (新規) | regex 定義・projectRoot 起点の絶対化・実在確認を担う純関数ヘルパ。`Foundation` のみで完結し、SwiftTerm/UI 依存を持たない (テスト容易性) |
 
 ---
