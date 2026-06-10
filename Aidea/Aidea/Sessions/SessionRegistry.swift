@@ -211,6 +211,33 @@ final class SessionRegistry {
         setActiveTab(paneID: pane.id, tabIndex: pane.tabs.count - 1)
     }
 
+    /// Terminal / Claude の URL クリックから呼ばれる: 新しい Web Tab を
+    /// 「呼び出し元 (activeSessionID) のペイン以外の最新ペイン」に作成する。
+    /// Preview と異なり dedupe はせず **常に新規タブ** を作る。
+    /// 仕様: docs/specs/tools/web.md#url-クリックルーティング-terminal--claude--web
+    func openWeb(for url: URL) {
+        // 呼び出し元ペインを回避して配置先を決定 (openPreview と同一アルゴリズム)
+        let callerPane = activePane
+        var targetPane: Pane?
+        for id in activeSessionHistory.reversed() {
+            if let pane = layout.allPanes.first(where: { $0.tabs.contains(id) }),
+               pane !== callerPane {
+                targetPane = pane
+                break
+            }
+        }
+        if targetPane == nil {
+            targetPane = layout.allPanes.first { $0 !== callerPane }
+        }
+        guard let pane = targetPane else { return }
+
+        let instance = layout.nextSessionInstance(of: .web)
+        let session = createSession(tool: .web, instance: instance)
+        (session.state as? WebSessionState)?.url = url
+        pane.tabs.append(session.id)
+        setActiveTab(paneID: pane.id, tabIndex: pane.tabs.count - 1)
+    }
+
     /// Preview 内リンクから呼ばれる: 同じペインの右隣に Preview を挿入する。
     func openPreviewAsSibling(for url: URL, title: String? = nil) {
         // 既存 dedupe

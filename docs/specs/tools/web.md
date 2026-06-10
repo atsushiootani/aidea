@@ -1,23 +1,93 @@
 ---
-title: Tool 仕様: Web
-description: WKWebView ベースの Web ブラウザ Tool 仕様 (TBD / 未策定)
+title: "Tool 仕様: Web"
+description: WKWebView ベースの Web ブラウザ Tool 仕様 (ナビゲーションツールバー / URL クリックルーティング)
 derived_from:
   - docs/decisions/0015-wkwebview-scope-and-chrome-coexistence.md
   - docs/specs/sessions/ui-rules.md
   - docs/specs/window/
 syncs_with:
   - docs/specs/sessions/web.md
+  - docs/specs/tools/terminal.md
   - docs/specs/aspects/keybindings.md
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-17
+last_updated: 2026-06-10
 ---
 
 # Tool 仕様: Web
 
-**TBD** — 仕様は未策定。
+WKWebView ベースの内蔵ブラウザ Tool。
 
 概念モデルは [sessions/ui-rules.md#概念モデル](../sessions/ui-rules.md#概念モデル) / [glossary.md](../glossary.md) を参照。
 Session 内部状態は [sessions/web.md](../sessions/web.md) を参照。
 WKWebView の制約と Chrome 併用方針は [ADR 0015](../../decisions/0015-wkwebview-scope-and-chrome-coexistence.md) を参照。
+
+## ナビゲーションツールバー
+
+WebSessionView の上部に、一般的なブラウザと同じ並びでツールバーを表示する。
+
+```
+[←] [→] [⟳] [ URL 欄                              ] [🌐]
+```
+
+| 要素 | 動作 | 備考 |
+|---|---|---|
+| 戻る (←) | `webView.goBack()` | `canGoBack == false` のとき disabled (KVO 追従) |
+| 進む (→) | `webView.goForward()` | `canGoForward == false` のとき disabled (KVO 追従) |
+| 更新 (⟳) | `webView.reload()` | |
+| URL 欄 | 現在の URL を表示。**編集可能**: Enter 押下でその URL へ移動 | ナビゲーションには既存の `url` KVO で追従。編集中 (フォーカス中) はユーザ入力を追従更新で上書きしない |
+| 地球アイコン (🌐) | 現在の URL を `NSWorkspace.shared.open` で **OS デフォルトブラウザ** に開く | ADR 0015 の「Chrome 併用」への導線 |
+
+### URL 欄の入力解釈
+
+- scheme なしの入力 (例: `example.com`) は `https://` を補完する
+- URL として解釈できない入力は無視する (移動しない)
+
+### 実装方式 (ネイティブコンポーネント検討の結果)
+
+ツールバーは **SwiftUI 自作** (HStack + TextField + SF Symbols) とする。検討した代替案:
+
+| 候補 | 不採用理由 |
+|---|---|
+| `NSToolbar` / SwiftUI `.toolbar` | ウィンドウ単位にしか付かず、ペイン内に複数 Web セッションを持つ構造に合わない |
+| `SFSafariViewController` | iOS 専用 API で macOS に存在しない |
+| SwiftUI `WebView` (WebKit for SwiftUI) | macOS 26+ 限定 (最低ターゲット macOS 15)。ナビゲーションバーも提供しない |
+
+部品レベルでは標準を使う (SF Symbols: `chevron.left` / `chevron.right` / `arrow.clockwise` / `globe`)。
+
+## タブ名
+
+Web セッションのタブヘッダには **現在の URL** を表示する (`PaneView.displayLabel(for:)`)。
+
+- 先頭の `https://` / `http://` は除去する
+- 除去後の **先頭 20 文字だけ** を表示する (長い URL でタブが伸びすぎないため)
+- ナビゲーションに追従して更新する (`WebSessionState.url` の変更に追従)
+
+例: `https://github.com/atsushiootani/aidea/pull/223` → `github.com/atsushioo`
+
+## URL クリックルーティング (Terminal / Claude → Web)
+
+Terminal / Claude セッションのターミナル出力中の URL をクリックしたとき、
+外部ブラウザではなく **Web Tool で開く**。
+
+- 対象 scheme は **http / https のみ**。それ以外 (`mailto:` 等) は従来通り `NSWorkspace.shared.open`
+- 配置先は **「呼び出し元 (カレント) ペインを除く最新のペイン」**:
+  `activeSessionHistory` を新しい順に走査し、呼び出し元ペイン以外で最初に見つかった
+  セッションが属するペインを選ぶ。見つからなければ呼び出し元以外の先頭ペイン
+  (Preview の `openPreview` と同一アルゴリズム。[sessions/active-session.md](../sessions/active-session.md) 参照)
+- **常に新規 Web タブを作成** する (既存 Web セッションの再利用・dedupe はしない)
+- 作成した Web タブをアクティブ化する
+
+エントリポイントは `SessionRegistry.openWeb(for:)`。
+Terminal 側のクリック判定は [tools/terminal.md#url-クリック](./terminal.md#url-クリック) を参照。
+
+## 境界
+
+### Always
+- ツールバーのボタン有効状態 (`canGoBack` / `canGoForward`) は WKWebView の KVO に追従する
+- URL クリックルーティングは http / https のみを対象とする
+
+### Never
+- 既存 Web セッションへの URL ロード (再利用) は行わない — 常に新規タブ
+- 呼び出し元 (カレント) ペインには Web タブを作らない

@@ -12,7 +12,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-23
+last_updated: 2026-06-10
 ---
 
 # Session 内部状態: Web
@@ -29,8 +29,13 @@ last_updated: 2026-04-23
 | `url` | `URL` | 現在表示中の URL (初期値: `https://www.apple.com`) | ✅ |
 | `cached` | `WKWebView?` (ObservationIgnored) | 遅延生成した WKWebView。`isInspectable = true` | ✅ |
 | `urlObservation` | `NSKeyValueObservation?` (ObservationIgnored) | `WKWebView.url` の KVO | ✅ |
+| `canGoBack` | `Bool` | 戻るボタンの有効状態 (`WKWebView.canGoBack` の KVO 追従) | ✅ |
+| `canGoForward` | `Bool` | 進むボタンの有効状態 (`WKWebView.canGoForward` の KVO 追従) | ✅ |
 | `sessionID` | `SessionID?` (ObservationIgnored) | 自身の ID (逆参照用) | ✅ |
 | `webView` | `WKWebView` (computed) | `cached` の lazy アクセサ | — |
+
+ナビゲーションツールバー (戻る / 進む / 更新 / URL 欄 / 地球アイコン) の仕様は
+[../tools/web.md#ナビゲーションツールバー](../tools/web.md#ナビゲーションツールバー) を参照。
 
 ## ペイン移動で状態を失わない仕組み
 

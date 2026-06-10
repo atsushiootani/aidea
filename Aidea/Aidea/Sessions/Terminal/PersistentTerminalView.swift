@@ -370,13 +370,18 @@ final class TerminalLinkGuard: NSObject, TerminalViewDelegate {
     /// (例: `Sources/Foo.swift`) はここでは無視する — 実体は scheme なしの URL になり、
     /// `NSWorkspace.shared.open` に渡すと Finder が `-50` ダイアログを出してしまうため。
     /// ファイルパスのクリック起動は `PersistentTerminalView.handlePathClickIfNeeded` が担う。
+    /// http/https は Web Tool で開き (docs/specs/tools/web.md)、その他 scheme は外部アプリに渡す。
     func requestOpenLink(source: TerminalView, link: String, params: [String : String]) {
         guard let view = source as? PersistentTerminalView,
               view.lastInteractionWasTap,
               let url = URL(string: link),
               let scheme = url.scheme,
               !scheme.isEmpty else { return }
-        NSWorkspace.shared.open(url)
+        if (scheme == "http" || scheme == "https"), let registry = view.sessionRegistry {
+            registry.openWeb(for: url)
+        } else {
+            NSWorkspace.shared.open(url)
+        }
     }
 
     func send(source: TerminalView, data: ArraySlice<UInt8>) {

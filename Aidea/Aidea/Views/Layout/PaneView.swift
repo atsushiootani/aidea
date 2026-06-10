@@ -207,6 +207,7 @@ struct PaneView: View {
 
     /// タブヘッダの表示名。
     /// - Preview: state.title があればそれ、なければ URL の lastPathComponent、どちらも無ければ "Preview"
+    /// - Web: 現在の URL (scheme 除去 + 先頭 20 文字。仕様: docs/specs/tools/web.md#タブ名)
     /// - その他: tool 名 + (instance > 0 のとき番号)
     private func displayLabel(for sessionID: SessionID) -> String {
         if sessionID.tool == .preview,
@@ -214,6 +215,15 @@ struct PaneView: View {
            let preview = s.state as? PreviewSessionState {
             if let title = preview.title, !title.isEmpty { return title }
             if let url = preview.url { return url.lastPathComponent }
+        }
+        if sessionID.tool == .web,
+           let s = registry.session(for: sessionID),
+           let web = s.state as? WebSessionState {
+            var label = web.url.absoluteString
+            for prefix in ["https://", "http://"] where label.hasPrefix(prefix) {
+                label.removeFirst(prefix.count)
+            }
+            return String(label.prefix(20))
         }
         if sessionID.tool == .gitDiff {
             return "Diff"
