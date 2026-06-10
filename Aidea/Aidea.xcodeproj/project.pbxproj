@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		5E0D1ED82FD9662F008A19CA /* AVKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5E0D1ED72FD9662F008A19CA /* AVKit.framework */; };
 		5EA77CDE2F8639B7000178CE /* SwiftTerm in Frameworks */ = {isa = PBXBuildFile; productRef = 5EA77CDD2F8639B7000178CE /* SwiftTerm */; };
 /* End PBXBuildFile section */
 
@@ -28,6 +29,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		5E0D1ED72FD9662F008A19CA /* AVKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVKit.framework; path = System/Library/Frameworks/AVKit.framework; sourceTree = SDKROOT; };
 		5EA77C8B2F863799000178CE /* Aidea.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Aidea.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5EA77C982F86379B000178CE /* AideaTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AideaTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		5EA77CA22F86379B000178CE /* AideaUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AideaUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -56,6 +58,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5E0D1ED82FD9662F008A19CA /* AVKit.framework in Frameworks */,
 				5EA77CDE2F8639B7000178CE /* SwiftTerm in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -101,6 +104,7 @@
 		5EA77CDC2F8639B7000178CE /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				5E0D1ED72FD9662F008A19CA /* AVKit.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
