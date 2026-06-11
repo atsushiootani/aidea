@@ -39,6 +39,25 @@ final class SessionRegistry {
         activeSessionHistory = history
     }
 
+    /// タブのカスタム名 (ダブルクリックでリネーム)。表示名導出の最優先。
+    /// 永続化対象 (workspace.json)。仕様: docs/specs/sessions/ui-rules.md#タブのリネーム
+    private(set) var customTitles: [SessionID: String] = [:]
+
+    /// カスタムタブ名を設定する。空白のみの入力は解除 (デフォルト導出名に戻す) として扱う。
+    func setCustomTitle(_ title: String, for id: SessionID) {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            customTitles.removeValue(forKey: id)
+        } else {
+            customTitles[id] = trimmed
+        }
+    }
+
+    /// スナップショットから customTitles を一括復元する
+    func restoreCustomTitles(_ titles: [SessionID: String]) {
+        customTitles = titles
+    }
+
     init(workspace: WorkspaceState, layout: LayoutConfig) {
         self.workspace = workspace
         self.layout = layout
@@ -158,10 +177,11 @@ final class SessionRegistry {
 
     /// Session を一覧から除去。Tab クローズと同時に呼ばれる。
     /// Active Session Switcher で「既に存在しない Session」を表示しないよう、
-    /// 履歴 (activeSessionHistory) からも該当 ID を除去する。
+    /// 履歴 (activeSessionHistory) とカスタムタブ名からも該当 ID を除去する。
     func destroySession(_ id: SessionID) {
         sessions.removeAll { $0.id == id }
         activeSessionHistory.removeAll { $0 == id }
+        customTitles.removeValue(forKey: id)
     }
 
     /// Session を取得 (なければ作成)。Tab 追加時や View 描画時に使う。

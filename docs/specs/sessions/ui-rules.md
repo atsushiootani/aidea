@@ -51,6 +51,21 @@ Window
 `gitDiff` は `+` メニューに載らず、Git ツール経由で開く。
 その他の Tool (`kit` / `terminal` / `claude` / `web` / `preview`) は同一 Window 内に複数インスタンス可。
 
+### タブのリネーム
+
+タブヘッダを **ダブルクリック** すると、タブ名をその場で編集できる (全 Tool 共通)。
+
+- ダブルクリックでラベルがインライン TextField に切り替わる (現在の表示名がプリセットされる)
+- **Enter** で確定 / **Esc** でキャンセル / フォーカス喪失で確定
+- **空文字 (空白のみ含む) で確定するとカスタム名を解除** し、デフォルトの導出名
+  (Preview のタイトル / Web の URL / Claude のコンパニオン名 / tool 名) に戻る
+- カスタム名は `displayLabel` の **最優先**。Web タブの URL 追従 ([../tools/web.md#タブ名](../tools/web.md#タブ名))
+  よりもカスタム名が優先される
+- 保存先は `SessionRegistry.customTitles: [SessionID: String]`。タブクローズ (destroySession) で破棄する
+- `workspace.json` に永続化され、再起動後も保持される ([../aspects/persistence.md](../aspects/persistence.md))
+- 1 クリック目のタブアクティブ化は従来通り即時発火する (ダブルクリックの 1 打目でアクティブ化、
+  2 打目で編集開始)
+
 ---
 
 ## 右クリック・コンテキストメニュー

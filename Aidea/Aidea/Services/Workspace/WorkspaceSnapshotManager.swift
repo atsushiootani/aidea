@@ -100,7 +100,13 @@ final class WorkspaceSnapshotManager {
                 webs: webs,
                 filers: filers,
                 kits: kits,
-                activeHistory: registry.activeSessionHistory
+                activeHistory: registry.activeSessionHistory,
+                // JSON の diff 安定性のため tool → instance 順でソートして保存する
+                customTitles: registry.customTitles
+                    .map { CustomTitleSnapshot(id: $0.key, title: $0.value) }
+                    .sorted {
+                        ($0.id.tool.rawValue, $0.id.instance) < ($1.id.tool.rawValue, $1.id.instance)
+                    }
             ),
             companions: companions,
             recommends: recommendStore?() ?? [:]
@@ -235,7 +241,8 @@ final class WorkspaceSnapshotManager {
                     )
                 },
                 kits: legacy.kits,
-                activeHistory: legacy.activeSessionHistory ?? []
+                activeHistory: legacy.activeSessionHistory ?? [],
+                customTitles: nil
             ),
             companions: companions,
             recommends: recommends
@@ -433,6 +440,13 @@ final class WorkspaceSnapshotManager {
 
         // activeSessionHistory を復元 (setActiveTab より前に置くこと)
         registry.restoreActiveSessionHistory(snapshot.sessions.activeHistory)
+
+        // タブのカスタム名を復元 (旧フォーマットは nil → 空扱い)
+        if let titles = snapshot.sessions.customTitles {
+            registry.restoreCustomTitles(
+                Dictionary(titles.map { ($0.id, $0.title) }, uniquingKeysWith: { first, _ in first })
+            )
+        }
 
         // Active Pane を復元
         if let activePID = snapshot.layout.activePaneID {

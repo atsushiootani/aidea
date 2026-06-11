@@ -11,11 +11,16 @@ struct PaneView: View {
     @Bindable var pane: Pane
     /// このペインが属する LayoutNode。split / removeLeaf 操作で使う。
     let layoutNode: LayoutNode
+    /// インラインリネーム編集中のタブ (仕様: ui-rules.md#タブのリネーム)
+    @State private var renamingSessionID: SessionID?
+    /// リネーム編集中のテキスト
+    @State private var renameText: String = ""
     @Environment(SessionRegistry.self) private var registry
     @Environment(LayoutConfig.self) private var layout
     @Environment(CompanionStore.self) private var companionStore
     @Environment(TabPickerAnchor.self) private var tabPickerAnchor
     @Environment(WorkspaceState.self) private var workspace
+    @FocusState private var renameFieldFocused: Bool
 
     var body: some View {
         VStack(spacing: 0) {
@@ -125,9 +130,25 @@ struct PaneView: View {
         let isPaneActive = (index == pane.activeIndex)
         return HStack(spacing: 5) {
             tabIcon(sessionID: sessionID, isGlobalActive: isGlobalActive)
-            Text(displayLabel(for: sessionID))
-                .font(.system(size: 12, weight: isGlobalActive ? .bold : (isPaneActive ? .semibold : .regular)))
-                .foregroundStyle(isGlobalActive ? Color.white : Color.primary)
+            if renamingSessionID == sessionID {
+                // ダブルクリックでのインラインリネーム (仕様: ui-rules.md#タブのリネーム)
+                TextField("", text: $renameText)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 12))
+                    .foregroundStyle(isGlobalActive ? Color.white : Color.primary)
+                    .frame(width: 120)
+                    .focused($renameFieldFocused)
+                    .onSubmit { commitRename(for: sessionID) }
+                    .onExitCommand { renamingSessionID = nil }
+                    .onChange(of: renameFieldFocused) { _, focused in
+                        // フォーカス喪失で確定 (Esc キャンセル時は renamingSessionID が先に nil になる)
+                        if !focused { commitRename(for: sessionID) }
+                    }
+            } else {
+                Text(displayLabel(for: sessionID))
+                    .font(.system(size: 12, weight: isGlobalActive ? .bold : (isPaneActive ? .semibold : .regular)))
+                    .foregroundStyle(isGlobalActive ? Color.white : Color.primary)
+            }
             Button {
                 closeTab(at: index)
             } label: {
@@ -156,8 +177,28 @@ struct PaneView: View {
         .onTapGesture {
             registry.setActiveTab(paneID: pane.id, tabIndex: index)
         }
+        // ダブルクリックでリネーム開始。1 打目は上の onTapGesture が即時アクティブ化する
+        .simultaneousGesture(TapGesture(count: 2).onEnded {
+            startRename(sessionID)
+        })
         .draggable(sessionID)
         .help(previewTooltip(for: sessionID))
+    }
+
+    /// タブ名のインライン編集を開始する。現在の表示名をプリセットしてフォーカスを移す
+    private func startRename(_ sessionID: SessionID) {
+        renameText = displayLabel(for: sessionID)
+        renamingSessionID = sessionID
+        DispatchQueue.main.async {
+            renameFieldFocused = true
+        }
+    }
+
+    /// 編集中のタブ名を確定する。空白のみの入力はカスタム名解除 (デフォルト導出名に戻る)
+    private func commitRename(for sessionID: SessionID) {
+        guard renamingSessionID == sessionID else { return }
+        registry.setCustomTitle(renameText, for: sessionID)
+        renamingSessionID = nil
     }
 
     /// Preview タブのツールチップテキスト。projectRoot 相対パスを返す。
@@ -206,10 +247,14 @@ struct PaneView: View {
     }
 
     /// タブヘッダの表示名。
+    /// - カスタム名 (ダブルクリックでリネーム) があれば最優先
     /// - Preview: state.title があればそれ、なければ URL の lastPathComponent、どちらも無ければ "Preview"
     /// - Web: 現在の URL (scheme 除去 + 先頭 20 文字。仕様: docs/specs/tools/web.md#タブ名)
     /// - その他: tool 名 + (instance > 0 のとき番号)
     private func displayLabel(for sessionID: SessionID) -> String {
+        if let custom = registry.customTitles[sessionID] {
+            return custom
+        }
         if sessionID.tool == .preview,
            let s = registry.session(for: sessionID),
            let preview = s.state as? PreviewSessionState {
