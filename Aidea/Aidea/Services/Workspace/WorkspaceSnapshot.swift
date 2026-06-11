@@ -39,6 +39,15 @@ struct SessionsSnapshot: Codable {
     /// アクティブ Session 切替履歴 (末尾が最新、重複排除済、最大 50 件)。
     /// Active Session Switcher (Ctrl+Tab) の表示元データ
     let activeHistory: [SessionID]
+    /// タブのカスタム名 (ダブルクリックでリネーム)。
+    /// このフィールドを持たない旧フォーマットでは nil → 空扱い (バージョン bump 不要)
+    let customTitles: [CustomTitleSnapshot]?
+}
+
+/// タブカスタム名 1 件分の永続化対象 (仕様: docs/specs/sessions/ui-rules.md#タブのリネーム)
+struct CustomTitleSnapshot: Codable {
+    let id: SessionID
+    let title: String
 }
 
 /// LayoutNode ツリーの永続化用表現 (再帰 enum)

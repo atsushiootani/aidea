@@ -168,7 +168,8 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
     "webs":     [{ "id": {...}, "url": "..." }],
     "filers":   [{ "id": {...}, "expandedURLs": [...], "excludeRules": [...], "userDecorationRules": [...] }],
     "kits":     [{ "id": {...}, "expandedSections": [...], "expandedGroups": [...] }],
-    "activeHistory": [/* SessionID 配列 */]
+    "activeHistory": [/* SessionID 配列 */],
+    "customTitles": [{ "id": {...}, "title": "..." }] // タブのカスタム名 (optional、nil 時は空扱い。バージョン bump 不要)
   },
   "companions": [
     {
