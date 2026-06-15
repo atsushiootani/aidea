@@ -101,4 +101,17 @@ final class WebSessionState: SessionState, FocusBridgeOwner {
         guard let url = URL(string: candidate), url.host() != nil else { return }
         webView.load(URLRequest(url: url))
     }
+
+    /// ページ内検索 (WKWebView の find API)。一致したら completion(true) を返す。
+    /// 大文字小文字は無視し、末尾で先頭へ折り返す。forward=false で後方検索。
+    func find(_ text: String, forward: Bool = true, completion: @escaping (Bool) -> Void) {
+        guard !text.isEmpty else { completion(true); return }
+        let config = WKFindConfiguration()
+        config.backwards = !forward
+        config.caseSensitive = false
+        config.wraps = true
+        webView.find(text, configuration: config) { result in
+            completion(result.matchFound)
+        }
+    }
 }
