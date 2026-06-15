@@ -22,3 +22,4 @@ last_updated: 2026-05-27
 | ファイル | 内容 |
 |---|---|
 | [docs-graph.md](./docs-graph.md) | docs/ 配下の frontmatter を読み取りドキュメント間の依存関係を Mermaid グラフとして出力するスキル |
+| [skill-bootstrap.md](./skill-bootstrap.md) | aidea.* スキルをアプリ Bundle に同梱し、起動時に ~/.claude/skills/ (ユーザスコープ) へ冪等コピーして自動登録する機構 |
