@@ -24,6 +24,8 @@ struct AppHeaderView: View {
         .background(Color(nsColor: .windowBackgroundColor))
         .onAppear {
             if let root = workspace.projectRoot {
+                // 起動時ブートストラップ: Bundle 同梱の aidea.* スキルを所定スコープへ配置 (ADR 0032)
+                SkillSetup.setup(projectRoot: root)
                 speech.start(projectRoot: root)
             }
         }

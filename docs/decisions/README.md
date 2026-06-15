@@ -50,6 +50,7 @@ Aidea の設計判断を 1 件ずつ記録する。フォーマットは [Michae
 | [0029](./0029-companion-as-agent-definition.md) | コンパニオンのエージェント定義に agent.md を採用 | 採用 |
 | [0030](./0030-multiprocess-one-repo-per-process.md) | 複数リポジトリはマルチプロセスで開き 1プロセス=1リポジトリとする | 提案 |
 | [0031](./0031-unified-scheduler-triggers-and-targets.md) | 定時・起動時・手動トリガーを1ジョブに統合しスケジューラを汎用化する | 提案 |
+| [0032](./0032-bundle-skills-to-user-scope.md) | aidea.* スキルをアプリ同梱し初回起動時にユーザスコープへ自動配置する | 採用 |
 
 ## 状態の値
 
