@@ -12,7 +12,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-06-10
+last_updated: 2026-06-15
 ---
 
 # Tool 仕様: Web
@@ -28,7 +28,7 @@ WKWebView の制約と Chrome 併用方針は [ADR 0015](../../decisions/0015-wk
 WebSessionView の上部に、一般的なブラウザと同じ並びでツールバーを表示する。
 
 ```
-[←] [→] [⟳] [ URL 欄                              ] [🌐]
+[←] [→] [⟳] [ URL 欄                          ] [🌐] [🔍]
 ```
 
 | 要素 | 動作 | 備考 |
@@ -38,6 +38,7 @@ WebSessionView の上部に、一般的なブラウザと同じ並びでツー�
 | 更新 (⟳) | `webView.reload()` | |
 | URL 欄 | 現在の URL を表示。**編集可能**: Enter 押下でその URL へ移動 | ナビゲーションには既存の `url` KVO で追従。編集中 (フォーカス中) はユーザ入力を追従更新で上書きしない |
 | 地球アイコン (🌐) | 現在の URL を `NSWorkspace.shared.open` で **OS デフォルトブラウザ** に開く | ADR 0015 の「Chrome 併用」への導線 |
+| 検索アイコン (🔍) | ツールバー下の **ページ内検索バー** をトグルする | 開いている間はアクセントカラーで点灯。後述の[ページ内検索](#ページ内検索)を参照 |
 
 ### URL 欄の入力解釈
 
@@ -54,7 +55,28 @@ WebSessionView の上部に、一般的なブラウザと同じ並びでツー�
 | `SFSafariViewController` | iOS 専用 API で macOS に存在しない |
 | SwiftUI `WebView` (WebKit for SwiftUI) | macOS 26+ 限定 (最低ターゲット macOS 15)。ナビゲーションバーも提供しない |
 
-部品レベルでは標準を使う (SF Symbols: `chevron.left` / `chevron.right` / `arrow.clockwise` / `globe`)。
+部品レベルでは標準を使う (SF Symbols: `chevron.left` / `chevron.right` / `arrow.clockwise` / `globe` / `magnifyingglass`)。
+
+## ページ内検索
+
+ツールバーの検索アイコン (🔍) を押すと、ツールバーと WKWebView の間に検索バーが開く。
+表示中ページのテキストを WKWebView の `find(_:configuration:completionHandler:)` API で検索する。
+
+```
+[🔍] [ 検索語                         ] [見つかりません] [↑] [↓] [✕]
+```
+
+| 要素 | 動作 |
+|---|---|
+| 検索フィールド | 入力するたびに (`onChange`) 前方検索を実行し、最初のヒットへスクロール＆ハイライト |
+| 前を検索 (↑) | 後方検索 (`forward: false`)。検索語が空のとき disabled |
+| 次を検索 (↓) | 前方検索。検索フィールドで Enter を押しても同じ |
+| 閉じる (✕) | 検索バーを閉じ、検索語をクリアする。**Esc キー**でも閉じる |
+| 「見つかりません」 | 検索語が非空でヒット 0 件のとき赤字で表示 |
+
+- 検索設定 (`WKFindConfiguration`) は **大文字小文字を無視** (`caseSensitive = false`)、**末尾で先頭に折り返す** (`wraps = true`)
+- 検索ロジックは `WebSessionState.find(_:forward:completion:)` に置き、View 側は表示と入力ハンドリングのみ担う (URL ロードを `loadURLString` に置くのと同じ分担)
+- 検索バーを開くと検索フィールドへ自動フォーカスする
 
 ## タブ名
 
