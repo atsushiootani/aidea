@@ -17,6 +17,7 @@ struct SchedulerRowView: View {
     let onDelete: () -> Void
 
     @Environment(SchedulerState.self) private var scheduler
+    @Environment(SnippetState.self) private var snippetState
     @Environment(CompanionStore.self) private var companionStore
 
     var body: some View {
@@ -54,6 +55,14 @@ struct SchedulerRowView: View {
                 .controlSize(.small)
                 .disabled(!job.isEnabled)
 
+                Button("→ スニペット") {
+                    saveAsSnippet()
+                }
+                .font(.system(size: 11))
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .help("このジョブのコマンドをスニペットとして保存")
+
                 Button {
                     onEdit()
                 } label: {
@@ -88,6 +97,15 @@ struct SchedulerRowView: View {
             RoundedRectangle(cornerRadius: 4)
                 .fill(Color(nsColor: .controlBackgroundColor).opacity(0.5))
         )
+    }
+
+    private func saveAsSnippet() {
+        let snippet = SnippetConfig.Snippet(
+            id: "job-" + UUID().uuidString.prefix(8).lowercased(),
+            name: job.displayName,
+            command: job.prompt
+        )
+        snippetState.addSnippet(snippet)
     }
 
     /// 送信先の表示名 (Claude は Companion 名、Terminal は "Terminal")

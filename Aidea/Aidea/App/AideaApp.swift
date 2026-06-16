@@ -25,6 +25,7 @@ struct AideaApp: App {
     @State private var quickMemoState: QuickMemoState
     @State private var remindState: RemindState
     @State private var schedulerState: SchedulerState
+    @State private var snippetState: SnippetState
     /// Ctrl+Tab で起動する Active Session Switcher (Window レベル singleton)
     @State private var sessionSwitcher = ActiveSessionSwitcher()
     /// Cmd+T のツール選択メニューを各ペインの「+」ボタン直下に表示するためのアンカー管理
@@ -111,6 +112,7 @@ struct AideaApp: App {
         _quickMemoState = State(initialValue: QuickMemoState())
         _remindState = State(initialValue: RemindState())
         _schedulerState = State(initialValue: SchedulerState())
+        _snippetState = State(initialValue: SnippetState())
         _lockToken = State(initialValue: acquiredToken)
     }
 
@@ -140,6 +142,7 @@ struct AideaApp: App {
                     .environment(quickMemoState)
                     .environment(remindState)
                     .environment(schedulerState)
+                    .environment(snippetState)
                     .environment(tabPickerAnchor)
                     .sheet(isPresented: $showLauncher) {
                         // 「最近開いたディレクトリを開く」: 選択リポジトリは新プロセスで開き、現プロセスは継続する。
@@ -156,6 +159,7 @@ struct AideaApp: App {
                         startOutput()
                         startRemind()
                         startScheduler()
+                        startSnippet()
                         observeActivationRequests()
                         // 起動時 (onLaunch) ジョブを、セッション基盤が落ち着いてから実行する (ADR 0031)。
                         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
@@ -275,10 +279,12 @@ struct AideaApp: App {
         }
     }
 
-    /// ウィジェット操作メニュー (スケジューラ / カレンダー の popover を開く)
+    /// ウィジェット操作メニュー (スニペット / スケジューラ / カレンダー の popover を開く)
     @CommandsBuilder
     private var widgetMenu: some Commands {
         CommandMenu("ウィジェット") {
+            Button("スニペットを開く") { snippetState.isPopoverPresented.toggle() }
+                .keyboardShortcut("b", modifiers: [.command, .option])
             Button("スケジューラを開く") { schedulerState.isPopoverPresented.toggle() }
                 .keyboardShortcut("s", modifiers: [.command, .option])
             Button("カレンダーを開く") { remindState.isPopoverPresented.toggle() }
@@ -612,6 +618,78 @@ struct AideaApp: App {
             registry.setActiveTab(paneID: pane.id, tabIndex: pane.tabs.count - 1)
         }
         // PTY (シェル) を起動し、初期化を少し待ってからコマンドを送る (起動直後の取りこぼし回避)。
+        if let termState = session.state as? TerminalSessionState {
+            _ = termState.terminalView
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                termState.sendCommand(command)
+            }
+        }
+    }
+
+    // MARK: - Snippet
+
+    /// SnippetState を起動する。dispatch クロージャでスニペット実行時のターミナル送信を担う。
+    private func startSnippet() {
+        guard let projectRoot = workspace.projectRoot else { return }
+        let reg = registry
+        let lay = layout
+        snippetState.start(projectRoot: projectRoot) { command, target in
+            Self.dispatchSnippetCommand(command: command, target: target, registry: reg, layout: lay)
+        }
+    }
+
+    /// スニペットのコマンドを指定ターミナルへ送る。
+    /// active: アクティブな Terminal セッション → 全ペインの最初の Terminal → 新規タブ
+    /// session(id): 指定セッションへ直接送信
+    /// new: 常に新規タブを作成して送信
+    @MainActor
+    private static func dispatchSnippetCommand(
+        command: String,
+        target: SnippetState.DispatchTarget,
+        registry: SessionRegistry,
+        layout: LayoutConfig
+    ) {
+        switch target {
+        case .active:
+            if let activeID = registry.activeSessionID,
+               activeID.tool == .terminal,
+               let termState = registry.session(for: activeID)?.state as? TerminalSessionState {
+                termState.sendCommand(command)
+                return
+            }
+            for pane in layout.allPanes {
+                for id in pane.tabs where id.tool == .terminal {
+                    if let termState = registry.session(for: id)?.state as? TerminalSessionState {
+                        registry.activateSession(id)
+                        termState.sendCommand(command)
+                        return
+                    }
+                }
+            }
+            Self.openNewTerminalAndSend(command: command, registry: registry, layout: layout)
+        case .session(let id):
+            if let termState = registry.session(for: id)?.state as? TerminalSessionState {
+                registry.activateSession(id)
+                termState.sendCommand(command)
+            }
+        case .new:
+            Self.openNewTerminalAndSend(command: command, registry: registry, layout: layout)
+        }
+    }
+
+    /// 新規ターミナルタブを作成し PTY 準備後にコマンドを送る。
+    @MainActor
+    private static func openNewTerminalAndSend(
+        command: String,
+        registry: SessionRegistry,
+        layout: LayoutConfig
+    ) {
+        let instance = layout.nextSessionInstance(of: .terminal)
+        let session = registry.createSession(tool: .terminal, instance: instance)
+        if let pane = registry.activePane ?? layout.allPanes.first {
+            pane.tabs.append(session.id)
+            registry.setActiveTab(paneID: pane.id, tabIndex: pane.tabs.count - 1)
+        }
         if let termState = session.state as? TerminalSessionState {
             _ = termState.terminalView
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
