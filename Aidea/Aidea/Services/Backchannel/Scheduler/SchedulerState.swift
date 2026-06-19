@@ -222,12 +222,13 @@ final class SchedulerState {
         )
     }
 
-    /// ジョブ一覧の表示順キー。定時 (時刻順) → 起動時 → 手動 の順に並べる。
+    /// ジョブ一覧の表示順キー。定時 (時刻順) → cron (式順) → 起動時 → 手動 の順に並べる。
     private static func sortKey(_ job: SchedulerConfig.Job) -> String {
         switch job.trigger {
         case .scheduled(let time, _): return "0" + time
-        case .onLaunch: return "1"
-        case .manual: return "2"
+        case .cron(let expr): return "1" + expr
+        case .onLaunch: return "2"
+        case .manual: return "3"
         }
     }
 }

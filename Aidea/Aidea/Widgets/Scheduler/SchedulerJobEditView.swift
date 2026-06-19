@@ -19,13 +19,17 @@ struct SchedulerJobEditView: View {
     @State private var triggerKind: TriggerKind
     @State private var timeDate: Date
     @State private var weekdays: Set<Int>
+    @State private var cronExpr: String
     @State private var targetKind: TargetKind
     @State private var companionIndex: Int
+    @State private var terminalTitle: String
     @State private var prompt: String
     @State private var enabled: Bool
 
     @Environment(SchedulerState.self) private var scheduler
     @Environment(CompanionStore.self) private var companionStore
+    @Environment(SessionRegistry.self) private var registry
+    @Environment(LayoutConfig.self) private var layout
 
     /// 既存ジョブの id (新規なら nil)。保存時の id 決定に使う。
     private let existingID: String?
@@ -34,15 +38,29 @@ struct SchedulerJobEditView: View {
 
     /// トリガー種別 (フォーム用。SchedulerConfig.Trigger を保存時に構築する)
     private enum TriggerKind: CaseIterable {
-        case scheduled, onLaunch, manual
+        case scheduled, cron, onLaunch, manual
         var label: String {
             switch self {
             case .scheduled: return "定時"
+            case .cron: return "cron"
             case .onLaunch: return "起動時"
             case .manual: return "手動"
             }
         }
     }
+
+    /// cron 式のクイック入力プリセット (label, expr)。
+    private static let cronPresets: [(label: String, expr: String)] = [
+        ("5分", "*/5 * * * *"),
+        ("15分", "*/15 * * * *"),
+        ("30分", "*/30 * * * *"),
+        ("1時間", "0 * * * *"),
+        ("6時間", "0 */6 * * *"),
+        ("12時間", "0 */12 * * *"),
+    ]
+
+    /// cron 入力のデフォルト式 (新規 / 他種別からの切替時)。
+    private static let defaultCronExpr = "*/5 * * * *"
 
     /// 送信先種別 (フォーム用)
     private enum TargetKind: CaseIterable {
@@ -65,8 +83,10 @@ struct SchedulerJobEditView: View {
             _triggerKind = State(initialValue: .scheduled)
             _timeDate = State(initialValue: Self.date(fromHHmm: "08:00"))
             _weekdays = State(initialValue: Set(0...6))
+            _cronExpr = State(initialValue: Self.defaultCronExpr)
             _targetKind = State(initialValue: .claude)
             _companionIndex = State(initialValue: 0)
+            _terminalTitle = State(initialValue: "")
             _prompt = State(initialValue: "")
             _enabled = State(initialValue: true)
         case .existing(let job):
@@ -77,22 +97,32 @@ struct SchedulerJobEditView: View {
                 _triggerKind = State(initialValue: .scheduled)
                 _timeDate = State(initialValue: Self.date(fromHHmm: time))
                 _weekdays = State(initialValue: Set(weekdays ?? [0, 1, 2, 3, 4, 5, 6]))
+                _cronExpr = State(initialValue: Self.defaultCronExpr)
+            case .cron(let expr):
+                _triggerKind = State(initialValue: .cron)
+                _timeDate = State(initialValue: Self.date(fromHHmm: "08:00"))
+                _weekdays = State(initialValue: Set(0...6))
+                _cronExpr = State(initialValue: expr)
             case .onLaunch:
                 _triggerKind = State(initialValue: .onLaunch)
                 _timeDate = State(initialValue: Self.date(fromHHmm: "08:00"))
                 _weekdays = State(initialValue: Set(0...6))
+                _cronExpr = State(initialValue: Self.defaultCronExpr)
             case .manual:
                 _triggerKind = State(initialValue: .manual)
                 _timeDate = State(initialValue: Self.date(fromHHmm: "08:00"))
                 _weekdays = State(initialValue: Set(0...6))
+                _cronExpr = State(initialValue: Self.defaultCronExpr)
             }
             switch job.target {
             case .claude(let index):
                 _targetKind = State(initialValue: .claude)
                 _companionIndex = State(initialValue: index)
-            case .terminal:
+                _terminalTitle = State(initialValue: "")
+            case .terminal(let sessionTitle):
                 _targetKind = State(initialValue: .terminal)
                 _companionIndex = State(initialValue: 0)
+                _terminalTitle = State(initialValue: sessionTitle ?? "")
             }
             _prompt = State(initialValue: job.prompt)
             _enabled = State(initialValue: job.isEnabled)
@@ -132,6 +162,29 @@ struct SchedulerJobEditView: View {
                 }
             }
 
+            // cron 式は cron トリガーのときだけ表示する。
+            if triggerKind == .cron {
+                field("cron 式") {
+                    TextField(Self.defaultCronExpr, text: $cronExpr)
+                        .textFieldStyle(.roundedBorder)
+                        .font(.system(size: 12, design: .monospaced))
+                }
+                field("プリセット") {
+                    HStack(spacing: 4) {
+                        ForEach(Self.cronPresets, id: \.expr) { preset in
+                            Button(preset.label) { cronExpr = preset.expr }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                        }
+                    }
+                }
+                field("") {
+                    Text(cronPreviewText)
+                        .font(.system(size: 11))
+                        .foregroundStyle(parsedCron == nil ? Color.red : Color.secondary)
+                }
+            }
+
             field("送信先") {
                 Picker("", selection: $targetKind) {
                     ForEach(TargetKind.allCases, id: \.self) { kind in
@@ -151,6 +204,26 @@ struct SchedulerJobEditView: View {
                         }
                     }
                     .labelsHidden()
+                }
+            }
+
+            // タブ名入力は Terminal 送信のときだけ表示する (選択 + 自由入力)。
+            if targetKind == .terminal {
+                field("タブ名") {
+                    TextField("新規タブ (空欄)", text: $terminalTitle)
+                        .textFieldStyle(.roundedBorder)
+                }
+                field("既存タブ") {
+                    HStack(spacing: 4) {
+                        Button("新規タブ") { terminalTitle = "" }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                        ForEach(terminalTabTitles, id: \.self) { title in
+                            Button(title) { terminalTitle = title }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                        }
+                    }
                 }
             }
 
@@ -180,6 +253,29 @@ struct SchedulerJobEditView: View {
         targetKind == .terminal ? "npm run dev など" : "/cc.morning など"
     }
 
+    /// 現在開いているターミナルタブの表示名一覧 (クイック選択用)。
+    private var terminalTabTitles: [String] {
+        layout.allPanes
+            .flatMap { $0.tabs }
+            .filter { $0.tool == .terminal }
+            .map { registry.tabTitle(for: $0) }
+    }
+
+    /// 現在の cron 入力をパースした結果 (不正なら nil)。
+    private var parsedCron: CronExpression? {
+        CronExpression(cronExpr.trimmingCharacters(in: .whitespaces))
+    }
+
+    /// cron 入力欄のプレビュー行。不正なら警告、正常なら次回発火時刻を表示する。
+    private var cronPreviewText: String {
+        guard let cron = parsedCron else { return "式が不正です (例: */5 * * * *)" }
+        guard let next = cron.nextDate(after: Date()) else { return "次回発火なし" }
+        let fmt = DateFormatter()
+        fmt.locale = Locale(identifier: "ja_JP")
+        fmt.dateFormat = Calendar.current.isDateInToday(next) ? "今日 HH:mm" : "M/d HH:mm"
+        return "次回: " + fmt.string(from: next)
+    }
+
     /// ラベル + コントロールの 1 行レイアウト。
     private func field<Content: View>(_ label: String, @ViewBuilder _ content: () -> Content) -> some View {
         HStack(alignment: .center, spacing: 8) {
@@ -207,11 +303,12 @@ struct SchedulerJobEditView: View {
         .buttonStyle(.plain)
     }
 
-    /// 保存可能か: 名前・prompt が非空。定時トリガーなら曜日が 1 つ以上選択されている。
+    /// 保存可能か: 名前・prompt が非空。定時なら曜日が 1 つ以上 / cron なら式がパース可能。
     private var isValid: Bool {
         guard !name.trimmingCharacters(in: .whitespaces).isEmpty,
               !prompt.trimmingCharacters(in: .whitespaces).isEmpty else { return false }
         if triggerKind == .scheduled, weekdays.isEmpty { return false }
+        if triggerKind == .cron, parsedCron == nil { return false }
         return true
     }
 
@@ -221,6 +318,8 @@ struct SchedulerJobEditView: View {
         switch triggerKind {
         case .scheduled:
             trigger = .scheduled(time: Self.hhmm(from: timeDate), weekdays: weekdays.sorted())
+        case .cron:
+            trigger = .cron(expr: cronExpr.trimmingCharacters(in: .whitespaces))
         case .onLaunch:
             trigger = .onLaunch
         case .manual:
@@ -231,7 +330,8 @@ struct SchedulerJobEditView: View {
         case .claude:
             jobTarget = .claude(companionIndex: companionIndex)
         case .terminal:
-            jobTarget = .terminal
+            let trimmed = terminalTitle.trimmingCharacters(in: .whitespaces)
+            jobTarget = .terminal(sessionTitle: trimmed.isEmpty ? nil : trimmed)
         }
         let job = SchedulerConfig.Job(
             id: existingID ?? Self.makeID(),

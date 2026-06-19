@@ -11,11 +11,21 @@ import Foundation
 struct SnippetConfig: Codable {
     var snippets: [Snippet] = []
 
+    /// スニペットの既定送信先。nil (省略) はアクティブ端末扱い。詳細: ADR 0034。
+    enum Destination: Equatable {
+        /// タブ名指定 (無ければその名前で新規作成)
+        case tab(title: String)
+        /// 常に新規タブ
+        case new
+    }
+
     struct Snippet: Codable, Identifiable, Equatable {
         let id: String
         var name: String
         var command: String
         var enabled: Bool?
+        /// 既定送信先。nil = アクティブ端末 (アクティブが Terminal → そこ / 無ければ最初の Terminal / 無ければ新規)。
+        var destination: Destination?
 
         var displayName: String { name }
         var isEnabled: Bool { enabled ?? true }
@@ -29,11 +39,12 @@ struct SnippetConfig: Codable {
             return nil
         }
 
-        init(id: String, name: String, command: String, enabled: Bool? = nil) {
+        init(id: String, name: String, command: String, enabled: Bool? = nil, destination: Destination? = nil) {
             self.id = id
             self.name = name
             self.command = command
             self.enabled = enabled
+            self.destination = destination
         }
     }
 
@@ -53,5 +64,36 @@ struct SnippetConfig: Codable {
             result.append(snippet)
         }
         return result
+    }
+}
+
+// MARK: - Destination の Codable (タグ付きユニオン: type フィールドで分岐)
+
+extension SnippetConfig.Destination: Codable {
+    private enum CodingKeys: String, CodingKey { case type, title }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let type = try c.decode(String.self, forKey: .type)
+        switch type {
+        case "tab":
+            let title = try c.decode(String.self, forKey: .title)
+            self = .tab(title: title)
+        case "new":
+            self = .new
+        default:
+            throw DecodingError.dataCorruptedError(forKey: .type, in: c, debugDescription: "未知の destination type: \(type)")
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        switch self {
+        case .tab(let title):
+            try c.encode("tab", forKey: .type)
+            try c.encode(title, forKey: .title)
+        case .new:
+            try c.encode("new", forKey: .type)
+        }
     }
 }

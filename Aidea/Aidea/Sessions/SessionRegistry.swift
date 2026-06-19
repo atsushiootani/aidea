@@ -58,6 +58,14 @@ final class SessionRegistry {
         customTitles = titles
     }
 
+    /// タブの表示名 (タブ名)。カスタム名があれば優先、無ければ tool 既定名 + instance 番号。
+    /// Preview / Web / Claude のような tool 固有タイトルは扱わない簡易版 (主に Terminal タブ用)。
+    /// 表示の正準は PaneView.displayLabel(for:)。スケジューラのタブ名解決で使う。
+    func tabTitle(for id: SessionID) -> String {
+        if let custom = customTitles[id] { return custom }
+        return id.instance == 0 ? id.tool.displayName : "\(id.tool.displayName) \(id.instance + 1)"
+    }
+
     init(workspace: WorkspaceState, layout: LayoutConfig) {
         self.workspace = workspace
         self.layout = layout

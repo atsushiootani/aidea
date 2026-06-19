@@ -20,6 +20,11 @@ struct SchedulerRowView: View {
     @Environment(SnippetState.self) private var snippetState
     @Environment(CompanionStore.self) private var companionStore
 
+    /// 削除確認ダイアログの表示状態。
+    @State private var showDeleteConfirm = false
+    /// スニペットへの移動 (元削除) 確認ダイアログの表示状態。
+    @State private var showConvertConfirm = false
+
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             // 1 行目: 状態アイコン + name + トリガー (定時 HH:mm 曜日 / 起動時 / 手動)
@@ -56,12 +61,20 @@ struct SchedulerRowView: View {
                 .disabled(!job.isEnabled)
 
                 Button("→ スニペット") {
-                    saveAsSnippet()
+                    showConvertConfirm = true
                 }
                 .font(.system(size: 11))
                 .buttonStyle(.bordered)
                 .controlSize(.small)
-                .help("このジョブのコマンドをスニペットとして保存")
+                .help("スニペットへ移動 (このジョブは削除されます)")
+                .confirmationDialog(
+                    "「\(job.displayName)」をスニペットへ移動しますか？\nこのジョブは削除されます。",
+                    isPresented: $showConvertConfirm,
+                    titleVisibility: .visible
+                ) {
+                    Button("移動", role: .destructive) { saveAsSnippet() }
+                    Button("キャンセル", role: .cancel) {}
+                }
 
                 Button {
                     onEdit()
@@ -73,7 +86,7 @@ struct SchedulerRowView: View {
                 .help("編集")
 
                 Button(role: .destructive) {
-                    onDelete()
+                    showDeleteConfirm = true
                 } label: {
                     Image(systemName: "trash")
                 }
@@ -81,6 +94,14 @@ struct SchedulerRowView: View {
                 .controlSize(.small)
                 .foregroundStyle(.red)
                 .help("削除")
+                .confirmationDialog(
+                    "「\(job.displayName)」を削除しますか？",
+                    isPresented: $showDeleteConfirm,
+                    titleVisibility: .visible
+                ) {
+                    Button("削除", role: .destructive) { onDelete() }
+                    Button("キャンセル", role: .cancel) {}
+                }
 
                 Toggle("", isOn: Binding(
                     get: { job.isEnabled },
@@ -99,16 +120,30 @@ struct SchedulerRowView: View {
         )
     }
 
+    /// ジョブをスニペットへ「移動」する (元ジョブは削除)。
     private func saveAsSnippet() {
+        let destination: SnippetConfig.Destination?
+        switch job.target {
+        case .terminal(let sessionTitle):
+            if let title = sessionTitle, !title.trimmingCharacters(in: .whitespaces).isEmpty {
+                destination = .tab(title: title)
+            } else {
+                destination = .new // スケジューラの「新規タブ」を踏襲
+            }
+        case .claude:
+            destination = nil // スニペットは Claude 送信を持たない → 既定 (アクティブ端末)
+        }
         let snippet = SnippetConfig.Snippet(
             id: "job-" + UUID().uuidString.prefix(8).lowercased(),
             name: job.displayName,
-            command: job.prompt
+            command: job.prompt,
+            destination: destination
         )
         snippetState.addSnippet(snippet)
+        scheduler.deleteJob(jobID: job.id)
     }
 
-    /// 送信先の表示名 (Claude は Companion 名、Terminal は "Terminal")
+    /// 送信先の表示名 (Claude は Companion 名、Terminal はタブ名 / 新規)
     private var targetName: String {
         switch job.target {
         case .claude(let index):
@@ -116,8 +151,11 @@ struct SchedulerRowView: View {
                 return "Companion \(index + 1)"
             }
             return companionStore.companion(forIndex: index).name
-        case .terminal:
-            return "Terminal"
+        case .terminal(let sessionTitle):
+            if let title = sessionTitle, !title.trimmingCharacters(in: .whitespaces).isEmpty {
+                return title
+            }
+            return "Terminal (新規)"
         }
     }
 
@@ -143,6 +181,7 @@ struct SchedulerRowView: View {
     private var triggerIcon: String {
         switch job.trigger {
         case .scheduled: return "clock"
+        case .cron: return "timer"
         case .onLaunch: return "bolt"
         case .manual: return "hand.tap"
         }
@@ -154,6 +193,7 @@ struct SchedulerRowView: View {
         if !job.isEnabled { return "停止中" }
         switch job.trigger {
         case .scheduled: return "待機中"
+        case .cron: return "周期実行"
         case .onLaunch: return "起動時に実行"
         case .manual: return "手動実行のみ"
         }

@@ -14,11 +14,27 @@ struct SnippetEditView: View {
 
     @State private var name: String
     @State private var command: String
+    @State private var destinationKind: DestinationKind
+    @State private var terminalTitle: String
     @State private var enabled: Bool
 
     @Environment(SnippetState.self) private var snippetState
+    @Environment(SessionRegistry.self) private var registry
+    @Environment(LayoutConfig.self) private var layout
 
     private let existingID: String?
+
+    /// 送信先種別 (フォーム用)。active は「未設定 (既定)」を表し、保存時は destination = nil。
+    private enum DestinationKind: CaseIterable {
+        case active, tab, new
+        var label: String {
+            switch self {
+            case .active: return "アクティブ"
+            case .tab: return "タブ名"
+            case .new: return "新規"
+            }
+        }
+    }
 
     init(target: SnippetPopoverView.EditTarget, onDone: @escaping () -> Void) {
         self.target = target
@@ -28,11 +44,24 @@ struct SnippetEditView: View {
             existingID = nil
             _name = State(initialValue: "")
             _command = State(initialValue: "")
+            _destinationKind = State(initialValue: .active)
+            _terminalTitle = State(initialValue: "")
             _enabled = State(initialValue: true)
         case .existing(let s):
             existingID = s.id
             _name = State(initialValue: s.displayName)
             _command = State(initialValue: s.command)
+            switch s.destination {
+            case .none:
+                _destinationKind = State(initialValue: .active)
+                _terminalTitle = State(initialValue: "")
+            case .tab(let title):
+                _destinationKind = State(initialValue: .tab)
+                _terminalTitle = State(initialValue: title)
+            case .new:
+                _destinationKind = State(initialValue: .new)
+                _terminalTitle = State(initialValue: "")
+            }
             _enabled = State(initialValue: s.isEnabled)
         }
     }
@@ -47,6 +76,31 @@ struct SnippetEditView: View {
                 TextField("npm run dev など", text: $command)
                     .textFieldStyle(.roundedBorder)
                     .font(.system(size: 12, design: .monospaced))
+            }
+            field("送信先") {
+                Picker("", selection: $destinationKind) {
+                    ForEach(DestinationKind.allCases, id: \.self) { kind in
+                        Text(kind.label).tag(kind)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.segmented)
+            }
+            // タブ名入力はタブ名指定のときだけ表示する (選択 + 自由入力)。
+            if destinationKind == .tab {
+                field("タブ名") {
+                    TextField("タブ名", text: $terminalTitle)
+                        .textFieldStyle(.roundedBorder)
+                }
+                field("既存タブ") {
+                    HStack(spacing: 4) {
+                        ForEach(terminalTabTitles, id: \.self) { title in
+                            Button(title) { terminalTitle = title }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                        }
+                    }
+                }
             }
             Toggle("有効", isOn: $enabled)
                 .toggleStyle(.switch)
@@ -63,8 +117,21 @@ struct SnippetEditView: View {
     }
 
     private var isValid: Bool {
-        !name.trimmingCharacters(in: .whitespaces).isEmpty &&
-        !command.trimmingCharacters(in: .whitespaces).isEmpty
+        guard !name.trimmingCharacters(in: .whitespaces).isEmpty,
+              !command.trimmingCharacters(in: .whitespaces).isEmpty else { return false }
+        // タブ名指定のときはタブ名が必須。
+        if destinationKind == .tab, terminalTitle.trimmingCharacters(in: .whitespaces).isEmpty {
+            return false
+        }
+        return true
+    }
+
+    /// 現在開いているターミナルタブの表示名一覧 (クイック選択用)。
+    private var terminalTabTitles: [String] {
+        layout.allPanes
+            .flatMap { $0.tabs }
+            .filter { $0.tool == .terminal }
+            .map { registry.tabTitle(for: $0) }
     }
 
     private func field<Content: View>(_ label: String, @ViewBuilder _ content: () -> Content) -> some View {
@@ -78,11 +145,21 @@ struct SnippetEditView: View {
     }
 
     private func save() {
+        let destination: SnippetConfig.Destination?
+        switch destinationKind {
+        case .active:
+            destination = nil
+        case .tab:
+            destination = .tab(title: terminalTitle.trimmingCharacters(in: .whitespaces))
+        case .new:
+            destination = .new
+        }
         let snippet = SnippetConfig.Snippet(
             id: existingID ?? SnippetState.newID(),
             name: name.trimmingCharacters(in: .whitespaces),
             command: command.trimmingCharacters(in: .whitespaces),
-            enabled: enabled
+            enabled: enabled,
+            destination: destination
         )
         if existingID == nil {
             snippetState.addSnippet(snippet)

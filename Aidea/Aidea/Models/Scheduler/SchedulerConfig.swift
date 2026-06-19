@@ -17,6 +17,8 @@ struct SchedulerConfig: Codable {
     enum Trigger: Equatable {
         /// 定時: `HH:mm` と曜日 (weekdays 省略時は毎日)
         case scheduled(time: String, weekdays: [Int]?)
+        /// 周期: cron 式 (`分 時 日 月 曜日`)。壁時計アラインで一致する分ごとに発火。
+        case cron(expr: String)
         /// アプリ (リポジトリ) 起動時
         case onLaunch
         /// 手動のみ
@@ -27,8 +29,9 @@ struct SchedulerConfig: Codable {
     enum Target: Equatable {
         /// Claude Companion セッション (companionIndex 0..8)
         case claude(companionIndex: Int)
-        /// 新規 Terminal タブ
-        case terminal
+        /// Terminal タブ。sessionTitle 指定時はその名前のタブへ送る (無ければその名前で新規作成)。
+        /// nil / 空のときは名前なしの新規タブ。詳細: ADR 0034。
+        case terminal(sessionTitle: String?)
     }
 
     /// 1 ジョブの設定。`id` をキーに状態ファイルの `lastRun` (定時ジョブのみ) と紐付く。
@@ -75,6 +78,21 @@ struct SchedulerConfig: Codable {
             return false
         }
 
+        /// このジョブが cron トリガーか。
+        var isCron: Bool {
+            if case .cron = trigger { return true }
+            return false
+        }
+
+        /// cron トリガーのパース済み式。cron 以外 / パース不可は nil。
+        var cronExpression: CronExpression? {
+            guard case .cron(let expr) = trigger else { return nil }
+            return CronExpression(expr)
+        }
+
+        /// 時刻発火する (タイマー登録対象の) トリガーか。scheduled / cron が該当。
+        var isTimed: Bool { isScheduled || isCron }
+
         /// このジョブが起動時トリガーか (起動時自動実行の対象判定に使う)。
         var isOnLaunch: Bool {
             if case .onLaunch = trigger { return true }
@@ -90,6 +108,9 @@ struct SchedulerConfig: Codable {
             if case .scheduled(let time, _) = trigger, parsedTime == nil {
                 return "time がパース不可: \"\(time)\""
             }
+            if case .cron(let expr) = trigger, CronExpression(expr) == nil {
+                return "cron 式がパース不可: \"\(expr)\""
+            }
             if case .claude(let index) = target, !(0..<9).contains(index) {
                 return "companionIndex 範囲外: \(index)"
             }
@@ -102,6 +123,7 @@ struct SchedulerConfig: Codable {
             case .scheduled:
                 guard let t = parsedTime else { return "定時" }
                 return String(format: "%02d:%02d ", t.hour, t.minute) + weekdaysLabel
+            case .cron(let expr): return expr
             case .onLaunch: return "起動時"
             case .manual: return "手動"
             }
@@ -162,7 +184,7 @@ struct SchedulerConfig: Codable {
                 target = .claude(companionIndex: index)
             } else {
                 // target も旧 companionIndex も無い → 不正。validation でスキップされる。
-                target = .terminal
+                target = .terminal(sessionTitle: nil)
             }
         }
 
@@ -202,7 +224,7 @@ struct SchedulerConfig: Codable {
 // MARK: - Trigger / Target の Codable (タグ付きユニオン: type フィールドで分岐)
 
 extension SchedulerConfig.Trigger: Codable {
-    private enum CodingKeys: String, CodingKey { case type, time, weekdays }
+    private enum CodingKeys: String, CodingKey { case type, time, weekdays, expr }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -212,6 +234,9 @@ extension SchedulerConfig.Trigger: Codable {
             let time = try c.decode(String.self, forKey: .time)
             let weekdays = try c.decodeIfPresent([Int].self, forKey: .weekdays)
             self = .scheduled(time: time, weekdays: weekdays)
+        case "cron":
+            let expr = try c.decode(String.self, forKey: .expr)
+            self = .cron(expr: expr)
         case "onLaunch":
             self = .onLaunch
         case "manual":
@@ -228,6 +253,9 @@ extension SchedulerConfig.Trigger: Codable {
             try c.encode("scheduled", forKey: .type)
             try c.encode(time, forKey: .time)
             try c.encodeIfPresent(weekdays, forKey: .weekdays)
+        case .cron(let expr):
+            try c.encode("cron", forKey: .type)
+            try c.encode(expr, forKey: .expr)
         case .onLaunch:
             try c.encode("onLaunch", forKey: .type)
         case .manual:
@@ -237,7 +265,7 @@ extension SchedulerConfig.Trigger: Codable {
 }
 
 extension SchedulerConfig.Target: Codable {
-    private enum CodingKeys: String, CodingKey { case type, companionIndex }
+    private enum CodingKeys: String, CodingKey { case type, companionIndex, sessionTitle }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -247,7 +275,9 @@ extension SchedulerConfig.Target: Codable {
             let index = try c.decode(Int.self, forKey: .companionIndex)
             self = .claude(companionIndex: index)
         case "terminal":
-            self = .terminal
+            // sessionTitle 省略 (旧スキーマ含む) は新規タブ扱い。
+            let title = try c.decodeIfPresent(String.self, forKey: .sessionTitle)
+            self = .terminal(sessionTitle: title)
         default:
             throw DecodingError.dataCorruptedError(forKey: .type, in: c, debugDescription: "未知の target type: \(type)")
         }
@@ -259,8 +289,9 @@ extension SchedulerConfig.Target: Codable {
         case .claude(let index):
             try c.encode("claude", forKey: .type)
             try c.encode(index, forKey: .companionIndex)
-        case .terminal:
+        case .terminal(let sessionTitle):
             try c.encode("terminal", forKey: .type)
+            try c.encodeIfPresent(sessionTitle, forKey: .sessionTitle)
         }
     }
 }
