@@ -22,6 +22,7 @@ last_updated: 2026-05-29
 
 | ファイル | 内容 |
 |---|---|
+| [snippets.md](./snippets.md) | コードスニペット (よく使うシェルコマンドをワンクリックで任意ターミナルへ送信) |
 | [scheduler.md](./scheduler.md) | 定時スケジューラ (時刻+曜日で指定 Companion へ定型コマンドを自動送信。複数ジョブ。取りこぼしは未実行通知) |
 | [quick-memo.md](./quick-memo.md) | クイックメモ (Cmd+M で popover を開き `.aidea/widgets/quickmemo/memo.md` に上書き保存) |
 | [pomodoro.md](./pomodoro.md) | ポモドーロタイマー (25 分作業 / 5 分休憩を交互に計測する) |
@@ -49,6 +50,7 @@ AppHeaderView
    ├─ Spacer                 ※既存
    └─ WidgetView             (右端の widget 集約コンテナ)
       ├─ QuickMemoButton     (クイックメモ → widgets/quick-memo.md)
+      ├─ SnippetView         (コードスニペット → widgets/snippets.md)
       ├─ SchedulerView       (定時スケジューラ → widgets/scheduler.md)
       ├─ TimerView           (ポモドーロ → widgets/pomodoro.md)
       ├─ RemindView          (リマインド → backchannels/remind.md ※UI 配置のみ Widget)

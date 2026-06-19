@@ -14,6 +14,7 @@ struct WidgetView: View {
     var body: some View {
         HStack(alignment: .top, spacing: 4) {
             chrome("⌘M") { QuickMemoButton() }
+            chrome("⌥⌘B") { SnippetView() }
             chrome("⌥⌘S") { SchedulerView() }
             chrome("⌥⌘P") { TimerView() }
             chrome("⌥⌘C") { RemindView() }

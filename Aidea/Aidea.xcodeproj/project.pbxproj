@@ -7,8 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		5E0D1F012FD9700000000A02 /* ClaudeAssets in Resources */ = {isa = PBXBuildFile; fileRef = 5E0D1F002FD9700000000A01 /* ClaudeAssets */; };
 		5E0D1ED82FD9662F008A19CA /* AVKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5E0D1ED72FD9662F008A19CA /* AVKit.framework */; };
+		5E0D1F012FD9700000000A02 /* ClaudeAssets in Resources */ = {isa = PBXBuildFile; fileRef = 5E0D1F002FD9700000000A01 /* ClaudeAssets */; };
 		5EA77CDE2F8639B7000178CE /* SwiftTerm in Frameworks */ = {isa = PBXBuildFile; productRef = 5EA77CDD2F8639B7000178CE /* SwiftTerm */; };
 /* End PBXBuildFile section */
 
