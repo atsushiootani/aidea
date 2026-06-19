@@ -18,6 +18,9 @@ struct SnippetRowView: View {
     @Environment(LayoutConfig.self) private var layout
     @Environment(SessionRegistry.self) private var registry
 
+    /// スケジューラへの移動 (元削除) 確認ダイアログの表示状態。
+    @State private var showPromoteConfirm = false
+
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             // 1 行目: name + enabled トグル
@@ -37,9 +40,9 @@ struct SnippetRowView: View {
                 .controlSize(.mini)
                 .labelsHidden()
             }
-            // 2 行目: command
-            Text(snippet.command)
-                .font(.system(size: 11, design: .monospaced))
+            // 2 行目: 送信先 / command (スケジューラ行と同じ形式)
+            Text("→ \(destinationName) / \(snippet.command)")
+                .font(.system(size: 11))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .truncationMode(.middle)
@@ -49,12 +52,20 @@ struct SnippetRowView: View {
                     .disabled(!snippet.isEnabled)
                 Spacer(minLength: 4)
                 Button("→ スケジューラ") {
-                    promoteToScheduler()
+                    showPromoteConfirm = true
                 }
                 .font(.system(size: 11))
                 .buttonStyle(.bordered)
                 .controlSize(.small)
-                .help("手動トリガーのスケジューラジョブとして登録")
+                .help("スケジューラジョブへ移動 (このスニペットは削除されます)")
+                .confirmationDialog(
+                    "「\(snippet.displayName)」をスケジューラジョブへ移動しますか？\nこのスニペットは削除されます。",
+                    isPresented: $showPromoteConfirm,
+                    titleVisibility: .visible
+                ) {
+                    Button("移動", role: .destructive) { promoteToScheduler() }
+                    Button("キャンセル", role: .cancel) {}
+                }
 
                 Button {
                     onEdit()
@@ -84,8 +95,8 @@ struct SnippetRowView: View {
         )
     }
 
-    /// 実行先を選べる Menu ボタン。
-    /// アクティブ / 開いている各ターミナル / 新規タブ の 3 種を提示する。
+    /// 実行ボタン。主アクションは設定済み送信先 (destination) へ即実行。
+    /// メニューからはその場限りで別の端末 (アクティブ / 各ターミナル / 新規) を選べる。
     private var runMenu: some View {
         Menu {
             Button("アクティブターミナル") {
@@ -95,7 +106,7 @@ struct SnippetRowView: View {
             if !terminals.isEmpty {
                 Divider()
                 ForEach(terminals, id: \.id) { session in
-                    Button("Terminal \(session.id.instance + 1)") {
+                    Button(registry.tabTitle(for: session.id)) {
                         snippetState.run(snippetID: snippet.id, target: .session(session.id))
                     }
                 }
@@ -107,9 +118,21 @@ struct SnippetRowView: View {
         } label: {
             Text("実行 ▾")
                 .font(.system(size: 11))
+        } primaryAction: {
+            // 主ボタン: 設定済み送信先へ即実行 (選ばない)。
+            snippetState.run(snippetID: snippet.id)
         }
         .menuStyle(.borderlessButton)
         .fixedSize()
+    }
+
+    /// 既定送信先の表示名 (スケジューラ行の送信先表示と揃える)。
+    private var destinationName: String {
+        switch snippet.destination {
+        case .none: return "アクティブ"
+        case .tab(let title): return title
+        case .new: return "Terminal (新規)"
+        }
     }
 
     private var terminalSessions: [Session] {
@@ -125,15 +148,22 @@ struct SnippetRowView: View {
         snippetState.updateSnippet(updated)
     }
 
+    /// スニペットをスケジューラジョブへ「移動」する (元スニペットは削除)。
     private func promoteToScheduler() {
+        let sessionTitle: String?
+        switch snippet.destination {
+        case .tab(let title): sessionTitle = title
+        case .new, .none: sessionTitle = nil
+        }
         let job = SchedulerConfig.Job(
             id: "snip-" + UUID().uuidString.prefix(8).lowercased(),
             name: snippet.displayName,
             enabled: nil,
             trigger: .manual,
-            target: .terminal,
+            target: .terminal(sessionTitle: sessionTitle),
             prompt: snippet.command
         )
         schedulerState.addJob(job)
+        snippetState.deleteSnippet(snippetID: snippet.id)
     }
 }

@@ -28,8 +28,8 @@ final class SchedulerEngine {
     func schedule(jobs jobList: [SchedulerConfig.Job], isDoneToday: @escaping (String) -> Bool) {
         cancelAll()
         self.isDoneToday = isDoneToday
-        // タイマー登録は定時 (scheduled) ジョブのみ。onLaunch / manual は時刻発火しない。
-        for job in jobList where job.isEnabled && job.isScheduled {
+        // タイマー登録は時刻発火するジョブ (scheduled / cron) のみ。onLaunch / manual は時刻発火しない。
+        for job in jobList where job.isEnabled && job.isTimed {
             jobs[job.id] = job
             scheduleNext(job, after: Date())
         }
@@ -90,9 +90,18 @@ final class SchedulerEngine {
         DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: item)
     }
 
-    /// WorkItem 発火時の処理。曜日条件・当日実行済みを確認して onFire、その後翌日以降を再登録する。
+    /// WorkItem 発火時の処理。トリガー種別ごとに送信条件を確認して onFire、その後次回分を再登録する。
     private func fire(_ job: SchedulerConfig.Job) {
         let now = Date()
+
+        // cron は曜日・当日実行済み判定を持たない (式に内包され、周期発火のため二重送信抑止もしない)。
+        if job.isCron {
+            onFire?(job)
+            // 次回分を再登録 (nextDate は分粒度に丸めて +1 分するため現在分は再ヒットしない)
+            scheduleNext(job, after: now)
+            return
+        }
+
         let calendar = Calendar.current
         let todayWeekday = calendar.component(.weekday, from: now) - 1
         let alreadyDone = isDoneToday?(job.id) ?? false
@@ -106,8 +115,11 @@ final class SchedulerEngine {
         scheduleNext(job, after: now.addingTimeInterval(60))
     }
 
-    /// `from` より後で job の曜日条件を満たす最初の発火 Date を返す。最大 8 日先まで探す。
+    /// `from` より後で job が次に発火する Date を返す。scheduled は曜日条件 (最大 8 日先)、cron は式に従う。
     static func nextFireDate(for job: SchedulerConfig.Job, after from: Date) -> Date? {
+        if job.isCron {
+            return job.cronExpression?.nextDate(after: from)
+        }
         guard let parsed = job.parsedTime else { return nil }
         let calendar = Calendar.current
         let activeWeekdays = Set(job.activeWeekdays)

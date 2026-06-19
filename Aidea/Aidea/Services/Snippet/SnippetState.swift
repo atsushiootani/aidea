@@ -26,8 +26,10 @@ final class SnippetState {
     enum DispatchTarget {
         /// アクティブなターミナルがあればそこへ、なければ自動で新規タブ
         case active
-        /// 特定のターミナルセッション ID を指定
+        /// 特定のターミナルセッション ID を指定 (実行メニューでの明示選択用)
         case session(SessionID)
+        /// タブ名で指定 (無ければその名前で新規作成。スケジューラと共通の解決)
+        case tab(title: String)
         /// 常に新規ターミナルタブを開く
         case new
     }
@@ -39,10 +41,28 @@ final class SnippetState {
         self.snippets = store.loadConfig().validSnippets()
     }
 
+    /// 明示的に送信先を指定して実行する (実行メニューでの選択用)。
     func run(snippetID: String, target: DispatchTarget) {
         guard let snippet = snippets.first(where: { $0.id == snippetID }),
               snippet.isEnabled else { return }
         dispatch?(snippet.command, target)
+    }
+
+    /// スニペットの既定送信先 (`destination`) へ実行する (主ボタン用)。
+    /// destination 省略時はアクティブ端末。
+    func run(snippetID: String) {
+        guard let snippet = snippets.first(where: { $0.id == snippetID }),
+              snippet.isEnabled else { return }
+        dispatch?(snippet.command, Self.dispatchTarget(for: snippet.destination))
+    }
+
+    /// 保存された Destination を実行時の DispatchTarget へ変換する。nil = アクティブ端末。
+    static func dispatchTarget(for destination: SnippetConfig.Destination?) -> DispatchTarget {
+        switch destination {
+        case .none: return .active
+        case .tab(let title): return .tab(title: title)
+        case .new: return .new
+        }
     }
 
     func addSnippet(_ snippet: SnippetConfig.Snippet) {

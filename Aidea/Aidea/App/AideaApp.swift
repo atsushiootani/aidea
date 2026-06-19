@@ -597,22 +597,47 @@ struct AideaApp: App {
                     companionStore: store, registry: reg, layout: lay,
                     speechState: speech, projectRoot: projectRoot
                 )
-            case .terminal:
-                Self.dispatchTerminalJob(command: command, registry: reg, layout: lay)
+            case .terminal(let sessionTitle):
+                Self.sendToTerminal(
+                    command: command, sessionTitle: sessionTitle,
+                    registry: reg, layout: lay
+                )
             }
         }
     }
 
-    /// スケジューラの Terminal ジョブ: 新規 Terminal タブを起動し、PTY 準備後にコマンドを送る。
-    /// 送信先が `terminal` の定時 / 起動時 / 手動ジョブから共通で呼ばれる (ADR 0031)。
+    /// ターミナルへコマンドを送る共通経路 (スケジューラ Terminal ジョブ / スニペットのタブ名・新規送信で共用)。
+    /// (ADR 0031 / 0034)
+    /// - `sessionTitle` 指定で同名の生存中ターミナルタブがあれば、それを activate して送る。
+    /// - 同名タブが無ければその名前で新規タブを作って送る (フォールバック)。
+    /// - `sessionTitle` が nil / 空なら名前なしの新規タブを起動して送る。
     @MainActor
-    private static func dispatchTerminalJob(
+    private static func sendToTerminal(
         command: String,
+        sessionTitle: String?,
         registry: SessionRegistry,
         layout: LayoutConfig
     ) {
+        let trimmed = sessionTitle?.trimmingCharacters(in: .whitespaces)
+        // タブ名指定があり、同名の生存中ターミナルタブがあればそこへ送る。
+        if let title = trimmed, !title.isEmpty {
+            let existing = layout.allPanes
+                .flatMap { $0.tabs }
+                .filter { $0.tool == .terminal }
+                .compactMap { registry.session(for: $0) }
+                .first { registry.tabTitle(for: $0.id) == title }
+            if let session = existing, let termState = session.state as? TerminalSessionState {
+                registry.activateSession(session.id)
+                termState.sendCommand(command)
+                return
+            }
+        }
+        // 無ければ新規タブを作成。タブ名指定があれば付与する (次回以降は同名タブに当たる)。
         let instance = layout.nextSessionInstance(of: .terminal)
         let session = registry.createSession(tool: .terminal, instance: instance)
+        if let title = trimmed, !title.isEmpty {
+            registry.setCustomTitle(title, for: session.id)
+        }
         if let pane = registry.activePane ?? layout.allPanes.first {
             pane.tabs.append(session.id)
             registry.setActiveTab(paneID: pane.id, tabIndex: pane.tabs.count - 1)
@@ -640,7 +665,8 @@ struct AideaApp: App {
 
     /// スニペットのコマンドを指定ターミナルへ送る。
     /// active: アクティブな Terminal セッション → 全ペインの最初の Terminal → 新規タブ
-    /// session(id): 指定セッションへ直接送信
+    /// session(id): 指定セッションへ直接送信 (実行メニューでの明示選択)
+    /// tab(title): タブ名で指定 (無ければその名前で新規。スケジューラと共通)
     /// new: 常に新規タブを作成して送信
     @MainActor
     private static func dispatchSnippetCommand(
@@ -666,35 +692,16 @@ struct AideaApp: App {
                     }
                 }
             }
-            Self.openNewTerminalAndSend(command: command, registry: registry, layout: layout)
+            Self.sendToTerminal(command: command, sessionTitle: nil, registry: registry, layout: layout)
         case .session(let id):
             if let termState = registry.session(for: id)?.state as? TerminalSessionState {
                 registry.activateSession(id)
                 termState.sendCommand(command)
             }
+        case .tab(let title):
+            Self.sendToTerminal(command: command, sessionTitle: title, registry: registry, layout: layout)
         case .new:
-            Self.openNewTerminalAndSend(command: command, registry: registry, layout: layout)
-        }
-    }
-
-    /// 新規ターミナルタブを作成し PTY 準備後にコマンドを送る。
-    @MainActor
-    private static func openNewTerminalAndSend(
-        command: String,
-        registry: SessionRegistry,
-        layout: LayoutConfig
-    ) {
-        let instance = layout.nextSessionInstance(of: .terminal)
-        let session = registry.createSession(tool: .terminal, instance: instance)
-        if let pane = registry.activePane ?? layout.allPanes.first {
-            pane.tabs.append(session.id)
-            registry.setActiveTab(paneID: pane.id, tabIndex: pane.tabs.count - 1)
-        }
-        if let termState = session.state as? TerminalSessionState {
-            _ = termState.terminalView
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                termState.sendCommand(command)
-            }
+            Self.sendToTerminal(command: command, sessionTitle: nil, registry: registry, layout: layout)
         }
     }
 

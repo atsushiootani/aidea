@@ -3,6 +3,7 @@ title: コードスニペット (Snippet)
 description: よく使うシェルコマンドを登録し、ワンクリックで任意のターミナルセッションへ送信・実行する widget
 derived_from:
   - docs/decisions/0033-snippet-scheduler-separation.md
+  - docs/decisions/0034-scheduler-snippet-dispatch.md
 syncs_with:
   - docs/specs/widgets/scheduler.md
   - docs/specs/aspects/view-hierarchy.md
@@ -11,7 +12,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-06-16
+last_updated: 2026-06-20
 ---
 
 # コードスニペット (Snippet)
@@ -36,6 +37,18 @@ last_updated: 2026-06-16
 | `name` | string | （必須） | 表示名 |
 | `command` | string | （必須） | ターミナルへ送信するコマンド文字列 |
 | `enabled` | bool | `true` | 有効 / 無効 |
+| `destination` | object | （省略可） | 既定の送信先。省略時は**アクティブ端末**。下記「送信先設定」参照 ([ADR 0034](../../decisions/0034-scheduler-snippet-dispatch.md)) |
+
+`destination`:
+
+| キー | 型 | 意味 |
+|---|---|---|
+| `type` | string | `"tab"` / `"new"` |
+| `title` | string | `tab` のとき必須。送信先タブ名 |
+
+- `destination` 省略 = **アクティブ端末** (アクティブが Terminal ならそこ / 無ければ最初の Terminal / それも無ければ新規)。
+- `{ "type": "tab", "title": "ログ" }` = タブ名「ログ」へ。無ければその名前で新規タブを作る (スケジューラと同じ解決。[ADR 0034](../../decisions/0034-scheduler-snippet-dispatch.md))。
+- `{ "type": "new" }` = 常に新規タブ。
 
 ---
 
@@ -61,30 +74,48 @@ last_updated: 2026-06-16
 
 ## 実行先の選択
 
-スニペット実行時に送信先ターミナルセッションを選べる。
+スニペット実行は **「設定済みの送信先へ即実行」** と **「その場で別の端末を明示選択」** の 2 段構成 ([ADR 0034](../../decisions/0034-scheduler-snippet-dispatch.md))。
+
+### 主ボタン (即実行)
+
+スニペット行の主ボタンを押すと、選ばずに **`destination` 設定の送信先**へ送る。
+
+| `destination` | 送信先 |
+|---|---|
+| 省略 (既定) | アクティブ端末 (アクティブが Terminal → そこ / 無ければ最初の Terminal / 無ければ新規) |
+| `tab(title)` | タブ名 `title` のターミナル (無ければその名前で新規作成。スケジューラと同じ解決) |
+| `new` | 常に新規タブ |
+
+### メニュー (明示選択)
+
+主ボタンの横のメニューから、**その場限り**で別の送信先に送れる（設定は変えない）。
 
 | 選択肢 | 挙動 |
 |---|---|
-| アクティブターミナル | アクティブセッションが Terminal → そこへ送信。なければ開いている最初の Terminal。それも無ければ新規タブを作成 |
-| Terminal N | 開いている特定のターミナルセッションを指定して送信 |
+| アクティブターミナル | アクティブが Terminal → そこ。なければ最初の Terminal。無ければ新規 |
+| 各ターミナルタブ (タブ名) | 開いている各ターミナルを**タブ名**で指定して送信。タブ名はカスタム名があればそれ、無ければ `Terminal N` (`SessionRegistry.tabTitle(for:)`) |
 | 新規ターミナルタブ | 常に新規タブを作成して送信 |
 
-スケジューラの terminal ジョブは「常に新規タブ」固定。スニペットはこの点が異なる。
+スケジューラの terminal ジョブもタブ名で送信先を指定できる（[scheduler.md](./scheduler.md) / [ADR 0034](../../decisions/0034-scheduler-snippet-dispatch.md)）。違いは **スニペットは即時実行で「設定済み先 + その場選択」**、**スケジューラは自動発火で送信先を設定に永続化**する点。タブ名で既存ターミナルを狙える操作感・解決ロジックは両者で揃える。
 
 ---
 
 ## スケジューラとの相互変換 (ブリッジ)
 
+変換は **移動 (元を削除)**。誤操作を防ぐため**確認ダイアログ**を挟む ([ADR 0034](../../decisions/0034-scheduler-snippet-dispatch.md))。
+
 ### スニペット → スケジューラへ昇格
 
 `SnippetRowView` の「→ スケジューラ」ボタン:
-- `trigger: .manual, target: .terminal, prompt: snippet.command` のジョブを `SchedulerState.addJob()` で登録
+- 確認後、`trigger: .manual, target: .terminal(sessionTitle:), prompt: snippet.command` のジョブを `SchedulerState.addJob()` で登録し、**元のスニペットを削除**する
+- 送信先のマッピング: `tab(title)` → `terminal(sessionTitle: title)` / `new` ・ アクティブ端末 (省略) → `terminal(sessionTitle: nil)` (新規)
 - 追加後、ユーザはスケジューラ UI でトリガーを任意に変更できる
 
 ### スケジューラ → スニペットへ保存
 
 `SchedulerRowView` の「→ スニペット」ボタン:
-- ジョブの `prompt` を `command` としてスニペット登録
+- 確認後、ジョブの `prompt` を `command` としてスニペット登録し、**元のジョブを削除**する
+- 送信先のマッピング: `terminal(sessionTitle: title)` → `tab(title)` / `terminal(sessionTitle: nil)` → `new` / `claude` ジョブ → 既定 (アクティブ端末)
 - スニペット側では trigger / 実行履歴の概念は持たない
 
 ---
@@ -106,8 +137,9 @@ last_updated: 2026-06-16
 | 要素 | 内容 |
 |---|---|
 | タイトル | 「コードスニペット」＋「＋ 追加」ボタン |
-| スニペット行 | name / command / 実行 Menu / 編集 / 削除 / → スケジューラ / ON/OFF |
-| 実行 Menu | アクティブターミナル / Terminal N... / 新規ターミナルタブ |
+| スニペット行 | name / **送信先 + command**（`→ 送信先 / command`。スケジューラ行と同形式）/ 実行ボタン(主)+メニュー / 編集 / 削除 / → スケジューラ / ON/OFF |
+| 実行ボタン (主) | 押すと `destination` 設定の送信先へ即送信 |
+| 実行メニュー | その場限りで別の端末を選択: アクティブターミナル / 各ターミナルタブ (タブ名)... / 新規ターミナルタブ |
 | 空状態 | 「スニペットなし」 |
 
 #### 編集フォーム: SnippetEditView
@@ -116,6 +148,7 @@ last_updated: 2026-06-16
 |---|---|---|
 | 名前 | テキスト入力 | 必須 |
 | コマンド | テキスト入力 (monospaced) | 必須 |
+| 送信先 | セグメント（既定(アクティブ) / タブ名 / 新規）+ タブ名入力 | タブ名選択時のみタブ名欄を表示。現在のタブ名をクイック選択でき、任意名も自由入力可 |
 | 有効 | トグル | |
 
 ---
@@ -125,9 +158,11 @@ last_updated: 2026-06-16
 ### Always
 
 - スニペット実行は Terminal のみ (Claude への送信は持たない)
-- 実行先を毎回選択できる (アクティブ / 特定セッション / 新規)
+- 主ボタンは設定済み送信先 (`destination`) へ即実行し、メニューでその場限りの別送信先を選べる
+- `destination` のタブ名解決・同名フォールバックはスケジューラと同じ経路を使う
 - 設定はファイル (`.aidea/config/snippets.json`) で宣言的に管理する
 - 実行履歴・lastRun 管理は持たない (都度実行)
+- スケジューラ⇄スニペットの変換は確認ダイアログ後に元を削除する (移動)
 
 ### Never
 
