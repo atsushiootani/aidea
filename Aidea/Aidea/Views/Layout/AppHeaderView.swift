@@ -19,6 +19,11 @@ struct AppHeaderView: View {
             Spacer()
             WidgetView()
         }
+        // ヘッダ中央・上揃えにディレクトリ名を重ねる。左右の widget 幅に影響されず
+        // 真の中央へ置くため overlay を使う (HStack の Spacer 中央寄せだと左右非対称になるため)。
+        .overlay(alignment: .top) {
+            DirectoryNameView()
+        }
         .padding(.horizontal, 10)
         .padding(.vertical, 4)
         .background(Color(nsColor: .windowBackgroundColor))
