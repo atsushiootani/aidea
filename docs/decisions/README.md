@@ -53,6 +53,7 @@ Aidea の設計判断を 1 件ずつ記録する。フォーマットは [Michae
 | [0032](./0032-bundle-skills-to-user-scope.md) | aidea.* スキルをアプリ同梱し初回起動時にユーザスコープへ自動配置する | 採用 |
 | [0033](./0033-snippet-scheduler-separation.md) | コードスニペットとスケジューラを別モデル・別 UI で持つ | 採用 |
 | [0034](./0034-scheduler-snippet-dispatch.md) | スケジューラとスニペットの送信先・トリガーを拡張する | 提案 |
+| [0035](./0035-web-window-open-tab-and-popup.md) | Web の window.open / target=_blank を新規タブとポップアップ窓に振り分ける | 提案 |
 
 ## 状態の値
 

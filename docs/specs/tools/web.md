@@ -12,7 +12,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-06-15
+last_updated: 2026-06-20
 ---
 
 # Tool 仕様: Web
@@ -22,6 +22,7 @@ WKWebView ベースの内蔵ブラウザ Tool。
 概念モデルは [sessions/ui-rules.md#概念モデル](../sessions/ui-rules.md#概念モデル) / [glossary.md](../glossary.md) を参照。
 Session 内部状態は [sessions/web.md](../sessions/web.md) を参照。
 WKWebView の制約と Chrome 併用方針は [ADR 0015](../../decisions/0015-wkwebview-scope-and-chrome-coexistence.md) を参照。
+`window.open` / `target="_blank"` の扱いは [ADR 0035](../../decisions/0035-web-window-open-tab-and-popup.md) を参照。
 
 ## ナビゲーションツールバー
 
@@ -104,12 +105,50 @@ Terminal / Claude セッションのターミナル出力中の URL をクリッ
 エントリポイントは `SessionRegistry.openWeb(for:)`。
 Terminal 側のクリック判定は [tools/terminal.md#url-クリック](./terminal.md#url-クリック) を参照。
 
+## window.open / target="_blank" のルーティング ([ADR 0035](../../decisions/0035-web-window-open-tab-and-popup.md))
+
+ページ内の `window.open()` や `target="_blank"` のリンクは、`WKUIDelegate` で受け取り、
+**windowFeatures のサイズ指定有無**で出し先を振り分ける。
+
+| 起点 | 条件 | 出し先 |
+|---|---|---|
+| `window.open(url, name, "width=..,height=..")` | windowFeatures に width か height がある | **フローティングポップアップ窓** |
+| `target="_blank"` リンク / `window.open(url)` | windowFeatures にサイズ指定がない | **新規 Web タブ** (呼び出し元と同じペインの右隣) |
+
+### 共通ルール
+
+- WebKit から渡された **`configuration` をそのまま使って**子 WKWebView を生成する
+  (opener との `window.opener` / `postMessage` / `window.close()` を成立させるため)
+- 子 WKWebView を**自前で `load` しない** (WebKit が `navigationAction` を自動ロードする)
+- 子 WKWebView にも `uiDelegate` を設定し、入れ子の `window.open` を再帰的に扱う
+- 生成元 WKWebView の `WebSessionState` を opener として、その隣 (新規タブ時) / 独立窓 (ポップアップ時) に出す
+
+### 新規 Web タブ (サイズ指定なし)
+
+- 渡された子 WKWebView を **adopt** した `WebSessionState` を新規 Web セッションとして作る
+  (自前生成・初期ロードはしない。`sessions/web.md#子-webview-の-adopt` を参照)
+- 配置は **呼び出し元 (opener) と同じペインの右隣** に挿入してアクティブ化する
+  (`SessionRegistry.openWebAdopting(_:from:)`)
+- これは URL クリックルーティング (`openWeb`、別ペインへ出す) とは別ポリシー。
+  ページ内リンクは「同じブラウジング文脈の続き」なので隣に出す
+
+### フローティングポップアップ窓 (サイズ指定あり)
+
+- 独立した `NSWindow` (`.titled` / `.closable` / `.resizable`) に子 WKWebView をホストする
+- registry が窓のコントローラを生存参照として保持し、`webViewDidClose` (= `window.close()`) または
+  ユーザの窓クローズで解放する
+- 窓は妥当な既定サイズで出す (windowFeatures の位置・サイズの厳密な再現はしない。
+  サイズ指定は「ポップアップとして扱うか」の判定にのみ使う)
+
 ## 境界
 
 ### Always
 - ツールバーのボタン有効状態 (`canGoBack` / `canGoForward`) は WKWebView の KVO に追従する
 - URL クリックルーティングは http / https のみを対象とする
+- `window.open` / `target="_blank"` は WebKit から渡された `configuration` で子 WKWebView を作り、自前 load しない
+- 新規 Web タブは opener と同じペインの右隣に出す / ポップアップ窓は `webViewDidClose` で閉じる
 
 ### Never
 - 既存 Web セッションへの URL ロード (再利用) は行わない — 常に新規タブ
-- 呼び出し元 (カレント) ペインには Web タブを作らない
+- 呼び出し元 (カレント) ペインには (URL クリックルーティングでは) Web タブを作らない
+- 子 WKWebView を自前で生成・ロードしない (opener 関係が切れて OAuth が壊れるため)

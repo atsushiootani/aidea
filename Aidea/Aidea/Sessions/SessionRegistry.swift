@@ -7,6 +7,7 @@ import SwiftUI
 import AppKit
 import Observation
 import SwiftTerm
+import WebKit
 
 /// Session 実体のライフサイクルを管理するレジストリ。
 /// sessions 配列で全 Session を公開し、Active Pane + Active Tab から
@@ -264,6 +265,53 @@ final class SessionRegistry {
         (session.state as? WebSessionState)?.url = url
         pane.tabs.append(session.id)
         setActiveTab(paneID: pane.id, tabIndex: pane.tabs.count - 1)
+    }
+
+    // MARK: - window.open / target="_blank" routing (ADR 0035)
+
+    /// 生存中のフローティングポップアップ窓。窓クローズ (`releaseWebPopup`) で解放する。
+    /// 仕様: docs/specs/sessions/web.md#フローティングポップアップ窓
+    @ObservationIgnored private var webPopups: [WebPopupController] = []
+
+    /// `WebUIDelegate` から呼ばれる (サイズ指定なし): WebKit が渡した configuration で子 WKWebView を作り、
+    /// adopt した新規 Web タブを **opener と同じペインの右隣** に挿入してアクティブ化する。
+    /// 戻り値の WKWebView を WebKit に返すこと (自前 load しない)。
+    /// 仕様: docs/specs/tools/web.md#新規-web-タブ-サイズ指定なし
+    @discardableResult
+    func openWebAdopting(configuration: WKWebViewConfiguration, from openerID: SessionID?) -> WKWebView {
+        let child = WKWebView(frame: .zero, configuration: configuration)
+        let instance = layout.nextSessionInstance(of: .web)
+        let session = createSession(tool: .web, instance: instance)
+        (session.state as? WebSessionState)?.adopt(child)
+
+        // opener と同じペインの右隣に挿入 (ページ内リンクは同じブラウジング文脈の続き)
+        if let openerID,
+           let pane = layout.allPanes.first(where: { $0.tabs.contains(openerID) }),
+           let openerIndex = pane.tabs.firstIndex(of: openerID) {
+            let insertIndex = openerIndex + 1
+            pane.tabs.insert(session.id, at: insertIndex)
+            setActiveTab(paneID: pane.id, tabIndex: insertIndex)
+        } else if let pane = activePane ?? layout.allPanes.first {
+            // opener が特定できない場合 (ポップアップ内など) はアクティブペイン末尾へ
+            pane.tabs.append(session.id)
+            setActiveTab(paneID: pane.id, tabIndex: pane.tabs.count - 1)
+        }
+        return child
+    }
+
+    /// `WebUIDelegate` から呼ばれる (サイズ指定あり): WebKit が渡した configuration で子 WKWebView を作り、
+    /// フローティングポップアップ窓にホストする。戻り値の WKWebView を WebKit に返すこと。
+    /// 仕様: docs/specs/tools/web.md#フローティングポップアップ窓-サイズ指定あり
+    @discardableResult
+    func openWebPopup(configuration: WKWebViewConfiguration, windowFeatures: WKWindowFeatures) -> WKWebView {
+        let controller = WebPopupController(configuration: configuration, windowFeatures: windowFeatures, registry: self)
+        webPopups.append(controller)
+        return controller.webView
+    }
+
+    /// ポップアップ窓が閉じられたら生存参照から外す (`WebPopupController.windowWillClose` から呼ばれる)。
+    func releaseWebPopup(_ controller: WebPopupController) {
+        webPopups.removeAll { $0 === controller }
     }
 
     /// Preview 内リンクから呼ばれる: 同じペインの右隣に Preview を挿入する。

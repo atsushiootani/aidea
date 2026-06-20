@@ -51,7 +51,7 @@ Aidea に「万能ブラウザ」を期待すると Web Bluetooth / Web USB / Ch
 | IndexedDB / localStorage | ✓ |
 | Fetch / WebSocket | ✓ |
 | Notifications | macOS 通知センター連携 |
-| OAuth popup | `WKUIDelegate` で handle すれば完璧 |
+| OAuth popup | `WKUIDelegate` で handle ([ADR 0035](./0035-web-window-open-tab-and-popup.md) で実装) |
 | Cookie 永続化 | `WKHTTPCookieStore` |
 | Web Inspector | `webView.isInspectable = true` + Safari 開発メニュー |
 
