@@ -67,7 +67,7 @@ NSWindow (メインウィンドウ)
       │     ├─ VoiceInputButton                  [Views/Input/VoiceInputButton.swift]
       │     │  (🎤 ボタン。アクティブ Claude セッションへ音声入力テキストを送信)
       │     ├─ Spacer
-      │     └─ WidgetView                         [Widgets/WidgetView.swift]
+      │     ├─ WidgetView                         [Widgets/WidgetView.swift]
       │        └─ HStack (ヘッダ常駐 widget を右端に並べる)
       │           ├─ QuickMemoButton              [Widgets/QuickMemo/QuickMemoButton.swift]
       │           │  (✏️ ボタン。タップで QuickMemoView popover を開く)
@@ -79,6 +79,8 @@ NSWindow (メインウィンドウ)
       │           │  (カレンダーアイコン + 次予定 1 件。タップで RemindPopoverView を開く → backchannels/remind.md)
       │           └─ ClockView                    [Widgets/Clock/ClockView.swift]
       │              (現在日時 yyyy/MM/dd EEE HH:mm:ss を毎秒更新で表示 → widgets/clock.md)
+      │     └─ (overlay: .top) DirectoryNameView   [Widgets/Directory/DirectoryNameView.swift]
+      │        (プロジェクトルートのディレクトリ名を 1 行・太字でヘッダ中央・上揃えに重ねる)
       ├─ Divider
       └─ SplitLayoutView                          [Views/Layout/SplitLayoutView.swift]
          (NSViewControllerRepresentable — 以下は AppKit 側)
