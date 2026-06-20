@@ -23,6 +23,9 @@ final class WebSessionState: SessionState, FocusBridgeOwner {
     @ObservationIgnored private var urlObservation: NSKeyValueObservation?
     @ObservationIgnored private var backObservation: NSKeyValueObservation?
     @ObservationIgnored private var forwardObservation: NSKeyValueObservation?
+    /// window.open / target="_blank" を処理する UI デリゲート。
+    /// WKWebView.uiDelegate は weak 参照なので state が強参照で保持する (仕様: docs/specs/sessions/web.md#ui-デリゲートと子-webview)。
+    @ObservationIgnored private let uiDelegate = WebUIDelegate()
 
     /// SessionRegistry への弱参照 (クリック時のアクティブ化用)
     weak var registry: SessionRegistry?
@@ -53,8 +56,29 @@ final class WebSessionState: SessionState, FocusBridgeOwner {
         let config = WKWebViewConfiguration()
         config.preferences.setValue(true, forKey: "developerExtrasEnabled")
         let webView = WKWebView(frame: .zero, configuration: config)
-        webView.isInspectable = true
+        configureWebView(webView)
         webView.load(URLRequest(url: url))
+        cached = webView
+        return webView
+    }
+
+    /// window.open / target="_blank" で WebKit から渡された WKWebView を引き取る。
+    /// 自前生成・初期ロードはしない (WebKit が navigationAction を自動ロードするため)。
+    /// 仕様: docs/specs/sessions/web.md#子-webview-の-adopt ([ADR 0035](../../decisions/0035-web-window-open-tab-and-popup.md))
+    func adopt(_ webView: WKWebView) {
+        guard cached == nil else { return }
+        configureWebView(webView)
+        cached = webView
+    }
+
+    /// 通常生成・adopt 共通の WKWebView セットアップ (KVO 登録・クリックモニタ・uiDelegate 設定)。
+    /// 「load を呼ぶか」だけが両経路の違い。
+    private func configureWebView(_ webView: WKWebView) {
+        webView.isInspectable = true
+        // window.open / target="_blank" を扱う UI デリゲート (uiDelegate は weak なので self が保持)
+        uiDelegate.registry = registry
+        uiDelegate.owner = self
+        webView.uiDelegate = uiDelegate
         // WKWebView は mouseDown をオーバーライドできないので、
         // becomeFirstResponder 時にこのセッションをアクティブにする
         let reg = registry
@@ -88,8 +112,6 @@ final class WebSessionState: SessionState, FocusBridgeOwner {
                 self?.canGoForward = value
             }
         }
-        cached = webView
-        return webView
     }
 
     /// URL 欄の入力文字列を解釈してロードする (仕様: docs/specs/tools/web.md#url-欄の入力解釈)。
