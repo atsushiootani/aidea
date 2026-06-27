@@ -11,7 +11,6 @@ syncs_with:
   - docs/specs/backchannels/voicevox.md
   - docs/specs/backchannels/handoff.md
   - docs/specs/backchannels/output.md
-  - docs/specs/backchannels/context.md
   - docs/specs/backchannels/remind.md
   - docs/specs/backchannels/companion-roster.md
   - docs/specs/frontchannels/scene.md
@@ -92,7 +91,6 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 │   │   ├── speech-*.txt      # 読み上げ対象テキスト (処理後も残す / 履歴)
 │   │   ├── handoff-*.json    # Companion 0 が送信したハンドオフ (処理後も残す、[../backchannels/handoff.md](../backchannels/handoff.md))
 │   │   ├── output-*.txt      # レスポンス全文の出力記録 (処理後も残す / 履歴、[../backchannels/output.md](../backchannels/output.md))
-│   │   ├── context.txt       # セッション間記憶保持用コンテキスト (上書き更新、[../backchannels/context.md](../backchannels/context.md))
 │   │   └── remind-*.txt      # 遅延発火型リマインド (発火後 `.fired.txt` にリネーム、[../backchannels/remind.md](../backchannels/remind.md))
 │   ├── 1/                    # Companion 1
 │   │   └── ...
@@ -301,7 +299,6 @@ Claude → Aidea 方向の通信は**ファイル経由**で行う。詳細は [
 | Claude から speech 受信時 | `<n>/speech-*.txt` → 読み上げ (ファイルは残す、ADR 0024) | `SpeechWatcher` |
 | Claude から handoff 受信時 | `<n>/handoff-*.json` → 宛先解決 → 送信 (ファイルは残す、ADR 0024) | `HandoffWatcher` |
 | Claude から output 受信時 | `<n>/output-*.txt` → OutputState の履歴に蓄積 (ファイルは残す、ADR 0024) | `OutputWatcher` |
-| Claude がコンテキスト書き出し時 | `<n>/context.txt` → 上書き更新 (セッション間記憶保持、[../backchannels/context.md](../backchannels/context.md)) | Claude 自律管理 (Aidea 側監視なし) |
 | Claude から remind 受信時 | `<n>/remind-{ts}.txt` → トリガ時刻まで待機し SpeechQueue 投入 → ファイルを `.fired.txt` リネーム ([../backchannels/remind.md](../backchannels/remind.md)) | `RemindWatcher` + `RemindScheduler` |
 | クイックメモ保存時 | `.aidea/widgets/quickmemo/memo.md` を上書き (親ディレクトリ自動生成、[../widgets/quick-memo.md](../widgets/quick-memo.md)) | `QuickMemoState.save()` |
 | 起動時 (scheduler) | `.aidea/config/scheduler.json` 読込 → 有効ジョブ登録 + 取りこぼし判定。`state/scheduler.json` で当日実行済みを照合 ([../widgets/scheduler.md](../widgets/scheduler.md)) | `SchedulerStore` + `SchedulerState` + `SchedulerEngine` |

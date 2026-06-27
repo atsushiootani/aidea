@@ -7,12 +7,12 @@ import Foundation
 
 /// Backchannel の初期設定を行うユーティリティ。
 /// Bundle 内の Backchannels リソース (.md) を `.aidea/claude/` にコピーする。
-/// 共有指示書 (`aidea.md` / `speech.md` / `handoff.md` / `output.md` / `context.md` / `remind.md`) は初回のみコピー、
+/// 共有指示書 (`aidea.md` / `speech.md` / `handoff.md` / `output.md` / `remind.md`) は初回のみコピー、
 /// コンパニオン指示書 (`companions/<0..8>/instructions.md`) は既存ファイルを上書きしない方針で毎回確認・補填する (ADR 0022)。
 enum BackchannelSetup {
 
     /// 既知の共有 Backchannel 機能ファイル名（拡張子なし）
-    private static let knownFeatures = ["speech", "aidea", "handoff", "output", "context", "remind"]
+    private static let knownFeatures = ["speech", "aidea", "handoff", "output", "remind"]
 
     /// コンパニオン指示書 Bundle テンプレ名（拡張子なし）
     private static let companionInstructionsTemplate = "companion-instructions"
