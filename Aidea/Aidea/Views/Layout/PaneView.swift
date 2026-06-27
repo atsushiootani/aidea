@@ -3,6 +3,7 @@
 //  Aidea
 //
 
+import AppKit
 import SwiftUI
 
 /// 1 つの物理ペインを表す容器 View。複数の Tab (=Session への参照) をタブバーで切り替え、
@@ -128,7 +129,7 @@ struct PaneView: View {
     private func tabItem(sessionID: SessionID, index: Int) -> some View {
         let isGlobalActive = (registry.activeSessionID == sessionID)
         let isPaneActive = (index == pane.activeIndex)
-        return HStack(spacing: 5) {
+        let chip = HStack(spacing: 5) {
             tabIcon(sessionID: sessionID, isGlobalActive: isGlobalActive)
             if renamingSessionID == sessionID {
                 // ダブルクリックでのインラインリネーム (仕様: ui-rules.md#タブのリネーム)
@@ -183,6 +184,44 @@ struct PaneView: View {
         })
         .draggable(sessionID)
         .help(previewTooltip(for: sessionID))
+        return tabContextMenu(chip, sessionID: sessionID, index: index)
+    }
+
+    /// Preview タブ (url あり) のときだけ右クリックメニューを付与する。
+    /// それ以外のタブには付与しない (空メニューを出さない)。
+    /// 仕様: docs/specs/tools/preview.md#タブ右クリックメニュー-issue-238
+    @ViewBuilder
+    private func tabContextMenu<Content: View>(_ content: Content, sessionID: SessionID, index: Int) -> some View {
+        if let url = previewURL(for: sessionID) {
+            content.contextMenu {
+                Button("タブ名を変更") { startRename(sessionID) }
+                Divider()
+                Button("ファイル名をコピー") { copyToPasteboard(url.lastPathComponent) }
+                Button("プロジェクト相対パスをコピー") { copyToPasteboard(previewTooltip(for: sessionID)) }
+                Button("絶対パスをコピー") { copyToPasteboard(url.standardizedFileURL.path) }
+                Divider()
+                Button("ファイラで選択") { registry.revealInFiler(url) }
+                Divider()
+                Button("タブを閉じる") { closeTab(at: index) }
+            }
+        } else {
+            content
+        }
+    }
+
+    /// Preview タブが指すファイル URL。Preview 以外・url 未設定なら nil。
+    private func previewURL(for sessionID: SessionID) -> URL? {
+        guard sessionID.tool == .preview,
+              let s = registry.session(for: sessionID),
+              let preview = s.state as? PreviewSessionState,
+              let url = preview.url else { return nil }
+        return url
+    }
+
+    /// 文字列を一般ペーストボードにコピーする。
+    private func copyToPasteboard(_ string: String) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(string, forType: .string)
     }
 
     /// タブ名のインライン編集を開始する。現在の表示名をプリセットしてフォーカスを移す
