@@ -5,7 +5,7 @@ role: <このエージェントの役割を 1 行で記述>
 
 # <役割タイトル>
 
-.aidea/claude/aidea.md と .aidea/claude/speech.md と .aidea/claude/context.md を読んで従ってね。
+.aidea/claude/aidea.md と .aidea/claude/speech.md を読んで従ってね。
 
 ## ロール
 
