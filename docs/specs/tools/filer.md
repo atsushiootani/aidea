@@ -13,7 +13,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-06
+last_updated: 2026-06-27
 ---
 
 # Tool 仕様: Filer
@@ -122,6 +122,13 @@ Filer の表示順がワークスペース全体 (Git / Kit 等) の List UI の
 - **単一選択**: ファイルなら新しい Preview Session を作成 (ダブルクリックと同等)、ディレクトリなら展開/折りたたみをトグル
 - **複数選択**: 選択中のファイルすべてについて Preview Session を開く (ディレクトリは無視)
 - 選択がなければ no-op
+
+### revealInFiler — 外部からのファイル選択 (issue #238)
+Preview タブの右クリックメニュー「ファイラで選択」([tools/preview.md#タブ右クリックメニュー-issue-238](./preview.md#タブ右クリックメニュー-issue-238)) から呼ばれる外部エントリポイント。
+- `SessionRegistry.revealInFiler(_ url:)` が Filer セッション (1 ウィンドウ 1 個) を引き、`FileTreeViewController.focusOnURL(_:centered:)` を呼ぶ
+- 親ディレクトリを順に展開して対象行を選択し、**スクロール位置を中央に寄せて** 表示する (`scrollRowToVisible` の「見える位置まで」ではなく中央寄せ)
+- 対象 URL が現在のルート配下にない場合・Filer セッションが無い場合は no-op
+- 既存の rename / move / create 後のフォーカス (`focusOnURL`、中央寄せなし) とは `centered` 引数で区別する
 
 ### renameSelected — 名前変更
 - **単一選択時のみ**動作 (複数選択時は no-op)

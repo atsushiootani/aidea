@@ -14,7 +14,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-06-06
+last_updated: 2026-06-27
 ---
 
 # Tool 仕様: Preview
@@ -168,13 +168,33 @@ Markdown は `MarkdownContainer` で **view / edit の 2 モード**を扱う。
 - 対象: Markdown (`MarkdownContainer` の view モード) とテキスト / 画像ファイル (`NSTextPreview` / `NSImage`)
 - Drawio ファイルは対象外 (embed.diagrams.net のエディタが外部状態を持つため)
 
-### tabHoverTooltip — タブホバー時のフルパス表示
+### tabHoverTooltip — タブホバー時のパス表示
 
 Preview タブにマウスカーソルを合わせると、ツールチップでファイルのパスを表示する。
 
 - `workspace.projectRoot` が設定されており `preview.url` がその配下にある場合: プロジェクトルートからの相対パスを表示 (例: `docs/specs/tools/preview.md`)
 - `preview.url` が projectRoot 配下にない場合、または projectRoot 未設定の場合: 絶対パスを表示
 - `preview.url` が nil の場合: ツールチップなし
+
+### タブ右クリックメニュー (issue #238)
+
+Preview タブを右クリックすると、コンテキストメニューを表示する。対象は `preview.url` を持つ Preview タブのみで、
+url が無いタブ・Preview 以外のタブにはメニューを出さない (空メニューを表示しない)。共通の右クリック規約は
+[sessions/ui-rules.md#右クリックコンテキストメニュー](../sessions/ui-rules.md#右クリック・コンテキストメニュー) に従う。
+
+| 項目 | 動作 |
+|---|---|
+| タブ名を変更 | タブのインラインリネームを開始する (タブのダブルクリックと同じ。`startRename`) |
+| ファイル名をコピー | `url.lastPathComponent` をクリップボードにコピー |
+| プロジェクト相対パスをコピー | projectRoot 相対パス (ツールチップと同じ算出) をコピー。projectRoot 外/未設定なら絶対パス |
+| 絶対パスをコピー | `url.standardizedFileURL.path` をコピー |
+| ファイラで選択 | Filer セッションで当該ファイルを選択し、**スクロール位置を中央に寄せて** フォーカスする |
+| タブを閉じる | このタブを閉じる (`closeTab`) |
+
+- クリップボード書き込みは `NSPasteboard.general` を `clearContents()` してから `setString(_:forType: .string)`
+- 「ファイラで選択」は `SessionRegistry.revealInFiler(_:)` 経由で Filer の `FileTreeViewController.focusOnURL(_:centered:)` を呼ぶ。
+  親ディレクトリを展開して対象行を選択し、`scrollRowToVisible` ではなく**中央寄せスクロール**で表示する。
+  Filer セッションが存在しない場合は何もしない
 
 ### renderImage — 画像表示
 - 対応拡張子を `NSImage` でロードして `ScrollView` + `Image(nsImage:)` で表示

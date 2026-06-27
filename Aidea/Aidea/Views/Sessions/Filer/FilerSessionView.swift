@@ -1470,7 +1470,9 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
 
     /// 指定 URL のノードにフォーカスする (明示的に再取得してから選択する)。
     /// 親ディレクトリを順に展開してターゲットを可視化する。
-    func focusOnURL(_ url: URL) {
+    /// - Parameter centered: true のときスクロール位置を中央に寄せる (Preview タブ「ファイラで選択」用、issue #238)。
+    ///   false (既定) のときは `scrollRowToVisible` で「見える位置まで」のみ寄せる (rename/move/create 後のフォーカス)。
+    func focusOnURL(_ url: URL, centered: Bool = false) {
         guard let root = currentRoot else { return }
         // 再取得 (展開状態は collectExpandedURLs / restoreExpandedState で復元される)
         handleFileSystemChange()
@@ -1503,9 +1505,30 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
         let row = outlineView.row(forItem: target)
         if row >= 0 {
             outlineView.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
-            outlineView.scrollRowToVisible(row)
+            if centered {
+                scrollRowToCenter(row)
+            } else {
+                outlineView.scrollRowToVisible(row)
+            }
             outlineView.window?.makeFirstResponder(outlineView)
             // selection change で owner?.selectedFile が更新される
         }
+    }
+
+    /// 指定行がビューポートの中央に来るようスクロールする。端では `scrollToVisible` が自動でクランプする。
+    private func scrollRowToCenter(_ row: Int) {
+        let rowRect = outlineView.rect(ofRow: row)
+        let visibleHeight = outlineView.visibleRect.height
+        guard visibleHeight > 0 else {
+            outlineView.scrollRowToVisible(row)
+            return
+        }
+        let centeredRect = NSRect(
+            x: rowRect.minX,
+            y: rowRect.midY - visibleHeight / 2,
+            width: rowRect.width,
+            height: visibleHeight
+        )
+        outlineView.scrollToVisible(centeredRect)
     }
 }

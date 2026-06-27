@@ -408,6 +408,16 @@ final class SessionRegistry {
         setActiveTab(paneID: pane.id, tabIndex: pane.tabs.count - 1)
     }
 
+    /// Preview タブの右クリックメニュー「ファイラで選択」から呼ばれる。
+    /// Filer セッション (1 ウィンドウ 1 個) で該当ファイルを中央寄せで選択表示する。
+    /// Filer セッションが無い場合は no-op。
+    /// 仕様: docs/specs/tools/filer.md#revealinfiler--外部からのファイル選択-issue-238
+    func revealInFiler(_ url: URL) {
+        guard let filer = sessions.first(where: { $0.id.tool == .filer }),
+              let state = filer.state as? FilerSessionState else { return }
+        state.controller.focusOnURL(url, centered: true)
+    }
+
     /// Markdown Preview の実行ボタンから呼ばれる。
     /// 既存 Terminal セッションがあればコマンドを送信し、なければ新規作成して送信する。
     func openTerminalAndRun(_ command: String) {
