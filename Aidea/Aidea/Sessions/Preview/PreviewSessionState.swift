@@ -27,6 +27,15 @@ final class PreviewSessionState: SessionState, FocusBridgeOwner {
     /// そのパスでは参照されない (併設による害はない)。
     var isActive: Bool = false
 
+    /// 手動リロード要求カウンタ (issue #241)。右クリックメニューの「リロード」で `requestReload()` が
+    /// インクリメントし、各プレビュー子ビューが変化を観測してファイルを再読み込みする。
+    var reloadToken: Int = 0
+
+    /// 表示中のファイルの手動リロードを要求する。
+    func requestReload() {
+        reloadToken &+= 1
+    }
+
     /// 契約 C1: bridge と isActive の両方を発火する。
     /// NSView 系コンテンツでは子ビューが setView して bridge が firstResponder を取り、
     /// 純 SwiftUI 系コンテンツでは isActive → @FocusState 経由で SwiftUI が focus を取る。

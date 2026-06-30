@@ -196,6 +196,8 @@ struct PaneView: View {
             content.contextMenu {
                 Button("タブ名を変更") { startRename(sessionID) }
                 Divider()
+                Button("リロード") { requestPreviewReload(sessionID) }
+                Divider()
                 Button("ファイル名をコピー") { copyToPasteboard(url.lastPathComponent) }
                 Button("プロジェクト相対パスをコピー") { copyToPasteboard(previewTooltip(for: sessionID)) }
                 Button("絶対パスをコピー") { copyToPasteboard(url.standardizedFileURL.path) }
@@ -216,6 +218,14 @@ struct PaneView: View {
               let preview = s.state as? PreviewSessionState,
               let url = preview.url else { return nil }
         return url
+    }
+
+    /// Preview タブの表示中ファイルを手動リロードする (issue #241)。
+    private func requestPreviewReload(_ sessionID: SessionID) {
+        guard sessionID.tool == .preview,
+              let s = registry.session(for: sessionID),
+              let preview = s.state as? PreviewSessionState else { return }
+        preview.requestReload()
     }
 
     /// 文字列を一般ペーストボードにコピーする。
