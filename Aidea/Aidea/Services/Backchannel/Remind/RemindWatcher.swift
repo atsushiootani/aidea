@@ -93,13 +93,14 @@ final class RemindWatcher {
             return nil
         }
         guard let content = try? String(contentsOf: url, encoding: .utf8) else { return nil }
-        let parsed = SpeechWatcher.parse(content)
-        guard !parsed.text.isEmpty else { return nil }
+        let parsed = RemindContent.parse(content)
+        guard !parsed.speechText.isEmpty else { return nil }
         return RemindEntry(
             companionIndex: companionIndex,
             triggerTime: triggerTime,
             speakerId: parsed.speakerId,
-            text: parsed.text,
+            text: parsed.speechText,
+            displayText: parsed.displayText,
             fileURL: url
         )
     }

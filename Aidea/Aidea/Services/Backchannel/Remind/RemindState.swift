@@ -23,6 +23,9 @@ final class RemindState {
     /// ヘッダ表示用: 次の最初の予定 1 件 (空なら nil)
     var nextPending: RemindEntry? { pendingReminds.first }
 
+    /// ヘッダ表示用: 直近 最大 3 件 (縦並び表示)
+    var topPending: [RemindEntry] { Array(pendingReminds.prefix(3)) }
+
     @ObservationIgnored
     private let watcher = RemindWatcher()
     @ObservationIgnored

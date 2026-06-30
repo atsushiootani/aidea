@@ -13,14 +13,18 @@ struct RemindEntry: Identifiable, Equatable {
     let companionIndex: Int
     let triggerTime: Date
     let speakerId: Int?
-    /// 読み上げ本文 (speaker ID 行を除いた残り)
+    /// 読み上げ本文 (speaker ID 行・表示文行を除いた残り)
     let text: String
+    /// ウィジェット表示文 (`表示:` 行)。無ければ nil → preview は読み上げ本文にフォールバック
+    let displayText: String?
     let fileURL: URL
 
     /// UI のヘッダ・一覧行に表示するプレビュー文字列。
+    /// 表示文 (`displayText`) があればそれを、無ければ読み上げ本文を使う。
     /// 改行を空白に潰し、不要な空白を圧縮する。
     var preview: String {
-        let collapsed = text
+        let source = (displayText?.isEmpty == false) ? displayText! : text
+        let collapsed = source
             .replacingOccurrences(of: "\n", with: " ")
             .replacingOccurrences(of: "\r", with: " ")
         return collapsed.trimmingCharacters(in: .whitespaces)
