@@ -57,11 +57,16 @@ struct MarkdownPreview: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 4) {
                         ForEach(visibleIndices, id: \.self) { index in
-                            render(index: index, line: lines[index])
-                                .id("line-\(index)")
+                            MarkdownLineView(
+                                index: index,
+                                line: lines[index],
+                                onRunScript: onRunScript,
+                                onLinkTap: onLinkTap,
+                                baseURL: baseURL,
+                                collapsedHeadings: $collapsedHeadings
+                            )
+                            .id("line-\(index)")
                         }
-                        // スクロールコントローラの橋渡し用の透明 NSView
-                        // (NSScrollView を enclosingScrollView 経由で掴むため content 内に配置する)
                         if let controller = scrollController {
                             ScrollCommanderView(controller: controller)
                                 .frame(width: 0, height: 0)
@@ -84,17 +89,14 @@ struct MarkdownPreview: View {
 
     // MARK: - Parsing
 
-    /// テキストを行ベースでパースした結果 (頻繁に呼ばれないよう computed)
     private var lines: [MarkdownLine] {
         Self.parseLines(text)
     }
 
-    /// 折りたたみ考慮後の表示対象インデックス
     private var visibleIndices: [Int] {
         var result: [Int] = []
         var skipUntilLevel: Int? = nil
         for (index, line) in lines.enumerated() {
-            // 折りたたみ中のセクションをスキップ
             if let lvl = skipUntilLevel {
                 if case .heading(let level, _) = line, level <= lvl {
                     skipUntilLevel = nil
@@ -110,7 +112,6 @@ struct MarkdownPreview: View {
         return result
     }
 
-    /// Markdown 内のリンクがクリックされたときの処理
     private func handleLinkTap(_ url: URL) -> OpenURLAction.Result {
         let scheme = url.scheme?.lowercased() ?? ""
         if ["http", "https", "mailto", "tel"].contains(scheme) {
@@ -136,206 +137,12 @@ struct MarkdownPreview: View {
         return .handled
     }
 
-    // MARK: - Render
-
-    /// 1 行を View にレンダリング
-    @ViewBuilder
-    private func render(index: Int, line: MarkdownLine) -> some View {
-        switch line {
-        case .heading(let level, let text):
-            headingRow(index: index, level: level, text: text)
-        case .checkbox(let text, let checked, let indent):
-            HStack(alignment: .top, spacing: 6) {
-                Image(systemName: checked ? "checkmark.square.fill" : "square")
-                    .foregroundStyle(checked ? Color.accentColor : Color.secondary)
-                Text(.init(text))
-                Spacer(minLength: 0)
-            }
-            .padding(.leading, CGFloat(indent) * 16)
-        case .bullet(let text, let indent):
-            HStack(alignment: .top, spacing: 6) {
-                Text("•")
-                    .foregroundStyle(.secondary)
-                Text(.init(text))
-                Spacer(minLength: 0)
-            }
-            .padding(.leading, CGFloat(indent) * 16)
-        case .mermaid(let source):
-            MermaidView(diagram: source)
-        case .code(let text, let language):
-            let isShell = Self.shellLanguages.contains(language)
-            ZStack(alignment: .topTrailing) {
-                Text(text)
-                    .font(.system(.callout, design: .monospaced))
-                    .foregroundStyle(.primary)
-                    .padding(8)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(
-                        RoundedRectangle(cornerRadius: 4)
-                            .fill(Color.secondary.opacity(0.12))
-                    )
-                if isShell, let run = onRunScript {
-                    Button {
-                        run(text)
-                    } label: {
-                        Image(systemName: "play.fill")
-                            .font(.system(size: 10))
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 4)
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.secondary)
-                    .help("ターミナルで実行")
-                }
-            }
-        case .table(let header, let rows):
-            tableView(header: header, rows: rows)
-        case .paragraph(let text):
-            Text(.init(text))
-                .frame(maxWidth: .infinity, alignment: .leading)
-        case .frontmatter(let text):
-            FrontmatterView(text: text, baseURL: baseURL, onLinkTap: onLinkTap)
-        case .divider:
-            Divider().padding(.vertical, 2)
-        case .blank:
-            Text("").frame(height: 4)
-        }
-    }
-
-    /// 見出し行 (折りたたみトライアングル付き)
-    @ViewBuilder
-    private func headingRow(index: Int, level: Int, text: String) -> some View {
-        let collapsed = collapsedHeadings.contains(index)
-        HStack(alignment: .firstTextBaseline, spacing: 6) {
-            Image(systemName: "play.fill")
-                .font(.system(size: 9))
-                .foregroundStyle(.secondary)
-                .rotationEffect(.degrees(collapsed ? 0 : 90))
-            headingText(level: level, text: text)
-            Spacer(minLength: 0)
-        }
-        .contentShape(Rectangle())
-        .onTapGesture {
-            withAnimation(.easeInOut(duration: 0.15)) {
-                if collapsed {
-                    collapsedHeadings.remove(index)
-                } else {
-                    collapsedHeadings.insert(index)
-                }
-            }
-        }
-        .padding(.top, level <= 2 ? 8 : 4)
-    }
-
-    /// 見出しレベルに応じたフォントサイズ・ウェイトを返す
-    private static func headingFontParams(for level: Int) -> (size: CGFloat, weight: Font.Weight) {
-        switch level {
-        case 1: return (26, .bold)
-        case 2: return (22, .bold)
-        case 3: return (18, .semibold)
-        case 4: return (15, .semibold)
-        default: return (13, .semibold)
-        }
-    }
-
-    /// 見出しレベルに応じたフォントでインラインコードスパンを等幅・背景色付きでレンダリング
-    @ViewBuilder
-    private func headingText(level: Int, text: String) -> some View {
-        let (size, weight) = Self.headingFontParams(for: level)
-        let segments = Self.parseInlineSegments(text)
-        HStack(spacing: 0) {
-            ForEach(Array(segments.enumerated()), id: \.offset) { _, segment in
-                if segment.isCode {
-                    Text(segment.text)
-                        .font(.system(size: size, weight: weight, design: .monospaced))
-                        .padding(.horizontal, 3)
-                        .padding(.vertical, 1)
-                        .background(
-                            RoundedRectangle(cornerRadius: 3)
-                                .fill(Color.secondary.opacity(0.15))
-                        )
-                } else {
-                    Text(.init(segment.text))
-                        .font(.system(size: size, weight: weight))
-                }
-            }
-        }
-    }
-
-    /// 実行ボタンを表示するシェル言語識別子の集合
-    private static let shellLanguages: Set<String> = [
-        "bash", "sh", "zsh", "shell", "fish", "ksh", "csh", "tcsh"
-    ]
-
-    /// テキストをバッククォートコードスパンで分割して (テキスト, コードフラグ) のリストを返す
-    private static func parseInlineSegments(_ text: String) -> [(text: String, isCode: Bool)] {
-        var segments: [(text: String, isCode: Bool)] = []
-        var remaining = text
-        while !remaining.isEmpty {
-            guard let openIdx = remaining.firstIndex(of: "`") else {
-                segments.append((remaining, false))
-                break
-            }
-            let before = String(remaining[..<openIdx])
-            if !before.isEmpty { segments.append((before, false)) }
-            let rest = remaining[remaining.index(after: openIdx)...]
-            guard let closeIdx = rest.firstIndex(of: "`") else {
-                segments.append(("`" + String(rest), false))
-                break
-            }
-            let code = String(rest[..<closeIdx])
-            if !code.isEmpty { segments.append((code, true)) }
-            remaining = String(rest[rest.index(after: closeIdx)...])
-        }
-        return segments
-    }
-
-    /// テーブル
-    @ViewBuilder
-    private func tableView(header: [String], rows: [[String]]) -> some View {
-        VStack(spacing: 0) {
-            // ヘッダー
-            HStack(spacing: 0) {
-                ForEach(Array(header.enumerated()), id: \.offset) { _, cell in
-                    Text(.init(cell))
-                        .font(.system(size: 12, weight: .semibold))
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(6)
-                        .background(Color.secondary.opacity(0.15))
-                }
-            }
-            // ボディ
-            ForEach(Array(rows.enumerated()), id: \.offset) { rowIndex, row in
-                HStack(spacing: 0) {
-                    ForEach(Array(row.enumerated()), id: \.offset) { _, cell in
-                        Text(.init(cell))
-                            .font(.system(size: 12))
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(6)
-                    }
-                }
-                .background(rowIndex.isMultiple(of: 2)
-                            ? Color.clear
-                            : Color.secondary.opacity(0.05))
-            }
-        }
-        .overlay(
-            RoundedRectangle(cornerRadius: 4)
-                .stroke(Color.secondary.opacity(0.3), lineWidth: 0.5)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 4))
-        .padding(.vertical, 4)
-    }
-
     // MARK: - Table of contents
 
-    /// 目次 (右上フローティング)
     @ViewBuilder
     private func tableOfContents(proxy: ScrollViewProxy) -> some View {
-        let headings = collectHeadings()
-        if !headings.isEmpty {
+        if !tocHeadings.isEmpty {
             VStack(alignment: .leading, spacing: 0) {
-                // ヘッダー: 全体がクリック可能領域 (折りたたみトグル)
                 HStack {
                     Text("目次")
                         .font(.system(size: 11, weight: .bold))
@@ -357,7 +164,7 @@ struct MarkdownPreview: View {
                     Divider()
                     ScrollView {
                         VStack(alignment: .leading, spacing: 0) {
-                            ForEach(headings, id: \.index) { heading in
+                            ForEach(tocHeadings, id: \.index) { heading in
                                 TOCRow(
                                     heading: heading,
                                     onTap: {
@@ -373,7 +180,6 @@ struct MarkdownPreview: View {
                     .frame(maxHeight: 300)
                 }
             }
-            // 展開時は幅 200、折りたたみ時は内容に合わせて縮める
             .frame(width: showTOC ? 200 : nil)
             .fixedSize(horizontal: !showTOC, vertical: false)
             .background(Color(nsColor: .controlBackgroundColor))
@@ -384,13 +190,17 @@ struct MarkdownPreview: View {
             .clipShape(RoundedRectangle(cornerRadius: 6))
             .shadow(color: .black.opacity(0.2), radius: 4, y: 2)
             .padding(.top, 12)
-            .padding(.trailing, 22) // スクロールバーと重ならないように余裕
+            .padding(.trailing, 22)
             .padding(.leading, 12)
             .padding(.bottom, 12)
         }
     }
 
-    /// 見出しだけ抽出する
+    /// let binding を @ViewBuilder 外に出すための computed property
+    private var tocHeadings: [(index: Int, level: Int, text: String)] {
+        collectHeadings()
+    }
+
     private func collectHeadings() -> [(index: Int, level: Int, text: String)] {
         lines.enumerated().compactMap { index, line in
             if case .heading(let level, let text) = line {
@@ -402,7 +212,6 @@ struct MarkdownPreview: View {
 
     // MARK: - Parser
 
-    /// テキストを行ベースでパースして MarkdownLine 配列を返す
     static func parseLines(_ source: String) -> [MarkdownLine] {
         var result: [MarkdownLine] = []
         var inCodeBlock = false
@@ -418,7 +227,6 @@ struct MarkdownPreview: View {
         while i < rawLines.count {
             let raw = rawLines[i]
 
-            // Frontmatter (先頭の --- から次の --- まで)
             if i == 0, raw.trimmingCharacters(in: .whitespaces) == "---" {
                 inFrontmatter = true
                 i += 1
@@ -436,7 +244,6 @@ struct MarkdownPreview: View {
                 continue
             }
 
-            // コードブロック (``` で開閉)
             if raw.trimmingCharacters(in: .whitespaces).hasPrefix("```") {
                 if inCodeBlock {
                     let content = codeBuffer.joined(separator: "\n")
@@ -461,7 +268,6 @@ struct MarkdownPreview: View {
                 continue
             }
 
-            // テーブル (| col | col | + 区切り + 行)
             if raw.trimmingCharacters(in: .whitespaces).hasPrefix("|"),
                i + 1 < rawLines.count,
                Self.isTableSeparatorLine(rawLines[i + 1]) {
@@ -478,7 +284,6 @@ struct MarkdownPreview: View {
                 continue
             }
 
-            // 見出し
             if raw.hasPrefix("#### ") {
                 result.append(.heading(level: 4, text: String(raw.dropFirst(5))))
                 i += 1
@@ -500,7 +305,6 @@ struct MarkdownPreview: View {
                 continue
             }
 
-            // 水平線
             let trimmed = raw.trimmingCharacters(in: .whitespaces)
             if trimmed == "---" || trimmed == "***" || trimmed == "___" {
                 result.append(.divider)
@@ -508,7 +312,6 @@ struct MarkdownPreview: View {
                 continue
             }
 
-            // 箇条書き (チェックボックス含む)
             if let (indent, content) = Self.parseBullet(raw) {
                 if let (checked, text) = Self.parseCheckbox(content) {
                     result.append(.checkbox(text: text, checked: checked, indent: indent))
@@ -519,14 +322,12 @@ struct MarkdownPreview: View {
                 continue
             }
 
-            // 空行
             if trimmed.isEmpty {
                 result.append(.blank)
                 i += 1
                 continue
             }
 
-            // 通常段落
             result.append(.paragraph(raw))
             i += 1
         }
@@ -542,20 +343,17 @@ struct MarkdownPreview: View {
         return result
     }
 
-    /// テーブル区切り行 `|---|---|` かどうか
     private static func isTableSeparatorLine(_ raw: String) -> Bool {
         let t = raw.trimmingCharacters(in: .whitespaces)
         guard t.hasPrefix("|") else { return false }
         let cells = t.split(separator: "|").map { $0.trimmingCharacters(in: .whitespaces) }
         guard !cells.isEmpty else { return false }
         return cells.allSatisfy { cell in
-            // `-` のみ、または `:---`, `---:`, `:---:` 等
             let stripped = cell.replacingOccurrences(of: ":", with: "")
             return !stripped.isEmpty && stripped.allSatisfy { $0 == "-" }
         }
     }
 
-    /// `| a | b | c |` をセル配列にパースする
     private static func parseTableRow(_ raw: String) -> [String] {
         var t = raw.trimmingCharacters(in: .whitespaces)
         if t.hasPrefix("|") { t.removeFirst() }
@@ -564,7 +362,6 @@ struct MarkdownPreview: View {
             .map { $0.trimmingCharacters(in: .whitespaces) }
     }
 
-    /// 箇条書き行をパースする (`- text` / `  * text` 等)
     private static func parseBullet(_ raw: String) -> (indent: Int, content: String)? {
         var indent = 0
         var index = raw.startIndex
@@ -573,26 +370,264 @@ struct MarkdownPreview: View {
             index = raw.index(after: index)
         }
         let rest = String(raw[index...])
-        if rest.hasPrefix("- ") {
-            return (indent / 2, String(rest.dropFirst(2)))
-        }
-        if rest.hasPrefix("* ") {
-            return (indent / 2, String(rest.dropFirst(2)))
-        }
+        if rest.hasPrefix("- ") { return (indent / 2, String(rest.dropFirst(2))) }
+        if rest.hasPrefix("* ") { return (indent / 2, String(rest.dropFirst(2))) }
         return nil
     }
 
-    /// 箇条書き内容がチェックボックス形式か判定し、`(checked, text)` を返す
     private static func parseCheckbox(_ content: String) -> (checked: Bool, text: String)? {
-        if content.hasPrefix("[ ] ") {
-            return (false, String(content.dropFirst(4)))
-        }
+        if content.hasPrefix("[ ] ") { return (false, String(content.dropFirst(4))) }
         if content.hasPrefix("[x] ") || content.hasPrefix("[X] ") {
             return (true, String(content.dropFirst(4)))
         }
         return nil
     }
+
+    /// 実行ボタンを表示するシェル言語識別子の集合。
+    /// fileprivate で CodeBlockView からも参照できるようにする。
+    fileprivate static let shellLanguages: Set<String> = [
+        "bash", "sh", "zsh", "shell", "fish", "ksh", "csh", "tcsh"
+    ]
+
+    /// 見出しレベルに応じたフォントサイズ・ウェイトを返す。
+    /// fileprivate で HeadingTextView からも参照できるようにする。
+    fileprivate static func headingFontParams(for level: Int) -> (size: CGFloat, weight: Font.Weight) {
+        switch level {
+        case 1: return (26, .bold)
+        case 2: return (22, .bold)
+        case 3: return (18, .semibold)
+        case 4: return (15, .semibold)
+        default: return (13, .semibold)
+        }
+    }
+
+    /// テキストをバッククォートコードスパンで分割して (テキスト, コードフラグ) のリストを返す。
+    /// fileprivate で HeadingTextView からも参照できるようにする。
+    fileprivate static func parseInlineSegments(_ text: String) -> [(text: String, isCode: Bool)] {
+        var segments: [(text: String, isCode: Bool)] = []
+        var remaining = text
+        while !remaining.isEmpty {
+            guard let openIdx = remaining.firstIndex(of: "`") else {
+                segments.append((remaining, false))
+                break
+            }
+            let before = String(remaining[..<openIdx])
+            if !before.isEmpty { segments.append((before, false)) }
+            let rest = remaining[remaining.index(after: openIdx)...]
+            guard let closeIdx = rest.firstIndex(of: "`") else {
+                segments.append(("`" + String(rest), false))
+                break
+            }
+            let code = String(rest[..<closeIdx])
+            if !code.isEmpty { segments.append((code, true)) }
+            remaining = String(rest[rest.index(after: closeIdx)...])
+        }
+        return segments
+    }
 }
+
+// MARK: - Line renderer
+
+/// 1 行の Markdown を表示する View。
+/// ForEach 内から @ViewBuilder 関数を直接呼ぶと型推論が重くなるため、
+/// 具体型の struct として分離する (FrontmatterLineView と同じ対策)。
+private struct MarkdownLineView: View {
+    let index: Int
+    let line: MarkdownLine
+    let onRunScript: ((String) -> Void)?
+    let onLinkTap: ((URL) -> Void)?
+    let baseURL: URL?
+    @Binding var collapsedHeadings: Set<Int>
+
+    var body: some View {
+        switch line {
+        case .heading(let level, let text):
+            MarkdownHeadingRow(index: index, level: level, text: text,
+                               collapsedHeadings: $collapsedHeadings)
+        case .checkbox(let text, let checked, let indent):
+            HStack(alignment: .top, spacing: 6) {
+                Image(systemName: checked ? "checkmark.square.fill" : "square")
+                    .foregroundStyle(checked ? Color.accentColor : Color.secondary)
+                Text(.init(text))
+                Spacer(minLength: 0)
+            }
+            .padding(.leading, CGFloat(indent) * 16)
+        case .bullet(let text, let indent):
+            HStack(alignment: .top, spacing: 6) {
+                Text("•").foregroundStyle(.secondary)
+                Text(.init(text))
+                Spacer(minLength: 0)
+            }
+            .padding(.leading, CGFloat(indent) * 16)
+        case .mermaid(let source):
+            MermaidView(diagram: source)
+        case .code(let text, let language):
+            CodeBlockView(text: text, language: language, onRunScript: onRunScript)
+        case .table(let header, let rows):
+            MarkdownTableView(header: header, rows: rows)
+        case .paragraph(let text):
+            Text(.init(text)).frame(maxWidth: .infinity, alignment: .leading)
+        case .frontmatter(let text):
+            FrontmatterView(text: text, baseURL: baseURL, onLinkTap: onLinkTap)
+        case .divider:
+            Divider().padding(.vertical, 2)
+        case .blank:
+            Text("").frame(height: 4)
+        }
+    }
+}
+
+// MARK: - Heading
+
+/// 折りたたみトライアングル付き見出し行。
+/// MarkdownLineView の .heading case から呼ばれる具体型 struct。
+private struct MarkdownHeadingRow: View {
+    let index: Int
+    let level: Int
+    let text: String
+    @Binding var collapsedHeadings: Set<Int>
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            Image(systemName: "play.fill")
+                .font(.system(size: 9))
+                .foregroundStyle(.secondary)
+                .rotationEffect(.degrees(collapsedHeadings.contains(index) ? 0 : 90))
+            HeadingTextView(level: level, text: text)
+            Spacer(minLength: 0)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            withAnimation(.easeInOut(duration: 0.15)) {
+                if collapsedHeadings.contains(index) {
+                    collapsedHeadings.remove(index)
+                } else {
+                    collapsedHeadings.insert(index)
+                }
+            }
+        }
+        .padding(.top, level <= 2 ? 8 : 4)
+    }
+}
+
+/// 見出しテキスト。バッククォートで囲まれたインラインコードを等幅・背景付きで表示する。
+/// let binding を body 外の computed property に移すことで @ViewBuilder の型推論コストを下げる。
+private struct HeadingTextView: View {
+    let level: Int
+    let text: String
+
+    private var size: CGFloat { MarkdownPreview.headingFontParams(for: level).size }
+    private var weight: Font.Weight { MarkdownPreview.headingFontParams(for: level).weight }
+    private var segments: [(text: String, isCode: Bool)] {
+        MarkdownPreview.parseInlineSegments(text)
+    }
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(Array(segments.enumerated()), id: \.offset) { pair in
+                if pair.element.isCode {
+                    Text(pair.element.text)
+                        .font(.system(size: size, weight: weight, design: .monospaced))
+                        .padding(.horizontal, 3)
+                        .padding(.vertical, 1)
+                        .background(
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(Color.secondary.opacity(0.15))
+                        )
+                } else {
+                    Text(.init(pair.element.text))
+                        .font(.system(size: size, weight: weight))
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Code block
+
+/// コードブロック View。シェル言語の場合は右上に実行ボタンを重ねる。
+/// let binding と複合 if を避けるため @ViewBuilder 関数ではなく struct として分離する。
+private struct CodeBlockView: View {
+    let text: String
+    let language: String
+    let onRunScript: ((String) -> Void)?
+
+    private var isShell: Bool {
+        MarkdownPreview.shellLanguages.contains(language)
+    }
+
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            Text(text)
+                .font(.system(.callout, design: .monospaced))
+                .foregroundStyle(.primary)
+                .padding(8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(Color.secondary.opacity(0.12))
+                )
+            if isShell {
+                if let run = onRunScript {
+                    Button {
+                        run(text)
+                    } label: {
+                        Image(systemName: "play.fill")
+                            .font(.system(size: 10))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 4)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                    .help("ターミナルで実行")
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Table
+
+/// テーブル View。tuple 分解を避けた ForEach を使うことで @ViewBuilder の型推論を単純化する。
+private struct MarkdownTableView: View {
+    let header: [String]
+    let rows: [[String]]
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 0) {
+                ForEach(header.indices, id: \.self) { i in
+                    Text(.init(header[i]))
+                        .font(.system(size: 12, weight: .semibold))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(6)
+                        .background(Color.secondary.opacity(0.15))
+                }
+            }
+            ForEach(Array(rows.enumerated()), id: \.offset) { pair in
+                HStack(spacing: 0) {
+                    ForEach(pair.element.indices, id: \.self) { i in
+                        Text(.init(pair.element[i]))
+                            .font(.system(size: 12))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(6)
+                    }
+                }
+                .background(pair.offset.isMultiple(of: 2)
+                            ? Color.clear
+                            : Color.secondary.opacity(0.05))
+            }
+        }
+        .overlay(
+            RoundedRectangle(cornerRadius: 4)
+                .stroke(Color.secondary.opacity(0.3), lineWidth: 0.5)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 4))
+        .padding(.vertical, 4)
+    }
+}
+
+// MARK: - Frontmatter
 
 /// YAML frontmatter の 1 行を表す中間表現。
 private enum FrontmatterLineContent {
@@ -601,7 +636,6 @@ private enum FrontmatterLineContent {
 }
 
 /// YAML frontmatter ブロックを行ごとにレンダリングする View。
-/// ファイルパスと判定された値はクリック可能なリンクとして表示し、タップで隣タブに開く。
 private struct FrontmatterView: View {
     let text: String
     let baseURL: URL?
@@ -631,14 +665,12 @@ private struct FrontmatterView: View {
         let trimmed = line.trimmingCharacters(in: .whitespaces)
         let indent = String(line.prefix(while: { $0 == " " }))
 
-        // "  - value" 形式 (YAML 配列項目)
         if trimmed.hasPrefix("- ") {
             let value = String(trimmed.dropFirst(2)).trimmingCharacters(in: .whitespaces)
             if looksLikeFilePath(value), let url = resolveURL(value) {
                 return .withLink(prefix: indent + "- ", path: value, resolvedURL: url)
             }
         } else if let colonIndex = trimmed.firstIndex(of: ":") {
-            // "key: value" 形式
             let rest = trimmed[trimmed.index(after: colonIndex)...]
             let afterColon = String(rest).trimmingCharacters(in: .whitespaces)
             if looksLikeFilePath(afterColon), let url = resolveURL(afterColon) {
@@ -658,10 +690,8 @@ private struct FrontmatterView: View {
     private func resolveURL(_ path: String) -> URL? {
         guard let base = baseURL else { return nil }
         let fm = FileManager.default
-        // ファイルの親ディレクトリから相対パスを試みる
         let direct = base.appendingPathComponent(path).standardizedFileURL
         if fm.fileExists(atPath: direct.path) { return direct }
-        // 親ディレクトリをさかのぼって探す (上限 10 段)
         var dir = base
         for _ in 0..<10 {
             let parent = dir.deletingLastPathComponent()
@@ -704,6 +734,8 @@ private struct FrontmatterLineView: View {
     }
 }
 
+// MARK: - TOC row
+
 /// 目次の 1 行。ホバー時にアクセントカラー背景でハイライト表示する。
 private struct TOCRow: View {
     let heading: (index: Int, level: Int, text: String)
@@ -729,6 +761,8 @@ private struct TOCRow: View {
         .onTapGesture { onTap() }
     }
 }
+
+// MARK: - Data model
 
 /// Markdown の行種別を表す中間表現
 enum MarkdownLine {
