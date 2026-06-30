@@ -33,7 +33,7 @@ struct PreviewSessionView: View {
             if let url = state.url, isDrawioURL(url) {
                 DrawioPreview(url: url, state: state)
             } else if let url = state.url, isVideoURL(url) {
-                VideoPreview(url: url)
+                VideoPreview(url: url, reloadToken: state.reloadToken)
             } else if let url = state.url, isMarkdownURL(url) {
                 MarkdownContainer(
                     url: url,
@@ -109,6 +109,10 @@ struct PreviewSessionView: View {
             }
         }
         .onChange(of: fileChangedTick) { _, _ in
+            Task { await loadPreview(for: state.url, forceReload: true) }
+        }
+        .onChange(of: state.reloadToken) { _, _ in
+            // 右クリックメニューの「リロード」(issue #241)
             Task { await loadPreview(for: state.url, forceReload: true) }
         }
     }

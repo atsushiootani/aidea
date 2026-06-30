@@ -20,6 +20,10 @@ struct DrawioPreview: View {
     @State private var loadError: String?
     @State private var reloadTick = 0
     @State private var convertTick = 0
+    @State private var fileWatcher = FileWatcher()
+    /// FSEvents で外部変更が検知されるたびにインクリメントされるカウンタ (issue #241)。
+    /// view モードのときだけ再読み込みする (edit 中は embed.diagrams.net の未保存状態を壊さない)。
+    @State private var fileChangedTick = 0
 
     enum Mode {
         case view
@@ -50,8 +54,35 @@ struct DrawioPreview: View {
             toolbar
         }
         .task(id: url) {
+            fileWatcher.stop()
+            let watchedURL = url
+            fileWatcher.start(path: url.deletingLastPathComponent().path) { paths in
+                if paths.contains(watchedURL.path) {
+                    fileChangedTick += 1
+                }
+            }
             await loadContents()
         }
+        .onChange(of: fileChangedTick) { _, _ in
+            // 外部変更の自動リロード (issue #241)。edit 中は触らない。
+            Task { @MainActor in
+                guard mode == .view else { return }
+                await reloadFromDisk()
+            }
+        }
+        .onChange(of: state.reloadToken) { _, _ in
+            // 右クリックメニューの「リロード」(issue #241)。edit 中は編集破棄を避けてスキップ。
+            Task { @MainActor in
+                guard mode == .view else { return }
+                await reloadFromDisk()
+            }
+        }
+    }
+
+    /// ディスクから再読み込みして view 表示を更新する。
+    private func reloadFromDisk() async {
+        await loadContents()
+        reloadTick &+= 1
     }
 
     /// モードに応じたメイン表示

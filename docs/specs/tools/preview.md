@@ -158,15 +158,26 @@ Markdown は `MarkdownContainer` で **view / edit の 2 モード**を扱う。
 - `MarkdownContainer` — Markdown 表示時の右上フローティングボタン
 - `PreviewSessionView` — テキストファイル表示時の翻訳ボタン
 
+### manualReload — 右クリックからの手動リロード (issue #241)
+
+右クリックメニューの「リロード」で、表示中のファイルをディスクから明示的に再読み込みする。
+自動リロード (FSEvents) が効かないケース (動画 / drawio の取りこぼし等) や、ユーザが任意に更新したいときの手段。
+
+- `PreviewSessionState.reloadToken: Int` を `requestReload()` でインクリメントし、各プレビュー子ビューが
+  `state.reloadToken` の変化を観測して再読み込みする (全コンテンツ種別: テキスト / 画像 / Markdown / Drawio / 動画)
+- Markdown / Drawio が **edit モードのときは無視**する (未保存の編集を破棄しないため。自動リロードと同じ方針)
+- 対象は `preview.url` を持つ Preview タブのみ (メニュー自体が Preview タブにしか出ない)
+
 ### autoReload — 外部変更の自動再読み込み
 
 プレビュー表示中のファイルが外部 (Claude など) によって変更されたとき、プレビュー表示を自動的に更新する。
 
 - ファイルの変更は **FSEvents** で検知する (実装: 既存の `FileWatcher` を流用)
 - 変更を検知したら直ちにファイルを再読み込みしてプレビューを更新する
-- **編集モード中は更新しない**: `MarkdownContainer` が edit モードのときはスキップし、view モードに戻ったタイミングで反映される
-- 対象: Markdown (`MarkdownContainer` の view モード) とテキスト / 画像ファイル (`NSTextPreview` / `NSImage`)
-- Drawio ファイルは対象外 (embed.diagrams.net のエディタが外部状態を持つため)
+- **編集モード中は更新しない**: `MarkdownContainer` / `DrawioPreview` が edit モードのときはスキップし、view モードに戻ったタイミングで反映される
+- 対象: Markdown (`MarkdownContainer`) / Drawio (`DrawioPreview`) の **view モード**、およびテキスト / 画像ファイル (`NSTextPreview` / `NSImage`)
+- Drawio は **view モードのみ**自動リロードする。edit モード (embed.diagrams.net エディタ) は未保存の外部状態を持つため対象外 (Markdown の view/edit と同じ作法)
+- 動画 (`VideoPreview`) は自動リロード対象外 (手動リロードのみ)
 
 ### tabHoverTooltip — タブホバー時のパス表示
 
@@ -185,6 +196,7 @@ url が無いタブ・Preview 以外のタブにはメニューを出さない (
 | 項目 | 動作 |
 |---|---|
 | タブ名を変更 | タブのインラインリネームを開始する (タブのダブルクリックと同じ。`startRename`) |
+| リロード | 表示中のファイルをディスクから再読み込みする (後述「手動リロード」) |
 | ファイル名をコピー | `url.lastPathComponent` をクリップボードにコピー |
 | プロジェクト相対パスをコピー | projectRoot 相対パス (ツールチップと同じ算出) をコピー。projectRoot 外/未設定なら絶対パス |
 | 絶対パスをコピー | `url.standardizedFileURL.path` をコピー |

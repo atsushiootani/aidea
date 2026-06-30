@@ -74,6 +74,13 @@ struct MarkdownContainer: View {
                 await reload()
             }
         }
+        .onChange(of: state.reloadToken) { _, _ in
+            // 右クリックメニューの「リロード」(issue #241)。edit 中は編集破棄を避けてスキップ。
+            Task { @MainActor in
+                guard mode == .view else { return }
+                await reload()
+            }
+        }
         // Session アクティブ状態を SwiftUI の @FocusState に同期する (view モード用)。
         // Kit と同じく「active のときだけ true を立てる」片方向同期にする (false 代入は SwiftUI に任せる)。
         // edit モードでは EditableTextView が NSViewRepresentable として focusBridge 経由で firstResponder を取るため、
