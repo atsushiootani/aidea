@@ -20,6 +20,7 @@ struct AideaApp: App {
     @State private var companionStore: CompanionStore
     @State private var recommendState: RecommendState
     @State private var handoffState: HandoffState
+    @State private var inboxWatcher = InboxWatcher()
     @State private var outputState: OutputState
     @State private var pomodoroState: PomodoroState
     @State private var quickMemoState: QuickMemoState
@@ -156,6 +157,7 @@ struct AideaApp: App {
                         registerKeyEventMonitor()
                         sessionSwitcher.install(registry: registry, companionStore: companionStore)
                         startHandoff()
+                        startInbox()
                         startOutput()
                         startRemind()
                         startScheduler()
@@ -854,6 +856,78 @@ struct AideaApp: App {
         switch target {
         case .index(let i): return "index=\(i)"
         case .name(let s): return "name=\"\(s)\""
+        }
+    }
+
+    // MARK: - Inbox (外部 → Companion)
+
+    /// inbox メッセージ送信時に本文末尾へ付加する「返信不要」文言 (docs/specs/backchannels/inbox.md)。
+    private static let inboxNoReplySuffix =
+        "\n\n---\n(これは外部から自動送信されたメッセージです。返信を受け取る相手はいないので、返信は不要です。指示された作業だけ行ってください)"
+
+    /// InboxWatcher の監視を開始する。projectRoot が未設定なら何もしない。
+    /// 受信したメッセージは `dispatchInbox` が宛先解決 → Claude セッションへ本文を送信する。
+    /// startHandoff と同じ「ローカルキャプチャ → callback」パターン。
+    private func startInbox() {
+        guard let projectRoot = workspace.projectRoot else { return }
+        let store = companionStore
+        let reg = registry
+        let lay = layout
+        let speech = speechState
+        inboxWatcher.onMessage = { message, url in
+            Self.dispatchInbox(message, inboxURL: url, companionStore: store, registry: reg, layout: lay, speechState: speech, projectRoot: projectRoot)
+        }
+        inboxWatcher.onError = { msg in
+            NSLog("[Aidea] inbox: \(msg)")
+        }
+        inboxWatcher.start(projectRoot: projectRoot)
+    }
+
+    /// inbox メッセージを宛先 Companion に配送する。
+    /// 宛先解決 → 未起動なら Claude セッションを生成・bind → `sendMessageWhenReady(message + 返信不要文言)`。
+    /// dispatchScheduledJob / dispatchHandoff と同型。宛先解決は `resolveHandoffTarget` を再利用する。
+    /// docs/specs/backchannels/inbox.md
+    @MainActor
+    private static func dispatchInbox(
+        _ message: InboxMessage,
+        inboxURL: URL,
+        companionStore: CompanionStore,
+        registry: SessionRegistry,
+        layout: LayoutConfig,
+        speechState: SpeechState,
+        projectRoot: URL?
+    ) {
+        guard let index = resolveHandoffTarget(message.to, in: companionStore) else {
+            NSLog("[Aidea] inbox 宛先が解決できません: \(describeTarget(message.to)) (\(inboxURL.lastPathComponent))")
+            return
+        }
+        let body = message.message + inboxNoReplySuffix
+        let companion = companionStore.companion(forIndex: index)
+
+        // 起動済み → アクティブ化して ready 状態に応じて送信
+        if let sessionID = companion.sessionID,
+           let session = registry.session(for: sessionID),
+           let claudeState = session.state as? ClaudeSessionState {
+            registry.activateSession(sessionID)
+            claudeState.sendMessageWhenReady(body)
+            return
+        }
+
+        // 未起動 → 起動してから ready 後に送信
+        let instance = layout.nextSessionInstance(of: .claude)
+        let session = registry.createSession(tool: .claude, instance: instance)
+        if let claudeState = session.state as? ClaudeSessionState {
+            claudeState.companionPrompt = CompanionInstructions.startupCommand(for: index, projectRoot: projectRoot)
+            claudeState.companionIndex = index
+            claudeState.speechQueue = speechState.queue
+        }
+        companionStore.bind(index: index, sessionID: session.id)
+        if let pane = registry.activePane ?? layout.allPanes.first {
+            pane.tabs.append(session.id)
+            registry.setActiveTab(paneID: pane.id, tabIndex: pane.tabs.count - 1)
+        }
+        if let claudeState = session.state as? ClaudeSessionState {
+            claudeState.sendMessageWhenReady(body)
         }
     }
 
