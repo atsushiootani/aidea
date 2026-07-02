@@ -193,9 +193,14 @@ Preview タブの右クリックメニュー「ファイラで選択」([tools/p
 - projectRoot 自身はドラッグ対象にならない (既存の制約と同じ)
 
 ### undoLastOperation — 直前の Filer 操作を取り消す / やり直す
+
+> **現在は無効化されている** ([ADR 0038](../../decisions/0038-disable-cmd-z-undo.md) / issue #228)。
+> Cmd+Z 押下でのクラッシュ対策として、Cmd+Z / Cmd+Shift+Z はアプリ全域で消費され何もしない。
+> 以下は undo 機構の実装記述として残す (トリガが無いため発火しない)。削除の復元はゴミ箱から手動で行う。
+
 - **対象操作**: [renameSelected](#renameselected--名前変更) / [createFile](#createfile--ファイル新規作成) / [createDirectory](#createdirectory--ディレクトリ新規作成) / [deleteSelected](#deleteselected--選択ノードの削除-複数対応) / [moveByDragAndDrop](#movebydraganddrop--ドラッグドロップでファイルディレクトリを移動-複数対応) / [pasteFromClipboard](#pastefromclipboard--クリップボードから貼り付け)
 - **対象外**: [copySelected](#copyselected--クリップボードにコピー) (副作用なし) / [openSelectedInPreview](#openselectedinpreview--プレビューで開く) / [openInFinder](#openinfinder--finder-で開く) / [openWith](#openwith--指定のアプリケーションで開く) / [editExcludeRules](#editexcluderules--除外ルールを編集) (設定変更はアンドゥ対象外)
-- **キー**: `⌘ Z` (undo) / `⌘ ⇧ Z` (redo)
+- **キー**: なし (旧: `⌘ Z` / `⌘ ⇧ Z`。ADR 0038 で撤去)
 - **スコープ**: **Filer Session 専用**。Window 内に Filer は singleton なので実質 Window 全体だが、他ツールの操作 (Terminal 入力 / Claude 送信 等) とは独立した履歴を持つ
 - **アンドゥの実装方針**:
   - **rename**: 旧名→新名を記録し、`FileManager.moveItem(at:to:)` で逆方向に rename
@@ -373,8 +378,6 @@ Preview タブの右クリックメニュー「ファイラで選択」([tools/p
 | **Ctrl + A** | [openWith](#openwith--指定のアプリケーションで開く) |
 | **Cmd + C** | [copySelected](#copyselected--クリップボードにコピー) |
 | **Cmd + V** | [pasteFromClipboard](#pastefromclipboard--クリップボードから貼り付け) |
-| **Cmd + Z** | [undoLastOperation](#undolastoperation--直前の-filer-操作を取り消す--やり直す) (アンドゥ) |
-| **Cmd + Shift + Z** | [undoLastOperation](#undolastoperation--直前の-filer-操作を取り消す--やり直す) (リドゥ) |
 | **Esc** | 検索バーが開いていれば閉じる (`searchByName` のキャンセル) |
 | **Shift + ↑ / ↓** | 選択範囲の拡張 (NSOutlineView 標準) |
 | **Page Up** / **Ctrl + Z** | [pageMoveSelection](#pagemoveselection--ページ単位の選択移動-issue-121) (上方向) |

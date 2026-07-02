@@ -174,6 +174,9 @@ struct AideaApp: App {
             }
         }
         .commands {
+            // Edit メニューの 取り消す/やり直す を撤去し、マウス経由でも undo が
+            // 発火しないようにする (issue #228, ADR 0038)
+            CommandGroup(replacing: .undoRedo) {}
             CommandGroup(replacing: .newItem) {
                 Button("最近開いたディレクトリを開く...") {
                     showLauncher = true
@@ -483,27 +486,15 @@ struct AideaApp: App {
                 return event
             }
 
-            // Cmd+Z / Cmd+Shift+Z (Filer の undo / redo)
-            // SwiftUI Edit メニューの Undo/Redo は @Environment(\.undoManager) を参照し、
-            // AppKit の NSResponder.undoManager を見ない。このため何も渡さないと
-            // performKeyEquivalent 段階で disabled 判定 → beep でイベント消費される。
-            // Filer がアクティブなときだけ自前で Filer の undoManager.undo()/redo() を呼ぶ。
+            // Cmd+Z / Cmd+Shift+Z は消費して何もしない (issue #228, ADR 0038)。
+            // undo に到達する経路 (SwiftUI Edit メニューの @Environment(\.undoManager) /
+            // Filer の undoManager) はいずれもクラッシュの余地があり安全に保てないため、
+            // アプリ全域で undo/redo キーを無効化する。
             if event.modifierFlags.contains(.command),
                !event.modifierFlags.contains(.option),
                !event.modifierFlags.contains(.control),
                event.charactersIgnoringModifiers?.lowercased() == "z" {
-                if let activeID = registry.activeSessionID,
-                   activeID.tool == .filer,
-                   let filerState = registry.session(for: activeID)?.state as? FilerSessionState {
-                    let undoManager = filerState.undoManager
-                    if event.modifierFlags.contains(.shift) {
-                        if undoManager.canRedo { undoManager.redo() }
-                    } else {
-                        if undoManager.canUndo { undoManager.undo() }
-                    }
-                    return nil
-                }
-                return event
+                return nil
             }
 
             // Cmd+W
