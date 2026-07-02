@@ -56,6 +56,7 @@ Aidea の設計判断を 1 件ずつ記録する。フォーマットは [Michae
 | [0035](./0035-web-window-open-tab-and-popup.md) | Web の window.open / target=_blank を新規タブとポップアップ窓に振り分ける | 提案 |
 | [0036](./0036-drop-custom-session-memory.md) | 独自のセッション間記憶機構を廃止し Claude ネイティブのセッションに委譲する | 提案 |
 | [0037](./0037-external-inbox-backchannel.md) | 外部からコンパニオンにメッセージを送る inbox backchannel を設ける | 提案 |
+| [0038](./0038-disable-cmd-z-undo.md) | Cmd+Z (undo / redo) をアプリ全域で無効化する | 提案 |
 
 ## 状態の値
 
