@@ -78,6 +78,20 @@ inbox は「通常のプロンプトを投げる」用途のため、本文を�
 - `from` は持たない (送信元は外部で index を持たないため)
 - 余分なキーは無視する
 
+### ファイル名の推奨: `handoff-{timestamp}.json`
+
+InboxWatcher は `inbox/*.json` であれば**ファイル名を問わず**発火するが、**推奨は `handoff-{YYYYMMDDTHHmmss}.json`** とする。
+
+- handoff 機能 ([handoff.md](./handoff.md)) の `handoff-{timestamp}.json` と命名を揃えることで、
+  外部の Claude / スクリプトが inbox に書き出すファイルの作法を handoff と共通化できる
+  (「Companion にタスクを渡すファイルは `handoff-{timestamp}.json`」という 1 つの型に統一)
+- テンプレートとして `inbox/handoff-YYYYMMDDTHHmmss.json` を置いておき、外部のエージェントはこれを雛形にする
+- inbox の `handoff-*.json` は親ディレクトリが `inbox` (0..8 ではない) のため、HandoffWatcher からは
+  「invalid parent dir」として無視される (ログ 1 行のみ、二重処理はされない)。InboxWatcher だけが処理する
+
+> 注意: inbox の JSON スキーマは `{to, message}` で、handoff の `{from, to, task, message}` とは異なる。
+> ファイル名の作法だけを揃える (inbox に `from` は不要)。
+
 ### 送信例 (シェル)
 
 ```bash
@@ -86,10 +100,9 @@ mkdir -p "$dir"
 # 一時ファイルに書いてから rename (途中書き込みを FSEvents に拾わせない)
 tmp=$(mktemp)
 printf '{"to":"red-chan","message":"CI の状態を確認して"}' > "$tmp"
-mv "$tmp" "$dir/msg-$(date +%Y%m%dT%H%M%S).json"
+mv "$tmp" "$dir/handoff-$(date +%Y%m%dT%H%M%S).json"
 ```
 
-- ファイル名は `*.json` であれば自由 (例では `msg-{timestamp}.json`)
 - **原子的な書き込みを推奨**: 直接 `>` で書くと書き込み途中に FSEvents が発火してパース失敗することがある。`mktemp` + `mv` で回避する
 
 ---
