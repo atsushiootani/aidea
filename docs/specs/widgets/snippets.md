@@ -139,6 +139,7 @@ last_updated: 2026-06-20
 |---|---|
 | タイトル | 「コードスニペット」＋「＋ 追加」ボタン |
 | スニペット行 | name / **送信先 + command**（`→ 送信先 / command`。スケジューラ行と同形式）/ 実行ボタン(主)+メニュー / 編集 / 削除 / → スケジューラ |
+| 削除ボタン | **確認ダイアログ**で確認してから削除する ([aspects/destructive-actions.md](../aspects/destructive-actions.md)、issue #247) |
 | 実行ボタン (主) | 押すと `destination` 設定の送信先へ即送信。**`.borderedProminent` (アクセントカラー塗り) + play アイコン**で、スケジューラの「今すぐ実行」(`.bordered`) より目立たせる (issue #247) |
 | 実行メニュー | その場限りで別の端末を選択: アクティブターミナル / 各ターミナルタブ (タブ名)... / 新規ターミナルタブ |
 | 空状態 | 「スニペットなし」 |
@@ -163,6 +164,7 @@ last_updated: 2026-06-20
 - 設定はファイル (`.aidea/config/snippets.json`) で宣言的に管理する
 - 実行履歴・lastRun 管理は持たない (都度実行)
 - スケジューラ⇄スニペットの変換は確認ダイアログ後に元を削除する (移動)
+- スニペットの削除は確認ダイアログを経る ([aspects/destructive-actions.md](../aspects/destructive-actions.md))
 
 ### Never
 

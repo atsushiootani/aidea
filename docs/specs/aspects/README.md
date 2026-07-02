@@ -19,6 +19,7 @@ last_updated: 2026-05-20
 
 | ファイル | 内容 |
 |---------|------|
+| [destructive-actions.md](./destructive-actions.md) | 削除操作の確認ルール (削除は必ず確認ダイアログを経る。明示的例外は spec に記述) |
 | [keybindings.md](./keybindings.md) | 全キーボードショートカット・マウス操作の一覧 |
 | [persistence.md](./persistence.md) | データ永続化仕様（UserDefaults / Keychain / `.aidea/`） |
 | [sort-order.md](./sort-order.md) | List UI のソート規約 (Finder 互換自然順) と共通ヘルパの SSoT |

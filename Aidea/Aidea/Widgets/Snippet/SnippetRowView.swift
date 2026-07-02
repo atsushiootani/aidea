@@ -20,6 +20,8 @@ struct SnippetRowView: View {
 
     /// スケジューラへの移動 (元削除) 確認ダイアログの表示状態。
     @State private var showPromoteConfirm = false
+    /// 削除確認ダイアログの表示状態 (aspects/destructive-actions.md)。
+    @State private var showDeleteConfirm = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -69,7 +71,7 @@ struct SnippetRowView: View {
                 .help("編集")
 
                 Button(role: .destructive) {
-                    onDelete()
+                    showDeleteConfirm = true
                 } label: {
                     Image(systemName: "trash")
                 }
@@ -77,6 +79,14 @@ struct SnippetRowView: View {
                 .controlSize(.small)
                 .foregroundStyle(.red)
                 .help("削除")
+                .confirmationDialog(
+                    "「\(snippet.displayName)」を削除しますか？",
+                    isPresented: $showDeleteConfirm,
+                    titleVisibility: .visible
+                ) {
+                    Button("削除", role: .destructive) { onDelete() }
+                    Button("キャンセル", role: .cancel) {}
+                }
             }
         }
         .padding(.horizontal, 8)

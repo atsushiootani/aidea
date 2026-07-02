@@ -1,0 +1,60 @@
+---
+title: 削除操作の確認ルール
+description: ユーザデータ・設定を破壊する操作 (削除、元を削除する移動・変換) は実行前に必ず確認を取るという Aidea 全体の UI ルール。spec に「確認不要」と明示した場合のみ省略できる
+derived_from:
+  - docs/LAYOUT.md
+syncs_with:
+  - docs/specs/widgets/snippets.md
+  - docs/specs/widgets/scheduler.md
+  - docs/specs/backchannels/remind.md
+  - docs/specs/tools/filer.md
+impacts: []
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-07-02
+---
+
+# 削除操作の確認ルール
+
+> **削除行為は必ず確認してから実行する。** 明示的に「確認不要」と spec に記述しない限り、例外はない (issue #247)。
+
+---
+
+## ルール
+
+1. **ユーザデータ・設定を破壊する操作は、実行前に必ずユーザ確認を取る。**
+   - 対象: 削除 (ファイル / 設定エントリ / ジョブ / スニペット等)、および**元を削除する**移動・変換
+   - UI は基本的に**確認ダイアログ**を使う (SwiftUI `confirmationDialog` または `NSAlert`)
+2. **省略できるのは、対象機能の spec に「確認不要」と明示的に記述した場合のみ。**
+   - その場合、spec に理由と本ルールへの参照 (`aspects/destructive-actions.md`) を書くこと
+3. 確認ダイアログには**対象の名前**を含め、破壊ボタンには `role: .destructive` を付ける
+   (例: 「「\(name)」を削除しますか？」+「削除」(destructive) /「キャンセル」(cancel))
+
+## 現在の適用状況
+
+| 操作 | 確認 | 実装 |
+|---|---|---|
+| Filer: ファイル / ディレクトリ削除 | ✅ NSAlert | `deleteSelected` ([filer.md](../tools/filer.md)) |
+| スケジューラ: ジョブ削除 | ✅ confirmationDialog | `SchedulerRowView` ([scheduler.md](../widgets/scheduler.md)) |
+| スケジューラ → スニペット変換 (元削除) | ✅ confirmationDialog | 同上 |
+| スニペット: 削除 | ✅ confirmationDialog | `SnippetRowView` ([snippets.md](../widgets/snippets.md)、issue #247) |
+| スニペット → スケジューラ変換 (元削除) | ✅ confirmationDialog | 同上 |
+| リマインド: `✕` (キャンセル) | **例外: 確認なし** | 明示的例外。理由は [remind.md](../backchannels/remind.md#popover-remindpopoverview) を参照 |
+
+## 明示的例外の考え方
+
+- 失っても**復元・再作成が容易**で、かつ操作が**高頻度・軽量**であることが求められる場合のみ例外にできる
+  (例: リマインドのキャンセルは Companion に再依頼すればすぐ作り直せる)
+- 例外にする場合も、対象 spec 側に「確認不要 (本ルールの明示的例外)」と書き、本ファイルの表に追記する
+
+## 境界
+
+### Always
+
+- 新しく削除系の UI を追加するときは、確認ダイアログを付けてから spec を書く
+- 確認ダイアログには対象名を含める
+
+### Never
+
+- 「元に戻せるから」を理由に確認を省略しない (undo は [ADR 0038](../../decisions/0038-disable-cmd-z-undo.md) で全域無効)
+- spec に書かずに例外を作らない
