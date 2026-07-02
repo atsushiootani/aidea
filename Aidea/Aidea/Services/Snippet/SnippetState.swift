@@ -43,16 +43,14 @@ final class SnippetState {
 
     /// 明示的に送信先を指定して実行する (実行メニューでの選択用)。
     func run(snippetID: String, target: DispatchTarget) {
-        guard let snippet = snippets.first(where: { $0.id == snippetID }),
-              snippet.isEnabled else { return }
+        guard let snippet = snippets.first(where: { $0.id == snippetID }) else { return }
         dispatch?(snippet.command, target)
     }
 
     /// スニペットの既定送信先 (`destination`) へ実行する (主ボタン用)。
     /// destination 省略時はアクティブ端末。
     func run(snippetID: String) {
-        guard let snippet = snippets.first(where: { $0.id == snippetID }),
-              snippet.isEnabled else { return }
+        guard let snippet = snippets.first(where: { $0.id == snippetID }) else { return }
         dispatch?(snippet.command, Self.dispatchTarget(for: snippet.destination))
     }
 

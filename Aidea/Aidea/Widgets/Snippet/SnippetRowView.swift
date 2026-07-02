@@ -20,10 +20,12 @@ struct SnippetRowView: View {
 
     /// スケジューラへの移動 (元削除) 確認ダイアログの表示状態。
     @State private var showPromoteConfirm = false
+    /// 削除確認ダイアログの表示状態 (aspects/destructive-actions.md)。
+    @State private var showDeleteConfirm = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            // 1 行目: name + enabled トグル
+            // 1 行目: name
             HStack(spacing: 6) {
                 Image(systemName: "curlybraces")
                     .font(.system(size: 12))
@@ -32,13 +34,6 @@ struct SnippetRowView: View {
                     .font(.system(size: 13, weight: .semibold))
                     .lineLimit(1)
                 Spacer(minLength: 4)
-                Toggle("", isOn: Binding(
-                    get: { snippet.isEnabled },
-                    set: { _ in toggleEnabled() }
-                ))
-                .toggleStyle(.switch)
-                .controlSize(.mini)
-                .labelsHidden()
             }
             // 2 行目: 送信先 / command (スケジューラ行と同じ形式)
             Text("→ \(destinationName) / \(snippet.command)")
@@ -49,7 +44,6 @@ struct SnippetRowView: View {
             // 3 行目: 操作ボタン
             HStack(spacing: 6) {
                 runMenu
-                    .disabled(!snippet.isEnabled)
                 Spacer(minLength: 4)
                 Button("→ スケジューラ") {
                     showPromoteConfirm = true
@@ -77,7 +71,7 @@ struct SnippetRowView: View {
                 .help("編集")
 
                 Button(role: .destructive) {
-                    onDelete()
+                    showDeleteConfirm = true
                 } label: {
                     Image(systemName: "trash")
                 }
@@ -85,6 +79,14 @@ struct SnippetRowView: View {
                 .controlSize(.small)
                 .foregroundStyle(.red)
                 .help("削除")
+                .confirmationDialog(
+                    "「\(snippet.displayName)」を削除しますか？",
+                    isPresented: $showDeleteConfirm,
+                    titleVisibility: .visible
+                ) {
+                    Button("削除", role: .destructive) { onDelete() }
+                    Button("キャンセル", role: .cancel) {}
+                }
             }
         }
         .padding(.horizontal, 8)
@@ -116,13 +118,17 @@ struct SnippetRowView: View {
                 snippetState.run(snippetID: snippet.id, target: .new)
             }
         } label: {
-            Text("実行 ▾")
-                .font(.system(size: 11))
+            Label("実行", systemImage: "play.fill")
+                .font(.system(size: 11, weight: .semibold))
         } primaryAction: {
             // 主ボタン: 設定済み送信先へ即実行 (選ばない)。
             snippetState.run(snippetID: snippet.id)
         }
-        .menuStyle(.borderlessButton)
+        // スケジューラの「今すぐ実行」(.bordered) より目立たせる (issue #247):
+        // アクセントカラー塗りの prominent ボタン + play アイコン
+        .menuStyle(.button)
+        .buttonStyle(.borderedProminent)
+        .controlSize(.small)
         .fixedSize()
     }
 
@@ -140,12 +146,6 @@ struct SnippetRowView: View {
             .flatMap { $0.tabs }
             .filter { $0.tool == .terminal }
             .compactMap { registry.session(for: $0) }
-    }
-
-    private func toggleEnabled() {
-        var updated = snippet
-        updated.enabled = !snippet.isEnabled
-        snippetState.updateSnippet(updated)
     }
 
     /// スニペットをスケジューラジョブへ「移動」する (元スニペットは削除)。
