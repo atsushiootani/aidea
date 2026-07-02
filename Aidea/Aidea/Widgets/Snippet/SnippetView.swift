@@ -37,7 +37,7 @@ struct SnippetView: View {
     }
 
     private var labelText: String {
-        let count = snippetState.snippets.filter(\.isEnabled).count
+        let count = snippetState.snippets.count
         return count == 0 ? "なし" : "\(count)"
     }
 }

@@ -6,8 +6,8 @@
 import SwiftUI
 
 /// `SnippetPopoverView` 内に展開するスニペットの追加 / 編集フォーム。
-/// name / command / enabled を編集し、保存で SnippetState に反映する。
-/// docs/specs/widgets/snippets.md 参照。
+/// name / command / destination を編集し、保存で SnippetState に反映する。
+/// command は複数行入力 (TextEditor)。docs/specs/widgets/snippets.md 参照。
 struct SnippetEditView: View {
     let target: SnippetPopoverView.EditTarget
     let onDone: () -> Void
@@ -16,7 +16,6 @@ struct SnippetEditView: View {
     @State private var command: String
     @State private var destinationKind: DestinationKind
     @State private var terminalTitle: String
-    @State private var enabled: Bool
 
     @Environment(SnippetState.self) private var snippetState
     @Environment(SessionRegistry.self) private var registry
@@ -46,7 +45,6 @@ struct SnippetEditView: View {
             _command = State(initialValue: "")
             _destinationKind = State(initialValue: .active)
             _terminalTitle = State(initialValue: "")
-            _enabled = State(initialValue: true)
         case .existing(let s):
             existingID = s.id
             _name = State(initialValue: s.displayName)
@@ -62,7 +60,6 @@ struct SnippetEditView: View {
                 _destinationKind = State(initialValue: .new)
                 _terminalTitle = State(initialValue: "")
             }
-            _enabled = State(initialValue: s.isEnabled)
         }
     }
 
@@ -72,10 +69,21 @@ struct SnippetEditView: View {
                 TextField("スニペット名", text: $name)
                     .textFieldStyle(.roundedBorder)
             }
-            field("コマンド") {
-                TextField("npm run dev など", text: $command)
-                    .textFieldStyle(.roundedBorder)
+            // コマンドは複数行入力 (issue #247)。高さ約 5 行ぶんの TextEditor。
+            field("コマンド", alignment: .top) {
+                TextEditor(text: $command)
                     .font(.system(size: 12, design: .monospaced))
+                    .scrollContentBackground(.hidden)
+                    .padding(4)
+                    .frame(height: 96)
+                    .background(
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(Color(nsColor: .textBackgroundColor))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6)
+                            .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
+                    )
             }
             field("送信先") {
                 Picker("", selection: $destinationKind) {
@@ -102,9 +110,6 @@ struct SnippetEditView: View {
                     }
                 }
             }
-            Toggle("有効", isOn: $enabled)
-                .toggleStyle(.switch)
-                .controlSize(.small)
             Divider()
             HStack {
                 Button("キャンセル", role: .cancel) { onDone() }
@@ -118,7 +123,7 @@ struct SnippetEditView: View {
 
     private var isValid: Bool {
         guard !name.trimmingCharacters(in: .whitespaces).isEmpty,
-              !command.trimmingCharacters(in: .whitespaces).isEmpty else { return false }
+              !command.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
         // タブ名指定のときはタブ名が必須。
         if destinationKind == .tab, terminalTitle.trimmingCharacters(in: .whitespaces).isEmpty {
             return false
@@ -134,8 +139,12 @@ struct SnippetEditView: View {
             .map { registry.tabTitle(for: $0) }
     }
 
-    private func field<Content: View>(_ label: String, @ViewBuilder _ content: () -> Content) -> some View {
-        HStack(alignment: .center, spacing: 8) {
+    private func field<Content: View>(
+        _ label: String,
+        alignment: VerticalAlignment = .center,
+        @ViewBuilder _ content: () -> Content
+    ) -> some View {
+        HStack(alignment: alignment, spacing: 8) {
             Text(label)
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
@@ -154,11 +163,11 @@ struct SnippetEditView: View {
         case .new:
             destination = .new
         }
+        // command は前後の空白・改行だけ落とし、内部の改行 (複数行コマンド) は保持する
         let snippet = SnippetConfig.Snippet(
             id: existingID ?? SnippetState.newID(),
             name: name.trimmingCharacters(in: .whitespaces),
-            command: command.trimmingCharacters(in: .whitespaces),
-            enabled: enabled,
+            command: command.trimmingCharacters(in: .whitespacesAndNewlines),
             destination: destination
         )
         if existingID == nil {

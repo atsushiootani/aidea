@@ -19,31 +19,30 @@ struct SnippetConfig: Codable {
         case new
     }
 
+    /// 有効/無効の概念は持たない (常に有効、issue #247)。
+    /// 旧フォーマットの `enabled` キーは JSONDecoder が未知キーとして読み飛ばす (後方互換)。
     struct Snippet: Codable, Identifiable, Equatable {
         let id: String
         var name: String
         var command: String
-        var enabled: Bool?
         /// 既定送信先。nil = アクティブ端末 (アクティブが Terminal → そこ / 無ければ最初の Terminal / 無ければ新規)。
         var destination: Destination?
 
         var displayName: String { name }
-        var isEnabled: Bool { enabled ?? true }
 
         var isValid: Bool { validationError == nil }
 
         var validationError: String? {
             if id.trimmingCharacters(in: .whitespaces).isEmpty { return "id が空" }
             if name.trimmingCharacters(in: .whitespaces).isEmpty { return "name が空" }
-            if command.trimmingCharacters(in: .whitespaces).isEmpty { return "command が空" }
+            if command.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return "command が空" }
             return nil
         }
 
-        init(id: String, name: String, command: String, enabled: Bool? = nil, destination: Destination? = nil) {
+        init(id: String, name: String, command: String, destination: Destination? = nil) {
             self.id = id
             self.name = name
             self.command = command
-            self.enabled = enabled
             self.destination = destination
         }
     }
