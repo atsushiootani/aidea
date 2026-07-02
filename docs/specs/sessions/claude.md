@@ -86,6 +86,7 @@ tmux の有無と既存セッションの有無で 3 経路に分岐する。判
 - v8 以降のデフォルトは `".aidea/claude/companions/<index>/instructions.md を読んで従ってね"` (`CompanionInstructions.loadCommand(for:)` が生成)。Claude が `Read` ツールで本体を読みに行き、必要に応じて `aidea.md` / `speech.md` 等を段階的開示する
 - ADR 0008 により、非対話シェルから直接 `claude` を exec せず、**対話シェル内で `send()`** する
 - ハンドオフ / レコメンドプロンプトのように起動直後に Frontchannel へ送信したい場合は、固定 asyncAfter で待たず `sendMessageWhenReady` を使う。ready=false の間は内部で積んで `+6.0s` で flush される
+- Frontchannel の `sendMessage` も**本文と `\r` を分離して送る** (本文送信 → ≈0.3s 後に `\r`)。理由はステップ 3-4 と同じ (bracketed paste で `\r` がペーストの一部とみなされ submit されない)。自動起動直後の flush や、ハンドオフ / inbox / スケジューラからの送信でも submit が確実に効くようにするため
 
 ### 経路 B: 再 attach (autoStartClaude スキップ)
 
