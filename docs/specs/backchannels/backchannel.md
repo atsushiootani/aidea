@@ -53,6 +53,7 @@ Aidea は `.aidea/` ディレクトリを共有バスとして使用し、FSEven
 │   ├── aidea.md              # Aidea 環境の共通指示 (instructions.md から参照される土台)
 │   ├── speech.md             # 読み上げ機能の定義 (同上)
 │   ├── remind.md             # リマインド機能の定義 (同上)
+│   ├── inbox.md              # 外部 → Companion の inbox 書き込み作法 (外部エージェント向け参照、instructions.md からは参照しない)
 │   ├── {feature}.md          # 将来の共有機能ごとに 1 ファイル
 │   └── companions/
 │       ├── 0/
@@ -136,11 +137,12 @@ instructions.md 内から相対参照 (`./persona.md` など) で他ファイル
 | `handoff.md` | コンパニオン間ハンドオフ機能の定義 ([handoff.md](./handoff.md)) | 同上 |
 | `output.md` | output 記録機能の定義 ([output.md](./output.md)) | 同上 |
 | `remind.md` | リマインド機能の定義 ([remind.md](./remind.md)) | 同上 |
+| `inbox.md` | 外部 → Companion の inbox 書き込み作法 ([inbox.md](./inbox.md))。**外部エージェント向けの参照**で、companion の instructions.md からは参照しない | `.aidea/claude/` 直下 |
 | `{feature}.md` | 将来の共有機能 | 同上 |
 | `companions/<index>/instructions.md` | コンパニオンごとの起動指示 (エントリーポイント) | `.aidea/claude/companions/<0..8>/` |
 | `companions/<index>/*.md` | 段階的開示用の補助ファイル (persona / workflow など) | 同上 |
 
-`BackchannelSetup.setup()` が初回セットアップ時に Bundle 内の既知ファイルを `.aidea/claude/` にコピーする (`aidea.md` / `speech.md` / `handoff.md` / `output.md` / `remind.md` / `companions/<0..8>/instructions.md` を `Backchannels/companion-instructions.md` から複製)。**既存ファイルは上書きしない** (ユーザ編集の保護)。
+`BackchannelSetup.setup()` が初回セットアップ時に Bundle 内の既知ファイルを `.aidea/claude/` にコピーする (`aidea.md` / `speech.md` / `handoff.md` / `output.md` / `remind.md` / `inbox.md` / `companions/<0..8>/instructions.md` を `Backchannels/companion-instructions.md` から複製)。**既存ファイルは上書きしない** (ユーザ編集の保護)。
 
 `aidea.md` 内には Aidea が自動管理するコンパニオン名簿セクション (`<!-- aidea:companions:start -->` / `<!-- aidea:companions:end -->` で囲まれた領域) が含まれる。`BackchannelSetup.setup()` が aidea.md を初回コピーした後、`WorkspaceSnapshotManager.apply()` の末尾と `CompanionEditView` のリネーム確定時に `CompanionRosterWriter.writeRoster(...)` が呼ばれ、最新の `CompanionStore.companions[].name` でこの領域が書き換えられる。詳細は [companion-roster.md](./companion-roster.md) を参照。
 
