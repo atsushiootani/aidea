@@ -149,6 +149,17 @@ mv "$tmp" "$dir/handoff-$(date +%Y%m%dT%H%M%S).json"
 
 ---
 
+## 外部エージェント向け指示書 (`.aidea/claude/inbox.md`)
+
+Bundle リソース `Resources/Backchannels/inbox.md` を `BackchannelSetup` が初回セットアップ時に
+`.aidea/claude/inbox.md` へコピーする (`knownFeatures` に `inbox` を含む)。外部の Claude / エージェントが
+inbox にファイルを書くときの作法 (書き出し先・`handoff-{timestamp}.json` 命名・JSON 形式・原子的書き込み) の
+参照とする。
+
+- **companion の `instructions.md` からは参照しない**。inbox は受信側 Companion が特別な準備をする必要がなく
+  (届いた本文を通常プロンプトとして処理するだけ)、指示書は「送る側」のための参照だから
+- 既存ワークスペースにも `backfillMissingFeatures` で後から配布される
+
 ## 信頼境界
 
 `.aidea/backchannels/inbox/` に書けるプロセスは任意のプロンプトを Companion に注入できる。
