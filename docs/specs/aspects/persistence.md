@@ -12,6 +12,7 @@ syncs_with:
   - docs/specs/backchannels/handoff.md
   - docs/specs/backchannels/output.md
   - docs/specs/backchannels/remind.md
+  - docs/specs/backchannels/inbox.md
   - docs/specs/backchannels/companion-roster.md
   - docs/specs/frontchannels/scene.md
   - docs/specs/companions/companion.md
@@ -94,7 +95,9 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 │   │   └── remind-*.txt      # 遅延発火型リマインド (発火後 `.fired.txt` にリネーム、[../backchannels/remind.md](../backchannels/remind.md))
 │   ├── 1/                    # Companion 1
 │   │   └── ...
-│   └── ...                   # 0..8 (必要に応じて Claude が mkdir で作成)
+│   ├── ...                   # 0..8 (必要に応じて Claude が mkdir で作成)
+│   └── inbox/                # 外部プロセスからの受信箱 (Companion 別ではない、[../backchannels/inbox.md](../backchannels/inbox.md))
+│       └── *.json            # {"to": <index|name>, "message": "..."} (処理後も残す、ADR 0037)
 ├── claude/                   # Claude 起動時に読ませるリソース
 │   ├── aidea.md              # Backchannel 機能の指示書 (共有)
 │   ├── speech.md             # speech 機能の指示書 (共有)
@@ -300,6 +303,7 @@ Claude → Aidea 方向の通信は**ファイル経由**で行う。詳細は [
 | Claude から handoff 受信時 | `<n>/handoff-*.json` → 宛先解決 → 送信 (ファイルは残す、ADR 0024) | `HandoffWatcher` |
 | Claude から output 受信時 | `<n>/output-*.txt` → OutputState の履歴に蓄積 (ファイルは残す、ADR 0024) | `OutputWatcher` |
 | Claude から remind 受信時 | `<n>/remind-{ts}.txt` → トリガ時刻まで待機し SpeechQueue 投入 → ファイルを `.fired.txt` リネーム ([../backchannels/remind.md](../backchannels/remind.md)) | `RemindWatcher` + `RemindScheduler` |
+| 外部から inbox 受信時 | `inbox/*.json` → 宛先 Companion を解決して `message` を送信 (ファイルは残す、[../backchannels/inbox.md](../backchannels/inbox.md)) | `InboxWatcher` + `AideaApp.dispatchInbox` |
 | クイックメモ保存時 | `.aidea/widgets/quickmemo/memo.md` を上書き (親ディレクトリ自動生成、[../widgets/quick-memo.md](../widgets/quick-memo.md)) | `QuickMemoState.save()` |
 | 起動時 (scheduler) | `.aidea/config/scheduler.json` 読込 → 有効ジョブ登録 + 取りこぼし判定。`state/scheduler.json` で当日実行済みを照合 ([../widgets/scheduler.md](../widgets/scheduler.md)) | `SchedulerStore` + `SchedulerState` + `SchedulerEngine` |
 | スケジューラ発火 / 今すぐ実行時 | 指定 Companion へ command 送信 → `state/scheduler.json` の `lastRun[id]` を当日日付で更新 (`.atomic`) | `SchedulerState` + `SchedulerStore` |

@@ -80,10 +80,18 @@ final class ClaudeSessionState: SessionState, FocusBridgeOwner {
     /// 起動直後に呼ぶと TUI 初期化中で取りこぼされる可能性がある。Claude 起動シーケンス完了を
     /// 待ってから送りたい場合は `sendMessageWhenReady` を使う。
     func sendMessage(_ message: String) {
-        terminalView.send(txt: message + "\r")
+        // 本文と Enter を分離して送る (autoStartClaude と同じ理由)。
+        // Claude Code (Ink 製 TUI) は bracketed paste を有効にしており、本文と \r を一度に送ると
+        // \r も paste の一部とみなされ submit されない (入力欄に本文が残ったまま止まる)。
+        // 本文の入力処理が終わる間 (≈0.3s) を挟んでから \r を送って submit させる。
+        terminalView.send(txt: message)
         // 出力が返る前に即座に「実行中」表示へ (issue #45)。3.0s の初期タイマー内に
         // 出力が来れば 0.5s デバウンスに切り替わり、以降は出力が続く限り busy を維持する。
         markBusy()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+            self?.terminalView.send(txt: "\r")
+            self?.markBusy()
+        }
     }
 
     /// Claude 起動シーケンス完了 (isReady=true) を待ってから `sendMessage` を呼ぶ。
