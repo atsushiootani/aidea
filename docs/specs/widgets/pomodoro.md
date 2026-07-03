@@ -143,7 +143,7 @@ popover や展開パネルでの開閉はせず、すべての操作要素を横
 | **⌘ ⌥ P** | Start / Pause トグル |
 | **⌘ ⌥ ⇧ P** | Reset |
 
-`AideaApp.body.commands` に新規 `CommandMenu("ポモドーロ")` を追加し、項目に `.keyboardShortcut` を付与する。
+`AideaApp.body.commands` の「Aidea > ポモドーロ」サブメニューとして実装し、`.keyboardShortcut` を付与する (issue #130)。
 
 既存ショートカットとの衝突チェック ([../window/shortcuts.md](../window/shortcuts.md)):
 

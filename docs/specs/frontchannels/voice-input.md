@@ -103,7 +103,7 @@ AppHeaderView
 
 #### グローバルショートカット (⌘ ⌥ V)
 
-`AideaApp.body.commands` の `CommandMenu("音声入力")` で実装する。
+`AideaApp.body.commands` の「Aidea」メニュー直下の項目として実装する (issue #130)。
 ([../window/shortcuts.md](../window/shortcuts.md) の「音声入力」セクションと同期)
 
 - **キー選定理由**: V = Voice の連想で覚えやすく、`⌘ ⌥` 系の既存ショートカット (ツール切替・タイマー) と修飾キー体系が揃う。`⌘ ⌥ V` は未使用空きキー。
@@ -234,7 +234,7 @@ Aidea 側で TCC のフラグを別途 UserDefaults に複製する必要はな�
 | Entitlements | `com.apple.security.device.audio-input` を追加 (Hardened Runtime 下でマイク TCC 要求) |
 | `VoiceInputButton` (新規) | ボタン本体 |
 | `VoiceInputDialog` (新規) | NSAlert + NSTextField ラッパ |
-| `AideaApp` | 音声入力 CommandMenu を追加し `⌘⌥V` にバインド |
+| `AideaApp` | 「Aidea」メニューに音声入力項目を追加し `⌘⌥V` にバインド |
 | `MicrophonePermission` (新規復活) | TCC 要求ヘルパ (ADR 0027 で削除したもの) |
 | [aspects/view-hierarchy.md](../aspects/view-hierarchy.md) | `AppHeaderView` の階層図に `VoiceInputButton` を追加 |
 | [frontchannels/README.md](./README.md) | 本 spec へのリンク追加 |
