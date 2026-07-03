@@ -13,14 +13,33 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-17
+last_updated: 2026-07-03
 ---
 
 # グローバルショートカット
 
 Window 全体で有効なキーボードショートカット。
 どの Tool にフォーカスしていても共通で効く。
-`AideaApp.body.commands` の `CommandMenu("タブ")` / `CommandMenu("ツール")` / `CommandMenu("コンパニオン")` で実装する。
+
+## メニューバー構成 (issue #130)
+
+トップレベルのメニューを最小限に抑え、Aidea 固有の操作は「Aidea」メニュー配下に集約する。
+
+```
+File     — 最近開いたディレクトリを開く... / ディレクトリを開く... (⌘O)
+Edit     — 標準 (取り消す/やり直すは撤去済み、ADR 0038)
+View
+  └─ タブ ▸        — タブ・ペイン操作 (下記)
+Aidea
+  ├─ コンパニオン ▸ — Companion 1..9 (⌘1..⌘9)
+  ├─ ツール ▸       — ツール切替 (⌘⌥1..0)
+  ├─ ウィジェット ▸  — ポモドーロ / 音声入力 / スニペット / スケジューラ / カレンダー
+  ├─ 読み上げ ON/OFF (⌘⌥M)
+  └─ API キー設定...
+Window / Help — 標準
+```
+
+実装は `AideaApp.body.commands`: タブは `CommandGroup(after: .sidebar)` 内の `Menu("タブ")` として View メニューに挿入し、コンパニオン / ツール / ウィジェットは `CommandMenu("Aidea")` 内のサブメニュー (`Menu`) として置く。ショートカットは全項目従来どおり (サブメニュー化による変更なし)。
 
 ## タブ・ペイン操作
 
@@ -67,7 +86,7 @@ Window 全体で有効なキーボードショートカット。
 
 ## ポモドーロ
 
-`AideaApp.body.commands` の `CommandMenu("ポモドーロ")` で実装する。詳細は [../widgets/pomodoro.md](../widgets/pomodoro.md)。
+「Aidea > ウィジェット」サブメニューの項目として実装する (issue #130)。詳細は [../widgets/pomodoro.md](../widgets/pomodoro.md)。
 
 | キー | 動作 |
 |---|---|
@@ -76,7 +95,7 @@ Window 全体で有効なキーボードショートカット。
 
 ## 音声入力
 
-`AideaApp.body.commands` の `CommandMenu("音声入力")` で実装する。詳細は [../frontchannels/voice-input.md](../frontchannels/voice-input.md)。
+「Aidea > ウィジェット」サブメニューの項目として実装する (issue #130)。詳細は [../frontchannels/voice-input.md](../frontchannels/voice-input.md)。
 
 | キー | 動作 |
 |---|---|

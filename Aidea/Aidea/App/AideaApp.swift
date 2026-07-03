@@ -186,17 +186,20 @@ struct AideaApp: App {
                 }
                 .keyboardShortcut("o", modifiers: [.command])
             }
-            tabMenu
-            toolMenu
-            pomodoroMenu
-            voiceInputMenu
-            widgetMenu
+            // View メニュー配下に「タブ」サブメニュー (issue #130)
+            CommandGroup(after: .sidebar) {
+                Menu("タブ") { tabMenuItems }
+            }
+            // Aidea メニューに コンパニオン / ツール / ウィジェット を集約 (issue #130)
             CommandMenu("Aidea") {
+                Menu("コンパニオン") { companionMenuItems }
+                Menu("ツール") { toolMenuItems }
+                Menu("ウィジェット") { widgetMenuItems }
+                Divider()
                 Button("読み上げ ON/OFF") {
                     speechState.toggle()
                 }
                 .keyboardShortcut("m", modifiers: [.command, .option])
-                Divider()
                 Button("API キー設定...") {
                     TranslationService.showApiKeyDialog()
                 }
@@ -204,97 +207,82 @@ struct AideaApp: App {
         }
     }
 
-    // MARK: - Command menus
+    // MARK: - Menu items (issue #130: View > タブ / Aidea > コンパニオン・ツール・ウィジェット)
 
-    /// タブ・ペイン操作メニュー
-    @CommandsBuilder
-    private var tabMenu: some Commands {
-        CommandMenu("タブ") {
-            Button("新しいタブ...") { newTabWithPicker() }
-                .keyboardShortcut("t", modifiers: [.command])
-            Button("タブを閉じる") { closeCurrentTab() }
-                .keyboardShortcut("w", modifiers: [.command])
-            Divider()
-            Button("左のタブ") { moveTab(offset: -1) }
-                .keyboardShortcut("[", modifiers: [.command, .shift])
-            Button("右のタブ") { moveTab(offset: 1) }
-                .keyboardShortcut("]", modifiers: [.command, .shift])
-            Divider()
-            Button("前のペイン") { movePane(offset: -1) }
-                .keyboardShortcut("[", modifiers: [.command])
-            Button("次のペイン") { movePane(offset: 1) }
-                .keyboardShortcut("]", modifiers: [.command])
-            Divider()
-            Button("左右に分割") { splitCurrent(axis: .horizontal) }
-                .keyboardShortcut(.rightArrow, modifiers: [.command, .option])
-            Button("上下に分割") { splitCurrent(axis: .vertical) }
-                .keyboardShortcut(.downArrow, modifiers: [.command, .option])
+    /// View > タブ: タブ・ペイン操作
+    @ViewBuilder
+    private var tabMenuItems: some View {
+        Button("新しいタブ...") { newTabWithPicker() }
+            .keyboardShortcut("t", modifiers: [.command])
+        Button("タブを閉じる") { closeCurrentTab() }
+            .keyboardShortcut("w", modifiers: [.command])
+        Divider()
+        Button("左のタブ") { moveTab(offset: -1) }
+            .keyboardShortcut("[", modifiers: [.command, .shift])
+        Button("右のタブ") { moveTab(offset: 1) }
+            .keyboardShortcut("]", modifiers: [.command, .shift])
+        Divider()
+        Button("前のペイン") { movePane(offset: -1) }
+            .keyboardShortcut("[", modifiers: [.command])
+        Button("次のペイン") { movePane(offset: 1) }
+            .keyboardShortcut("]", modifiers: [.command])
+        Divider()
+        Button("左右に分割") { splitCurrent(axis: .horizontal) }
+            .keyboardShortcut(.rightArrow, modifiers: [.command, .option])
+        Button("上下に分割") { splitCurrent(axis: .vertical) }
+            .keyboardShortcut(.downArrow, modifiers: [.command, .option])
+    }
+
+    /// Aidea > コンパニオン: コンパニオン起動 / アクティブ化
+    @ViewBuilder
+    private var companionMenuItems: some View {
+        ForEach(0..<9) { index in
+            Button("Companion \(index + 1)") { activateCompanion(index: index) }
+                .keyboardShortcut(KeyEquivalent(Character(String(index + 1))), modifiers: [.command])
         }
     }
 
-    /// ツール切替メニュー
-    @CommandsBuilder
-    private var toolMenu: some Commands {
-        CommandMenu("ツール") {
-            Button("Filer") { focusTool(.filer) }
-                .keyboardShortcut("1", modifiers: [.command, .option])
-            Button("Kit") { focusTool(.kit) }
-                .keyboardShortcut("2", modifiers: [.command, .option])
-            Button("Git") { focusTool(.git) }
-                .keyboardShortcut("3", modifiers: [.command, .option])
-            Button("Terminal") { focusTool(.terminal) }
-                .keyboardShortcut("7", modifiers: [.command, .option])
-            Button("Claude") { focusTool(.claude) }
-                .keyboardShortcut("8", modifiers: [.command, .option])
-            Button("Web") { focusTool(.web) }
-                .keyboardShortcut("9", modifiers: [.command, .option])
-            Button("Preview") { focusTool(.preview) }
-                .keyboardShortcut("0", modifiers: [.command, .option])
-        }
-        CommandMenu("コンパニオン") {
-            ForEach(0..<9) { index in
-                Button("Companion \(index + 1)") { activateCompanion(index: index) }
-                    .keyboardShortcut(KeyEquivalent(Character(String(index + 1))), modifiers: [.command])
-            }
-        }
+    /// Aidea > ツール: ツール切替 (インスタンスの循環フォーカス)
+    @ViewBuilder
+    private var toolMenuItems: some View {
+        Button("Filer") { focusTool(.filer) }
+            .keyboardShortcut("1", modifiers: [.command, .option])
+        Button("Kit") { focusTool(.kit) }
+            .keyboardShortcut("2", modifiers: [.command, .option])
+        Button("Git") { focusTool(.git) }
+            .keyboardShortcut("3", modifiers: [.command, .option])
+        Button("Terminal") { focusTool(.terminal) }
+            .keyboardShortcut("7", modifiers: [.command, .option])
+        Button("Claude") { focusTool(.claude) }
+            .keyboardShortcut("8", modifiers: [.command, .option])
+        Button("Web") { focusTool(.web) }
+            .keyboardShortcut("9", modifiers: [.command, .option])
+        Button("Preview") { focusTool(.preview) }
+            .keyboardShortcut("0", modifiers: [.command, .option])
     }
 
-    /// ポモドーロタイマーメニュー (docs/specs/widgets/pomodoro.md)
-    @CommandsBuilder
-    private var pomodoroMenu: some Commands {
-        CommandMenu("ポモドーロ") {
-            Button("開始 / 一時停止") { pomodoroState.toggleRun() }
-                .keyboardShortcut("p", modifiers: [.command, .option])
-            Button("リセット") { pomodoroState.reset() }
-                .keyboardShortcut("p", modifiers: [.command, .option, .shift])
+    /// Aidea > ウィジェット: ポモドーロ / 音声入力 / スニペット / スケジューラ / カレンダー。
+    /// 音声入力の disabled 条件は VoiceInputButton と完全に一致させる
+    /// (docs/specs/frontchannels/voice-input.md)。
+    @ViewBuilder
+    private var widgetMenuItems: some View {
+        Button("ポモドーロ 開始 / 一時停止") { pomodoroState.toggleRun() }
+            .keyboardShortcut("p", modifiers: [.command, .option])
+        Button("ポモドーロ リセット") { pomodoroState.reset() }
+            .keyboardShortcut("p", modifiers: [.command, .option, .shift])
+        Divider()
+        Button("音声入力ダイアログを開く") {
+            VoiceInputLauncher.present(registry: registry, companionStore: companionStore)
         }
-    }
-
-    /// 音声入力メニュー (docs/specs/frontchannels/voice-input.md)
-    /// アクティブセッションが Claude のときだけ ⌘ ⌥ V でダイアログを開ける。
-    /// disabled 条件は VoiceInputButton と完全に一致させる。
-    @CommandsBuilder
-    private var voiceInputMenu: some Commands {
-        CommandMenu("音声入力") {
-            Button("音声入力ダイアログを開く") {
-                VoiceInputLauncher.present(registry: registry, companionStore: companionStore)
-            }
-            .keyboardShortcut("v", modifiers: [.command, .option])
-            .disabled((registry.activeSession?.state as? ClaudeSessionState) == nil)
-        }
-    }
-
-    /// ウィジェット操作メニュー (スニペット / スケジューラ / カレンダー の popover を開く)
-    @CommandsBuilder
-    private var widgetMenu: some Commands {
-        CommandMenu("ウィジェット") {
-            Button("スニペットを開く") { snippetState.isPopoverPresented.toggle() }
-                .keyboardShortcut("b", modifiers: [.command, .option])
-            Button("スケジューラを開く") { schedulerState.isPopoverPresented.toggle() }
-                .keyboardShortcut("s", modifiers: [.command, .option])
-            Button("カレンダーを開く") { remindState.isPopoverPresented.toggle() }
-                .keyboardShortcut("c", modifiers: [.command, .option])
-        }
+        .keyboardShortcut("v", modifiers: [.command, .option])
+        .disabled((registry.activeSession?.state as? ClaudeSessionState) == nil)
+        Divider()
+        Button("スニペットを開く") { snippetState.isPopoverPresented.toggle() }
+            .keyboardShortcut("b", modifiers: [.command, .option])
+        Button("スケジューラを開く") { schedulerState.isPopoverPresented.toggle() }
+            .keyboardShortcut("s", modifiers: [.command, .option])
+        Button("カレンダーを開く") { remindState.isPopoverPresented.toggle() }
+            .keyboardShortcut("c", modifiers: [.command, .option])
     }
 
 
