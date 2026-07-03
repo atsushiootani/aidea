@@ -193,6 +193,18 @@ final class SessionRegistry {
         customTitles.removeValue(forKey: id)
     }
 
+    /// ペイン内で最も最近アクティブだったタブの index を返す (タブクローズ後の
+    /// アクティブタブ選択用、issue #253)。`activeSessionHistory` を末尾 (最新) 側から
+    /// 走査し、ペイン内のタブに最初にヒットしたものを使う。履歴に無ければ nil。
+    /// 閉じたタブは先に `destroySession` で履歴から除去してから呼ぶこと。
+    /// 仕様: docs/specs/window/tab-bar.md#クローズ後のアクティブタブ選択-issue-253
+    func mostRecentTabIndex(in pane: Pane) -> Int? {
+        for id in activeSessionHistory.reversed() {
+            if let idx = pane.tabs.firstIndex(of: id) { return idx }
+        }
+        return nil
+    }
+
     /// Session を取得 (なければ作成)。Tab 追加時や View 描画時に使う。
     func ensureSession(for id: SessionID) -> Session {
         if let existing = session(for: id) { return existing }
@@ -470,6 +482,9 @@ final class SessionRegistry {
                 }
                 if matches { indicesToRemove.append(idx) }
             }
+            // アクティブタブが生き残れば維持し、消えた場合は MRU で選び直す
+            // (docs/specs/window/tab-bar.md#クローズ後のアクティブタブ選択-issue-253)
+            let activeID: SessionID? = pane.activeIndex < pane.tabs.count ? pane.tabs[pane.activeIndex] : nil
             for idx in indicesToRemove.reversed() {
                 let removed = pane.tabs[idx]
                 pane.tabs.remove(at: idx)
@@ -477,6 +492,10 @@ final class SessionRegistry {
             }
             if pane.tabs.isEmpty {
                 pane.activeIndex = 0
+            } else if let activeID, let idx = pane.tabs.firstIndex(of: activeID) {
+                pane.activeIndex = idx
+            } else if let mru = mostRecentTabIndex(in: pane) {
+                pane.activeIndex = mru
             } else if pane.activeIndex >= pane.tabs.count {
                 pane.activeIndex = pane.tabs.count - 1
             }
