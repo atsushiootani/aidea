@@ -33,13 +33,21 @@ View
 Aidea
   ├─ コンパニオン ▸ — Companion 1..9 (⌘1..⌘9)
   ├─ ツール ▸       — ツール切替 (⌘⌥1..0)
-  ├─ ウィジェット ▸  — ポモドーロ / 音声入力 / スニペット / スケジューラ / カレンダー
+  ├─ ─────
+  ├─ クイックメモを開く          (⌘M は NSEvent モニター経由。メニュー項目にショートカット表記なし)
+  ├─ スニペットを開く (⌘⌥B)
+  ├─ スケジューラを開く (⌘⌥S)
+  ├─ ポモドーロ ▸               — 開始 / 一時停止 (⌘⌥P)、リセット (⌘⌥⇧P)
+  ├─ カレンダーを開く (⌘⌥C)
+  ├─ ─────
+  ├─ 音声入力ダイアログを開く (⌘⌥V)
   ├─ 読み上げ ON/OFF (⌘⌥M)
+  ├─ ─────
   └─ API キー設定...
 Window / Help — 標準
 ```
 
-実装は `AideaApp.body.commands`: タブは `CommandGroup(after: .sidebar)` 内の `Menu("タブ")` として View メニューに挿入し、コンパニオン / ツール / ウィジェットは `CommandMenu("Aidea")` 内のサブメニュー (`Menu`) として置く。ショートカットは全項目従来どおり (サブメニュー化による変更なし)。
+実装は `AideaApp.body.commands`: タブは `CommandGroup(after: .sidebar)` 内の `Menu("タブ")` として View メニューに挿入し、それ以外は `CommandMenu("Aidea")` 配下に置く (コンパニオン / ツール / ポモドーロのみサブメニュー、他は直下の項目)。ショートカットは全項目従来どおり。クイックメモの ⌘M は NSEvent モニターが横取りするため ([quick-memo.md](../widgets/quick-memo.md))、メニュー項目側にはショートカットを付けない (二重定義を避ける)。
 
 ## タブ・ペイン操作
 
@@ -86,7 +94,7 @@ Window / Help — 標準
 
 ## ポモドーロ
 
-「Aidea > ウィジェット」サブメニューの項目として実装する (issue #130)。詳細は [../widgets/pomodoro.md](../widgets/pomodoro.md)。
+「Aidea > ポモドーロ」サブメニューとして実装する (issue #130)。詳細は [../widgets/pomodoro.md](../widgets/pomodoro.md)。
 
 | キー | 動作 |
 |---|---|
@@ -95,7 +103,7 @@ Window / Help — 標準
 
 ## 音声入力
 
-「Aidea > ウィジェット」サブメニューの項目として実装する (issue #130)。詳細は [../frontchannels/voice-input.md](../frontchannels/voice-input.md)。
+「Aidea」メニュー直下の項目として実装する (issue #130)。詳細は [../frontchannels/voice-input.md](../frontchannels/voice-input.md)。
 
 | キー | 動作 |
 |---|---|

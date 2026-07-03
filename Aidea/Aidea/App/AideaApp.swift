@@ -190,16 +190,37 @@ struct AideaApp: App {
             CommandGroup(after: .sidebar) {
                 Menu("タブ") { tabMenuItems }
             }
-            // Aidea メニューに コンパニオン / ツール / ウィジェット を集約 (issue #130)
+            // Aidea メニューに コンパニオン / ツール / 各ウィジェットを集約 (issue #130)
             CommandMenu("Aidea") {
                 Menu("コンパニオン") { companionMenuItems }
                 Menu("ツール") { toolMenuItems }
-                Menu("ウィジェット") { widgetMenuItems }
                 Divider()
+                // クイックメモの ⌘M は NSEvent モニターが横取りするため、
+                // メニュー項目にはショートカットを付けない (二重定義を避ける。widgets/quick-memo.md)
+                Button("クイックメモを開く") { quickMemoState.togglePresented() }
+                Button("スニペットを開く") { snippetState.isPopoverPresented.toggle() }
+                    .keyboardShortcut("b", modifiers: [.command, .option])
+                Button("スケジューラを開く") { schedulerState.isPopoverPresented.toggle() }
+                    .keyboardShortcut("s", modifiers: [.command, .option])
+                Menu("ポモドーロ") {
+                    Button("開始 / 一時停止") { pomodoroState.toggleRun() }
+                        .keyboardShortcut("p", modifiers: [.command, .option])
+                    Button("リセット") { pomodoroState.reset() }
+                        .keyboardShortcut("p", modifiers: [.command, .option, .shift])
+                }
+                Button("カレンダーを開く") { remindState.isPopoverPresented.toggle() }
+                    .keyboardShortcut("c", modifiers: [.command, .option])
+                Divider()
+                Button("音声入力ダイアログを開く") {
+                    VoiceInputLauncher.present(registry: registry, companionStore: companionStore)
+                }
+                .keyboardShortcut("v", modifiers: [.command, .option])
+                .disabled((registry.activeSession?.state as? ClaudeSessionState) == nil)
                 Button("読み上げ ON/OFF") {
                     speechState.toggle()
                 }
                 .keyboardShortcut("m", modifiers: [.command, .option])
+                Divider()
                 Button("API キー設定...") {
                     TranslationService.showApiKeyDialog()
                 }
@@ -261,29 +282,6 @@ struct AideaApp: App {
             .keyboardShortcut("0", modifiers: [.command, .option])
     }
 
-    /// Aidea > ウィジェット: ポモドーロ / 音声入力 / スニペット / スケジューラ / カレンダー。
-    /// 音声入力の disabled 条件は VoiceInputButton と完全に一致させる
-    /// (docs/specs/frontchannels/voice-input.md)。
-    @ViewBuilder
-    private var widgetMenuItems: some View {
-        Button("ポモドーロ 開始 / 一時停止") { pomodoroState.toggleRun() }
-            .keyboardShortcut("p", modifiers: [.command, .option])
-        Button("ポモドーロ リセット") { pomodoroState.reset() }
-            .keyboardShortcut("p", modifiers: [.command, .option, .shift])
-        Divider()
-        Button("音声入力ダイアログを開く") {
-            VoiceInputLauncher.present(registry: registry, companionStore: companionStore)
-        }
-        .keyboardShortcut("v", modifiers: [.command, .option])
-        .disabled((registry.activeSession?.state as? ClaudeSessionState) == nil)
-        Divider()
-        Button("スニペットを開く") { snippetState.isPopoverPresented.toggle() }
-            .keyboardShortcut("b", modifiers: [.command, .option])
-        Button("スケジューラを開く") { schedulerState.isPopoverPresented.toggle() }
-            .keyboardShortcut("s", modifiers: [.command, .option])
-        Button("カレンダーを開く") { remindState.isPopoverPresented.toggle() }
-            .keyboardShortcut("c", modifiers: [.command, .option])
-    }
 
 
     // MARK: - File menu action
