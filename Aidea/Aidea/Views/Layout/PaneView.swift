@@ -404,17 +404,31 @@ struct PaneView: View {
     }
 
     /// タブをクローズ。全タブが閉じられた場合、このペイン自体をレイアウトツリーから取り除く。
+    /// クローズ後のアクティブタブ選択は docs/specs/window/tab-bar.md#クローズ後のアクティブタブ選択-issue-253。
     private func closeTab(at index: Int) {
         guard index >= 0, index < pane.tabs.count else { return }
         let closed = pane.tabs[index]
+        let wasActive = (pane.activeIndex == index)
+        // 非アクティブタブを閉じた場合はアクティブタブを維持する (削除による index ずれを補正)
+        let activeID: SessionID? = pane.activeIndex < pane.tabs.count ? pane.tabs[pane.activeIndex] : nil
         pane.tabs.remove(at: index)
         companionStore.unbindSession(closed)
         registry.destroySession(closed)
-        if pane.activeIndex >= pane.tabs.count {
-            pane.activeIndex = max(0, pane.tabs.count - 1)
+        if !pane.tabs.isEmpty {
+            if wasActive {
+                // アクティブタブを閉じた → ペイン内で最も最近アクティブだったタブへ (issue #253)。
+                // 履歴に無ければ従来どおり隣接タブ (同 index、末尾なら 1 つ前)。
+                pane.activeIndex = registry.mostRecentTabIndex(in: pane) ?? min(index, pane.tabs.count - 1)
+            } else if let activeID, let idx = pane.tabs.firstIndex(of: activeID) {
+                pane.activeIndex = idx
+            } else if pane.activeIndex >= pane.tabs.count {
+                pane.activeIndex = pane.tabs.count - 1
+            }
+        } else {
+            pane.activeIndex = 0
         }
         // 現在のペインがアクティブなら新しいアクティブタブに切替
-        if registry.activePaneID == pane.id {
+        if registry.activePaneID == pane.id, !pane.tabs.isEmpty {
             registry.setActiveTab(paneID: pane.id, tabIndex: pane.activeIndex)
         }
         // 全タブが閉じられたらペイン自体を削除

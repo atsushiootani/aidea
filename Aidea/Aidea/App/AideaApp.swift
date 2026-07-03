@@ -916,11 +916,11 @@ struct AideaApp: App {
         pane.tabs.remove(at: index)
         companionStore?.unbindSession(activeID)
         registry.destroySession(activeID)
-        if pane.activeIndex >= pane.tabs.count {
-            pane.activeIndex = max(0, pane.tabs.count - 1)
-        }
         if !pane.tabs.isEmpty {
-            registry.setActiveTab(paneID: pane.id, tabIndex: pane.activeIndex)
+            // アクティブタブを閉じたので、ペイン内で最も最近アクティブだったタブへ (issue #253)。
+            // 履歴に無ければ従来どおり隣接タブ (同 index、末尾なら 1 つ前)。
+            let next = registry.mostRecentTabIndex(in: pane) ?? min(index, pane.tabs.count - 1)
+            registry.setActiveTab(paneID: pane.id, tabIndex: next)
         }
 
         if pane.tabs.isEmpty {
