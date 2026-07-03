@@ -211,15 +211,15 @@ struct AideaApp: App {
                 Button("カレンダーを開く") { remindState.isPopoverPresented.toggle() }
                     .keyboardShortcut("c", modifiers: [.command, .option])
                 Divider()
+                Button("読み上げ ON/OFF") {
+                    speechState.toggle()
+                }
+                .keyboardShortcut("m", modifiers: [.command, .option])
                 Button("音声入力ダイアログを開く") {
                     VoiceInputLauncher.present(registry: registry, companionStore: companionStore)
                 }
                 .keyboardShortcut("v", modifiers: [.command, .option])
                 .disabled((registry.activeSession?.state as? ClaudeSessionState) == nil)
-                Button("読み上げ ON/OFF") {
-                    speechState.toggle()
-                }
-                .keyboardShortcut("m", modifiers: [.command, .option])
                 Divider()
                 Button("API キー設定...") {
                     TranslationService.showApiKeyDialog()
