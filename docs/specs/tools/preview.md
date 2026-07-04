@@ -14,7 +14,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-06-27
+last_updated: 2026-07-04
 ---
 
 # Tool 仕様: Preview
@@ -173,6 +173,9 @@ Markdown は `MarkdownContainer` で **view / edit の 2 モード**を扱う。
 プレビュー表示中のファイルが外部 (Claude など) によって変更されたとき、プレビュー表示を自動的に更新する。
 
 - ファイルの変更は **FSEvents** で検知する (実装: 既存の `FileWatcher` を流用)
+- 監視パス・比較対象は `resolvingSymlinksInPath()` で解決した実パスに揃える。FSEvents はシンボリックリンクを
+  解決した実パスで変更を通知するため、揃えないとリンク経由で開いたファイル (issue #119) の変更が
+  検知できない (issue #254)
 - 変更を検知したら直ちにファイルを再読み込みしてプレビューを更新する
 - **編集モード中は更新しない**: `MarkdownContainer` / `DrawioPreview` が edit モードのときはスキップし、view モードに戻ったタイミングで反映される
 - 対象: Markdown (`MarkdownContainer`) / Drawio (`DrawioPreview`) の **view モード**、およびテキスト / 画像ファイル (`NSTextPreview` / `NSImage`)

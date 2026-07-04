@@ -57,8 +57,10 @@ struct MarkdownContainer: View {
         }
         .task(id: url) {
             fileWatcher.stop()
-            let watchedURL = url
-            fileWatcher.start(path: url.deletingLastPathComponent().path) { paths in
+            // FSEvents はシンボリックリンクを解決した実パスで変更を通知するため、
+            // 比較対象も resolvingSymlinksInPath() で揃える (issue #254)
+            let watchedURL = url.resolvingSymlinksInPath()
+            fileWatcher.start(path: watchedURL.deletingLastPathComponent().path) { paths in
                 if paths.contains(watchedURL.path) {
                     fileChangedTick += 1
                 }
