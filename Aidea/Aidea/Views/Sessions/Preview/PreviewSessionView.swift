@@ -84,8 +84,10 @@ struct PreviewSessionView: View {
             // 独立にフォーカスを取るため、bridge の状態は影響しない。
             fileWatcher.stop()
             if let url = state.url, !isMarkdownURL(url), !isDrawioURL(url), !isVideoURL(url) {
-                let watchedURL = url
-                fileWatcher.start(path: url.deletingLastPathComponent().path) { paths in
+                // FSEvents はシンボリックリンクを解決した実パスで変更を通知するため、
+                // 比較対象も resolvingSymlinksInPath() で揃える (issue #254)
+                let watchedURL = url.resolvingSymlinksInPath()
+                fileWatcher.start(path: watchedURL.deletingLastPathComponent().path) { paths in
                     if paths.contains(watchedURL.path) {
                         fileChangedTick += 1
                     }
