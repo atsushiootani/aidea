@@ -113,7 +113,8 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 ├── config/                   # ユーザが宣言的に編集する機能設定 (JSON)
 │   └── scheduler.json        # 定時スケジューラのジョブ定義 (jobs[]、[../widgets/scheduler.md](../widgets/scheduler.md))
 ├── state/                    # 機能の自動管理ランタイム状態 (JSON、ユーザは通常編集しない)
-│   └── scheduler.json        # 定時スケジューラの lastRun マップ (jobId→YYYY-MM-DD、[../widgets/scheduler.md](../widgets/scheduler.md))
+│   ├── scheduler.json        # 定時スケジューラの lastRun マップ (jobId→YYYY-MM-DD、[../widgets/scheduler.md](../widgets/scheduler.md))
+│   └── dir-summaries.json    # ディレクトリ AI 要約のキャッシュ (相対パス→1行要約、[../tools/filer.md](../tools/filer.md)#showdirectorysummary)
 ├── widgets/                  # Widget が永続化するユーザ編集可能テキスト
 │   └── quickmemo/
 │       └── memo.md           # クイックメモ (固定 1 ファイル、上書き運用 / widgets/quick-memo.md)
@@ -307,6 +308,7 @@ Claude → Aidea 方向の通信は**ファイル経由**で行う。詳細は [
 | クイックメモ保存時 | `.aidea/widgets/quickmemo/memo.md` を上書き (親ディレクトリ自動生成、[../widgets/quick-memo.md](../widgets/quick-memo.md)) | `QuickMemoState.save()` |
 | 起動時 (scheduler) | `.aidea/config/scheduler.json` 読込 → 有効ジョブ登録 + 取りこぼし判定。`state/scheduler.json` で当日実行済みを照合 ([../widgets/scheduler.md](../widgets/scheduler.md)) | `SchedulerStore` + `SchedulerState` + `SchedulerEngine` |
 | スケジューラ発火 / 今すぐ実行時 | 指定 Companion へ command 送信 → `state/scheduler.json` の `lastRun[id]` を当日日付で更新 (`.atomic`) | `SchedulerState` + `SchedulerStore` |
+| ディレクトリ要約 生成時 | `state/dir-summaries.json` を上書き保存 (`.atomic`。保存済みは再生成しない、[../tools/filer.md](../tools/filer.md)#showdirectorysummary) | `DirectorySummaryStore` |
 | スケジューラ ON/OFF トグル時 | `config/scheduler.json` の該当ジョブ `enabled` を read-modify-write | `SchedulerState.toggle()` |
 | 終了時 / バックグラウンド化時 | `workspace.json` (4 グループ統合) 保存 | `AideaApp.registerTerminationObserver()` |
 
