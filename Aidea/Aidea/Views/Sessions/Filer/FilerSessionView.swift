@@ -812,9 +812,12 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
         return target
     }
 
+    /// 一括生成の最大並行数 (docs/specs/tools/filer.md#showdirectorysummary)
+    private static let summaryMaxConcurrent = 20
+
     /// 指定ノード群のうち「未保存のディレクトリ」の要約を一括生成して保存する。
     /// ルート読み込み時とノード展開時に呼ばれる (直下のみ・再帰しない)。
-    /// API 負荷を抑えるため 1 件ずつ直列で生成し、完了ごとに該当行を再描画する。
+    /// 最大 20 件並行のスライディングウィンドウで生成し、完了ごとに該当行を再描画する。
     /// docs/specs/tools/filer.md#showdirectorysummary 参照。
     private func scheduleSummaryBatch(for nodes: [FileTreeNode]) {
         guard DirectorySummaryService.hasApiKey, let store = summaryStore else { return }
@@ -835,17 +838,33 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
         guard !targets.isEmpty else { return }
 
         Task { [weak self] in
-            for target in targets {
-                let summary = await DirectorySummaryService.generate(
-                    directoryURL: target.url,
-                    children: target.children
-                )
-                guard let self else { return }
-                await MainActor.run {
-                    self.summaryInFlight.remove(target.url)
-                    guard let summary else { return }
-                    self.summaryStore?.set(summary, for: target.key)
-                    self.reloadRow(forURL: target.url)
+            await withTaskGroup(of: (url: URL, key: String, summary: String?).self) { group in
+                var next = 0
+                // 上限まで先に投入し、以降は 1 件完了するごとに次を足す
+                while next < targets.count, next < Self.summaryMaxConcurrent {
+                    let target = targets[next]
+                    next += 1
+                    group.addTask {
+                        (target.url, target.key, await DirectorySummaryService.generate(
+                            directoryURL: target.url, children: target.children))
+                    }
+                }
+                for await result in group {
+                    if next < targets.count {
+                        let target = targets[next]
+                        next += 1
+                        group.addTask {
+                            (target.url, target.key, await DirectorySummaryService.generate(
+                                directoryURL: target.url, children: target.children))
+                        }
+                    }
+                    guard let self else { continue }
+                    await MainActor.run {
+                        self.summaryInFlight.remove(result.url)
+                        guard let summary = result.summary else { return }
+                        self.summaryStore?.set(summary, for: result.key)
+                        self.reloadRow(forURL: result.url)
+                    }
                 }
             }
         }
