@@ -14,7 +14,7 @@ impacts:
   - docs/specs/backchannels/remind.md
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-27
+last_updated: 2026-07-05
 ---
 
 # Backchannel: VOICEVOX 読み上げ
@@ -245,6 +245,7 @@ v8 以降、読み上げ機能は各 Companion の `.aidea/claude/companions/<in
 - **Aidea 側**: `SpeechWatcher` を停止し、`SpeechQueue` をクリアする (= VOICEVOX 再生は行わない)
 - **Claude 側**: 通常どおり `.aidea/backchannels/<N>/speech-{timestamp}.txt` を書き出す。speech.md の指示に変更は無く、プロンプトや CLI 動作も変わらない (= 履歴ファイルは残る)
 - **ON 切替時**: `SpeechWatcher` を再開し、`checkVoicevox()` を再実行する。**OFF 中に作成された speech ファイルは再生対象に含めない** (差分検知ではなく FSEvents の即時通知に依存しているため)。「一時的にオフ」用途として割り切る
+- **OFF 時点で合成中だった speech の破棄 (issue #235)**: OFF (`clear()`) 時点で VOICEVOX 合成中だった speech は、合成完了が ON 後にずれ込んでも**再生せず破棄する**。`SpeechQueue` は世代番号 (generation) を持ち、`clear()` ごとに進める。合成 Task は開始時の世代を持ち、完了時に世代が進んでいたら結果を捨てる。これを怠ると、残った Task が ON 後の再生中プレイヤーを上書きして完了通知 (`audioPlayerDidFinishPlaying`) が失われ、キューが恒久的に詰まる (= OFF→ON 後に読み上げが戻らない)
 
 #### 永続化
 
@@ -271,6 +272,7 @@ speech ファイルは成功・失敗ともに **削除しない** (ADR 0024)。
 | ファイル読み取り失敗 | ログ出力して次のファイルへ、ファイルは残す |
 | 空ファイル | 無視、ファイルは残す (読み上げしない) |
 | VOICEVOX API エラー | キュー内の当該テキストをスキップして次へ、ファイルは残す |
+| `AVAudioPlayer.play()` が false | 失敗扱いでスキップして次へ (完了 delegate が来ないため、待たずにフラグを戻す) |
 
 ---
 
@@ -282,8 +284,13 @@ speech ファイルは成功・失敗ともに **削除しない** (ADR 0024)。
 - 複数ファイルが同時に来た場合はタイムスタンプ順で再生
 - VOICEVOX の起動確認は `GET /version` で行う
 
+### Always (キューの堅牢性, issue #235)
+- `SpeechQueue` の状態変更 (キュー操作・フラグ・再生完了処理) はメインスレッドで行う
+- `clear()` で世代番号を進め、旧世代の合成結果は再生せず破棄する
+
 ### Never
 - speech ファイルを Aidea 側で削除しない (ADR 0024)
+- OFF 時点で合成中だった speech を ON 後に再生しない (世代番号で破棄、issue #235)
 - 親ディレクトリが `0..8` 以外のファイルをハンドラに通さない
 - `.aidea/backchannels/` 直下の speech-*.txt を処理しない (旧 flat 配置は仕様外)
 - ターミナル出力を直接パースして読み上げ内容を決定しない
