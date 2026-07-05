@@ -12,6 +12,7 @@ Aidea のコードを書く際に従うべき規約とガイドライン。
 | [design-principles.md](./design-principles.md) | 設計原則 (Tell Don't Ask / SOLID / GRASP 等) |
 | [rules.md](./rules.md) | Always / Confirm First / Never — コードレビュー時のチェックリスト |
 | [testing.md](./testing.md) | テスト戦略 / 手動確認チェックリスト |
+| [e2e-key-simulation.md](./e2e-key-simulation.md) | E2E キー入力シミュレーションの知見と再開手順 (TCC / CGEvent / IME) |
 
 ※ docs/ 配下の YAML frontmatter 規約は [../LAYOUT.md](../LAYOUT.md#frontmatter-規約) を参照。
 
