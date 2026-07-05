@@ -110,6 +110,16 @@ Markdown は `MarkdownContainer` で **view / edit の 2 モード**を扱う。
 - **キーボード**: view モードで `E` を押すと edit に切替 (セグメントボタンと等価)。既存仕様維持
 - **翻訳「日本語」ボタン**: 従来どおりセグメントコントロールの下に配置される (表示条件は `mode == .view && isEnglish && !isCachedFile`)
 
+#### 編集中のテキスト保護 (issue #125)
+
+edit モードの `EditableTextView` (NSTextView ラッパ) は、SwiftUI の再レンダリングから編集中のテキストを保護する。
+
+- **IME 未確定文字列の保護**: 日本語入力の変換中 (`hasMarkedText()`) は、`updateNSView` で NSTextView の storage に一切触れない。未確定文字列は binding に含まれないため「storage ≠ binding」が変換中は常に成立し、無条件に同期すると外部要因の再レンダリング (500ms 自動保存による state 更新など) のたびに未確定文字列が破棄される
+- **binding 往復の巻き戻し防止**: エディタ発の変更が binding を往復して `updateNSView` に戻ってきただけの場合は同期しない (Coordinator が最後に binding へ書いた値を記憶して比較)。連続入力中に古い render の値で storage を巻き戻さない
+- **未確定文字列は保存しない**: 変換中のテキストは binding に伝搬しない (= 自動保存にも乗らない)。確定・取消時の `textDidChange` で確定分だけが伝搬される
+
+**Never**: `updateNSView` で IME 変換中 (`hasMarkedText()`) の NSTextView の storage を書き換えない。
+
 #### キャッシュファイル (`.aidea/ja/`) の扱い
 
 `.aidea/ja/` 配下の翻訳キャッシュファイルはユーザーの編集対象外のため、**セグメントコントロールは表示しない**。代わりに「英語」ボタン (SF Symbols `character.book.closed`) のみを表示し、押すと元の英語ファイルを sibling タブで開く。

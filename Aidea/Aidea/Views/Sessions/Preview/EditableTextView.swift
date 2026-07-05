@@ -31,7 +31,13 @@ struct EditableTextView: NSViewRepresentable {
 
     func updateNSView(_ nsView: NSScrollView, context: Context) {
         guard let textView = nsView.documentView as? NSTextView else { return }
-        // Coordinator からの更新ループを避けるため、外部から text が変わった場合のみ同期
+        // IME 変換中は storage に触れない: 未確定文字列は binding に含まれず
+        // 「storage ≠ binding」が常に成立するため、無条件同期すると外部要因の
+        // 再レンダリング (自動保存の state 更新等) のたびに未確定文字列が破棄される (issue #125)
+        if textView.hasMarkedText() { return }
+        // エディタ発の変更が binding を往復して戻ってきただけなら同期しない。
+        // 連続入力中に古い render の値で storage を巻き戻さないための保護
+        if text == context.coordinator.lastEditedText { return }
         if textView.string != text {
             let selected = textView.selectedRanges
             textView.string = text
@@ -46,6 +52,9 @@ struct EditableTextView: NSViewRepresentable {
     /// NSTextView の編集イベントを SwiftUI Binding に伝搬する Coordinator
     final class Coordinator: NSObject, NSTextViewDelegate {
         let text: Binding<String>
+        /// textDidChange で binding に書いた最新値。updateNSView がエディタ発の
+        /// 変更を「外部からの変更」と誤認して storage を巻き戻すのを防ぐ
+        var lastEditedText: String?
 
         init(text: Binding<String>) {
             self.text = text
@@ -53,6 +62,10 @@ struct EditableTextView: NSViewRepresentable {
 
         func textDidChange(_ notification: Notification) {
             guard let textView = notification.object as? NSTextView else { return }
+            // IME 変換中の未確定文字列は伝搬しない (確定・取消時に改めて呼ばれる)。
+            // 未確定分を自動保存に乗せないため (issue #125)
+            guard !textView.hasMarkedText() else { return }
+            lastEditedText = textView.string
             text.wrappedValue = textView.string
         }
     }
