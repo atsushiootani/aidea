@@ -17,12 +17,12 @@ struct WorkspaceLauncherView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("リポジトリを開く")
+            Text("ワークスペースを開く")
                 .font(.headline)
 
             if recents.isEmpty {
                 Spacer()
-                Text("最近開いたリポジトリはありません")
+                Text("最近開いたワークスペースはありません")
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .center)
@@ -49,7 +49,7 @@ struct WorkspaceLauncherView: View {
                 .listStyle(.inset)
             }
 
-            Button("ディレクトリを開く...") {
+            Button("ワークスペースを開く...") {
                 chooseDirectory()
             }
             .keyboardShortcut("o", modifiers: [.command])
