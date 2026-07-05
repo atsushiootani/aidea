@@ -28,6 +28,10 @@ final class SpeechQueue: NSObject, AVAudioPlayerDelegate {
     private var queue: [Item] = []
     private var player: AVAudioPlayer?
     private var isProcessing = false
+    /// clear() のたびに進む世代番号。OFF (clear) 時点で VOICEVOX 合成中だった Task の
+    /// 結果を ON 後に破棄するために使う。破棄しないと、残った Task が再生中の player を
+    /// 上書きして完了 delegate が失われ、キューが恒久的に詰まる (issue #235)。
+    private var generation = 0
 
     /// テキストをキューに追加する。再生中でなければ即座に再生開始。
     /// speakerId が nil の場合は VoicevoxService のデフォルトスピーカーを使用する。
@@ -37,8 +41,9 @@ final class SpeechQueue: NSObject, AVAudioPlayerDelegate {
         processNext()
     }
 
-    /// キューをクリアして再生を停止する
+    /// キューをクリアして再生を停止する。合成中の Task の結果も以後破棄される (世代番号)
     func clear() {
+        generation += 1
         queue.removeAll()
         player?.stop()
         player = nil
@@ -61,14 +66,18 @@ final class SpeechQueue: NSObject, AVAudioPlayerDelegate {
         // VOICEVOX 合成 → AVAudioPlayer 再生の一連が完了 (or 失敗) するまでこの値を維持する。
         currentlySpeakingIndex = item.companionIndex
 
+        let gen = generation
         Task {
             do {
                 let wavData = try await VoicevoxService.synthesize(item.text, speaker: item.speakerId)
                 await MainActor.run {
+                    // 合成中に clear() されていたら結果を破棄する (issue #235)
+                    guard gen == generation else { return }
                     playWav(wavData)
                 }
             } catch {
                 await MainActor.run {
+                    guard gen == generation else { return }
                     isProcessing = false
                     isSpeaking = false
                     currentlySpeakingIndex = nil
@@ -78,28 +87,43 @@ final class SpeechQueue: NSObject, AVAudioPlayerDelegate {
         }
     }
 
-    /// WAV データを AVAudioPlayer で再生する
+    /// WAV データを AVAudioPlayer で再生する。
+    /// play() が false の場合は完了 delegate が来ないため、失敗扱いで次へ進む (issue #235)。
     private func playWav(_ data: Data) {
         do {
-            player = try AVAudioPlayer(data: data)
-            player?.delegate = self
-            player?.play()
+            let newPlayer = try AVAudioPlayer(data: data)
+            newPlayer.delegate = self
+            player = newPlayer
+            guard newPlayer.play() else {
+                skipCurrent()
+                return
+            }
         } catch {
-            isProcessing = false
-            isSpeaking = false
-            currentlySpeakingIndex = nil
-            processNext()
+            skipCurrent()
         }
+    }
+
+    /// 現在のエントリを失敗扱いでスキップし、次のエントリへ進む
+    private func skipCurrent() {
+        player = nil
+        isProcessing = false
+        isSpeaking = false
+        currentlySpeakingIndex = nil
+        processNext()
     }
 
     // MARK: - AVAudioPlayerDelegate
 
     func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
-        isProcessing = false
-        if queue.isEmpty {
-            isSpeaking = false
-            currentlySpeakingIndex = nil
+        // delegate の呼び出しスレッドは保証されないため、キュー操作はメインスレッドに寄せる
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.isProcessing = false
+            if self.queue.isEmpty {
+                self.isSpeaking = false
+                self.currentlySpeakingIndex = nil
+            }
+            self.processNext()
         }
-        processNext()
     }
 }
