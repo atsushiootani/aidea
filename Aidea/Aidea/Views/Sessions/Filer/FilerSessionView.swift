@@ -56,8 +56,13 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
     // MARK: - Directory Summary (issue #193)
     /// ディレクトリ要約の永続ストア (.aidea/state/dir-summaries.json)。reload() で張り替える
     private var summaryStore: DirectorySummaryStore?
-    /// 要約生成中の URL 集合 (多重リクエスト防止)
-    private var summaryInFlight: Set<URL> = []
+    /// 要約生成中の URL 集合 (多重リクエスト防止)。空 ↔ 非空でファイラ下部のスピナーを出し分ける
+    private var summaryInFlight: Set<URL> = [] {
+        didSet { updateSummaryProgress() }
+    }
+    /// 生成中インジケータ (ファイラ下部。スピナー + 小さなラベル)
+    private let summaryProgressBar = NSStackView()
+    private let summarySpinner = NSProgressIndicator()
 
     /// owner (FilerSessionState) の除外ルールから ExcludeMatcher を組み立てる。
     /// owner が未設定なら defaultExcludeRules を使う。
@@ -262,7 +267,20 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
 
         buildNavigateBar()
 
-        let stack = NSStackView(views: [navigateBar, searchField, scrollView])
+        // 要約生成中インジケータ (issue #193)。生成待ちがある間だけ下部に軽く表示する
+        summarySpinner.style = .spinning
+        summarySpinner.controlSize = .small
+        summarySpinner.isDisplayedWhenStopped = false
+        let progressLabel = NSTextField(labelWithString: "ディレクトリ要約を生成中…")
+        progressLabel.font = NSFont.systemFont(ofSize: 10)
+        progressLabel.textColor = .tertiaryLabelColor
+        summaryProgressBar.orientation = .horizontal
+        summaryProgressBar.spacing = 4
+        summaryProgressBar.addArrangedSubview(summarySpinner)
+        summaryProgressBar.addArrangedSubview(progressLabel)
+        summaryProgressBar.isHidden = true
+
+        let stack = NSStackView(views: [navigateBar, searchField, scrollView, summaryProgressBar])
         stack.orientation = .vertical
         stack.spacing = 2
         stack.edgeInsets = NSEdgeInsets(top: 4, left: 6, bottom: 4, right: 6)
@@ -270,6 +288,7 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
         navigateBar.setContentHuggingPriority(.required, for: .vertical)
         searchField.setContentHuggingPriority(.required, for: .vertical)
         scrollView.setContentHuggingPriority(.defaultLow, for: .vertical)
+        summaryProgressBar.setContentHuggingPriority(.required, for: .vertical)
         self.view = stack
     }
 
@@ -770,6 +789,17 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
     }
 
     // MARK: - Directory Summary batch (issue #193)
+
+    /// 生成待ちの有無でファイラ下部のスピナーを出し分ける (summaryInFlight の didSet から呼ばれる)
+    private func updateSummaryProgress() {
+        if summaryInFlight.isEmpty {
+            summarySpinner.stopAnimation(nil)
+            summaryProgressBar.isHidden = true
+        } else {
+            summaryProgressBar.isHidden = false
+            summarySpinner.startAnimation(nil)
+        }
+    }
 
     /// 要約ストアのキー。projectRoot 相対パス (root 自身は ".")、projectRoot 外は絶対パス。
     private func summaryKey(for url: URL) -> String {
