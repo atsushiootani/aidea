@@ -53,11 +53,11 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
     private var rootNodes: [FileTreeNode] = []
     private var reloadWorkItem: DispatchWorkItem?
 
-    // MARK: - Directory Summary
-    private let summaryLabel = NSTextField(labelWithString: "")
-    /// セッション中の概要キャッシュ (URL → 1 行テキスト)
-    private var summaryCache: [URL: String] = [:]
-    private var currentSummaryTask: Task<Void, Never>?
+    // MARK: - Directory Summary (issue #193)
+    /// ディレクトリ要約の永続ストア (.aidea/state/dir-summaries.json)。reload() で張り替える
+    private var summaryStore: DirectorySummaryStore?
+    /// 要約生成中の URL 集合 (多重リクエスト防止)
+    private var summaryInFlight: Set<URL> = []
 
     /// owner (FilerSessionState) の除外ルールから ExcludeMatcher を組み立てる。
     /// owner が未設定なら defaultExcludeRules を使う。
@@ -260,14 +260,9 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
         searchField.action = #selector(searchFieldChanged)
         searchField.isHidden = true
 
-        summaryLabel.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
-        summaryLabel.textColor = .secondaryLabelColor
-        summaryLabel.lineBreakMode = .byTruncatingTail
-        summaryLabel.isHidden = true
-
         buildNavigateBar()
 
-        let stack = NSStackView(views: [navigateBar, searchField, scrollView, summaryLabel])
+        let stack = NSStackView(views: [navigateBar, searchField, scrollView])
         stack.orientation = .vertical
         stack.spacing = 2
         stack.edgeInsets = NSEdgeInsets(top: 4, left: 6, bottom: 4, right: 6)
@@ -275,7 +270,6 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
         navigateBar.setContentHuggingPriority(.required, for: .vertical)
         searchField.setContentHuggingPriority(.required, for: .vertical)
         scrollView.setContentHuggingPriority(.defaultLow, for: .vertical)
-        summaryLabel.setContentHuggingPriority(.required, for: .vertical)
         self.view = stack
     }
 
@@ -419,12 +413,19 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
             return
         }
         currentRoot = root
+        // 要約ストアは projectRoot 基準 (.aidea の場所)。customRoot 切替時もファイルは同じ
+        if let projectRoot = workspace?.projectRoot {
+            summaryStore = DirectorySummaryStore(projectRoot: projectRoot)
+        }
         rootNodes = loadAndFilter(directory: root)
         outlineView.reloadData()
         // owner に保存された展開 URL があればそれを復元する
+        // (展開通知 outlineViewItemDidExpand が発火し、展開先の要約バッチも走る)
         if let saved = owner?.expandedURLs, !saved.isEmpty {
             restoreExpandedState(in: rootNodes, expandedURLs: saved)
         }
+        // ルート直下サブディレクトリの未保存要約を一括生成 (issue #193)
+        scheduleSummaryBatch(for: rootNodes)
         watcher.start(path: root.path) { [weak self] paths in
             guard let self = self else { return }
             let matcher = self.excludeMatcher()
@@ -669,36 +670,27 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
     func outlineView(_ outlineView: NSOutlineView, viewFor tableColumn: NSTableColumn?, item: Any) -> NSView? {
         guard let node = item as? FileTreeNode else { return nil }
         let identifier = NSUserInterfaceItemIdentifier("FileCell")
-        let cell: NSTableCellView
-        if let recycled = outlineView.makeView(withIdentifier: identifier, owner: self) as? NSTableCellView {
+        let cell: FileCellView
+        if let recycled = outlineView.makeView(withIdentifier: identifier, owner: self) as? FileCellView {
             cell = recycled
         } else {
-            cell = NSTableCellView()
+            cell = FileCellView()
             cell.identifier = identifier
-            let icon = NSImageView()
-            icon.translatesAutoresizingMaskIntoConstraints = false
-            let label = NSTextField(labelWithString: "")
-            label.translatesAutoresizingMaskIntoConstraints = false
-            label.lineBreakMode = .byTruncatingMiddle
-            cell.addSubview(icon)
-            cell.addSubview(label)
-            cell.imageView = icon
-            cell.textField = label
-            NSLayoutConstraint.activate([
-                icon.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: 2),
-                icon.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
-                icon.widthAnchor.constraint(equalToConstant: 16),
-                icon.heightAnchor.constraint(equalToConstant: 16),
-                label.leadingAnchor.constraint(equalTo: icon.trailingAnchor, constant: 6),
-                label.trailingAnchor.constraint(equalTo: cell.trailingAnchor, constant: -4),
-                label.centerYAnchor.constraint(equalTo: cell.centerYAnchor)
-            ])
         }
         // 検索中はマッチ文字をハイライトした AttributedString を使う
         if isSearching, let textField = cell.textField {
             textField.attributedStringValue = makeHighlightedName(node.name, query: searchQuery)
         } else {
             cell.textField?.stringValue = node.name
+        }
+        // ディレクトリ行は名前の右に AI 要約を表示 (issue #193)。
+        // 収まらない分は truncate し、フル文はツールチップ (マウスオーバー) で見せる。
+        if node.isDirectory, let summary = summaryStore?.summary(for: summaryKey(for: node.url)) {
+            cell.summaryField.stringValue = summary
+            cell.toolTip = summary
+        } else {
+            cell.summaryField.stringValue = ""
+            cell.toolTip = nil
         }
         let decoration = resolveDecoration(for: node)
         let iconName = decoration.icon ?? (node.isDirectory ? "folder" : "doc")
@@ -771,75 +763,81 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
     func outlineViewSelectionDidChange(_ notification: Notification) {
         let row = outlineView.selectedRow
         guard row >= 0,
-              let node = outlineView.item(atRow: row) as? FileTreeNode else {
-            hideSummary()
-            return
-        }
-        if node.isDirectory {
-            // 単一選択のディレクトリ → AI 概要を表示
-            if outlineView.selectedRowIndexes.count == 1 {
-                requestDirectorySummary(for: node)
-            } else {
-                hideSummary()
-            }
-        } else {
-            hideSummary()
+              let node = outlineView.item(atRow: row) as? FileTreeNode else { return }
+        if !node.isDirectory {
             owner?.selectedFile = node.url
         }
     }
 
-    private func hideSummary() {
-        currentSummaryTask?.cancel()
-        currentSummaryTask = nil
-        summaryLabel.isHidden = true
-        summaryLabel.stringValue = ""
+    // MARK: - Directory Summary batch (issue #193)
+
+    /// 要約ストアのキー。projectRoot 相対パス (root 自身は ".")、projectRoot 外は絶対パス。
+    private func summaryKey(for url: URL) -> String {
+        guard let root = workspace?.projectRoot?.standardizedFileURL.path else {
+            return url.standardizedFileURL.path
+        }
+        let target = url.standardizedFileURL.path
+        if target == root { return "." }
+        if target.hasPrefix(root + "/") { return String(target.dropFirst(root.count + 1)) }
+        return target
     }
 
-    private func requestDirectorySummary(for node: FileTreeNode) {
-        guard DirectorySummaryService.hasApiKey else {
-            summaryLabel.isHidden = true
-            return
+    /// 指定ノード群のうち「未保存のディレクトリ」の要約を一括生成して保存する。
+    /// ルート読み込み時とノード展開時に呼ばれる (直下のみ・再帰しない)。
+    /// API 負荷を抑えるため 1 件ずつ直列で生成し、完了ごとに該当行を再描画する。
+    /// docs/specs/tools/filer.md#showdirectorysummary 参照。
+    private func scheduleSummaryBatch(for nodes: [FileTreeNode]) {
+        guard DirectorySummaryService.hasApiKey, let store = summaryStore else { return }
+        // 子エントリ一覧はメインスレッドで先に確定させる (FileTreeNode を Task へ持ち込まない)
+        var targets: [(url: URL, key: String, children: [String])] = []
+        for node in nodes where node.isDirectory {
+            let key = summaryKey(for: node.url)
+            guard store.summary(for: key) == nil, !summaryInFlight.contains(node.url) else { continue }
+            let children: [String]
+            if let loaded = node.children {
+                children = loaded.map(\.name)
+            } else {
+                children = FileTreeLoader.load(directory: node.url, parent: node).map(\.name)
+            }
+            summaryInFlight.insert(node.url)
+            targets.append((node.url, key, children))
         }
+        guard !targets.isEmpty else { return }
 
-        if let cached = summaryCache[node.url] {
-            summaryLabel.stringValue = cached
-            summaryLabel.isHidden = false
-            return
-        }
-
-        currentSummaryTask?.cancel()
-        summaryLabel.stringValue = "..."
-        summaryLabel.isHidden = false
-
-        let url = node.url
-        // 子エントリを取得 (既にロード済みなら再利用、なければ同期ロード)
-        let childNames: [String]
-        if let children = node.children {
-            childNames = children.map(\.name)
-        } else {
-            childNames = FileTreeLoader.load(directory: url, parent: node).map(\.name)
-        }
-
-        currentSummaryTask = Task { [weak self] in
-            guard let self else { return }
-            let summary = await DirectorySummaryService.generate(directoryURL: url, children: childNames)
-            await MainActor.run {
-                guard !Task.isCancelled else { return }
-                if let summary {
-                    self.summaryCache[url] = summary
-                    self.summaryLabel.stringValue = summary
-                    self.summaryLabel.isHidden = false
-                } else {
-                    self.summaryLabel.isHidden = true
+        Task { [weak self] in
+            for target in targets {
+                let summary = await DirectorySummaryService.generate(
+                    directoryURL: target.url,
+                    children: target.children
+                )
+                guard let self else { return }
+                await MainActor.run {
+                    self.summaryInFlight.remove(target.url)
+                    guard let summary else { return }
+                    self.summaryStore?.set(summary, for: target.key)
+                    self.reloadRow(forURL: target.url)
                 }
             }
         }
     }
 
-    /// ユーザー操作でノードが展開されたとき、owner の expandedURLs に記録する (永続化対象)
+    /// 表示中の行から URL 一致するものを探して再描画する (要約の逐次反映用)。
+    /// FSEvents 再読込等でノードが差し替わっていても URL で追従できる。
+    private func reloadRow(forURL url: URL) {
+        for row in 0..<outlineView.numberOfRows {
+            if let node = outlineView.item(atRow: row) as? FileTreeNode, node.url == url {
+                outlineView.reloadData(forRowIndexes: IndexSet(integer: row), columnIndexes: IndexSet(integer: 0))
+                return
+            }
+        }
+    }
+
+    /// ユーザー操作でノードが展開されたとき、owner の expandedURLs に記録する (永続化対象)。
+    /// あわせて展開先直下のサブディレクトリの要約を一括生成する (issue #193)。
     func outlineViewItemDidExpand(_ notification: Notification) {
         guard let node = notification.userInfo?["NSObject"] as? FileTreeNode else { return }
         owner?.expandedURLs.insert(node.url)
+        scheduleSummaryBatch(for: node.children ?? [])
     }
 
     /// ユーザー操作でノードが折りたたまれたとき、owner の expandedURLs から削除する
