@@ -44,7 +44,7 @@ struct ContentView: View {
                 .foregroundStyle(.secondary)
             Text("プロジェクトルートが未設定です")
                 .font(.headline)
-            Text("メニュー [ファイル → ディレクトリを開く] (⌘O) から選択してください")
+            Text("メニュー [ファイル → ワークスペースを開く] (⌘O) から選択してください")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }

@@ -44,3 +44,4 @@ skills/            → agent-skills 由来の参照リソース
 - 1 ファイル 1 型 (struct/class/enum) を原則とする
 - ターミナルから `claude` を自動起動してはならない (理由: [ADR 0008](./docs/decisions/0008-no-claude-autostart.md))
 - 機能群の変更時は [docs/specs/aspects/](./docs/specs/aspects/README.md)（横断的関心事）も合わせて更新する
+- **新機能・新チャネルの specs を書く前に、類似の既存機能（命名・ファイル形式・UI 作法）を洗い出して揃える**。[docs/conventions/design-principles.md](./docs/conventions/design-principles.md) のチェックリストを通すこと

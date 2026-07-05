@@ -7,7 +7,7 @@ import SwiftUI
 import AppKit
 
 /// アプリのエントリポイント。WorkspaceState / SessionRegistry / LayoutConfig を生成して
-/// 全 View に環境配布し、「ディレクトリを開く」メニューとタブ/ツール関連のショートカットを追加する。
+/// 全 View に環境配布し、「ワークスペースを開く」メニューとタブ/ツール関連のショートカットを追加する。
 /// 起動時にワークスペーススナップショットを読み込み、終了時に保存する。
 @main
 struct AideaApp: App {
@@ -35,7 +35,7 @@ struct AideaApp: App {
     @State private var lockToken: String?
     /// 前面化要求の購読 observer (解除用)
     @State private var activationObserver: NSObjectProtocol?
-    /// 「最近開いたディレクトリを開く」で MRU ランチャーを sheet 表示するか
+    /// 「最近開いたワークスペースを開く」で MRU ランチャーを sheet 表示するか
     @State private var showLauncher = false
 
     init() {
@@ -146,7 +146,7 @@ struct AideaApp: App {
                     .environment(snippetState)
                     .environment(tabPickerAnchor)
                     .sheet(isPresented: $showLauncher) {
-                        // 「最近開いたディレクトリを開く」: 選択リポジトリは新プロセスで開き、現プロセスは継続する。
+                        // 「最近開いたワークスペースを開く」: 選択リポジトリは新プロセスで開き、現プロセスは継続する。
                         WorkspaceLauncherView(onSelect: { url in
                             WorkspaceLauncher.openInNewProcess(projectRoot: url)
                             showLauncher = false
@@ -178,10 +178,11 @@ struct AideaApp: App {
             // 発火しないようにする (issue #228, ADR 0038)
             CommandGroup(replacing: .undoRedo) {}
             CommandGroup(replacing: .newItem) {
-                Button("最近開いたディレクトリを開く...") {
+                Button("最近開いたワークスペースを開く...") {
                     showLauncher = true
                 }
-                Button("ディレクトリを開く...") {
+                .keyboardShortcut("o", modifiers: [.command, .shift])
+                Button("ワークスペースを開く...") {
                     openDirectory()
                 }
                 .keyboardShortcut("o", modifiers: [.command])
