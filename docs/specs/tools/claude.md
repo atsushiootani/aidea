@@ -200,6 +200,27 @@ Claude セッションも Terminal と同様に tmux で PTY を永続化する 
 
 ---
 
+## タブ右クリックメニュー
+
+Claude タブを右クリックすると、コンテキストメニューを表示する。対象は `tool == .claude` のタブのみで、
+Terminal など他のタブには従来どおりメニューを出さない (Preview タブは [preview.md#タブ右クリックメニュー-issue-238](./preview.md#タブ右クリックメニュー-issue-238) の既存メニュー)。
+共通の右クリック規約は [sessions/ui-rules.md#右クリックコンテキストメニュー](../sessions/ui-rules.md#右クリック・コンテキストメニュー) に従う。
+
+| 項目 | 動作 |
+|---|---|
+| instruction読み込み | `@.aidea/claude/companions/<companionIndex>/instructions.md` を Frontchannel (`sendMessageWhenReady`) でセッションに送信する |
+| (区切り線) | |
+| タブを閉じる | このタブを閉じる (`closeTab`。× ボタンと同じ) |
+
+- 「instruction読み込み」は Claude Code の `@` ファイル参照記法で Companion 指示書を再読み込みさせるためのもの。
+  `/clear` 後などに指示書を読み直させるユースケースを想定
+- 送信文字列は `@` + `CompanionInstructions` の instructions.md 相対パス (起動時の `loadCommand` と同じパスパターン)。
+  companionIndex は `CompanionStore.companion(for: sessionID)?.index` から解決する
+- companionIndex が解決できない場合 (Companion 未バインドの Claude タブ) は「instruction読み込み」を無効化 (disabled) する
+- セッションが `isReady` 前なら `sendMessageWhenReady` が pendingMessages に積み、起動シーケンス完了後に送信される
+
+---
+
 ## 境界
 
 ### Always
