@@ -14,7 +14,7 @@ impacts:
   - docs/specs/window/active-session-switcher.md
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-29
+last_updated: 2026-07-08
 ---
 
 # アクティブ Session の仕組み
@@ -55,6 +55,9 @@ Session 概念自体の位置づけは [ui-rules.md#概念モデル](./ui-rules.
 2. クリック位置 (`hitTest`) が `state.focusBridge.trackedView` の子孫 (`isDescendant(of:)`) かチェック
 3. マッチし、かつ現在の `activeSessionID` と異なれば `activateSession(session.id)` を呼ぶ
 4. `activateSession` がペイン + タブを逆引きして `setActiveTab` → ライフサイクル (activate/deactivate) が発火
+5. モニタのトークンは `SessionRegistry` が `SessionID` ごとに保持し、Tab クローズ (`destroySession`) で必ず `NSEvent.removeMonitor(_:)` する。
+   解放しないとタブの開閉を繰り返すたびに無効なクロージャが溜まり続ける (issue #263)。詳細な仕組みとライフサイクル表は
+   [focus-contract.md#サブクラス不可能な-nsview-のクリック検知-クリックモニタ](./focus-contract.md#サブクラス不可能な-nsview-のクリック検知-クリックモニタ) を参照
 
 ### 新しい Tool を追加するときの注意
 
