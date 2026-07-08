@@ -13,7 +13,7 @@ impacts:
   - docs/specs/sessions/ui-rules.md
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-21
+last_updated: 2026-07-08
 ---
 
 # Session フォーカス契約
@@ -196,13 +196,43 @@ Session 内部で複数の子 View 種別を切り替える場合 (Preview の�
 
 ---
 
+## サブクラス不可能な NSView のクリック検知 (クリックモニタ)
+
+`WKWebView` や `SwiftTerm.TerminalView` は `mouseDown` をオーバーライドできない (non-open) ため、内部でクリックされても SwiftUI の `simultaneousGesture` に先んじて AppKit 側で握りつぶされ、Session がアクティブ化されないことがある。この問題を解決する手段が **クリックモニタ**。
+
+### 仕組み
+
+- Session (または Tool 固有の NSView) の生成時に `NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown)` を 1 つ登録する
+- モニタのクロージャは `event.window?.contentView?.hitTest(event.locationInWindow)` で実際にクリックされた NSView を求め、`isDescendant(of:)` で対象の NSView 配下かどうかを判定する
+- 配下であれば `SessionRegistry.activateSession(_:)` を呼んで契約 C1 の起点 (`setActiveTab`) を発火させる
+
+### 登録箇所
+
+| 登録元 | 対象 | 判定基準 |
+|---|---|---|
+| `SessionRegistry.createSession` | `FocusBridgeOwner` に準拠する全 AppKit 系 SessionState 共通 | `focusBridge.trackedView` 配下か |
+| `WebSessionState.configureWebView` | 個々の `WKWebView` (通常生成・adopt 共通) | 生成した `WKWebView` 配下か |
+| `TerminalSessionState.terminalView` / `ClaudeSessionState.terminalView` | 個々の `PersistentTerminalView` | 生成した `PersistentTerminalView` 配下か |
+
+Tool 固有の登録 (2 段目・3 段目) は、`focusBridge.trackedView` が View 側の `makeNSView` 完了まで未設定な間 (= Session 生成直後で NSView がまだ無い状態) でも WKWebView/PersistentTerminalView 自体へのクリックを取りこぼさないための保険であり、`SessionRegistry` 側の共通モニタと役割が重複していても問題ない (どちらか一方が発火すれば `activateSession` は冪等)。
+
+### ライフサイクル (issue #263: モニタ解放漏れ)
+
+`addLocalMonitorForEvents` の戻り値 (モニタトークン) を破棄すると、`NSEvent.removeMonitor(_:)` を呼ぶ手段が失われ、**クロージャがプロセス終了までグローバルに残り続ける**。Session/Tab を閉じても解放されないため、タブの開閉を繰り返すほど「以後のあらゆる左クリックで評価される無効なクロージャ」が単調増加し、アプリ全体の操作感が徐々に重くなる。
+
+これを避けるため、クリックモニタを登録する側は必ずトークンを保持し、対応するリソースの破棄時に `NSEvent.removeMonitor(_:)` を呼ぶ。
+
+| 登録元 | トークンの保持先 | 解放タイミング |
+|---|---|---|
+| `SessionRegistry.createSession` | `SessionRegistry` が `SessionID` をキーに保持 | `destroySession(_:)` |
+| `WebSessionState` / `TerminalSessionState` / `ClaudeSessionState` | 各 SessionState 自身のプロパティ | 自身の `deinit` |
+
 ## 本仕様の範囲外
 
 以下は本ファイルで扱わない。別途追補する。
 
 - **Session 内部の NSView 同士のフォーカス調整** — 1 つの Session が複数の NSView を内部に持ち、それらの間で firstResponder が移動する場合の振る舞い
 - **ユーザー操作由来の firstResponder 変化を SwiftUI フォーカスバインド / `isActive` に追従させる方法** — 内部 NSView がクリック等で firstResponder を奪ったときに Session 側の状態を更新する経路 (`becomeFirstResponder` フック / `NSWindow.firstResponder` の KVO 等)
-- **サブクラス不可能な NSView (WKWebView 等) への対応手段**
 - **`Session.activate()` / `SessionFocusBridge` の具体的な実装コード** — 本契約は仕様であり、実装は `Aidea/Tools/Session.swift` および `Aidea/Tools/SessionFocusBridge.swift` を参照
 
 これらは契約 C1 / C2 / C3 が前提とする「Session ルートが View modifier を付けており、bridge に NSView 参照が登録されている」状態を作るための手段であり、本契約とは別レイヤの関心事として切り分ける。

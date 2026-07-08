@@ -18,6 +18,11 @@ final class SessionRegistry {
     /// 全 Session の一覧 (Window 全体で一意)
     @ObservationIgnored private(set) var sessions: [Session] = []
 
+    /// createSession で登録したクリックモニタのトークン。destroySession で必ず removeMonitor する
+    /// (issue #263: 放置するとタブの開閉回数に比例して無効なクロージャが溜まり、
+    /// アプリ全体の操作が徐々に重くなる)。
+    @ObservationIgnored private var clickMonitors: [SessionID: Any] = [:]
+
     /// 共有のワークスペース状態
     let workspace: WorkspaceState
     /// レイアウト設定
@@ -170,7 +175,7 @@ final class SessionRegistry {
         // 握りつぶすケースの対策)。純 SwiftUI 系 (Kit 等) は SwiftUI が処理するのでスキップ。
         let weakSession = session
         let weakSelf = self
-        NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak weakSession, weak weakSelf] event in
+        clickMonitors[id] = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak weakSession, weak weakSelf] event in
             guard let s = weakSession, let reg = weakSelf,
                   let owner = s.state as? FocusBridgeOwner,
                   let fv = owner.focusBridge.trackedView,
@@ -191,6 +196,9 @@ final class SessionRegistry {
         sessions.removeAll { $0.id == id }
         activeSessionHistory.removeAll { $0 == id }
         customTitles.removeValue(forKey: id)
+        if let monitor = clickMonitors.removeValue(forKey: id) {
+            NSEvent.removeMonitor(monitor)
+        }
     }
 
     /// ペイン内で最も最近アクティブだったタブの index を返す (タブクローズ後の

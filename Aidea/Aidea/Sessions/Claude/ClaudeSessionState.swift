@@ -19,10 +19,20 @@ final class ClaudeSessionState: SessionState, FocusBridgeOwner {
     /// tmux セッション名の採番 fallback に使うインスタンス番号 (SessionID.instance と一致)。
     /// 通常は `companionIndex` を採番に使うが、companionIndex が nil の場合に使う。
     @ObservationIgnored private let instance: Int
+    /// クリックモニタのトークン。タブが破棄されるとき (deinit) に必ず removeMonitor する
+    /// (issue #263: 放置するとタブの開閉回数に比例して無効なクロージャが溜まり、
+    /// アプリ全体の操作が徐々に重くなる)。
+    @ObservationIgnored private var clickMonitor: Any?
 
     init(workspace: WorkspaceState, instance: Int = 0) {
         self.workspace = workspace
         self.instance = instance
+    }
+
+    deinit {
+        if let clickMonitor {
+            NSEvent.removeMonitor(clickMonitor)
+        }
     }
 
     /// SessionRegistry への弱参照 (クリック時のアクティブ化用)
@@ -128,7 +138,7 @@ final class ClaudeSessionState: SessionState, FocusBridgeOwner {
     var terminalView: PersistentTerminalView {
         if let cached = cached { return cached }
         let terminal = PersistentTerminalView(frame: .zero)
-        NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak terminal, weak self] event in
+        clickMonitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak terminal, weak self] event in
             if let tv = terminal,
                let reg = self?.registry,
                let clickedView = event.window?.contentView?.hitTest(event.locationInWindow),

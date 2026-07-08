@@ -23,9 +23,22 @@ final class WebSessionState: SessionState, FocusBridgeOwner {
     @ObservationIgnored private var urlObservation: NSKeyValueObservation?
     @ObservationIgnored private var backObservation: NSKeyValueObservation?
     @ObservationIgnored private var forwardObservation: NSKeyValueObservation?
+    /// クリックモニタのトークン。タブが破棄されるとき (deinit) に必ず removeMonitor する
+    /// (issue #263: 破棄せず放置すると、以後のクリックのたびに評価される無効なクロージャが
+    /// タブの開閉回数に比例して溜まり続け、アプリ全体の操作が徐々に重くなる)。
+    @ObservationIgnored private var clickMonitor: Any?
     /// window.open / target="_blank" を処理する UI デリゲート。
     /// WKWebView.uiDelegate は weak 参照なので state が強参照で保持する (仕様: docs/specs/sessions/web.md#ui-デリゲートと子-webview)。
     @ObservationIgnored private let uiDelegate = WebUIDelegate()
+    /// 全 Web タブで共有する WKProcessPool。タブごとに専用プールを持つと WebContent プロセスも
+    /// タブ数分だけ生成され、Web タブが他ツールより重くなる要因になる (issue #263)。
+    private static let sharedProcessPool = WKProcessPool()
+
+    deinit {
+        if let clickMonitor {
+            NSEvent.removeMonitor(clickMonitor)
+        }
+    }
 
     /// SessionRegistry への弱参照 (クリック時のアクティブ化用)
     weak var registry: SessionRegistry?
@@ -55,6 +68,7 @@ final class WebSessionState: SessionState, FocusBridgeOwner {
         if let cached = cached { return cached }
         let config = WKWebViewConfiguration()
         config.preferences.setValue(true, forKey: "developerExtrasEnabled")
+        config.processPool = Self.sharedProcessPool
         let webView = WKWebView(frame: .zero, configuration: config)
         configureWebView(webView)
         webView.load(URLRequest(url: url))
@@ -83,7 +97,7 @@ final class WebSessionState: SessionState, FocusBridgeOwner {
         // becomeFirstResponder 時にこのセッションをアクティブにする
         let reg = registry
         let sid = sessionID
-        NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak webView] event in
+        clickMonitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak webView] event in
             if let wv = webView,
                let sid = sid,
                let clickedView = event.window?.contentView?.hitTest(event.locationInWindow),

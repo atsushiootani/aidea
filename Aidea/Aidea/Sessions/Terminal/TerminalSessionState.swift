@@ -19,10 +19,20 @@ final class TerminalSessionState: SessionState, FocusBridgeOwner {
     @ObservationIgnored private var cached: PersistentTerminalView?
     /// tmux セッション名の採番に使うインスタンス番号 (SessionID.instance と一致)
     private let instance: Int
+    /// クリックモニタのトークン。タブが破棄されるとき (deinit) に必ず removeMonitor する
+    /// (issue #263: 放置するとタブの開閉回数に比例して無効なクロージャが溜まり、
+    /// アプリ全体の操作が徐々に重くなる)。
+    @ObservationIgnored private var clickMonitor: Any?
 
     init(workspace: WorkspaceState, instance: Int = 0) {
         self.workspace = workspace
         self.instance = instance
+    }
+
+    deinit {
+        if let clickMonitor {
+            NSEvent.removeMonitor(clickMonitor)
+        }
     }
 
     /// SessionRegistry への弱参照 (クリック時のアクティブ化用)
@@ -59,7 +69,7 @@ final class TerminalSessionState: SessionState, FocusBridgeOwner {
         // SwiftTerm の mouseDown はオーバーライド不可 (non-open) なので
         // NSEvent local monitor でクリックを検知する
         let reg = registry
-        NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak terminal, weak self] event in
+        clickMonitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak terminal, weak self] event in
             if let tv = terminal,
                let reg = self?.registry,
                let clickedView = event.window?.contentView?.hitTest(event.locationInWindow),
