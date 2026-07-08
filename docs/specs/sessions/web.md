@@ -13,7 +13,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-06-20
+last_updated: 2026-07-08
 ---
 
 # Session 内部状態: Web
@@ -43,6 +43,14 @@ last_updated: 2026-06-20
 Terminal と同様に `PaneView` の ZStack + `opacity(0)` 方式。NSView が生存し続けるので
 **WKWebView の DOM・JavaScript 実行コンテキスト・メディア再生が中断されない**。
 
+## WebContent プロセスの共有 (issue #263)
+
+全 Web タブの `WKWebViewConfiguration` は単一の共有 `WKProcessPool` を使う。タブごとに
+専用の `WKProcessPool` を割り当てると WebContent プロセスもタブ数に比例して生成され、
+Web タブが他ツールより重くなる要因になっていた。プールを共有しても Cookie / データストアの
+分離方針 ([ADR 0015](../../decisions/0015-wkwebview-scope-and-chrome-coexistence.md)) には影響しない
+(データの分離は `WKWebsiteDataStore` の責務で、`WKProcessPool` の共有とは独立)。
+
 ## UI デリゲートと子 WebView ([ADR 0035](../../decisions/0035-web-window-open-tab-and-popup.md))
 
 `WebSessionState` は WKWebView の `uiDelegate` を保持し、`window.open()` / `target="_blank"` を扱う。
@@ -53,6 +61,8 @@ Terminal と同様に `PaneView` の ZStack + `opacity(0)` 方式。NSView が�
 
 - `webView` の lazy 生成時、および後述の adopt 時の**両方**で `uiDelegate` を設定する
   (`configureWebView(_:)` に共通設定 = KVO 登録・クリックモニタ・uiDelegate 設定を集約する)。
+  クリックモニタの仕組みと、タブ破棄時に必ず解放しなければならない理由は
+  [focus-contract.md#サブクラス不可能な-nsview-のクリック検知-クリックモニタ](./focus-contract.md#サブクラス不可能な-nsview-のクリック検知-クリックモニタ) を参照。
 - `WebUIDelegate.createWebView` は windowFeatures のサイズ指定有無で振り分ける ([tools/web.md](../tools/web.md#windowopen--targetblank-のルーティング-adr-0035)):
   - サイズ指定あり → `SessionRegistry` 経由でフローティングポップアップ窓を生成
   - サイズ指定なし → `SessionRegistry.openWebAdopting(_:from:)` で新規 Web タブ
