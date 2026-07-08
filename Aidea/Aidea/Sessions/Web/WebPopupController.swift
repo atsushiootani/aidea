@@ -73,4 +73,36 @@ final class WebPopupController: NSObject, WKUIDelegate, NSWindowDelegate {
     func windowWillClose(_ notification: Notification) {
         registry?.releaseWebPopup(self)
     }
+
+    // MARK: - JavaScript ダイアログ (alert / confirm / prompt)
+    // ポップアップ窓内の JS ダイアログも通常タブと同じ NSAlert シートで表示する。
+    // 仕様: docs/specs/tools/web.md#javascript-ダイアログ-alert--confirm--prompt
+
+    func webView(
+        _ webView: WKWebView,
+        runJavaScriptAlertPanelWithMessage message: String,
+        initiatedByFrame frame: WKFrameInfo,
+        completionHandler: @escaping () -> Void
+    ) {
+        WebJavaScriptDialog.presentAlert(message: message, webView: webView, frame: frame, completion: completionHandler)
+    }
+
+    func webView(
+        _ webView: WKWebView,
+        runJavaScriptConfirmPanelWithMessage message: String,
+        initiatedByFrame frame: WKFrameInfo,
+        completionHandler: @escaping (Bool) -> Void
+    ) {
+        WebJavaScriptDialog.presentConfirm(message: message, webView: webView, frame: frame, completion: completionHandler)
+    }
+
+    func webView(
+        _ webView: WKWebView,
+        runJavaScriptTextInputPanelWithPrompt prompt: String,
+        defaultText: String?,
+        initiatedByFrame frame: WKFrameInfo,
+        completionHandler: @escaping (String?) -> Void
+    ) {
+        WebJavaScriptDialog.presentPrompt(message: prompt, defaultText: defaultText, webView: webView, frame: frame, completion: completionHandler)
+    }
 }

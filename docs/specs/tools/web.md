@@ -140,6 +140,32 @@ Terminal 側のクリック判定は [tools/terminal.md#url-クリック](./term
 - 窓は妥当な既定サイズで出す (windowFeatures の位置・サイズの厳密な再現はしない。
   サイズ指定は「ポップアップとして扱うか」の判定にのみ使う)
 
+## JavaScript ダイアログ (alert / confirm / prompt)
+
+ページ内の `window.alert()` / `window.confirm()` / `window.prompt()` を `WKUIDelegate` で受け取り、
+ネイティブの `NSAlert` として表示する。`WKUIDelegate` がこれらのメソッドを実装しないと WebKit は
+JS ダイアログを**黙って握り潰す** (何も表示されず `confirm` は `false`・`prompt` は `null` 相当を返す)
+ため、確認ダイアログ付きの操作 (例: promote ボタンの `confirm()`) が無反応になる。
+
+| JS API | WKUIDelegate メソッド | 表示 | 返す値 |
+|---|---|---|---|
+| `alert(msg)` | `runJavaScriptAlertPanel...` | メッセージ + 「OK」 | (なし。閉じたら `completionHandler()`) |
+| `confirm(msg)` | `runJavaScriptConfirmPanel...` | メッセージ + 「OK」/「キャンセル」 | OK=`true` / キャンセル=`false` |
+| `prompt(msg, default)` | `runJavaScriptTextInputPanel...` | メッセージ + テキスト入力欄 + 「OK」/「キャンセル」 | OK=入力文字列 / キャンセル=`null` |
+
+### 共通ルール
+
+- `NSAlert` は WKWebView が乗っている**ウィンドウのシート**として表示する (`beginSheetModal(for:)`)。
+  そのウィンドウだけをブロックし、他ウィンドウ・他ペインの操作は妨げない
+- WKWebView にウィンドウがない稀なケース (生成直後など) は `runModal()` にフォールバックする
+- ダイアログのタイトル (`messageText`) には**発信元ページのホスト**を表示し (例: `localhost:3000`)、
+  JS が渡したメッセージ本文は `informativeText` に表示する (ブラウザの「〜 says:」慣習に倣う)。
+  ホストが取得できない場合は「このページ」と表示する
+- ボタンのラベルは日本語 (「OK」「キャンセル」)。confirm/prompt の既定ボタンは「OK」
+- `completionHandler` は**必ず一度だけ**呼ぶ (WebKit の契約。呼ばないと当該ページの JS が停止する)
+- 表示ロジックは通常タブ (`WebUIDelegate`) とポップアップ窓 (`WebPopupController`) で**共有**する
+  (`WebJavaScriptDialog` ヘルパに集約)
+
 ## 境界
 
 ### Always
@@ -147,8 +173,10 @@ Terminal 側のクリック判定は [tools/terminal.md#url-クリック](./term
 - URL クリックルーティングは http / https のみを対象とする
 - `window.open` / `target="_blank"` は WebKit から渡された `configuration` で子 WKWebView を作り、自前 load しない
 - 新規 Web タブは opener と同じペインの右隣に出す / ポップアップ窓は `webViewDidClose` で閉じる
+- JS の alert / confirm / prompt は `NSAlert` シートで表示し、`completionHandler` を必ず一度呼ぶ
 
 ### Never
 - 既存 Web セッションへの URL ロード (再利用) は行わない — 常に新規タブ
 - 呼び出し元 (カレント) ペインには (URL クリックルーティングでは) Web タブを作らない
 - 子 WKWebView を自前で生成・ロードしない (opener 関係が切れて OAuth が壊れるため)
+- JS ダイアログを握り潰さない (WKUIDelegate 未実装のまま放置しない)
