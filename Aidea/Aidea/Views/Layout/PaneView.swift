@@ -187,9 +187,9 @@ struct PaneView: View {
         return tabContextMenu(chip, sessionID: sessionID, index: index)
     }
 
-    /// Preview タブ (url あり) のときだけ右クリックメニューを付与する。
-    /// それ以外のタブには付与しない (空メニューを出さない)。
-    /// 仕様: docs/specs/tools/preview.md#タブ右クリックメニュー-issue-238
+    /// タブ種別ごとに右クリックメニューを付与する。メニューを持たないタブには付与しない (空メニューを出さない)。
+    /// - Preview タブ (url あり): 仕様 docs/specs/tools/preview.md#タブ右クリックメニュー-issue-238
+    /// - Claude タブ: 仕様 docs/specs/tools/claude.md#タブ右クリックメニュー
     @ViewBuilder
     private func tabContextMenu<Content: View>(_ content: Content, sessionID: SessionID, index: Int) -> some View {
         if let url = previewURL(for: sessionID) {
@@ -206,9 +206,29 @@ struct PaneView: View {
                 Divider()
                 Button("タブを閉じる") { closeTab(at: index) }
             }
+        } else if sessionID.tool == .claude {
+            content.contextMenu {
+                Button("instruction読み込み") { sendInstructionLoad(sessionID) }
+                    // Companion 未バインドの Claude タブは index を解決できないため無効化する
+                    .disabled(companionStore.companion(for: sessionID)?.index == nil)
+                Divider()
+                Button("タブを閉じる") { closeTab(at: index) }
+            }
         } else {
             content
         }
+    }
+
+    /// Claude タブの「instruction読み込み」: Companion 指示書を Claude Code の `@` ファイル参照記法で
+    /// 再読み込みさせる。`@.aidea/claude/companions/<index>/instructions.md` を Frontchannel
+    /// (`sendMessageWhenReady`) で送信する。`/clear` 後などに指示書を読み直させる用途。
+    /// 仕様: docs/specs/tools/claude.md#タブ右クリックメニュー
+    private func sendInstructionLoad(_ sessionID: SessionID) {
+        guard let index = companionStore.companion(for: sessionID)?.index,
+              let session = registry.session(for: sessionID),
+              let claude = session.state as? ClaudeSessionState else { return }
+        let path = "\(CompanionInstructions.baseDir)/\(index)/\(CompanionInstructions.entrypoint)"
+        claude.sendMessageWhenReady("@\(path)")
     }
 
     /// Preview タブが指すファイル URL。Preview 以外・url 未設定なら nil。
