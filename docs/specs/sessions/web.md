@@ -67,6 +67,10 @@ Web タブが他ツールより重くなる要因になっていた。プール�
   - サイズ指定あり → `SessionRegistry` 経由でフローティングポップアップ窓を生成
   - サイズ指定なし → `SessionRegistry.openWebAdopting(_:from:)` で新規 Web タブ
 - どちらも WebKit から渡された `configuration` で子 WKWebView を生成し、**自前 load しない**。
+- `WebUIDelegate` は JS の alert / confirm / prompt (`runJavaScriptAlertPanel` 等) も実装し、
+  `NSAlert` シートで表示する。表示ロジックは `WebPopupController` と共有する
+  ([tools/web.md#javascript-ダイアログ-alert--confirm--prompt](../tools/web.md#javascript-ダイアログ-alert--confirm--prompt))。
+  未実装だと WebKit がダイアログを握り潰し、`confirm` 付きの操作が無反応になる。
 
 ### 子 WebView の adopt
 
