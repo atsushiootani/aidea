@@ -198,6 +198,11 @@ Claude セッションも Terminal と同様に tmux で PTY を永続化する 
 トランスクリプトモードの判定は、ターミナルバッファの最下行に `"transcript"` を含むかどうかで行う。
 詳細は [ADR 0017](../../decisions/0017-alternate-screen-scroll-handling.md) を参照。
 
+ホイールスクロールは Claude と Terminal で共通の `scrollMonitor` に統合されている。tmux mouse on 等で
+マウストラッキング中 (`terminal.mouseMode != .off`) はホイールを **SGR マウスイベントとして転送**し
+tmux に処理を委ねる ([tools/terminal.md#ホイールスクロール-issue-260](./terminal.md#ホイールスクロール-issue-260))。
+上表の Ctrl+U/D はマウストラッキングが無い (tmux 未使用等) ときのフォールバック。
+
 ---
 
 ## タブ右クリックメニュー

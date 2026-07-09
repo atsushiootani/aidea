@@ -25,6 +25,12 @@ final class PersistentTerminalView: LocalProcessTerminalView {
     /// 仕様: docs/specs/tools/terminal.md#クリック判定-tap-vs-drag
     private static let tapThreshold: CGFloat = 4
 
+    /// ホイールスクロールのマウスイベント転送 (issue #260) のパラメータ。
+    /// トラックパッドの精密スクロールを何ポイントごとにホイールイベント 1 回へ換算するか。
+    private static let scrollPointsPerTick: CGFloat = 16
+    /// 1 スクロールイベントで転送するホイールイベントの上限 (トラックパッドの慣性スクロール暴走防止)。
+    private static let maxScrollTicksPerEvent = 8
+
     /// クリック時にこのセッションをアクティブにするためのコールバック
     var onInteraction: (() -> Void)?
 
@@ -92,6 +98,9 @@ final class PersistentTerminalView: LocalProcessTerminalView {
     private var mouseUpMonitor: Any?
     private var scrollMonitor: Any?
     private var middleClickMonitor: Any?
+    /// Terminal の alternate screen スクロール変換で、トラックパッドの精密スクロール量を溜める蓄積器。
+    /// 一定量 (`scrollPointsPerLine`) 溜まるごとに矢印キーを 1 回送る (issue #260)。
+    private var scrollAccumulator: CGFloat = 0
     /// mouseDown 時のウィンドウ座標 (tap vs drag 判定用)
     private var mouseDownLocation: CGPoint?
     /// mouseDown 以降に有意な mouseDragged が発生したか
@@ -193,24 +202,39 @@ final class PersistentTerminalView: LocalProcessTerminalView {
             return event
         }
 
-        // Claude セッション専用: スクロール変換とホイールクリック
-        guard isClaudeSession else { return }
-
+        // ホイールスクロール転送 (Claude/Terminal 共通、issue #260)。
+        // SwiftTerm の scrollWheel は自前スクロールバックしか動かさず PTY へマウスイベントを転送しない。
+        // Aidea は tmux 経由で起動し tmux は常時 alternate screen + mouse on のため、外側のスクロールバックは
+        // 空で、かつ tmux はホイールを受け取れず、スクロールが全く効かない。そこでマウストラッキング中は
+        // ホイールを SGR マウスホイールイベントとして転送し、tmux に処理を委ねる。tmux が
+        // 「プロンプト=コピーモード / alt-screen アプリ (less/vim 等)=矢印・マウス転送」を正しく振り分ける。
+        // 仕様: docs/specs/tools/terminal.md#ホイールスクロール-issue-260 / ADR 0017
         scrollMonitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { [weak self] event in
             guard let self,
-                  self.terminal.isCurrentBufferAlternate,
-                  event.deltaY != 0,
                   let hitView = event.window?.contentView?.hitTest(event.locationInWindow),
                   hitView === self || hitView.isDescendant(of: self) else {
                 return event
             }
-            // トランスクリプトモードの時だけ Ctrl+U/D を送信
-            guard self.isTranscriptMode else { return event }
-            self.send([event.deltaY > 0 ? 0x15 : 0x04])
-            return nil
+            // マウストラッキング中 (tmux mouse on / TUI がマウス要求) はホイールをマウスイベント転送
+            if self.terminal.mouseMode != .off {
+                self.forwardScrollAsMouse(event)
+                return nil
+            }
+            // マウストラッキングなし (tmux 未使用等) のフォールバック:
+            // Claude は transcript モード時のみ Ctrl+U/D (通常モードで Ctrl+D 2 回は EOF のため厳密判定、ADR 0017)
+            if isClaudeSession,
+               self.terminal.isCurrentBufferAlternate,
+               event.deltaY != 0,
+               self.isTranscriptMode {
+                self.send([event.deltaY > 0 ? 0x15 : 0x04])
+                return nil
+            }
+            // それ以外は SwiftTerm 標準スクロールバック (通常バッファのスクロール) に委ねる
+            return event
         }
 
-        // ホイールクリック（ミドルクリック）→ Ctrl+O を送信
+        // ホイールクリック（ミドルクリック）→ Ctrl+O は Claude 専用 (トランスクリプトモードのトグル)
+        guard isClaudeSession else { return }
         middleClickMonitor = NSEvent.addLocalMonitorForEvents(matching: .otherMouseDown) { [weak self] event in
             guard let self,
                   event.buttonNumber == 2,
@@ -220,6 +244,45 @@ final class PersistentTerminalView: LocalProcessTerminalView {
             }
             self.send([0x0f]) // Ctrl+O
             return nil
+        }
+    }
+
+    /// ホイールスクロールを SGR マウスホイールイベントとして PTY に転送する (issue #260)。
+    /// マウストラッキング中のアプリ (tmux 等) がスクロールを解釈する。SwiftTerm 自身は scrollWheel で
+    /// マウスイベントを転送しないため、この補完が必要。
+    /// 仕様: docs/specs/tools/terminal.md#ホイールスクロール-issue-260
+    private func forwardScrollAsMouse(_ event: NSEvent) {
+        let up: Bool
+        let ticks: Int
+        if event.hasPreciseScrollingDeltas {
+            // トラックパッド: scrollingDeltaY を蓄積し、一定量ごとに 1 回転送する
+            scrollAccumulator += event.scrollingDeltaY
+            let n = Int(scrollAccumulator / Self.scrollPointsPerTick)
+            guard n != 0 else { return }
+            scrollAccumulator -= CGFloat(n) * Self.scrollPointsPerTick
+            up = n > 0
+            ticks = min(abs(n), Self.maxScrollTicksPerEvent)
+        } else {
+            // マウスホイール: 1 ノッチあたり 1 回転送 (スクロール量は tmux 側が決める)
+            guard event.deltaY != 0 else { return }
+            up = event.deltaY > 0
+            ticks = 1
+        }
+        // X11 マウスプロトコルのホイールボタン (up=4 / down=5、encodeButton が 64/65 に変換する)。
+        // macOS の deltaY > 0 = 上スクロール。
+        let flags = terminal.encodeButton(button: up ? 4 : 5, release: false, shift: false, meta: false, control: false)
+        // マウス位置 (col, 画面行)。取れないときは 0,0 (Aidea は 1 セッション 1 tmux ペインなので pane 選択に支障なし)
+        let col: Int
+        let row: Int
+        if let pos = cellPosition(at: event.locationInWindow) {
+            col = pos.col
+            row = max(0, min(terminal.rows - 1, pos.bufferRow - terminal.buffer.yDisp))
+        } else {
+            col = 0
+            row = 0
+        }
+        for _ in 0..<ticks {
+            terminal.sendEvent(buttonFlags: flags, x: col, y: row)
         }
     }
 
