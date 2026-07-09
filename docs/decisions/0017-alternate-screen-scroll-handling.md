@@ -11,7 +11,7 @@ replaces: []
 replaced_by: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-17
+last_updated: 2026-07-08
 ---
 
 # 0017: Alternate Screen 使用中のスクロールを入力変換で対処する
@@ -110,8 +110,45 @@ Ctrl+O (0x0f) を PTY に送信
 - ホイールクリックを `Ctrl+O` に固定している
   → 将来 Claude CLI のキーバインドが変わった場合は変更が必要
 
+## 追記: マウスイベント転送への一般化 (issue #260)
+
+上記の Ctrl+U/D 方式は Claude CLI 固有だった。**Terminal ツールで一般の TUI (`less` / `vim` / `man` /
+`htop` 等) を実行中**も同じ「ホイールが効かない」問題が起きる。当初は「ホイール → 矢印キー変換」で
+対処しようとしたが、**根本原因を調べ直して方式を変更した**。
+
+### 根本原因
+
+Aidea は Terminal / Claude を **tmux 経由**で起動する。ここで 2 つの事実が重なる:
+
+1. **SwiftTerm の `scrollWheel` はホイールをマウスイベントとして PTY へ転送しない** — 自前の
+   `scrollUp()` / `scrollDown()` (外側スクロールバック) を動かすだけ。
+2. **tmux は常時 alternate screen + `mouse on`** で動く。外側スクロールバックは空で無意味、かつ
+   tmux はホイールをマウスイベントとして待っているのに、SwiftTerm がそれを送らないので何も起きない。
+
+さらに、tmux の alternate screen は**セッション全体で常時 true** のため、外側 (SwiftTerm) からは
+「プロンプトにいるのか TUI を実行中か」を `isCurrentBufferAlternate` で判別できない。当初の矢印キー変換は
+この判別に依存していたため、プロンプトでもホイールが矢印キーになり**コマンド履歴が表示される**バグを生んだ。
+
+### 判断 (改訂)
+
+**マウストラッキング中 (`terminal.mouseMode != .off`) は、ホイールを SGR マウスホイールイベントとして
+PTY に転送する** (`terminal.encodeButton(button: 4/5, ...)` + `terminal.sendEvent(buttonFlags:x:y:)`)。
+tmux (やマウス対応 TUI) がスクロールを解釈する。tmux は自身が管理する内側の alternate screen 状態を
+知っているため、「プロンプト = コピーモード / alt-screen アプリ = 矢印・マウス転送」を正しく振り分ける。
+これは Terminal と Claude で共通の 1 つの `scrollMonitor` に集約する。
+
+- ホイールボタン: X11 マウスプロトコルの up=4 / down=5 (encodeButton が 64/65 に変換)
+- 送信量: マウスホイール 1 ノッチ 1 回、トラックパッド `scrollingDeltaY` を 16 pt ごと 1 回 (上限あり)。1 回のスクロール行数は tmux が決める
+- **フォールバック** (`mouseMode == off`、tmux 未使用等): Claude は従来どおり transcript 時 Ctrl+U/D、Terminal は SwiftTerm 標準スクロールバック。ホイールクリック → Ctrl+O は Claude 専用のまま維持
+
+### トレードオフ (改訂分)
+
+- tmux の `mouse on` に依存する。`mouse off` の場合は Terminal のスクロールは効かない (フォールバックの範囲)
+- マウス位置は概算 (`cellPosition`)。Aidea は 1 セッション 1 tmux ペインなので pane 選択に支障はない
+- 転送量は体感値。速すぎ/遅すぎる場合は tick 換算の閾値を調整する
+
 ## 関連
 
-- Issue #52
+- Issue #52 / Issue #260
 - [ADR 0016: ターミナルの mouseMoved を NSEvent モニターで抑制する](./0016-terminal-mouse-event-suppression.md) — 同じ NSEvent モニター手法
 - [ADR 0008: ターミナルで claude を自動起動しない](./0008-no-claude-autostart.md) — Claude CLI の制約に関する判断

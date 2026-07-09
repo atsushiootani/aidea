@@ -177,6 +177,44 @@ issue #71 の `(want)` 項目。Preview 側のコード/テキストビューが
 
 ---
 
+## ホイールスクロール (issue #260)
+
+Aidea は Terminal / Claude を **tmux 経由**で起動する ([sessions/terminal.md#永続化](../sessions/terminal.md#永続化))。
+tmux は常時 **alternate screen** を使い、かつ **mouse on** で動作する。ここで問題が 2 つ重なる:
+
+1. SwiftTerm の `scrollWheel` は**自前のスクロールバックを動かすだけで、ホイールをマウスイベントとして
+   PTY に転送しない**。tmux の alternate screen 下では外側スクロールバックは空なので、ホイールが無反応になる。
+2. tmux は `mouse on` でホイールを待っているのに、上記のとおりイベントが届かない。
+
+そこで **マウストラッキング中 (`terminal.mouseMode != .off`) はホイールを SGR マウスホイールイベントとして
+PTY に転送**し、tmux (やマウス対応 TUI) にスクロールを解釈させる。tmux が場面に応じて正しく振り分ける:
+
+| 場面 (tmux 内) | tmux の挙動 |
+|---|---|
+| シェルのプロンプト (通常画面) | コピーモードに入ってスクロールバック履歴をスクロール |
+| `less` / `vim` / `man` 等 (alternate screen・マウス非対応) | 矢印キー (↑/↓) を送ってスクロール |
+| マウス対応 TUI (mouse tracking を要求するアプリ) | マウスホイールイベントをそのまま転送 |
+
+この方式は Terminal と Claude で**共通**。tmux は自身が管理する「内側の alternate screen 状態」を
+知っているため、外側から判別できない「プロンプトか TUI か」を正しく振り分けられる。
+
+- ホイールボタンは X11 マウスプロトコルの up=4 / down=5 (`terminal.encodeButton` が 64/65 に変換)、
+  送信は `terminal.sendEvent(buttonFlags:x:y:)` を使い、エンコード方式 (SGR 等) は SwiftTerm 側に委ねる
+- マウス位置は `cellPosition` から算出 (Aidea は 1 セッション 1 tmux ペインなので厳密でなくてよい)
+- 転送量: マウスホイールは 1 ノッチ 1 回、トラックパッドは `scrollingDeltaY` を 16 pt ごとに 1 回へ換算 (1 イベントあたり上限あり)。1 回あたりのスクロール行数は tmux 側が決める
+- macOS の `deltaY > 0` (ナチュラル/クラシック双方の符号を反映済み) を「上スクロール」とする
+
+### フォールバック (mouseMode == off)
+
+tmux 未使用などでマウストラッキングが無い場合:
+
+- **Claude**: トランスクリプトモード時のみホイールを Ctrl+U/D に変換 (通常モードで Ctrl+D 2 回は EOF に
+  なるため厳密判定)。ホイールクリック → Ctrl+O のトグルも維持。[ADR 0017](../../decisions/0017-alternate-screen-scroll-handling.md) と
+  [tools/claude.md#ターミナル内操作aidea-が-nsevent-モニターで変換](./claude.md#ターミナル内操作aidea-が-nsevent-モニターで変換) を参照
+- **Terminal**: SwiftTerm 標準のスクロールバック (通常バッファのみ有効) に委ねる
+
+---
+
 ## openTerminalAndRun — Preview からのコマンド実行
 
 Markdown Preview の実行ボタン押下時に呼ばれる。既存 Terminal セッションを再利用するか、なければ新規作成する。
