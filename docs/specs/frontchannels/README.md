@@ -13,7 +13,7 @@ last_updated: 2026-05-17
 
 # Frontchannels (Aidea → Claude 通信) インデックス
 
-Aidea が PTY の `send(txt:)` 経由で Claude にプロンプトを送る通信チャネル。Backchannel の逆方向。
+Aidea が PTY 送信経由で Claude にプロンプトを送る通信チャネル。Backchannel の逆方向。
 
 ## ファイル一覧
 

@@ -55,6 +55,8 @@ Backchannel の詳細は [../backchannels/backchannel.md](../backchannels/backch
 
 ## 自動起動シーケンス
 
+**自動起動シーケンス**とは、Claude セッションの端末生成時に一度だけ走る「端末起動 → `claude` 起動 → Companion 指示書の読み込み → 受付可能化」の一連の自動送信のこと。以降このプロジェクトで「自動起動シーケンス」と呼ぶものはこの手順を指す。
+
 tmux の有無と既存セッションの有無で 3 経路に分岐する。判定は `terminalView` の lazy 生成時に行う。
 
 | 経路 | 条件 | 起動コマンド | autoStartClaude |
