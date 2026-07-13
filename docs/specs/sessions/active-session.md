@@ -57,13 +57,13 @@ Session 概念自体の位置づけは [ui-rules.md#概念モデル](./ui-rules.
 4. `activateSession` がペイン + タブを逆引きして `setActiveTab` → ライフサイクル (activate/deactivate) が発火
 5. モニタのトークンは `SessionRegistry` が `SessionID` ごとに保持し、Tab クローズ (`destroySession`) で必ず `NSEvent.removeMonitor(_:)` する。
    解放しないとタブの開閉を繰り返すたびに無効なクロージャが溜まり続ける (issue #263)。詳細な仕組みとライフサイクル表は
-   [focus-contract.md#サブクラス不可能な-nsview-のクリック検知-クリックモニタ](./focus-contract.md#サブクラス不可能な-nsview-のクリック検知-クリックモニタ) を参照
+   [conventions/implementations/focus.md#サブクラス不可能な-nsview-のクリック検知-クリックモニタ](../../conventions/implementations/focus.md#サブクラス不可能な-nsview-のクリック検知-クリックモニタ) を参照
 
 ### 新しい Tool を追加するときの注意
 
 - 共通モニタは `state.focusBridge.trackedView` に依存する。AppKit 系の SessionState を新規に追加する場合は、`FocusBridgeOwner` に準拠させ、NSViewRepresentable の `makeNSView` 内で `state.focusBridge.setView(_:)` を呼ぶこと (セットしないとクリック検知が効かない)
 - 純 SwiftUI 系 SessionState (Kit 等) は本モニタの対象外。SwiftUI の gesture 機構 (`.onTapGesture` 等) でアクティブ化する経路を各 View が自前で用意する
-- フォーカス契約 (C1 / C2 / C3) と `SessionFocusBridge` の責務は [focus-contract.md](./focus-contract.md) を参照
+- フォーカス契約 (C1 / C2 / C3) は [focus-contract.md](./focus-contract.md)、その実装規約は [conventions/implementations/focus.md](../../conventions/implementations/focus.md) を参照
 
 ---
 

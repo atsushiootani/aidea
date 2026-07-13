@@ -1,3 +1,17 @@
+---
+title: Aidea Conventions
+description: コーディング規約・設計原則・テスト戦略と、個別機能の実装規約 (implementations/) のインデックス
+derived_from:
+  - docs/LAYOUT.md
+syncs_with: []
+impacts:
+  - docs/conventions/*
+  - docs/conventions/implementations/*
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-07-13
+---
+
 # Aidea Conventions
 
 Aidea のコードを書く際に従うべき規約とガイドライン。
@@ -12,7 +26,17 @@ Aidea のコードを書く際に従うべき規約とガイドライン。
 | [design-principles.md](./design-principles.md) | 設計原則 (Tell Don't Ask / SOLID / GRASP 等) |
 | [rules.md](./rules.md) | Always / Confirm First / Never — コードレビュー時のチェックリスト |
 | [testing.md](./testing.md) | テスト戦略 / 手動確認チェックリスト |
-| [e2e-key-simulation.md](./e2e-key-simulation.md) | E2E キー入力シミュレーションの知見と再開手順 (TCC / CGEvent / IME) |
+
+直下はコードベース**全体にまたがる規約**のみを置く。
+
+## implementations/ — 個別機能の実装規約
+
+特定の機能・仕様に紐づく実装規約と実装知見。対応する spec (要件の SSoT) からリンクされる。
+
+| ファイル | 内容 |
+|---|---|
+| [implementations/focus.md](./implementations/focus.md) | フォーカス契約 ([specs/sessions/focus-contract.md](../specs/sessions/focus-contract.md)) の実装規約 (SessionFocusBridge / setView / クリックモニタ) |
+| [implementations/e2e-key-simulation.md](./implementations/e2e-key-simulation.md) | E2E キー入力シミュレーションの知見と再開手順 (TCC / CGEvent / IME) |
 
 ※ docs/ 配下の YAML frontmatter 規約は [../LAYOUT.md](../LAYOUT.md#frontmatter-規約) を参照。
 

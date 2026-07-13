@@ -33,7 +33,7 @@ Tool 仕様は [../tools/preview.md](../tools/preview.md) を、共通 UI ルー
 | `isActive` | `Bool` | 純 SwiftUI コンテンツ (markdown view / image) のフォーカスバインド用フラグ。非永続 | — |
 
 Preview はコンテンツ種別で NSView 系 / 純 SwiftUI 系が切り替わるため、両方のフォーカス経路を併設する。
-`didBecomeActive` で `focusBridge.activate()` と `isActive = true` の両方を発火し、実際に firstResponder を取るのは、その時点で有効な子ビュー側 (NSViewRepresentable が `setView` 済か、`.focused($isActive)` がバインドされているか) のどちらかになる。詳細は [focus-contract.md](./focus-contract.md) を参照。
+`didBecomeActive` で `focusBridge.activate()` と `isActive = true` の両方を発火し、実際に firstResponder を取るのは、その時点で有効な子ビュー側 (NSViewRepresentable が `setView` 済か、`.focused($isActive)` がバインドされているか) のどちらかになる。詳細は [conventions/implementations/focus.md](../../conventions/implementations/focus.md) を参照。
 
 ## 開き方の規約
 

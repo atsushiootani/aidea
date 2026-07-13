@@ -96,7 +96,7 @@ Tool ごとに 1 つの具体実装クラスが準拠する**プロトコル**�
 | **AppKit 系** | `let focusBridge: SessionFocusBridge` | `didBecomeActive` で `focusBridge.activate()`、`didResignActive` で `focusBridge.deactivate()` を呼ぶ |
 | **純 SwiftUI 系** | `var isActive: Bool` | `didBecomeActive` で `isActive = true`、`didResignActive` で `isActive = false`。SwiftUI の `.focused($isActive)` が内部 NSView の firstResponder 出し入れを自動処理 |
 
-`SessionFocusBridge` の責務とフォーカス契約 (C1 / C2 / C3) の詳細は [focus-contract.md](./focus-contract.md) を参照。
+フォーカス契約 (C1 / C2 / C3) は [focus-contract.md](./focus-contract.md) を、その実装規約 (ブリッジヘルパの責務) は [conventions/implementations/focus.md](../../conventions/implementations/focus.md) を参照。
 
 ---
 
@@ -187,7 +187,7 @@ ADR 0020 で Session クラスから `focusableView` プロパティを撤去し
 - [glossary.md](../glossary.md) — Session / SessionState / SessionID / SessionRegistry の用語定義
 - [ui-rules.md](./ui-rules.md) — 5 概念モデル (Window / Pane / Tab / Session / Tool)
 - [active-session.md](./active-session.md) — アクティブ Session の切替規約
-- [focus-contract.md](./focus-contract.md) — Session 間でフォーカスの一貫性を担保する契約 (C1/C2/C3) と SessionFocusBridge の仕様
+- [focus-contract.md](./focus-contract.md) — キー入力が常にアクティブ Session に届くことを担保する契約 (C1/C2/C3)
 - [ADR 0013](../../decisions/0013-session-as-first-class-object.md) — Session を first-class object にする設計判断
 - [ADR 0018](../../decisions/0018-session-and-state-separation.md) — Session と SessionState を分離して保持する判断と 4 つの理由
 - [ADR 0020](../../decisions/0020-session-focus-bridge.md) — フォーカス契約を SessionState + SessionFocusBridge に委譲する設計

@@ -1,3 +1,14 @@
+---
+title: Design Principles (設計原則)
+description: Tell Don't Ask / SOLID / GRASP 等、コードベース全体で常に意識する設計原則と新機能設計時のチェックリスト
+derived_from: []
+syncs_with: []
+impacts: []
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-06-20
+---
+
 # Design Principles (設計原則)
 
 Aidea のコードベース全体で常に意識する設計原則。
