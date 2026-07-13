@@ -11,7 +11,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-07-02
+last_updated: 2026-07-13
 ---
 
 # 削除操作の確認ルール
@@ -24,22 +24,22 @@ last_updated: 2026-07-02
 
 1. **ユーザデータ・設定を破壊する操作は、実行前に必ずユーザ確認を取る。**
    - 対象: 削除 (ファイル / 設定エントリ / ジョブ / スニペット等)、および**元を削除する**移動・変換
-   - UI は基本的に**確認ダイアログ**を使う (SwiftUI `confirmationDialog` または `NSAlert`)
+   - UI は基本的に**確認ダイアログ** (ネイティブのアラート / シート) を使う
 2. **省略できるのは、対象機能の spec に「確認不要」と明示的に記述した場合のみ。**
    - その場合、spec に理由と本ルールへの参照 (`aspects/destructive-actions.md`) を書くこと
-3. 確認ダイアログには**対象の名前**を含め、破壊ボタンには `role: .destructive` を付ける
-   (例: 「「\(name)」を削除しますか？」+「削除」(destructive) /「キャンセル」(cancel))
+3. 確認ダイアログには**対象の名前**を含め、破壊ボタンには破壊的操作スタイル (赤色強調) を付ける
+   (例: 「「<対象名>」を削除しますか？」+「削除」(破壊的) /「キャンセル」)
 
 ## 現在の適用状況
 
-| 操作 | 確認 | 実装 |
+| 操作 | 確認 | 参照 spec |
 |---|---|---|
-| Filer: ファイル / ディレクトリ削除 | ✅ NSAlert | `deleteSelected` ([filer.md](../tools/filer.md)) |
-| スケジューラ: ジョブ削除 | ✅ confirmationDialog | `SchedulerRowView` ([scheduler.md](../widgets/scheduler.md)) |
-| スケジューラ → スニペット変換 (元削除) | ✅ confirmationDialog | 同上 |
-| スニペット: 削除 | ✅ confirmationDialog | `SnippetRowView` ([snippets.md](../widgets/snippets.md)、issue #247) |
-| スニペット → スケジューラ変換 (元削除) | ✅ confirmationDialog | 同上 |
-| リマインド: `✕` (キャンセル) | **例外: 確認なし** | 明示的例外。理由は [remind.md](../backchannels/remind.md#popover-remindpopoverview) を参照 |
+| Filer: ファイル / ディレクトリ削除 | ✅ 確認ダイアログ | [filer.md](../tools/filer.md) |
+| スケジューラ: ジョブ削除 | ✅ 確認ダイアログ | [scheduler.md](../widgets/scheduler.md) |
+| スケジューラ → スニペット変換 (元削除) | ✅ 確認ダイアログ | 同上 |
+| スニペット: 削除 | ✅ 確認ダイアログ | [snippets.md](../widgets/snippets.md)、issue #247 |
+| スニペット → スケジューラ変換 (元削除) | ✅ 確認ダイアログ | 同上 |
+| リマインド: `✕` (キャンセル) | **例外: 確認なし** | 明示的例外。理由は [remind.md](../backchannels/remind.md#popover-リマインド一覧) を参照 |
 
 ## 明示的例外の考え方
 

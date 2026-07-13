@@ -13,7 +13,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-07-05
+last_updated: 2026-07-13
 ---
 
 # グローバルショートカット
@@ -47,7 +47,7 @@ Aidea
 Window / Help — 標準
 ```
 
-実装は `AideaApp.body.commands`: タブは `CommandGroup(after: .sidebar)` 内の `Menu("タブ")` として View メニューに挿入し、それ以外は `CommandMenu("Aidea")` 配下に置く (コンパニオン / ツール / ポモドーロのみサブメニュー、他は直下の項目)。ショートカットは全項目従来どおり。クイックメモの ⌘M は NSEvent モニターが横取りするため ([quick-memo.md](../widgets/quick-memo.md))、メニュー項目側にはショートカットを付けない (二重定義を避ける)。
+タブ関連はサブメニュー「タブ」として View メニューに挿入し、それ以外は独自の「Aidea」メニュー配下に置く (コンパニオン / ツール / ポモドーロのみサブメニュー、他は直下の項目)。ショートカットは全項目従来どおり。クイックメモの ⌘M は NSEvent モニターが横取りするため ([quick-memo.md](../widgets/quick-memo.md))、メニュー項目側にはショートカットを付けない (二重定義を避ける)。
 
 ## タブ・ペイン操作
 
@@ -86,7 +86,7 @@ Window / Help — 標準
 
 ## クイックメモ
 
-`NSEvent.addLocalMonitorForEvents` で Cmd+M を横取りして popover をトグルする。詳細は [../widgets/quick-memo.md](../widgets/quick-memo.md)。
+NSEvent ローカルモニターで Cmd+M を横取りして popover をトグルする ([ADR 0011](../../decisions/0011-cmd-w-via-nsevent-monitor.md) と同じ手法)。詳細は [../widgets/quick-memo.md](../widgets/quick-memo.md)。
 
 | キー | 動作 |
 |---|---|
@@ -109,4 +109,4 @@ Window / Help — 標準
 |---|---|
 | **⌘ ⌥ V** | 音声入力ダイアログを開く (アクティブセッションが Claude のときのみ有効。それ以外は disabled) |
 
-`AppHeaderView` のマイクボタン押下と完全に同じ起動経路を共有する (ダイアログ仕様 / マイク権限フロー / 送信先解決は voice-input.md を参照)。
+アプリヘッダのマイクボタン押下と完全に同じ起動経路を共有する (ダイアログ仕様 / マイク権限フロー / 送信先解決は voice-input.md を参照)。

@@ -12,7 +12,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-06-20
+last_updated: 2026-07-13
 ---
 
 # コードスニペット (Snippet)
@@ -38,7 +38,7 @@ last_updated: 2026-06-20
 | `command` | string | （必須） | ターミナルへ送信するコマンド文字列 (複数行可。各行がそのまま送信される) |
 | `destination` | object | （省略可） | 既定の送信先。省略時は**アクティブ端末**。下記「送信先設定」参照 ([ADR 0034](../../decisions/0034-scheduler-snippet-dispatch.md)) |
 
-有効 / 無効の概念は持たない (**常に有効**、issue #247)。旧フォーマットの `enabled` キーは無視される (JSONDecoder が未知キーを読み飛ばすため後方互換)。
+有効 / 無効の概念は持たない (**常に有効**、issue #247)。旧フォーマットの `enabled` キーは読み込み時に無視される (未知キーを読み飛ばす後方互換)。
 
 `destination`:
 
@@ -94,7 +94,7 @@ last_updated: 2026-06-20
 | 選択肢 | 挙動 |
 |---|---|
 | アクティブターミナル | アクティブが Terminal → そこ。なければ最初の Terminal。無ければ新規 |
-| 各ターミナルタブ (タブ名) | 開いている各ターミナルを**タブ名**で指定して送信。タブ名はカスタム名があればそれ、無ければ `Terminal N` (`SessionRegistry.tabTitle(for:)`) |
+| 各ターミナルタブ (タブ名) | 開いている各ターミナルを**タブ名**で指定して送信。タブ名はタブの表示タイトル (ユーザーがリネームしたカスタム名、無ければ `Terminal N`) |
 | 新規ターミナルタブ | 常に新規タブを作成して送信 |
 
 スケジューラの terminal ジョブもタブ名で送信先を指定できる（[scheduler.md](./scheduler.md) / [ADR 0034](../../decisions/0034-scheduler-snippet-dispatch.md)）。違いは **スニペットは即時実行で「設定済み先 + その場選択」**、**スケジューラは自動発火で送信先を設定に永続化**する点。タブ名で既存ターミナルを狙える操作感・解決ロジックは両者で揃える。
@@ -107,23 +107,23 @@ last_updated: 2026-06-20
 
 ### スニペット → スケジューラへ昇格
 
-`SnippetRowView` の「→ スケジューラ」ボタン:
-- 確認後、`trigger: .manual, target: .terminal(sessionTitle:), prompt: snippet.command` のジョブを `SchedulerState.addJob()` で登録し、**元のスニペットを削除**する
-- 送信先のマッピング: `tab(title)` → `terminal(sessionTitle: title)` / `new` ・ アクティブ端末 (省略) → `terminal(sessionTitle: nil)` (新規)
+スニペット行の「→ スケジューラ」ボタン:
+- 確認後、トリガー = 手動 (`manual`) / 送信先 = `terminal` / プロンプト = スニペットの `command` のジョブとしてスケジューラに登録し、**元のスニペットを削除**する
+- 送信先のマッピング: タブ名指定 (`tab` + `title`) → `terminal` の `sessionTitle: title` / 新規 (`new`) ・ アクティブ端末 (省略) → `terminal` の `sessionTitle` なし (新規)
 - 追加後、ユーザはスケジューラ UI でトリガーを任意に変更できる
 
 ### スケジューラ → スニペットへ保存
 
-`SchedulerRowView` の「→ スニペット」ボタン:
+スケジューラのジョブ行の「→ スニペット」ボタン:
 - 確認後、ジョブの `prompt` を `command` としてスニペット登録し、**元のジョブを削除**する
-- 送信先のマッピング: `terminal(sessionTitle: title)` → `tab(title)` / `terminal(sessionTitle: nil)` → `new` / `claude` ジョブ → 既定 (アクティブ端末)
+- 送信先のマッピング: `terminal` の `sessionTitle: title` → タブ名指定 (`tab` + `title`) / `sessionTitle` なし → 新規 (`new`) / `claude` ジョブ → 既定 (アクティブ端末)
 - スニペット側では trigger / 実行履歴の概念は持たない
 
 ---
 
-## UI: SnippetView (ヘッダ常駐 widget)
+## UI: スニペット widget (ヘッダ常駐)
 
-`WidgetView` 内で `SchedulerView` の左隣に配置。
+[Widget 領域](./README.md#ui-配置原則-widget-領域) 内でスケジューラ widget の左隣に配置。
 
 ### ヘッダ表示
 
@@ -133,23 +133,23 @@ last_updated: 2026-06-20
 | ラベル | スニペット件数 (0件なら「なし」) |
 | ショートカット | ⌥⌘B |
 
-### Popover: SnippetPopoverView
+### Popover: スニペット一覧
 
 | 要素 | 内容 |
 |---|---|
 | タイトル | 「コードスニペット」＋「＋ 追加」ボタン |
 | スニペット行 | name / **送信先 + command**（`→ 送信先 / command`。スケジューラ行と同形式）/ 実行ボタン(主)+メニュー / 編集 / 削除 / → スケジューラ |
 | 削除ボタン | **確認ダイアログ**で確認してから削除する ([aspects/destructive-actions.md](../aspects/destructive-actions.md)、issue #247) |
-| 実行ボタン (主) | 押すと `destination` 設定の送信先へ即送信。**`.borderedProminent` (アクセントカラー塗り) + play アイコン**で、スケジューラの「今すぐ実行」(`.bordered`) より目立たせる (issue #247) |
+| 実行ボタン (主) | 押すと `destination` 設定の送信先へ即送信。**アクセントカラー塗り + play アイコン**で、スケジューラの「今すぐ実行」(枠線のみ) より目立たせる (issue #247) |
 | 実行メニュー | その場限りで別の端末を選択: アクティブターミナル / 各ターミナルタブ (タブ名)... / 新規ターミナルタブ |
 | 空状態 | 「スニペットなし」 |
 
-#### 編集フォーム: SnippetEditView
+#### 編集フォーム
 
 | フィールド | UI | 備考 |
 |---|---|---|
 | 名前 | テキスト入力 | 必須 |
-| コマンド | **複数行テキスト入力** (`TextEditor`、monospaced、高さ約 5 行) | 必須。複数行コマンド可 (issue #247) |
+| コマンド | **複数行テキスト入力** (等幅フォント、高さ約 5 行) | 必須。複数行コマンド可 (issue #247) |
 | 送信先 | セグメント（既定(アクティブ) / タブ名 / 新規）+ タブ名入力 | タブ名選択時のみタブ名欄を表示。現在のタブ名をクイック選択でき、任意名も自由入力可 |
 
 ---

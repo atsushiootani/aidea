@@ -29,7 +29,7 @@ impacts: []
 conventions:
   - docs/LAYOUT.md
   - docs/specs/aspects/README.md
-last_updated: 2026-05-27
+last_updated: 2026-07-13
 ---
 
 # Persistence (データ永続化)
@@ -55,7 +55,7 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 |---|---|---|
 | `aidea.projectRoot` | String | 最後に開いていたプロジェクトのパス。起動時復元用 |
 
-管理: `WorkspaceState` (起動時に読込、ディレクトリ変更時に書込)
+起動時に読込、プロジェクトディレクトリ変更時に書込する。
 
 ### Keychain (機密情報)
 
@@ -63,24 +63,24 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 |---|---|
 | `com.aidea.anthropic-api-key` | Anthropic API キー (翻訳・ディレクトリ概要生成機能で使用) |
 
-管理: `KeychainHelper` (保存・読込・削除)
-利用: 翻訳サービス / ディレクトリ概要生成サービス
+保存・読込・削除は Keychain アクセスを担うヘルパに集約する。
+利用: 翻訳機能 / ディレクトリ概要生成機能
 
 ### Bundle Resources (`Aidea/Resources/`)
 
-アプリバンドルに同梱する **初期値テンプレ・指示書**。Xcode の `PBXFileSystemSynchronizedRootGroup` (Xcode 16) により `Aidea/Resources/` 配下は自動でビルドに含まれる (pbxproj 編集不要)。
+アプリバンドルに同梱する **初期値テンプレ・指示書**。`Aidea/Resources/` 配下はファイル追加だけで自動的にビルドへ含まれる (プロジェクトファイルの編集不要)。
 
 | パス | 用途 |
 |---|---|
 | `default-workspace.json` | `<projectRoot>/.aidea/workspace.json` の初期テンプレ (ハードコード排除の SSoT) |
-| `Backchannels/aidea.md` | Backchannel 機能の指示書。`BackchannelSetup` が `.aidea/claude/` にコピー |
+| `Backchannels/aidea.md` | Backchannel 機能の指示書。初回セットアップ処理が `.aidea/claude/` にコピー |
 | `Backchannels/speech.md` | speech 機能の指示書 (同上) |
 | `Backchannels/handoff.md` | Companion 間ハンドオフ機能の指示書 (同上)。詳細は [../backchannels/handoff.md](../backchannels/handoff.md) |
 | `Backchannels/output.md` | output 記録機能の指示書 (同上)。詳細は [../backchannels/output.md](../backchannels/output.md) |
-| `Backchannels/companion-instructions.md` | コンパニオン指示書 (`instructions.md`) のデフォルトテンプレ。`BackchannelSetup` が 9 個に複製して `.aidea/claude/companions/<0..8>/instructions.md` に配置 (既存ファイルは上書きしない) |
-| `Backchannels/remind.md` | リマインド機能の指示書。`BackchannelSetup` が `.aidea/claude/` にコピー |
+| `Backchannels/companion-instructions.md` | コンパニオン指示書 (`instructions.md`) のデフォルトテンプレ。初回セットアップ処理が 9 個に複製して `.aidea/claude/companions/<0..8>/instructions.md` に配置 (既存ファイルは上書きしない) |
+| `Backchannels/remind.md` | リマインド機能の指示書。初回セットアップ処理が `.aidea/claude/` にコピー |
 
-**設計ポリシー**: ハードコードしがちなデフォルト値 (初期レイアウト・コンパニオン定義・レコメンドプロンプト等) は Swift コード側に二重管理せず、Bundle 同梱の JSON / Markdown を **唯一のソース** とする。
+**設計ポリシー**: ハードコードしがちなデフォルト値 (初期レイアウト・コンパニオン定義・レコメンドプロンプト等) はコード側に二重管理せず、Bundle 同梱の JSON / Markdown を **唯一のソース** とする。
 
 ### `<projectRoot>/.aidea/` (プロジェクト固有)
 
@@ -122,14 +122,14 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
     └── <相対パス>/<filename>
 ```
 
-- `projectRoot` が変わるたびに `ensureAideaDirectory()` が `.aidea/` と `.aidea/ja/` を生成し、**`.git/info/exclude` (ローカル専用 ignore) に `.aidea/` を追記** する。`.git/info/` が存在しない非 git プロジェクトでは追記をスキップする
-- `.aidea/claude/*.md` と `.aidea/backchannels/` は初回のみ `BackchannelSetup.setup()` が作成・複製する
-- `.aidea/claude/companions/<0..8>/instructions.md` も `BackchannelSetup.setup()` が `Backchannels/companion-instructions.md` を 9 個に複製する (既存ファイルは上書きしない)
-- `.aidea/claude/aidea.md` 内のマーカー領域 (`<!-- aidea:companions:start --> ... <!-- aidea:companions:end -->`) は `CompanionRosterWriter` が `WorkspaceSnapshotManager.apply()` 末尾と `CompanionEditView` のリネーム確定時に runtime 更新する (詳細: [../backchannels/companion-roster.md](../backchannels/companion-roster.md))
-- v2 以前の旧ファイル `.aidea/companions.json` / `.aidea/recommends.json` は起動時に `WorkspaceSnapshotManager` が `workspace.json` v3 に統合して自動削除する
+- `projectRoot` が変わるたびに `.aidea/` と `.aidea/ja/` を生成し、**`.git/info/exclude` (ローカル専用 ignore) に `.aidea/` を追記** する。`.git/info/` が存在しない非 git プロジェクトでは追記をスキップする
+- `.aidea/claude/*.md` と `.aidea/backchannels/` は初回のみ初回セットアップ処理が作成・複製する
+- `.aidea/claude/companions/<0..8>/instructions.md` も初回セットアップ処理が `Backchannels/companion-instructions.md` を 9 個に複製する (既存ファイルは上書きしない)
+- `.aidea/claude/aidea.md` 内のマーカー領域 (`<!-- aidea:companions:start --> ... <!-- aidea:companions:end -->`) は、スナップショット適用の末尾とコンパニオン編集でのリネーム確定時に runtime 更新される (詳細: [../backchannels/companion-roster.md](../backchannels/companion-roster.md))
+- v2 以前の旧ファイル `.aidea/companions.json` / `.aidea/recommends.json` は起動時に `workspace.json` v3 に統合して自動削除する
 - `.aidea/widgets/` 配下は **Widget が初回保存時に自動生成** する (Aidea 起動時の一括初期化は行わない)。Widget が永続化するユーザ編集可能テキストを置くカテゴリで、現状は `quickmemo/memo.md` のみ。今後 Widget が増えたら `.aidea/widgets/<widget-name>/` に並べる
-- `.aidea/config/scheduler.json` は**ユーザが宣言的に編集**する定時スケジューラの設定 (ジョブ配列)。不在時はジョブ無し扱い。`SchedulerStore` が起動時に読込のみ行い (ランタイム再読込なし)、popover からの ON/OFF トグルだけ read-modify-write する ([../widgets/scheduler.md](../widgets/scheduler.md))
-- `.aidea/state/scheduler.json` は**自動管理**の `lastRun` マップ (jobId→`YYYY-MM-DD`)。定刻発火・手動「今すぐ実行」時に `SchedulerStore` が `.prettyPrinted, .sortedKeys` + `.atomic` で書き出す。ディレクトリは書込時に自動生成
+- `.aidea/config/scheduler.json` は**ユーザが宣言的に編集**する定時スケジューラの設定 (ジョブ配列)。不在時はジョブ無し扱い。起動時に読込のみ行い (ランタイム再読込なし)、popover からの ON/OFF トグルだけ read-modify-write する ([../widgets/scheduler.md](../widgets/scheduler.md))
+- `.aidea/state/scheduler.json` は**自動管理**の `lastRun` マップ (jobId→`YYYY-MM-DD`)。定刻発火・手動「今すぐ実行」時に、整形・キーソート済み JSON としてアトミック書き込みされる。ディレクトリは書込時に自動生成
 
 ---
 
@@ -137,15 +137,15 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 
 ### `workspace.json` (統合スナップショット)
 
-- **管理**: `WorkspaceSnapshotManager`
+- **管理**: スナップショット管理を担うコンポーネントが読み書きを一元化する
 - **フォーマット**: JSON (`version: 8`)
 - **初期値の SSoT**: Bundle 同梱の `default-workspace.json` (ハードコード排除)
-- **読込フロー** (`WorkspaceSnapshotManager.load(projectRoot:)`):
+- **読込フロー** (起動時):
   1. `<projectRoot>/.aidea/workspace.json` が存在 → 読込・マイグレーション適用
   2. 不在 → Bundle 同梱の `default-workspace.json` を読込・初期スナップショットとして返す
-  3. Bundle 読込も失敗 → nil を返す (AideaApp 側で緊急フォールバック)
+  3. Bundle 読込も失敗 → 緊急フォールバックへ
 - **書出タイミング**: 初回起動時にテンプレを適用しても **即書出はしない**。アプリ終了時 / バックグラウンド化時に通常の保存フローで `<projectRoot>/.aidea/workspace.json` が初めて生成される
-- **緊急フォールバック** (`AideaApp.init()`): Bundle 読込にも失敗した場合は **Filer 1 ペインの最小レイアウト** を生成して継続起動する (通常は発生しない)
+- **緊急フォールバック**: Bundle 読込にも失敗した場合は **Filer 1 ペインの最小レイアウト** を生成して継続起動する (通常は発生しない)
 
 #### スキーマ (v7)
 
@@ -162,7 +162,7 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 {
   "version": 7,
   "layout": {
-    "tree": { /* LayoutNodeSnapshot ツリー (split/leaf 再帰) */ },
+    "tree": { /* レイアウトツリー (split/leaf 再帰) */ },
     "activePaneID": "<UUID>" // または null
   },
   "sessions": {
@@ -170,7 +170,7 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
     "webs":     [{ "id": {...}, "url": "..." }],
     "filers":   [{ "id": {...}, "expandedURLs": [...], "excludeRules": [...], "userDecorationRules": [...] }],
     "kits":     [{ "id": {...}, "expandedSections": [...], "expandedGroups": [...] }],
-    "activeHistory": [/* SessionID 配列 */],
+    "activeHistory": [/* セッション ID の配列 */],
     "customTitles": [{ "id": {...}, "title": "..." }] // タブのカスタム名 (optional、nil 時は空扱い。バージョン bump 不要)
   },
   "companions": [
@@ -178,7 +178,7 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
       "index": 0,
       "name": "Companion 1",
       "icon": "Companions/companion-1",
-      "sessionID": null            // null = 未起動 / SessionID = 起動中の Claude セッション
+      "sessionID": null            // null = 未起動 / セッション ID = 起動中の Claude セッション
     },
     /* ... index 1〜8 まで必ず 9 要素 ... */
     // v8 で initialPrompt フィールドは削除。指示書本文は
@@ -194,7 +194,7 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 
 | 版 | 変更内容 | マイグレーション |
 |---|---|---|
-| v2 | レイアウトを LayoutNode ツリーで保存する形式 | (基底) |
+| v2 | レイアウトをツリー構造で保存する形式 | (基底) |
 | v3 | `companions` / `companionBindings` / `recommends` を統合 | 旧 `.aidea/companions.json` / `.aidea/recommends.json` を読み込んで統合し削除 |
 | v4 | Filer Tab に `excludeRules` を追加 (issue #68) | nil 時にデフォルト除外ルールを設定 |
 | v5 | `activeSessionHistory` を追加 (issue #49) | nil 時に空配列扱い |
@@ -220,10 +220,10 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
    - 対象パス: `<projectRoot>/.aidea/claude/companions/<index>/instructions.md`
    - **ファイル不在時のみ書き出し**: ユーザが既に手動編集している場合の上書きを避ける
    - 親ディレクトリ (`.aidea/claude/companions/<index>/`) は自動生成
-2. v8 スナップショット返却時には `initialPrompt` フィールドを含めない (Codable 側で削除済み)
+2. v8 スナップショット返却時には `initialPrompt` フィールドを含めない (スキーマから削除済み)
 3. 以降の保存からは v8 として書き出される
 
-新規プロジェクト (workspace.json 不在) は `BackchannelSetup.setup()` が `Backchannels/companion-instructions.md` を 9 個に複製する経路で初期化される。
+新規プロジェクト (workspace.json 不在) は初回セットアップ処理が `Backchannels/companion-instructions.md` を 9 個に複製する経路で初期化される。
 
 ### `default-workspace.json` の構造ルール
 
@@ -231,12 +231,12 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 - 値が空の場合も配列は `[]` / 辞書は `{}` を明示
 - `version` は現行スキーマバージョンと一致
 - `companions` には必ず 9 要素 (index 0〜8) を含め、`sessionID` は全て `null`
-- レイアウト・companion 名称・recommend プロンプト等の **デフォルト値はすべてここに集約**。Swift コード側へのハードコードは禁止
+- レイアウト・companion 名称・recommend プロンプト等の **デフォルト値はすべてここに集約**。コード側へのハードコードは禁止
 - v8 以降は `companions[].initialPrompt` を含めない (ファイル化したため)。指示書テンプレ本文は Bundle 同梱のテンプレが SSoT
 
 ### `.aidea/ja/<path>` (翻訳キャッシュ)
 
-- **管理**: `TranslationCache`
+- **管理**: 翻訳キャッシュを担うコンポーネント
 - **フォーマット**: Markdown (翻訳結果そのまま)
 - **鮮度判定**: 元ファイルとの mtime 比較で再翻訳要否を決める
 
@@ -263,28 +263,25 @@ Claude → Aidea 方向の通信は**ファイル経由**で行う。詳細は [
    ※ ディレクトリがなければ Claude 側で mkdir -p 相当で作成
    ※ 1 プロンプトで複数の speech ファイルが出るため timestamp 順で再生される
 
-3. SpeechWatcher (FSEvents) が .aidea/backchannels/ を再帰監視
+3. speech 監視処理 (FSEvents) が .aidea/backchannels/ を再帰監視
    ├─ 親ディレクトリが 0..8 の整数である speech-*.txt を検知 (それ以外は警告ログのみで無視)
-   ├─ コンテンツ + companionIndex をコールバックで SpeechState に渡す
+   ├─ コンテンツ + companionIndex を音声キューに渡す
    └─ ファイルは削除せず残す (ADR 0024: 作業履歴として保全)
 
-4. SpeechQueue が VOICEVOX Service (localhost:50021) に投げて読み上げ
+4. 音声キューが VOICEVOX (localhost:50021) に投げて読み上げ
 ```
 
-### 関連コンポーネント
+### 関連する処理 (役割別)
 
-| コンポーネント | 役割 |
+| 役割 | 内容 |
 |---|---|
-| `BackchannelSetup` | Bundle → `.aidea/claude/` の初期コピー (`aidea.md` / `speech.md` / `handoff.md` / `output.md` / `remind.md` / コンパニオン指示書 9 個) |
-| `SpeechWatcher` | `.aidea/backchannels/<0..8>/speech-*.txt` の FSEvents 再帰監視 |
-| `SpeechState` | Speech 状態管理と SpeechQueue への投入 |
-| `SpeechQueue` | VOICEVOX 合成 → AVAudioPlayer 再生キュー |
-| `HandoffWatcher` | `.aidea/backchannels/<0..8>/handoff-*.json` の FSEvents 再帰監視 |
-| `HandoffState` | Handoff 状態管理 + Dispatcher 呼び出し |
-| `OutputWatcher` | `.aidea/backchannels/<0..8>/output-*.txt` の FSEvents 再帰監視 |
-| `OutputState` | Output 履歴蓄積 (コンパニオン別インメモリ) |
-| `RemindWatcher` | `.aidea/backchannels/<0..8>/remind-{YYYYMMDDTHHmmss}.txt` の FSEvents 再帰監視 + 起動時スキャン |
-| `RemindScheduler` | トリガ時刻まで待機して SpeechQueue に投入、発火後にファイルを `.fired.txt` リネーム |
+| 初回セットアップ処理 | Bundle → `.aidea/claude/` の初期コピー (`aidea.md` / `speech.md` / `handoff.md` / `output.md` / `remind.md` / コンパニオン指示書 9 個) |
+| speech 監視処理 | `.aidea/backchannels/<0..8>/speech-*.txt` の FSEvents 再帰監視。検知内容を音声キューに投入 |
+| 音声キュー | VOICEVOX 合成 → 音声再生キュー |
+| handoff 監視処理 | `.aidea/backchannels/<0..8>/handoff-*.json` の FSEvents 再帰監視。宛先解決と配送を呼び出す |
+| output 監視処理 | `.aidea/backchannels/<0..8>/output-*.txt` の FSEvents 再帰監視。履歴をコンパニオン別にインメモリ蓄積 |
+| remind 監視処理 | `.aidea/backchannels/<0..8>/remind-{YYYYMMDDTHHmmss}.txt` の FSEvents 再帰監視 + 起動時スキャン |
+| リマインドスケジューラ | トリガ時刻まで待機して音声キューに投入、発火後にファイルを `.fired.txt` リネーム |
 
 詳細は [../backchannels/](../backchannels/README.md) を参照。
 
@@ -292,25 +289,25 @@ Claude → Aidea 方向の通信は**ファイル経由**で行う。詳細は [
 
 ## 永続化タイミング一覧
 
-| タイミング | 対象 | 呼び出し元 |
+| タイミング | 対象 | 担当 (役割) |
 |---|---|---|
-| 起動時 | UserDefaults → `projectRoot` 復元 | `WorkspaceState.init()` |
-| 起動時 (workspace.json 既存) | `workspace.json` 読込 → 復元・マイグレーション適用 | `WorkspaceSnapshotManager.load()` |
-| 起動時 (workspace.json 不在) | Bundle 同梱 `default-workspace.json` 読込 → 初期スナップショットとして適用 | `WorkspaceSnapshotManager.load()` |
-| 起動時 (Bundle 読込も失敗) | Filer 1 ペインの最小レイアウトを生成して継続起動 (緊急フォールバック) | `AideaApp.init()` |
-| projectRoot 変更時 | `.aidea/` 生成 + `.git/info/exclude` 追記 + Backchannel 再初期化 | `WorkspaceState.setProjectRoot()` |
-| Companion / Recommend 変更時 | インメモリのみ更新 (即座保存しない) | `CompanionStore` / `RecommendStore` |
-| Claude から speech 受信時 | `<n>/speech-*.txt` → 読み上げ (ファイルは残す、ADR 0024) | `SpeechWatcher` |
-| Claude から handoff 受信時 | `<n>/handoff-*.json` → 宛先解決 → 送信 (ファイルは残す、ADR 0024) | `HandoffWatcher` |
-| Claude から output 受信時 | `<n>/output-*.txt` → OutputState の履歴に蓄積 (ファイルは残す、ADR 0024) | `OutputWatcher` |
-| Claude から remind 受信時 | `<n>/remind-{ts}.txt` → トリガ時刻まで待機し SpeechQueue 投入 → ファイルを `.fired.txt` リネーム ([../backchannels/remind.md](../backchannels/remind.md)) | `RemindWatcher` + `RemindScheduler` |
-| 外部から inbox 受信時 | `inbox/*.json` → 宛先 Companion を解決して `message` を送信 (ファイルは残す、[../backchannels/inbox.md](../backchannels/inbox.md)) | `InboxWatcher` + `AideaApp.dispatchInbox` |
-| クイックメモ保存時 | `.aidea/widgets/quickmemo/memo.md` を上書き (親ディレクトリ自動生成、[../widgets/quick-memo.md](../widgets/quick-memo.md)) | `QuickMemoState.save()` |
-| 起動時 (scheduler) | `.aidea/config/scheduler.json` 読込 → 有効ジョブ登録 + 取りこぼし判定。`state/scheduler.json` で当日実行済みを照合 ([../widgets/scheduler.md](../widgets/scheduler.md)) | `SchedulerStore` + `SchedulerState` + `SchedulerEngine` |
-| スケジューラ発火 / 今すぐ実行時 | 指定 Companion へ command 送信 → `state/scheduler.json` の `lastRun[id]` を当日日付で更新 (`.atomic`) | `SchedulerState` + `SchedulerStore` |
-| ディレクトリ要約 生成時 | `state/dir-summaries.json` を上書き保存 (`.atomic`。保存済みは再生成しない、[../tools/filer.md](../tools/filer.md)#showdirectorysummary) | `DirectorySummaryStore` |
-| スケジューラ ON/OFF トグル時 | `config/scheduler.json` の該当ジョブ `enabled` を read-modify-write | `SchedulerState.toggle()` |
-| 終了時 / バックグラウンド化時 | `workspace.json` (4 グループ統合) 保存 | `AideaApp.registerTerminationObserver()` |
+| 起動時 | UserDefaults → `projectRoot` 復元 | ワークスペース状態の初期化 |
+| 起動時 (workspace.json 既存) | `workspace.json` 読込 → 復元・マイグレーション適用 | スナップショット管理 |
+| 起動時 (workspace.json 不在) | Bundle 同梱 `default-workspace.json` 読込 → 初期スナップショットとして適用 | スナップショット管理 |
+| 起動時 (Bundle 読込も失敗) | Filer 1 ペインの最小レイアウトを生成して継続起動 (緊急フォールバック) | アプリ起動処理 |
+| projectRoot 変更時 | `.aidea/` 生成 + `.git/info/exclude` 追記 + Backchannel 再初期化 | ワークスペース状態の切替処理 |
+| Companion / Recommend 変更時 | インメモリのみ更新 (即座保存しない) | コンパニオン / レコメンドの管理 |
+| Claude から speech 受信時 | `<n>/speech-*.txt` → 読み上げ (ファイルは残す、ADR 0024) | speech 監視処理 |
+| Claude から handoff 受信時 | `<n>/handoff-*.json` → 宛先解決 → 送信 (ファイルは残す、ADR 0024) | handoff 監視処理 |
+| Claude から output 受信時 | `<n>/output-*.txt` → 履歴に蓄積 (ファイルは残す、ADR 0024) | output 監視処理 |
+| Claude から remind 受信時 | `<n>/remind-{ts}.txt` → トリガ時刻まで待機し音声キュー投入 → ファイルを `.fired.txt` リネーム ([../backchannels/remind.md](../backchannels/remind.md)) | remind 監視処理 + リマインドスケジューラ |
+| 外部から inbox 受信時 | `inbox/*.json` → 宛先 Companion を解決して `message` を送信 (ファイルは残す、[../backchannels/inbox.md](../backchannels/inbox.md)) | inbox 監視処理 + 配送処理 |
+| クイックメモ保存時 | `.aidea/widgets/quickmemo/memo.md` を上書き (親ディレクトリ自動生成、[../widgets/quick-memo.md](../widgets/quick-memo.md)) | クイックメモ保存処理 |
+| 起動時 (scheduler) | `.aidea/config/scheduler.json` 読込 → 有効ジョブ登録 + 取りこぼし判定。`state/scheduler.json` で当日実行済みを照合 ([../widgets/scheduler.md](../widgets/scheduler.md)) | スケジューラの設定読込・判定処理 |
+| スケジューラ発火 / 今すぐ実行時 | 指定 Companion へ command 送信 → `state/scheduler.json` の `lastRun[id]` を当日日付で更新 (アトミック書き込み) | スケジューラ実行処理 |
+| ディレクトリ要約 生成時 | `state/dir-summaries.json` を上書き保存 (アトミック書き込み。保存済みは再生成しない、[../tools/filer.md](../tools/filer.md)#showdirectorysummary) | ディレクトリ要約キャッシュ管理 |
+| スケジューラ ON/OFF トグル時 | `config/scheduler.json` の該当ジョブ `enabled` を read-modify-write | スケジューラ設定の更新処理 |
+| 終了時 / バックグラウンド化時 | `workspace.json` (4 グループ統合) 保存 | アプリ終了・バックグラウンド化の監視処理 |
 
 ---
 
@@ -319,7 +316,7 @@ Claude → Aidea 方向の通信は**ファイル経由**で行う。詳細は [
 - **プロジェクト固有は `.aidea/`**: 複数プロジェクトをまたいだ干渉を避けるため、プロジェクト固有の状態・リソース・通信データはすべて `<projectRoot>/.aidea/` に集約する
 - **グローバル設定は UserDefaults**: プロジェクトに依存しないユーザ設定のみ
 - **機密情報は Keychain**: API キー等は macOS 標準の Keychain に委譲
-- **デフォルト値は Bundle Resources**: ハードコードを避け、Swift と JSON の二重管理を排する
+- **デフォルト値は Bundle Resources**: ハードコードを避け、コードと JSON の二重管理を排する
 - **`.aidea/` はローカル専用 ignore**: Aidea が自動で `.git/info/exclude` に追記する。共有 `.gitignore` は一切変更しないため、チームメンバーの環境や `.aidea/` をコミット対象にしたい運用に影響しない (ADR 0026)
 - **ファイルフォーマットは JSON / Markdown / Plain Text**: バイナリは使わず、直接編集・diff 可能にする
 

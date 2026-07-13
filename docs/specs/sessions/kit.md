@@ -1,6 +1,6 @@
 ---
 title: Session 内部状態: Kit
-description: KitSessionState の状態 (expandedSections / expandedGroups / selection) と 4 種ローダ・FileWatcher 自動更新・workspace.json 永続化・Scene とレコメンドプロンプト
+description: Kit セッションが保持する状態 (セクション/グループの展開状態・選択) と 4 種ローダ・ファイル監視による自動更新・workspace.json 永続化・Scene とレコメンドプロンプト
 derived_from:
   - docs/specs/sessions/ui-rules.md
   - docs/specs/frontchannels/scene.md
@@ -11,12 +11,12 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-23
+last_updated: 2026-07-13
 ---
 
 # Session 内部状態: Kit
 
-`kit` Tool の Session は `KitSessionState` として状態を保持する。
+`kit` Tool の Session が保持する状態。
 **ペイン移動で状態が失われない** ことを保証する。
 
 Tool 仕様 (UI / 操作) は [../tools/kit.md](../tools/kit.md) を参照。
@@ -24,54 +24,54 @@ Tool 仕様 (UI / 操作) は [../tools/kit.md](../tools/kit.md) を参照。
 
 ## 状態
 
-| プロパティ | 型 | 用途 | ペイン移動で保持 |
-|---|---|---|---|
-| `expandedSections` | `Set<KitSection>` | 展開中のセクション (`.agents` / `.skills` / `.commands` / `.mcps`) | ✅ |
-| `expandedGroups` | `Set<String>` | Skills/Commands のサブグループ展開状態 | ✅ |
-| `selection` | `String?` | 選択中の項目 ID | ✅ |
-| `isActive` | `Bool` | アクティブ状態フラグ | ✅ |
+| 状態 | 用途 | ペイン移動で保持 |
+|---|---|---|
+| 展開中セクション集合 | 展開中のセクション (Agents / Skills / Commands / MCPs) | ✅ |
+| 展開中グループ集合 | Skills / Commands のサブグループ展開状態 | ✅ |
+| 選択中項目 | 選択中の項目 ID | ✅ |
+| アクティブフラグ | フォーカスバインド用のアクティブ状態フラグ | ✅ |
 
 ## 内部ローダ
 
-4 種のローダを束ねる (`Services/Kit/` 配下):
+4 種のローダを束ねる:
 
 | ローダ | 対象 |
 |---|---|
-| `AgentsLoader` | `~/.claude/agents/*.md` + `<projectRoot>/.claude/agents/*.md` |
-| `SkillsLoader` | `~/.claude/skills/*/SKILL.md` + `<projectRoot>/.claude/skills/*/SKILL.md` |
-| `CommandsLoader` | `~/.claude/commands/*.md` + `<projectRoot>/.claude/commands/*.md` |
-| `McpLoader` | `~/.claude.json` の `mcpServers` |
+| Agents | `~/.claude/agents/*.md` + `<projectRoot>/.claude/agents/*.md` |
+| Skills | `~/.claude/skills/*/SKILL.md` + `<projectRoot>/.claude/skills/*/SKILL.md` |
+| Commands | `~/.claude/commands/*.md` + `<projectRoot>/.claude/commands/*.md` |
+| MCPs | `~/.claude.json` の `mcpServers` |
 
-## 自動更新 (FileWatcher)
+## 自動更新
 
-Kit は Window singleton で、`KitSessionState` が `FileWatcher` を 1 つ保持する。外部エディタ等で `.claude/` 配下に変更が発生したら自動的に `reloadAll()` を実行する。Tool 仕様は [../tools/kit.md#自動更新](../tools/kit.md#自動更新) を参照。
+Kit は Window singleton で、Kit セッション状態がファイル監視 (FSEvents ベース) を 1 つ保持する。外部エディタ等で `.claude/` 配下に変更が発生したら自動的に全ローダを再読込する。Tool 仕様は [../tools/kit.md#自動更新](../tools/kit.md#自動更新) を参照。
 
-| プロパティ | 型 | 用途 | 永続化 |
-|---|---|---|---|
-| `watcher` | `FileWatcher` | `~/.claude/` と `<projectRoot>/.claude/` を監視 | — |
-| `reloadDebounce` | `DispatchWorkItem?` | 変更通知のデバウンス (200ms) | — |
+| 状態 | 用途 | 永続化 |
+|---|---|---|
+| ファイル監視 | `~/.claude/` と `<projectRoot>/.claude/` を監視 | — |
+| デバウンス | 変更通知を 200ms デバウンスしてから再読込 | — |
 
 ### ライフサイクル
 
 | イベント | アクション |
 |---|---|
-| Session 生成時 | `watcher.start(paths: [~/.claude, <projectRoot>/.claude])` |
-| `projectRoot` 変更時 | watcher を stop → 新しい projectRoot で再 start |
-| 変更通知 (FSEvents コールバック) | 200ms デバウンス後に `reloadAll()` |
-| Session 破棄時 | `watcher.stop()` |
+| Session 生成時 | `~/.claude` と `<projectRoot>/.claude` の監視を開始 |
+| プロジェクトルート変更時 | 監視を停止 → 新しいプロジェクトルートで再開 |
+| 変更通知 (FSEvents コールバック) | 200ms デバウンス後に全ローダを再読込 |
+| Session 破棄時 | 監視を停止 |
 
 ## 永続化
 
-`expandedSections` と `expandedGroups` は `<projectRoot>/.aidea/workspace.json` に保存される。
+展開中セクション集合と展開中グループ集合は `<projectRoot>/.aidea/workspace.json` に保存される。
 詳細は [../aspects/persistence.md](../aspects/persistence.md) を参照。
 
 ## Scene とレコメンドプロンプト
 
-`SessionState` プロトコル ([../frontchannels/scene.md](../frontchannels/scene.md)) を実装し、Cmd+Enter でのレコメンド送信に対応する。
+セッション共通の仕組み ([../frontchannels/scene.md](../frontchannels/scene.md)) で、Cmd+Enter のレコメンド送信に対応する。
 
-| `currentScene()` | 場面 |
+| Scene 識別子 | 場面 |
 |---|---|
 | `"kit"` | Kit ツール全体 (選択中セクションで分岐しない) |
 
-- 将来的に `selection` (選択中の項目 ID) やセクション (`agents` / `skills` / `commands` / `mcps`) で分岐させる余地あり。現時点では単一 Scene `"kit"` で開始する。
-- 初期プロンプトは空配列 (`[]`)、`defaultCompanionIndex` は `0`。
+- 将来的に選択中の項目やセクション (agents / skills / commands / mcps) で分岐させる余地あり。現時点では単一 Scene `"kit"` で開始する。
+- 初期プロンプトは空、既定の Companion は index 0。

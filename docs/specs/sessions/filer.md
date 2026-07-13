@@ -11,35 +11,35 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-06
+last_updated: 2026-07-13
 ---
 
 # Session 内部状態: Filer
 
-`filer` Tool の Session は `FilerSessionState` として状態を保持する。
+`filer` Tool の Session が保持する状態。
 **ペイン移動で状態が失われない** ことを保証する。
 
 用語と UI ルールの前提は [ui-rules.md](./ui-rules.md) を、Tool 仕様は [../tools/filer.md](../tools/filer.md) を参照。
 
 ## 状態
 
-| プロパティ | 型 | 用途 | ペイン移動で保持 |
-|---|---|---|---|
-| `selectedFile` | `URL?` | 現在選択中のファイル/ディレクトリ | ✅ |
-| `expandedURLs` | `Set<URL>` | アウトライン上で展開されているノード | ✅ |
-| `excludeRules` | `[String]` | 表示・検索の除外パターン (デフォルト + ユーザ追加) | ✅ |
-| `userDecorationRules` | `[DecorationRule]` | アイコン / 行背景色のユーザ追加ルール (デフォルトの後に連結 = 後勝ち) | ✅ |
-| `customRoot` | `URL?` | 現在表示中のカスタムルートディレクトリ (nil = projectRoot を使用) | ✅ (永続化なし・再起動で nil にリセット) |
-| `undoManager` | `NSUndoManager` (ObservationIgnored) | Filer 操作 (rename / move / delete / create / paste) のアンドゥ・リドゥ履歴 | ✅ (履歴はメモリ上のみ・永続化なし) |
-| `registry` | `weak var SessionRegistry?` | Filer ダブルクリック時に Preview を開くための参照 | ✅ |
+| 状態 | 用途 | ペイン移動で保持 |
+|---|---|---|
+| 選択中ファイル | 現在選択中のファイル/ディレクトリ | ✅ |
+| 展開ノード集合 | アウトライン上で展開されているノード | ✅ |
+| 除外ルール | 表示・検索の除外パターン (デフォルト + ユーザ追加) | ✅ |
+| ユーザ装飾ルール | アイコン / 行背景色のユーザ追加ルール (デフォルトの後に連結 = 後勝ち) | ✅ |
+| カスタムルート | 現在表示中のカスタムルートディレクトリ (未設定ならプロジェクトルートを使用) | ✅ (永続化なし・再起動でリセット) |
+| アンドゥ履歴 | Filer 操作 (rename / move / delete / create / paste) のアンドゥ・リドゥ履歴 | ✅ (履歴はメモリ上のみ・永続化なし) |
+| レジストリ参照 | Filer ダブルクリック時に Preview を開くための [SessionRegistry](../glossary.md) への弱参照 | ✅ |
 
-`excludeRules` のパターン形式・適用範囲・デフォルトは [../tools/filer.md#除外ルール](../tools/filer.md#除外ルール) を参照。
+除外ルールのパターン形式・適用範囲・デフォルトは [../tools/filer.md#除外ルール](../tools/filer.md#除外ルール) を参照。
 
 ## 永続化
 
-`expandedURLs` / `excludeRules` / `userDecorationRules` は `<projectRoot>/.aidea/workspace.json` (v6) に含めて保存される。
-`undoManager` は永続化対象外 (アプリ終了で履歴は失われる)。
-`defaultDecorationRules` は Aidea 同梱の定数なので永続化しない。
+展開ノード集合 / 除外ルール / ユーザ装飾ルールは `<projectRoot>/.aidea/workspace.json` (v6) に含めて保存される。
+アンドゥ履歴は永続化対象外 (アプリ終了で履歴は失われる)。
+デフォルトの装飾ルールは Aidea 同梱の定数なので永続化しない。
 詳細は [../aspects/persistence.md](../aspects/persistence.md) を参照。
 
 ## シングルトン制約
@@ -48,11 +48,11 @@ last_updated: 2026-05-06
 
 ## Scene とレコメンドプロンプト
 
-`SessionState` プロトコル ([../frontchannels/scene.md](../frontchannels/scene.md)) を実装し、Cmd+Enter でのレコメンド送信に対応する。
+セッション共通の仕組み ([../frontchannels/scene.md](../frontchannels/scene.md)) で、Cmd+Enter のレコメンド送信に対応する。
 
-| `currentScene()` | 場面 |
+| Scene 識別子 | 場面 |
 |---|---|
 | `"filer"` | Filer ツール全体 (mode 分岐なし) |
 
-- 初期プロンプトは空配列 (`[]`)、`defaultCompanionIndex` は `0`。
-- ユーザは FilerSessionView 下部の `ScenePromptsEditorView` から追加できる。
+- 初期プロンプトは空、既定の Companion は index 0。
+- ユーザは Filer ツール下部のプロンプト編集エリアから追加できる。

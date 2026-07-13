@@ -7,7 +7,7 @@ impacts:
   - docs/specs/tools/filer.md
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-17
+last_updated: 2026-07-13
 ---
 
 # ダイアログ
@@ -17,7 +17,7 @@ Window 全体で共通のモーダルダイアログ振る舞い仕様。
 
 ## キー割当
 
-- **Cancel ボタンは Esc キーで発火する**: すべての `NSAlert` / 独自モーダルダイアログで共通。実装上は Cancel に相当するボタンに `keyEquivalent = "\u{1b}"` を明示的に割り当てる
+- **Cancel ボタンは Esc キーで発火する**: すべての `NSAlert` / 独自モーダルダイアログで共通。Cancel に相当するボタンに Esc キーを明示的に割り当てる
 - **OK ボタンは Enter キーで発火する** (NSAlert は first button に自動割当なので追加作業不要)
 
 ## 破壊的操作・バリデーション

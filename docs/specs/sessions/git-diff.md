@@ -13,12 +13,12 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-29
+last_updated: 2026-07-13
 ---
 
 # Session 内部状態: GitDiff
 
-`gitDiff` Tool の Session は `GitDiffSessionState` として状態を保持する。
+`gitDiff` Tool の Session が保持する状態。
 Git ツール経由で開かれる差分ビュー (diff2html レンダリング)。
 
 Tool 仕様の背景は [../tools/git.md](../tools/git.md) を、共通 UI ルールは [ui-rules.md](./ui-rules.md) を参照。
@@ -26,33 +26,33 @@ diff2html の採用理由は [ADR 0004](../../decisions/0004-git-diff-with-diff2
 
 ## 状態
 
-| プロパティ | 型 | 用途 | ペイン移動で保持 |
-|---|---|---|---|
-| `mode` | `GitMode` (`.workingChanges` / `.prPreview`) | 対応する Git ツールのモード | ✅ |
-| `diffOutput` | `String` | `git diff` の生出力 | ✅ |
-| `scrollToFile` | `String?` | 指定ファイルへスクロール指示 | — |
-| `viewedFiles` | `Set<String>` | 既読ファイル集合 (変更時 `onViewedChanged` 発火) | ✅ |
-| `focusedFile` | `String?` | フォーカス中のファイル | ✅ |
-| `registry` | `weak var SessionRegistry?` | Git セッションへの逆参照 | — |
+| 状態 | 用途 | ペイン移動で保持 |
+|---|---|---|
+| 表示モード | 対応する Git ツールのモード (Working Changes / PR Preview) | ✅ |
+| 差分出力 | `git diff` の生出力 | ✅ |
+| スクロール指示 | 指定ファイルへスクロールさせる一時指示 | — |
+| 既読ファイル集合 | 既読になったファイルの集合 (変更時に既読状態変更通知を発火) | ✅ |
+| フォーカス中ファイル | フォーカス中のファイル | ✅ |
+| レジストリ参照 | Git セッションへの逆参照用の [SessionRegistry](../glossary.md) への弱参照 | — |
 
 ## Scene とレコメンドプロンプト
 
-`SessionState` プロトコル ([../frontchannels/scene.md](../frontchannels/scene.md)) を実装し、Cmd+Enter でのレコメンド送信に対応する。
+セッション共通の仕組み ([../frontchannels/scene.md](../frontchannels/scene.md)) で、Cmd+Enter のレコメンド送信に対応する。
 
-| `mode` | `currentScene()` |
+| 表示モード | Scene 識別子 |
 |---|---|
-| `.workingChanges` | `"gitDiff:workingChanges"` |
-| `.prPreview` | `"gitDiff:prPreview"` |
+| Working Changes | `"gitDiff:workingChanges"` |
+| PR Preview | `"gitDiff:prPreview"` |
 
-各 Scene のデフォルトプロンプトは Bundle 同梱 `Aidea/Resources/default-workspace.json` の `recommends` を SSoT とする (Swift コードへのハードコードは禁止)。詳細は [../frontchannels/scene.md](../frontchannels/scene.md) と [../companions/recommend-mode.md](../companions/recommend-mode.md) を参照。
+各 Scene のデフォルトプロンプトは Bundle 同梱の `default-workspace.json` の `recommends` を SSoT とする (コードへのハードコードは禁止)。詳細は [../frontchannels/scene.md](../frontchannels/scene.md) と [../companions/recommend-mode.md](../companions/recommend-mode.md) を参照。
 
 Scene キー (`gitDiff:*`) が Git ツール (`git:*`) と別のため、`workspace.json` v7 の `recommends` では**独立した 2 エントリ**として永続化される。ユーザは Git / GitDiff それぞれでプロンプトをカスタマイズする必要がある (Issue #74 の方針)。
 
 ## ファイル表示順序
 
-Working Changes モードで全ファイルを表示するとき、**Git パネル (GitSessionState) のツリーと同じ Finder 互換自然順**でファイルを並べる。
+Working Changes モードで全ファイルを表示するとき、**Git パネルのツリーと同じ Finder 互換自然順**でファイルを並べる。
 `git diff --cached` (staged) → `git diff` (unstaged) → untracked の順に diff を収集した後、
-ファイルパスを `String.naturalAscending` で並び替えてから diff2html に渡す。
+ファイルパスを Finder 互換自然順の昇順で並び替えてから diff2html に渡す。
 同一ファイルに staged と unstaged の両セクションがある場合は staged を先に表示する (安定ソート)。
 
 PR Preview モードも同様に、`git diff main...HEAD` の出力をファイルパスで自然順に並び替えてから diff2html に渡す。
@@ -61,16 +61,16 @@ PR Preview モードも同様に、`git diff main...HEAD` の出力をファイ�
 
 ## プレビュージャンプ
 
-`focusedFile` が設定されている状態で **Enter** を押すと、対象ファイルを `SessionRegistry.openPreviewAsSibling(for:)` で Preview タブに開く。
+フォーカス中ファイルが設定されている状態で **Enter** を押すと、対象ファイルを sibling 配置で Preview タブに開く。
 
-- `workspace.projectRoot` と `focusedFile` からフルパス URL を構築する
+- プロジェクトルートとフォーカス中ファイルのパスからフルパス URL を構築する
 - ファイルが存在しない場合 (削除済み・リネーム後の旧パス等) は何もしない
-- Preview は **GitDiff と同じペインの右隣に新規タブとして挿入**される (GitDiff 作業中に他ペインへフォーカスを奪われない方が体感が自然なため、`PersistentTerminalView` と同じポリシー)
+- Preview は **GitDiff と同じペインの右隣に新規タブとして挿入**される (GitDiff 作業中に他ペインへフォーカスを奪われない方が体感が自然なため、ターミナルと同じポリシー)
 - 同じ URL の Preview が既に存在する場合は dedupe (新規作成せずアクティブ化)
 
 挙動の詳細は [active-session.md#preview-内から-preview-を開く場合-sibling-配置](./active-session.md#preview-内から-preview-を開く場合-sibling-配置) を参照。
 
 ## 追加制約
 
-`gitDiff` は `PaneView` の `+` メニューに載らず、**Git ツール経由でしか開けない**。
+`gitDiff` はペインの `+` メニューに載らず、**Git ツール経由でしか開けない**。
 詳細は [ui-rules.md#シングルトン制約](./ui-rules.md#シングルトン制約) を参照。

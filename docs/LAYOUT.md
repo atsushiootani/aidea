@@ -281,7 +281,7 @@ ADR は「過去に下した判断」であり、**作成後に文書内容を�
 - 「この ADR は何に影響するか」は**下流 (specs 等) 側の `derived_from` で表現する**
 - これにより ADR 側はメンテ不要になり、新しい仕様が古い ADR を参照しても ADR ファイルを編集する必要がない
 
-このルールは [`/aidea.docs-healthcheck`](../../.claude/commands/aidea.docs-healthcheck.md) の frontmatter 整合性チェックで機械的に検証される。
+このルールは `/aidea.docs-healthcheck` スキルの frontmatter 整合性チェックで機械的に検証される。
 
 ### 依存関係の書き分け
 

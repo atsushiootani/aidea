@@ -1,6 +1,6 @@
 ---
 title: List UI のソート順 (Finder 互換自然順)
-description: Filer / Git ファイルツリー / Git diff / Kit など全 List UI のソート規約と共通ヘルパ String.naturalAscending の SSoT
+description: Filer / Git ファイルツリー / Git diff / Kit など全 List UI のソート規約 (Finder 互換自然順) の SSoT
 derived_from: []
 syncs_with:
   - docs/specs/tools/filer.md
@@ -10,7 +10,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-03
+last_updated: 2026-07-13
 ---
 
 # List UI のソート順 (Finder 互換自然順)
@@ -36,7 +36,7 @@ Aidea の全 List UI は **Finder と同じ自然順 (`String.localizedStandardC
 
 ### 共通ヘルパ
 
-`String.naturalAscending(_:)` (Finder 互換自然順の昇順比較ヘルパ) を全箇所で使う。`localizedStandardCompare` を直接呼ぶコードは新規追加しない。共通ヘルパを使うことで:
+Finder 互換自然順の昇順比較を担う共通ヘルパを全箇所で使う。比較 API を直接呼ぶコードは新規追加しない。共通ヘルパを使うことで:
 
 - Aidea のソート規約に従っていることがコード上で一目でわかる
 - 将来比較関数を差し替えるときに 1 箇所で済む
@@ -48,20 +48,20 @@ Aidea の全 List UI は **Finder と同じ自然順 (`String.localizedStandardC
 | Filer のディレクトリ直下 | エントリ名 | ファイル/ディレクトリ混在 (issue #122) |
 | Git ファイルツリー (Working Changes / PR Preview) | エントリ名 | ファイル/ディレクトリ混在 (Filer と完全一致) |
 | Git diff のセクション順 | ファイルパス | staged/unstaged のタイブレークは安定ソートで staged 先 |
-| Kit / Skills | `Skill.name` | 同名タイブレーク: PROJECT を前に置く |
-| Kit / Commands | `Command.name` | 同名タイブレーク: PROJECT を前に置く |
-| Kit / Agents | `Agent.name` | 同名タイブレーク: PROJECT を前に置く |
-| Kit / MCP Servers | `McpServer.name` | タイブレーク不要 (USER のみ) |
+| Kit / Skills | スキル名 | 同名タイブレーク: PROJECT を前に置く |
+| Kit / Commands | コマンド名 | 同名タイブレーク: PROJECT を前に置く |
+| Kit / Agents | エージェント名 | 同名タイブレーク: PROJECT を前に置く |
+| Kit / MCP Servers | MCP サーバ名 | タイブレーク不要 (USER のみ) |
 | Kit / 名前グループ化キー | グループキー | `.`/`-` 前方一致グループ |
 
-新しい List UI を追加するときも本ヘルパに揃える。`<` 演算子による生の文字列比較は使わない。
+新しい List UI を追加するときも本規約 (共通ヘルパ) に揃える。`<` 演算子による生の文字列比較は使わない。
 
 ## 例外: 同名タイブレーク (Kit Loader)
 
 Skills / Commands / Agents は USER と PROJECT スコープが両方マッチした場合に同じ `name` を持つことがあり、
-**PROJECT を前に置く** (PROJECT が USER を上書きする関係性を可視化)。`naturalAscending` で同値判定された場合のみタイブレークが効く。
+**PROJECT を前に置く** (PROJECT が USER を上書きする関係性を可視化)。自然順比較で同値判定された場合のみタイブレークが効く。
 
-MCP Servers は USER のみのため、タイブレーク条件を持たず `naturalAscending` のみ。
+MCP Servers は USER のみのため、タイブレーク条件を持たず自然順比較のみ。
 
 ## なぜこの規約か
 

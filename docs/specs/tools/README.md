@@ -8,7 +8,7 @@ impacts:
   - docs/specs/tools/*
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-17
+last_updated: 2026-07-13
 ---
 
 # Tools (各ツール仕様) インデックス
@@ -27,7 +27,7 @@ Tool / Pane / Tab / Session / Window の概念モデルは [sessions/ui-rules.md
 | [obsidian.md](./obsidian.md) | Obsidian vault 連携 | **MVP 未実装** |
 | [preview.md](./preview.md) | ファイルプレビュー (Markdown / 画像 / drawio / テキスト) | 複数可 |
 | [terminal.md](./terminal.md) | SwiftTerm ベースの PTY ターミナル | 複数可 |
-| [web.md](./web.md) | WKWebView ベースのブラウザ | **仕様未策定 (TBD)** |
+| [web.md](./web.md) | WKWebView ベースのブラウザ (ツールバー / URL クリックルーティング / JS ダイアログ) | 複数可 |
 
 ## 共通規約
 

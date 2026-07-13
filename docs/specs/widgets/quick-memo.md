@@ -11,7 +11,7 @@ impacts: []
 conventions:
   - docs/LAYOUT.md
   - docs/specs/widgets/README.md
-last_updated: 2026-05-29
+last_updated: 2026-07-13
 ---
 
 # クイックメモ
@@ -37,21 +37,20 @@ Aidea ヘッダ右端の ✏️ ボタン (または Cmd+M) で即座にメモ�
 
 ### ヘッダへの配置
 
-`WidgetView` の `HStack` 内に `QuickMemoButton` を追加する。
-`TimerView` (ポモドーロ) の左隣に配置する。
+[Widget 領域](./README.md#ui-配置原則-widget-領域) 内に ✏️ ボタンとして追加する。
+ポモドーロ widget の左隣に配置する。
 
 ```
-WidgetView
-└─ HStack
-   ├─ QuickMemoButton  ← 今回追加 (✏️ アイコン)
-   └─ TimerView        (ポモドーロ)
+Widget 領域
+├─ クイックメモボタン  ← 今回追加 (✏️ アイコン)
+└─ ポモドーロ widget
 ```
 
 ### Popover 内レイアウト
 
 ```
-┌─ QuickMemoView ──────────────────┐
-│  TextEditor (複数行)               │
+┌─ クイックメモ popover ────────────┐
+│  複数行テキスト入力欄               │
 │  (プレースホルダ: "メモを入力...")  │
 │                                   │
 │  [キャンセル]         [保存]        │
@@ -59,7 +58,7 @@ WidgetView
 ```
 
 - 幅: 300pt 固定
-- TextEditor の高さ: 120pt 固定
+- テキスト入力欄の高さ: 120pt 固定
 - ボタン配置: 下部右寄せ。キャンセルが左、保存が右
 - 保存ボタン: テキストが空白のみのとき disabled
 
@@ -94,33 +93,33 @@ WidgetView
 ### 上書き運用
 
 - 保存時に既存の `memo.md` の内容は **完全に置き換わる** (履歴は残らない)
-- popover を開いた時に既存の `memo.md` を **読み込んで TextEditor に表示する** (前回の内容を継続編集できる)
+- popover を開いた時に既存の `memo.md` を **読み込んで入力欄に表示する** (前回の内容を継続編集できる)
 - 同じファイルを継続的に育てる「**1 枚の付箋**」モデル
 
 ### popover オープン時の読込
 
-- popover が表示されたタイミングで `.aidea/widgets/quickmemo/memo.md` を読み込んで `TextEditor` の初期テキストにする
+- popover が表示されたタイミングで `.aidea/widgets/quickmemo/memo.md` を読み込んで入力欄の初期テキストにする
 - ファイルが存在しない場合は空欄から始める
 - 読み込みに失敗した場合 (パーミッション等) も空欄で開く (popover 表示を妨げない)
 
 ### 保存タイミング
 
-「保存」ボタン押下または Cmd+Return 時に **memo.md を現在の `memoText` で上書き**する。
+「保存」ボタン押下または Cmd+Return 時に **memo.md を編集中のテキストで上書き**する。
 失敗した場合はファイルを作成せず、popover はそのまま閉じない (ユーザに問題が伝わるよう保持する)。
 
 ### キャンセル時の挙動
 
 - Esc / キャンセルボタンで popover を閉じた場合、**`memo.md` は変更しない**
-- 編集途中の `memoText` は破棄される (次に開いた時はファイルの内容から再読込される)
+- 編集途中のテキストは破棄される (次に開いた時はファイルの内容から再読込される)
 
 ---
 
 ## 状態管理
 
-- `isPresented: Bool` — popover の表示状態
-- `memoText: String` — 編集中のテキスト
+- popover の表示状態 (開いているか)
+- 編集中のテキスト
 
-popover を閉じた後 (保存・キャンセル共通) に `memoText` を空文字にリセットする。
+popover を閉じた後 (保存・キャンセル共通) に編集中のテキストを空にリセットする。
 次回 open 時にファイルから再読込されるため、メモリ上に内容を保持し続ける必要はない。
 
 ---

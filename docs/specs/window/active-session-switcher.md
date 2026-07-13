@@ -11,7 +11,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-22
+last_updated: 2026-07-13
 ---
 
 # Active Session Switcher
@@ -45,7 +45,7 @@ last_updated: 2026-04-22
 
 ## データソース
 
-`SessionRegistry.activeSessionHistory: [SessionID]` を **逆順**で表示する。
+`SessionRegistry.activeSessionHistory` (SessionID のリスト) を **逆順**で表示する。
 
 履歴の不変条件 ([sessions/active-session.md](../sessions/active-session.md) で定義):
 
@@ -53,7 +53,7 @@ last_updated: 2026-04-22
 - 同一 SessionID は 1 度しか含まれない (重複排除)
 - 最大 50 件 (古い方から自動破棄)
 - Session が破棄 (タブクローズ) されたら履歴からも除去される
-- **`workspace.json` (v5) に永続化される** ([persistence.md](../aspects/persistence.md#workspacejson-レイアウトsession-状態コンパニオンレコメンド統合))
+- **`workspace.json` (v5) に永続化される** ([persistence.md](../aspects/persistence.md#workspacejson-統合スナップショット))
 
 → 表示時に追加の重複排除や検証は不要。50 件全部を表示する (リストが長くなっても OK)。
 → アプリ再起動後も履歴が残るので、起動直後でも `Ctrl+Tab` で前回の作業中セッションへ戻れる。
@@ -80,11 +80,11 @@ last_updated: 2026-04-22
 └────────────────────────────────────┘
 ```
 
-- **icon**: Session の Tool に対応する SF Symbol (Tool.systemImageName を流用)
+- **icon**: Session の Tool に対応する SF Symbol (タブヘッダと同じアイコンを流用)
 - **Session 表示名**: Tab ヘッダの表示名と同じ規約
-  - Filer: `"Filer"` 等の Tool displayName
-  - Preview: `state.title` 優先、なければ `state.url?.lastPathComponent`
-  - Terminal / Claude: `displayName` + インスタンス番号など (要実装で確定)
+  - Filer: `"Filer"` 等の Tool 表示名
+  - Preview: ドキュメントタイトル優先、なければファイル名
+  - Terminal / Claude: Tool 表示名 + インスタンス番号など (要実装で確定)
   - 共通仕様は per-tool spec に従う
 - 選択中エントリは **アクセントカラーで強調** (Filer の選択行と同等)
 
@@ -98,14 +98,14 @@ last_updated: 2026-04-22
 
 ## キー検出機構
 
-`NSEvent.addLocalMonitorForEvents` を使う。Cmd+W 用の手法 ([ADR 0011](../../decisions/0011-cmd-w-via-nsevent-monitor.md)) と同じパターン。
+NSEvent ローカルモニターを使う。Cmd+W 用の手法 ([ADR 0011](../../decisions/0011-cmd-w-via-nsevent-monitor.md)) と同じパターン。
 
 ### 監視対象
 
 | イベント | 用途 |
 |---|---|
-| `.keyDown` | `Tab` キー (keyCode 48) + Control 修飾の有無 / Shift 修飾の有無を判定 |
-| `.flagsChanged` | Control 修飾の押下/リリース検出 (リリースで確定) |
+| キー押下 (keyDown) | `Tab` キー (keyCode 48) + Control 修飾の有無 / Shift 修飾の有無を判定 |
+| 修飾キー変化 (flagsChanged) | Control 修飾の押下/リリース検出 (リリースで確定) |
 
 ### ライフサイクル
 
@@ -113,7 +113,7 @@ last_updated: 2026-04-22
 2. **`Ctrl+Tab` 検出**: ウィンドウ生成 + 表示 + 履歴 2 番目を選択。flagsChanged モニターを追加で登録
 3. **ウィンドウ表示中**:
    - `Ctrl+Tab` / `Shift+Ctrl+Tab`: 選択移動
-   - `flagsChanged` で Control が外れたら確定 → ウィンドウ破棄 + flagsChanged モニター解除 + `activateSession(selectedID)` 呼び出し
+   - flagsChanged で Control が外れたら確定 → ウィンドウ破棄 + flagsChanged モニター解除 + 選択中の Session をアクティブ化
 4. **その他のキー**: 表示中はすべて吸収する (no-op)。ウィンドウ非表示中は通常通り通過
 
 ---
@@ -121,7 +121,7 @@ last_updated: 2026-04-22
 ## エッジケース
 
 - **履歴が空 / 1 件**: ウィンドウ表示しない。Ctrl+Tab は no-op
-- **履歴中の Session が既に破棄**: 既存の `destroySession` 内で履歴からも除去するため発生しない (本仕様で追加要件)
+- **履歴中の Session が既に破棄**: Session 破棄時に履歴からも除去するため発生しない (本仕様で追加要件)
 - **複数 Window**: 将来複数 Window 対応する場合、各 Window が独自の `activeSessionHistory` を持つ前提なので、Switcher も Window ごとに独立して動く (現状 1 Window のみ)
 - **Session 切替中の表示**: アクティブ化アニメーション完了を待たずに Ctrl+Tab 連打しても、履歴更新と表示は同期的なので問題ない
 

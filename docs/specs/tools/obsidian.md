@@ -7,7 +7,7 @@ syncs_with: []
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-17
+last_updated: 2026-07-13
 ---
 
 # Tool 仕様: Obsidian 連携
@@ -32,7 +32,7 @@ Obsidian vault を読み書きして、デイリーノートや AI との対話�
 
 ### 手段 1: URL スキーム (`obsidian://`) — 採用
 
-`NSWorkspace` 経由で `obsidian://` URL を開く。
+OS 標準の URL オープンで `obsidian://` URL を開く。
 
 | URL | 動作 |
 |---|---|
@@ -42,7 +42,7 @@ Obsidian vault を読み書きして、デイリーノートや AI との対話�
 
 ### 手段 2: Vault を直接読み書き — 採用
 
-Obsidian の vault はただの Markdown ファイルディレクトリ。`FileManager` で直接書き込めば Obsidian 側でもリアルタイム反映。
+Obsidian の vault はただの Markdown ファイルディレクトリ。Markdown ファイルを直接書き込めば Obsidian 側でもリアルタイム反映。
 
 ### 手段 3: Local REST API プラグイン — 将来検討
 

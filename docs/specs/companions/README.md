@@ -8,7 +8,7 @@ impacts:
   - docs/specs/companions/*
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-20
+last_updated: 2026-07-13
 ---
 
 # Companions インデックス
@@ -21,10 +21,10 @@ Aidea のヘッダに並ぶ **コンパニオン** (9 体のアイコン) とそ
 
 | ファイル | 内容 |
 |---|---|
-| [companion.md](./companion.md) | コンパニオンの概念・`CompanionConfig` / `CompanionStore` の仕様・起動フロー |
+| [companion.md](./companion.md) | コンパニオンの概念・設定とストアの仕様・起動フロー |
 | [agent-definition.md](./agent-definition.md) | `agent.md` を使ったエージェント定義の仕様・フォールバック挙動 |
-| [recommend-mode.md](./recommend-mode.md) | Cmd+Enter で起動するレコメンド選択 UI (`RecommendState` / `RecommendStore`) |
-| [speech-history.md](./speech-history.md) | CompanionEditView から開く speech 履歴ビュー (`SpeechHistoryView`) の仕様 |
+| [recommend-mode.md](./recommend-mode.md) | Cmd+Enter で起動するレコメンド選択 UI |
+| [speech-history.md](./speech-history.md) | コンパニオン編集シートから開く speech 履歴ビューの仕様 |
 
 ## 関連
 

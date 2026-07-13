@@ -8,7 +8,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-06-15
+last_updated: 2026-07-13
 ---
 
 # スキル・ブートストラップ (aidea.* の自動配置)
@@ -36,7 +36,7 @@ Claude Code は **user / project** の 2 スコープ、**skill / command** の 
 | project | command | `<projectRoot>/.claude/commands/aidea.<name>.md` | `/aidea.<name>` | リポジトリオープン毎 |
 
 - **user スコープ**: どのディレクトリで開いても効く。**一般化された配布物**の既定の置き場。
-- **project スコープ**: リポジトリごとに異なる**固有情報**の置き場 (後述の分離先)。`<projectRoot>` を要するため `BackchannelSetup` 同様に projectRoot を受け取る。
+- **project スコープ**: リポジトリごとに異なる**固有情報**の置き場 (後述の分離先)。`<projectRoot>` を要するため、Backchannel の初回セットアップ処理と同様にプロジェクトルートを受け取って動く。
 - どの分類でも `aidea.` プレフィックスで他スキルとの衝突を避け、ドット呼称 `/aidea.<name>` を維持する (ADR 0032 の理由 3)。
 
 ## Bundle ソースの構成 (SSoT)
@@ -95,7 +95,7 @@ Aidea/ClaudeAssets/                       → Bundle: Aidea.app/Contents/Resourc
 
 ## タイミング
 
-アプリ起動 (リポジトリオープン) 時、`BackchannelSetup.setup(projectRoot:)` と同じ流れで `SkillSetup.setup(projectRoot:)` を一度実行する。
+アプリ起動 (リポジトリオープン) 時、Backchannel の初回セットアップ処理と同じ流れで、スキル配置処理を一度実行する。
 
 - user スコープ分: 冪等なので毎回実行しても結果は一意 (実質グローバルに 1 回)。
 - project スコープ分: その `projectRoot` の `.claude/` に配置する。
@@ -122,11 +122,11 @@ Aidea/ClaudeAssets/                       → Bundle: Aidea.app/Contents/Resourc
 |---|---|---|
 | 不在 | 新規 | Bundle からコピーし `shippedHash` を記録 |
 | 存在 & 現ファイル hash == `shippedHash` | 未編集 | Bundle が新しければ上書き更新し `shippedHash` を更新 |
-| 存在 & 現ファイル hash != `shippedHash` | ユーザ編集済み | **上書きしない** (保護)。`NSLog` で警告のみ |
+| 存在 & 現ファイル hash != `shippedHash` | ユーザ編集済み | **上書きしない** (保護)。ログに警告を残すのみ |
 | 存在 & マニフェスト未記載 | 由来不明 | 安全側に倒し上書きしない (ユーザ自作の同名資産を尊重) |
 
 - hash は本体ファイル (`SKILL.md` / `<name>.md`) の sha256。付随ファイルを持つ skill は将来ディレクトリ全体の hash に拡張余地を残す (現行は本体単体)。
-- 「未編集なら更新」により、アプリ更新で不具合修正・新資産追加がユーザに自動で行き渡る (`BackchannelSetup` の backfill と同じ思想)。
+- 「未編集なら更新」により、アプリ更新で不具合修正・新資産追加がユーザに自動で行き渡る (Backchannel セットアップの backfill と同じ思想)。
 
 ## 境界
 
