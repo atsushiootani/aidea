@@ -21,6 +21,7 @@ struct AideaApp: App {
     @State private var recommendState: RecommendState
     @State private var handoffState: HandoffState
     @State private var inboxWatcher = InboxWatcher()
+    @State private var rpcWatcher = RpcWatcher()
     @State private var outputState: OutputState
     @State private var pomodoroState: PomodoroState
     @State private var quickMemoState: QuickMemoState
@@ -158,6 +159,7 @@ struct AideaApp: App {
                         sessionSwitcher.install(registry: registry, companionStore: companionStore)
                         startHandoff()
                         startInbox()
+                        startRpc()
                         startOutput()
                         startRemind()
                         startScheduler()
@@ -880,6 +882,21 @@ struct AideaApp: App {
             return
         }
         let body = message.message + inboxNoReplySuffix
+        deliverExternalBody(body, toIndex: index, companionStore: companionStore, registry: registry, layout: layout, speechState: speechState, projectRoot: projectRoot)
+    }
+
+    /// 外部発メッセージ (inbox / rpc) の本文を宛先 Companion に届ける共通処理。
+    /// 起動済みならアクティブ化して送信、未起動なら Claude セッションを生成・bind してから送信する。
+    @MainActor
+    private static func deliverExternalBody(
+        _ body: String,
+        toIndex index: Int,
+        companionStore: CompanionStore,
+        registry: SessionRegistry,
+        layout: LayoutConfig,
+        speechState: SpeechState,
+        projectRoot: URL?
+    ) {
         let companion = companionStore.companion(forIndex: index)
 
         // 起動済み → アクティブ化して ready 状態に応じて送信
@@ -907,6 +924,62 @@ struct AideaApp: App {
         if let claudeState = session.state as? ClaudeSessionState {
             claudeState.sendMessageWhenReady(body)
         }
+    }
+
+    // MARK: - Rpc (外部 ⇄ Companion)
+
+    /// rpc リクエスト送信時に本文末尾へ付加する「返信書き出し指示」文言 (docs/specs/backchannels/rpc.md)。
+    /// inbox の返信不要文言の代わりに、res ファイルへの返信を指示する。
+    private static func rpcReplySuffix(id: String) -> String {
+        """
+
+
+        ---
+        (これは外部から自動送信されたメッセージです。返信本文を \
+        .aidea/backchannels/rpc/res-\(id).txt にプレーンテキストで書き出してください。\
+        書き出したファイルは削除・追記しないでください)
+        """
+    }
+
+    /// RpcWatcher の監視を開始する。projectRoot が未設定なら何もしない。
+    /// 受信したリクエストは `dispatchRpc` が宛先解決 → Claude セッションへ本文を送信する。
+    /// startInbox と同じ「ローカルキャプチャ → callback」パターン。
+    private func startRpc() {
+        guard let projectRoot = workspace.projectRoot else { return }
+        let store = companionStore
+        let reg = registry
+        let lay = layout
+        let speech = speechState
+        rpcWatcher.onRequest = { request, id, url in
+            Self.dispatchRpc(request, id: id, requestURL: url, companionStore: store, registry: reg, layout: lay, speechState: speech, projectRoot: projectRoot)
+        }
+        rpcWatcher.onError = { msg in
+            NSLog("[Aidea] rpc: \(msg)")
+        }
+        rpcWatcher.start(projectRoot: projectRoot)
+    }
+
+    /// rpc リクエストを宛先 Companion に配送する。
+    /// 配送は inbox と同型で、末尾文言だけが「res への返信書き出し指示」に変わる。
+    /// 返信 (res) は Companion 自身が書き、外部プロセスが直接読む (Aidea は関与しない)。
+    /// docs/specs/backchannels/rpc.md
+    @MainActor
+    private static func dispatchRpc(
+        _ request: RpcRequest,
+        id: String,
+        requestURL: URL,
+        companionStore: CompanionStore,
+        registry: SessionRegistry,
+        layout: LayoutConfig,
+        speechState: SpeechState,
+        projectRoot: URL?
+    ) {
+        guard let index = resolveHandoffTarget(request.to, in: companionStore) else {
+            NSLog("[Aidea] rpc 宛先が解決できません: \(describeTarget(request.to)) (\(requestURL.lastPathComponent))")
+            return
+        }
+        let body = request.message + rpcReplySuffix(id: id)
+        deliverExternalBody(body, toIndex: index, companionStore: companionStore, registry: registry, layout: layout, speechState: speechState, projectRoot: projectRoot)
     }
 
     /// closeCurrentTab のスタティックヘルパ (NSEvent 監視クロージャから呼ぶため)

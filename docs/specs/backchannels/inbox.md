@@ -8,11 +8,12 @@ derived_from:
 syncs_with:
   - docs/specs/backchannels/backchannel.md
   - docs/specs/backchannels/handoff.md
+  - docs/specs/backchannels/rpc.md
   - docs/specs/aspects/persistence.md
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-07-13
+last_updated: 2026-07-16
 ---
 
 # Backchannel: 外部 inbox
@@ -20,6 +21,7 @@ last_updated: 2026-07-13
 > Aidea の外にいる任意のローカルプロセスから Companion にメッセージ (プロンプト) を送る一方向チャネル
 
 [backchannel.md](./backchannel.md) のメッセージ種別のひとつ。設計判断の背景は [ADR 0037](../../decisions/0037-external-inbox-backchannel.md) を参照。
+返信が必要な用途は往復版の [rpc](./rpc.md) を使う (inbox 自体は一方向のまま)。
 
 ---
 

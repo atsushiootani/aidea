@@ -11,6 +11,7 @@ syncs_with:
   - docs/specs/backchannels/output.md
   - docs/specs/backchannels/remind.md
   - docs/specs/backchannels/inbox.md
+  - docs/specs/backchannels/rpc.md
   - docs/specs/backchannels/companion-roster.md
   - docs/specs/aspects/persistence.md
   - docs/specs/companions/companion.md
@@ -18,7 +19,7 @@ impacts:
   - docs/specs/tools/claude.md
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-07-13
+last_updated: 2026-07-16
 ---
 
 # Backchannel 仕様
@@ -71,8 +72,11 @@ Aidea は `.aidea/` ディレクトリを共有バスとして使用し、FSEven
 │   ├── 1/
 │   │   └── ...
 │   ├── ...                            # 0…8 の 9 ディレクトリ (必要時に Claude が mkdir で作成)
-│   └── inbox/                         # 外部プロセスからの受信箱 (Companion 別ではない、ADR 0037)
-│       └── *.json                     # {"to": <index|name>, "message": "..."} ([inbox.md](./inbox.md))
+│   ├── inbox/                         # 外部プロセスからの受信箱 (Companion 別ではない、ADR 0037)
+│   │   └── *.json                     # {"to": <index|name>, "message": "..."} ([inbox.md](./inbox.md))
+│   └── rpc/                           # 外部プロセスとの往復チャネル (Companion 別ではない、ADR 0040)
+│       ├── req-<id>.json              # 外部が書くリクエスト ([rpc.md](./rpc.md))
+│       └── res-<id>.txt               # 宛先 Companion が書く返信 (Aidea は監視しない)
 └── workspace.json                # 既存: レイアウト永続化
 ```
 
@@ -160,18 +164,19 @@ Aidea は `.aidea/backchannels/` ディレクトリを FSEvents で **再帰監�
 | `backchannels/<0..8>/output-*.txt` | output 監視 → 出力履歴に蓄積 | [output.md](./output.md) |
 | `backchannels/<0..8>/remind-{YYYYMMDDTHHmmss}.txt` | remind 監視 → 発火スケジューラ → 音声キュー (時刻到達時) | [remind.md](./remind.md) |
 | `backchannels/inbox/*.json` | inbox 監視 → 配送 → (宛先の) Claude セッション | [inbox.md](./inbox.md) |
+| `backchannels/rpc/req-*.json` | rpc 監視 → 配送 → (宛先の) Claude セッション (`res-*.txt` は Aidea では処理しない) | [rpc.md](./rpc.md) |
 
 ### ハンドラ通過条件
 
 - 親ディレクトリ名が `0..8` の整数であること (範囲外・文字列ディレクトリ・`backchannels/` 直下のファイルは警告ログのみで無視)
 - handoff の場合は JSON `from` フィールドとパスの `<companion-index>` が一致すること ([handoff.md](./handoff.md) 参照)
-- **例外**: inbox は Companion 別ではなく `backchannels/inbox/` 直下の `*.json` を対象とする (親ディレクトリ名が `inbox`、[inbox.md](./inbox.md) 参照)
+- **例外**: inbox / rpc は Companion 別ではなく `backchannels/inbox/` 直下の `*.json` / `backchannels/rpc/` 直下の `req-*.json` を対象とする (親ディレクトリ名が `inbox` / `rpc`、[inbox.md](./inbox.md) / [rpc.md](./rpc.md) 参照)
 
 ---
 
 ## メッセージ種別（現在 + 将来）
 
-Speech / Handoff / Output / Remind は `.aidea/backchannels/<companion-index>/` 配下に書き出す (ADR 0024)。Inbox のみ Companion 別ではなく `.aidea/backchannels/inbox/` 直下に置く (ADR 0037)。
+Speech / Handoff / Output / Remind は `.aidea/backchannels/<companion-index>/` 配下に書き出す (ADR 0024)。Inbox / Rpc は Companion 別ではなく `.aidea/backchannels/inbox/` / `.aidea/backchannels/rpc/` 直下に置く (ADR 0037 / 0040)。
 
 | 種別 | ファイルパターン | 形式 | 用途 |
 |------|-----------------|------|------|
@@ -180,6 +185,7 @@ Speech / Handoff / Output / Remind は `.aidea/backchannels/<companion-index>/` 
 | **Output** | `<n>/output-{timestamp}.txt` | プレーンテキスト | レスポンス全文の出力記録 ([output.md](./output.md)) |
 | **Remind** | `<n>/remind-{timestamp}.txt` | プレーンテキスト | 遅延発火型音声リマインド ({timestamp} = トリガ時刻、発火後 `.fired.txt` にリネーム、[remind.md](./remind.md)) |
 | **Inbox** | `inbox/*.json` | JSON | 外部プロセス → Companion の一方向メッセージ (Companion 別ではない、[inbox.md](./inbox.md)) |
+| **Rpc** | `rpc/req-<id>.json` / `rpc/res-<id>.txt` | JSON / プレーンテキスト | 外部プロセス ⇄ Companion の往復メッセージ (Companion 別ではない、[rpc.md](./rpc.md)) |
 | Notification | `<n>/notify-{timestamp}.txt` | プレーンテキスト | 通知バナー表示 |
 | Action | `<n>/action-{timestamp}.json` | JSON | UI 操作の指示 |
 | Status | `<n>/status.json` | JSON | Claude の作業状態表示 |
