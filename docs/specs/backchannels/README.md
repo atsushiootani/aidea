@@ -8,7 +8,7 @@ impacts:
   - docs/specs/backchannels/*
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-27
+last_updated: 2026-07-16
 ---
 
 # Backchannels (Claude → Aidea 通信) インデックス
@@ -25,6 +25,7 @@ Claude が `.aidea/backchannels/` にファイルを書き出して Aidea に通
 | [output.md](./output.md) | Output メッセージによるレスポンス全文の出力記録 |
 | [remind.md](./remind.md) | Remind メッセージによる遅延発火型の音声リマインド (トリガ時刻 = ファイル名のタイムスタンプ) |
 | [inbox.md](./inbox.md) | 外部プロセス → Companion の一方向メッセージ (`inbox/*.json`、返信なし) |
+| [rpc.md](./rpc.md) | 外部プロセス ⇄ Companion の往復メッセージ (`rpc/req-*.json` / `res-*.txt`、MCP サーバ経由で利用) |
 | [companion-roster.md](./companion-roster.md) | aidea.md 内のコンパニオン名簿セクションを Aidea が `companions[].name` に追従して自動更新する仕様 |
 
 ## 関連

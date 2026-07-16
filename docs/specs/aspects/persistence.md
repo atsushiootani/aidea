@@ -13,6 +13,7 @@ syncs_with:
   - docs/specs/backchannels/output.md
   - docs/specs/backchannels/remind.md
   - docs/specs/backchannels/inbox.md
+  - docs/specs/backchannels/rpc.md
   - docs/specs/backchannels/companion-roster.md
   - docs/specs/frontchannels/scene.md
   - docs/specs/companions/companion.md
@@ -29,7 +30,7 @@ impacts: []
 conventions:
   - docs/LAYOUT.md
   - docs/specs/aspects/README.md
-last_updated: 2026-07-13
+last_updated: 2026-07-16
 ---
 
 # Persistence (データ永続化)
@@ -96,7 +97,8 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 │   ├── 1/                    # Companion 1
 │   │   └── ...
 │   ├── ...                   # 0..8 (必要に応じて Claude が mkdir で作成)
-│   └── inbox/                # 外部プロセスからの受信箱 (Companion 別ではない、[../backchannels/inbox.md](../backchannels/inbox.md))
+│   ├── inbox/                # 外部プロセスからの受信箱 (Companion 別ではない、[../backchannels/inbox.md](../backchannels/inbox.md))
+│   └── rpc/                  # 外部プロセスとの往復チャネル req/res (Companion 別ではない、[../backchannels/rpc.md](../backchannels/rpc.md))
 │       └── *.json            # {"to": <index|name>, "message": "..."} (処理後も残す、ADR 0037)
 ├── claude/                   # Claude 起動時に読ませるリソース
 │   ├── aidea.md              # Backchannel 機能の指示書 (共有)
@@ -302,6 +304,7 @@ Claude → Aidea 方向の通信は**ファイル経由**で行う。詳細は [
 | Claude から output 受信時 | `<n>/output-*.txt` → 履歴に蓄積 (ファイルは残す、ADR 0024) | output 監視処理 |
 | Claude から remind 受信時 | `<n>/remind-{ts}.txt` → トリガ時刻まで待機し音声キュー投入 → ファイルを `.fired.txt` リネーム ([../backchannels/remind.md](../backchannels/remind.md)) | remind 監視処理 + リマインドスケジューラ |
 | 外部から inbox 受信時 | `inbox/*.json` → 宛先 Companion を解決して `message` を送信 (ファイルは残す、[../backchannels/inbox.md](../backchannels/inbox.md)) | inbox 監視処理 + 配送処理 |
+| 外部から rpc リクエスト受信時 | `rpc/req-*.json` → 宛先 Companion を解決して `message` + 返信書き出し指示を送信 (`res-*.txt` は監視しない、ファイルは残す、[../backchannels/rpc.md](../backchannels/rpc.md)) | rpc 監視処理 + 配送処理 |
 | クイックメモ保存時 | `.aidea/widgets/quickmemo/memo.md` を上書き (親ディレクトリ自動生成、[../widgets/quick-memo.md](../widgets/quick-memo.md)) | クイックメモ保存処理 |
 | 起動時 (scheduler) | `.aidea/config/scheduler.json` 読込 → 有効ジョブ登録 + 取りこぼし判定。`state/scheduler.json` で当日実行済みを照合 ([../widgets/scheduler.md](../widgets/scheduler.md)) | スケジューラの設定読込・判定処理 |
 | スケジューラ発火 / 今すぐ実行時 | 指定 Companion へ command 送信 → `state/scheduler.json` の `lastRun[id]` を当日日付で更新 (アトミック書き込み) | スケジューラ実行処理 |

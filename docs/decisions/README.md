@@ -58,6 +58,7 @@ Aidea の設計判断を 1 件ずつ記録する。フォーマットは [Michae
 | [0037](./0037-external-inbox-backchannel.md) | 外部からコンパニオンにメッセージを送る inbox backchannel を設ける | 提案 |
 | [0038](./0038-disable-cmd-z-undo.md) | Cmd+Z (undo / redo) をアプリ全域で無効化する | 提案 |
 | [0039](./0039-docs-layer-taxonomy.md) | docs の文書レイヤを「変更トリガ」と「記述する現象」で分類する | 採用 |
+| [0040](./0040-rpc-backchannel-mcp.md) | 外部と Companion の往復通信 rpc backchannel を設け、MCP サーバから利用する | 提案 |
 
 ## 状態の値
 
