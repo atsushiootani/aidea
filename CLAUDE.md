@@ -9,6 +9,7 @@
 Aidea/             → macOS アプリ本体 (Xcode プロジェクト)
 docs/              → 設計ドキュメント (specs / conventions / foundation / decisions)。配置ルールは docs/LAYOUT.md
 skills/            → agent-skills 由来の参照リソース
+tools/             → 補助ツール (aidea-mcp: 外部ツール連携用 MCP サーバ)
 .claude/           → ローカル個人のスキル/コマンド (gitignore、共有しない)
 ```
 
