@@ -7,7 +7,7 @@ impacts:
   - docs/README.md
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-24
+last_updated: 2026-07-13
 ---
 
 # docs ディレクトリ構成とファイル配置ルール
@@ -49,7 +49,8 @@ docs/
 │   ├── swift.md       # SwiftUI / AppKit (NSView) の使い分けと閉じ込めルール
 │   ├── design-principles.md # 設計原則 (Tell Don't Ask / SOLID / GRASP 等)
 │   ├── rules.md       # Always / Confirm First / Never
-│   └── testing.md     # テスト戦略 / 手動確認チェックリスト
+│   ├── testing.md     # テスト戦略 / 手動確認チェックリスト
+│   └── implementations/ # 個別機能の実装規約 (focus.md / e2e-key-simulation.md)
 │
 └── agent-skills/      # agent-skills の入門・スキル構造解説ドキュメント置き場
     ├── getting-started.md
@@ -60,6 +61,21 @@ docs/
 
 新規ドキュメントを追加するときは、用途に該当する節を読んでから書く。
 どの節にも当てはまらない用途が出てきたら、先に本ファイルを更新して置き場を定義する。
+
+### 文書レイヤの判定表 ([ADR 0039](./decisions/0039-docs-layer-taxonomy.md))
+
+各層は内容の種類ではなく、**変更トリガ**と**記述する現象**で定義する。「これはどこに書く?」はこの表で判定する。
+
+| 層 | 語る現象 | 読むタイミング | 必要な事前知識 | 変更される契機 |
+|---|---|---|---|---|
+| **foundation/** | 価値観・目的 | 方向に迷ったとき | なし | 価値観が変わったとき (ほぼ不変) |
+| **要求** (GitHub Issues) | 環境の現象 (〜したい) | 実装を始める前 | ドメインだけ | 欲求が変わったとき。実装されたら消費される (フロー) |
+| **specs/** | 界面の現象 (システムは〜する / 常に〜が成立) | 実装前に読む・動作確認時に引く | glossary の用語のみ (コード知識ゼロ) | 挙動を変えたとき (コードと同時) |
+| **conventions/** | マシン内部 (どう書くか) | 実装中に引く | コードベースの知識 | 実装方法を変えたとき |
+| **decisions/** (ADR) | 選択の経緯 (なぜ A でなく B) | あとから経緯を辿るとき | 当時の文脈 | 変更しない (supersede のみ) |
+
+- requirements 層は**設けない**。実装後の要求の残滓は「spec の概要 1〜2 文 + `issue #NN` の出所リンク」として specs に残す
+- **変更トリガが違うものを同じファイルに書かない**のが全層共通の原則
 
 ### 共通ルール
 
@@ -103,21 +119,71 @@ docs/
 - **構成**: トップレベル (`architecture.md` / `glossary.md`) と **機能群ごとのサブディレクトリ**で構成される。現在のサブディレクトリ一覧は [specs/README.md](./specs/README.md) を参照。
 - **新しい機能群を追加するとき**: `specs/<新機能群>/` を切って `README.md` を置き、`specs/README.md` の一覧表に1行追加する (本ファイルの更新は不要)
 - **命名**: kebab-case 全小文字 (`recommend-mode.md` `scene.md`)
+- **標準構成**: 「概要 (何ができるか 1〜2 文 + `issue #NN` の出所リンク) → 挙動 (観測可能な動作) → 不変条件・境界 (Always / Never)」の並びを基本とする。概要 + 出所リンクが Aidea における要求のトレーサビリティを担う ([ADR 0039](./decisions/0039-docs-layer-taxonomy.md))
 
-### 実装詳細禁止ルール
+### 実装詳細ルール (specs は実装知識ゼロで読めること)
 
-`specs/` には**実装知識がなくても読める**記述だけを書く。以下のパターンは禁止。
+`specs/` の目的は、**実装を知らない読み手 (未来の自分・他者・AI) が「何が起きるか」と「なぜそうするか」を理解できる**こと。
+唯一の判断軸は **「読むのにコードベースの知識が要るか」= 人間の認知負荷** ([issue #95](https://github.com/atsushiootani/aidea/issues/95))。
+一律禁止ではなく、**認知負荷を上げる実装識別子は概念表現に置き換え、認知負荷を上げない設計判断は残す**ハイブリッド運用とする。
 
-| 禁止パターン | 例 | 理由 |
+#### 避ける — 読むのに実装知識が要る (概念表現へ置き換える)
+
+| パターン | 例 | 置き換え例 |
 |---|---|---|
-| Swift プロパティラッパ | `@Observable` / `@Published` / `@State` / `@StateObject` / `@FocusState` | Swift 特有の実装技術 |
-| Swift コードブロック | ` ```swift ` で始まるコードブロック | 実装コードそのもの |
-| 内部ソースファイルパス | `Services/Foo.swift` / `Views/Bar.swift` / `Models/Baz.swift` | コードベースの知識が必要 |
-| 括弧付きメソッドシグネチャ | `loadCommand(for:)` / `update(_:)` / `entrypointURL(projectRoot:index:)` | 実装レベルの API 詳細 |
+| メソッド / 関数シグネチャ | `loadCommand(for:)` / `update(_:)` / `sendMessageWhenReady(_:)` | 「指示書読み込みコマンドを生成する」等の**動詞表現** |
+| プロパティラッパ / デコレータ | `@Observable` / `@Published` / `@State` / `@FocusState` | 削除 (挙動に無関係な実装技術) |
+| Swift コードブロック | ` ```swift ` で始まるコードブロック / `state.x = y` の写経 | 箇条書き・表で**挙動**を記述 |
+| 内部ソースファイルパス | `Services/Foo.swift` / `Views/Bar.swift` | 「〜を担うコンポーネント」等の**役割名** |
+| 型名・クラス名の羅列 | 実装コンポーネント表での `WebUIDelegate` / `FooSessionState` 列挙 | 役割ラベル (「UI デリゲート」「Web セッション状態」) |
 
-**例外**: `architecture.md` はクラス名・ディレクトリ構成の記述を許可する (`view-hierarchy.md` も View 名・ファイルパスの列挙を許可する)。
+#### 残してよい — 実装知識がなくても読める (挙動・契約・設計判断)
 
-このルールは `/aidea.docs-healthcheck` の「実装詳細チェック」で機械的に検証される。
+- 観測可能な挙動、UI 規約、状態遷移、境界 (Always / Never)、データ形式
+- **設計判断としての具体値**: タイミング (例 `+5.0s`)、送出するキー / エスケープシーケンス (例 `Ctrl+U` / `ESC O A`)、
+  tmux セッション名の命名規則、プロトコル番号など。これらは「なぜそうなるか」に紐づく**仕様**であり、
+  コードを知らなくても読める。背景がある場合は該当 ADR にリンクする
+
+#### 不変条件の置き場所は「語る現象」で 3 分岐する ([ADR 0039](./decisions/0039-docs-layer-taxonomy.md))
+
+| 不変条件が語る現象 | 置き場所 | 例 |
+|---|---|---|
+| 環境の欲求 (〜したい) | Issue / `foundation/vision.md` | 「打った文字が意図した場所に入ってほしい」 |
+| 界面の保証 (常に〜が成立) | **specs** の不変条件・境界 (Always / Never) | 「キー入力は常にアクティブ Session だけに届く」 |
+| マシン内部の制約 | `conventions/implementations/` かコード近傍 (コメント / assert) | 「firstResponder はアクティブ Session の View 階層配下」 |
+
+specs の Always / Never は**ユーザから観測可能な不変条件**に限る。
+「読むのにコードベースの知識が要るか」(認知負荷テスト) は「界面の現象か内部の現象か」の判定と実質同じ。
+
+#### 置き場所
+
+- **実装識別子 (クラス名・メソッド名・ファイルパス) は [`conventions/`](./conventions/README.md) / [`decisions/`](./decisions/README.md) に書いてよい。** specs からはそこへリンクする
+- 使い分け: **一度きりの判断の経緯**は ADR (作成後は変更しない凍結文書)。**コードと一緒に進化する実装契約・知見** (ヘルパの使い方、登録・解放の責任、実装に苦労した回避策) は `conventions/` (生きた文書として更新する)。局所的なワークアラウンドはコードコメントでもよい
+- **例外**: `architecture.md` / `view-hierarchy.md` はクラス名・View 名・ファイルパスの列挙を許可する (構造の地図が目的のため)
+
+「避ける」パターンは `/aidea.docs-healthcheck` の「実装詳細チェック」で機械的に検出する。「残してよい」具体値は検出対象外。
+
+### 用語の定義と参照リンク (造語には本拠地を 1 つ)
+
+前節で実装識別子を概念語・造語に置き換えると、その造語 (例: 「自動起動シーケンス」「受付可能」) が複数箇所で使われる。
+意味がぶれず、読み手が定義に必ずたどり着けるよう、**造語ごとに「定義の本拠地」を 1 つだけ決め、他の出現はそこへリンクする**。
+
+#### 本拠地の選び方 — 広範なら glossary、局所なら機能群 spec
+
+| 語の広がり | 例 | 本拠地 |
+|---|---|---|
+| **専用の機能群ディレクトリを持つ**語 | Backchannel / Frontchannel | その機能群の `README.md` (インデックス) 冒頭の定義文 |
+| **機能群をまたいで頻出**するが専用ディレクトリは持たない語 | Window / Pane / Session / Tool | [glossary.md](./specs/glossary.md) に用語行を追加 |
+| **特定の機能群でしか使わない**語 | 「自動起動シーケンス」(claude 圏のみ) | その機能群 spec 内に**定義セクション (見出し) を 1 つ**置き、そこを本拠地にする |
+
+- 局所語を glossary に載せない。glossary が肥大化すると横断語を探しにくくなり、glossary 自体の価値が下がるため。
+- 判断軸: 「専用ディレクトリを持つ?」→ 持つならその README。「持たないが機能群をまたぐ?」→ glossary。「またがない?」→ 当該機能群 spec の見出し。
+
+#### リンク義務
+
+- 本拠地**以外**のファイルでその語が**初めて**出てきたら、本拠地の見出しアンカーへ Markdown リンクを張る。
+- 同一ファイル内の 2 回目以降・表のヘッダセル・コードブロック内は任意 (読み手は既に本拠地へ到達できるため)。
+- 本拠地の見出し直下は、その語が**何を指すか 1 文で定義**してから詳細に入る (見出しアンカーが定義の入口になるように)。
 
 ### `docs/plans/` — 実装計画 (git 管理外)
 
@@ -130,6 +196,7 @@ docs/
 
 - **用途**: 実装者が従うコーディング規約・テスト戦略・設計原則。「何を作るか」ではなく「どう書くか」を扱う
 - **現在のファイル**: `coding-style.md` (Swift 規約) / `swift.md` (SwiftUI/NSView 使い分け) / `design-principles.md` (設計思想) / `rules.md` (Always/Never) / `testing.md` (テスト戦略)
+- **直下と `implementations/` の使い分け**: 直下にはコードベース**全体にまたがる規約**だけを置く。特定の機能・仕様に紐づく実装規約・実装知見 (例: `focus.md` = フォーカス契約の実装規約、`e2e-key-simulation.md`) は `conventions/implementations/` に置き、対応する spec からリンクする
 - **判断基準**: プロダクト動作 (spec) ではなくコードの書き方に関する規約は全てここに置く
 - **命名**: kebab-case 全小文字
 - **docs の書き方規約**は本ファイル内「frontmatter 規約」節に置く (docs メタ文書なので conventions ではなく LAYOUT.md に集約)
@@ -214,7 +281,7 @@ ADR は「過去に下した判断」であり、**作成後に文書内容を�
 - 「この ADR は何に影響するか」は**下流 (specs 等) 側の `derived_from` で表現する**
 - これにより ADR 側はメンテ不要になり、新しい仕様が古い ADR を参照しても ADR ファイルを編集する必要がない
 
-このルールは [`/aidea.docs-healthcheck`](../../.claude/commands/aidea.docs-healthcheck.md) の frontmatter 整合性チェックで機械的に検証される。
+このルールは `/aidea.docs-healthcheck` スキルの frontmatter 整合性チェックで機械的に検証される。
 
 ### 依存関係の書き分け
 
@@ -339,6 +406,6 @@ last_updated: 2026-MM-DD
 | `docs/setup/` | ✅ 完了 (2026-05-11) |
 | `docs/agent-skills/` | ✅ 完了 (2026-04-17) |
 | `docs/decisions/` | ✅ 完了 (2026-04-17) — status フィールドを本文から frontmatter に移行 |
-| `docs/conventions/` | 未適用 |
+| `docs/conventions/` | ✅ 完了 (2026-07-13) — `implementations/` 含む |
 
-段階的に対象を広げる。`/aidea.docs-healthcheck` で未適用ファイルをフラグする拡張は別途検討。
+全ディレクトリ適用済み。`/aidea.docs-healthcheck` で未適用ファイルをフラグする拡張は別途検討。

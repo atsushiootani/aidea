@@ -23,7 +23,7 @@ impacts: []
 conventions:
   - docs/LAYOUT.md
   - docs/specs/aspects/README.md
-last_updated: 2026-05-26
+last_updated: 2026-07-13
 ---
 
 # キー操作・マウス操作一覧
@@ -223,10 +223,10 @@ Aidea の全キーボードショートカットとマウス操作のリファ�
 
 | 操作 | アクション |
 |------|-----------|
-| 単純クリック (ファイルパス上) | Preview で開く (1 件一致) / 候補選択 NSMenu を表示 (複数一致) |
+| 単純クリック (ファイルパス上) | Preview で開く (1 件一致) / 候補選択メニューを表示 (複数一致) |
 | 単純クリック (URL 上) | ブラウザで開く |
 | ドラッグ | テキスト選択 (クリック起動は発火しない) |
-| ホバー (ファイルパス / URL 上) | カーソルを指マーク (`pointingHand`) に変更 |
+| ホバー (ファイルパス / URL 上) | カーソルを指マークに変更 |
 
 ※ 「単純クリック」= mouseDown→mouseUp の移動量が 4 pt 以下かつドラッグなし。Cmd 修飾の有無は問わない
 
@@ -234,7 +234,7 @@ Aidea の全キーボードショートカットとマウス操作のリファ�
 
 ## Claude
 
-### マウス（NSEvent モニターで変換）
+### マウス（Aidea が変換）
 
 | 操作 | 条件 | アクション |
 |------|------|-----------|
@@ -242,8 +242,8 @@ Aidea の全キーボードショートカットとマウス操作のリファ�
 | ホイールスクロール下 | トランスクリプトモード時 | Ctrl+D 送信（半ページ下） |
 | ホイールクリック | 常時 | Ctrl+O 送信（モードトグル） |
 
-※ トランスクリプトモード = 最下行に `"transcript"` を含む状態（[ADR 0017](../decisions/0017-alternate-screen-scroll-handling.md)）
-※ Terminal ツールでも同じマウス操作が有効（PersistentTerminalView 共用）
+※ トランスクリプトモード = 最下行に `"transcript"` を含む状態（[ADR 0017](../../decisions/0017-alternate-screen-scroll-handling.md)）
+※ Terminal ツールでも同じマウス操作が有効（端末 View を共用）
 
 ---
 
@@ -279,6 +279,6 @@ Aidea の全キーボードショートカットとマウス操作のリファ�
 - [../window/shortcuts.md](../window/shortcuts.md) — グローバルショートカット詳細
 - [../tools/](../tools/) — 各ツールの仕様
 - [../companions/recommend-mode.md](../companions/recommend-mode.md) — レコメンドモード詳細
-- [ADR 0014](../decisions/0014-no-ctrl-number-shortcuts.md) — Ctrl+数字キー不採用の理由
-- [ADR 0016](../decisions/0016-terminal-mouse-event-suppression.md) — mouseMoved 抑制
-- [ADR 0017](../decisions/0017-alternate-screen-scroll-handling.md) — Alternate Screen スクロール変換
+- [ADR 0014](../../decisions/0014-no-ctrl-number-shortcuts.md) — Ctrl+数字キー不採用の理由
+- [ADR 0016](../../decisions/0016-terminal-mouse-event-suppression.md) — mouseMoved 抑制
+- [ADR 0017](../../decisions/0017-alternate-screen-scroll-handling.md) — Alternate Screen スクロール変換

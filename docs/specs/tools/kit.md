@@ -11,13 +11,12 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-03
+last_updated: 2026-07-13
 ---
 
 # Tool 仕様: Kit
 
 Claude の "装備品一式" (Skills / Commands / Agents / MCPs) を 1 つの Tool にまとめたもの。
-実装予定: `Aidea/Sessions/Kit/` と `Aidea/Views/Sessions/Kit/`。
 
 概念モデルは [sessions/ui-rules.md#概念モデル](../sessions/ui-rules.md#概念モデル) / [glossary.md](../glossary.md) を参照。
 Session 内部状態は [sessions/kit.md](../sessions/kit.md) を参照。
@@ -41,8 +40,8 @@ Session 内部状態は [sessions/kit.md](../sessions/kit.md) を参照。
 - `commands` → Kit の Commands セクションに統合
 - `mcps` → Kit の MCPs セクションに統合
 
-既存の `ToolKind` enum から `skills` / `commands` / `mcps` を削除し、新たに `kit` を追加する。
-`agents` は新規 (既存 Tool からの移行ではない)。
+Tool 種別からは Skills / Commands / MCPs が削除され、新たに Kit が追加される。
+Agents セクションは新規 (既存 Tool からの移行ではない)。
 
 ---
 
@@ -58,7 +57,7 @@ Session 内部状態は [sessions/kit.md](../sessions/kit.md) を参照。
 セクション順は上記表の通り (AGENTS → SKILLS → COMMANDS → MCP SERVERS)。
 
 各セクション内のエントリ並び順、および Skills / Commands の名前グループキーの並び順は
-**Filer と同じ Finder 互換自然順** (`String.naturalAscending`) を使う。
+**Filer と同じ Finder 互換自然順** を使う。
 同名で USER / PROJECT が両方存在する場合は **PROJECT を前に置く** (PROJECT が USER を上書きする関係性を可視化)。
 詳細は [aspects/sort-order.md](../aspects/sort-order.md) を参照。
 
@@ -80,7 +79,8 @@ Session 内部状態は [sessions/kit.md](../sessions/kit.md) を参照。
 - Skills / Commands の場合: `SKILL.md` / `<name>.md` ファイルをプレビュー
 - Agents の場合: エージェント定義ファイル (`~/.claude/agents/<name>.md`) をプレビュー
 - MCPs の場合: `~/.claude.json` のプレビュー (MVP では簡易表示でも可)
-- Preview の配置ルールは Filer と同じく `SessionRegistry.openPreview` を使う
+- Preview の配置ルールは Filer と同じ共通の Preview 起動経路に従う。開く前に Kit 自身をアクティブ Session にし、配置先決定 (活動履歴ベース) に自分を起点として伝える ([sessions/active-session.md#preview-を開くときの呼び出し規約](../sessions/active-session.md#preview-を開くときの呼び出し規約))
+- 項目の表示名 (例: `diagram.architecture`) をタブタイトルとして渡し、Preview タブのヘッダーに `SKILL.md` ではなく意味のある名前を表示する
 
 ### searchInKit — セクション横断インクリメンタル検索 (将来)
 - Cmd+F でヘッダー上部に検索バー、全セクション横断で名前をフィルタ
@@ -90,7 +90,7 @@ Session 内部状態は [sessions/kit.md](../sessions/kit.md) を参照。
 
 ## 自動更新
 
-Filer / Git と同じ `FileWatcher` (FSEvents) を使い、外部エディタでの追加・削除・内容変更を即座に Kit 表示へ反映する。手動更新ボタンは設けない。
+Filer / Git と同じ FSEvents ベースのファイル監視を使い、外部エディタでの追加・削除・内容変更を即座に Kit 表示へ反映する。手動更新ボタンは設けない。
 
 ### 監視対象
 
@@ -99,26 +99,23 @@ Filer / Git と同じ `FileWatcher` (FSEvents) を使い、外部エディタで
 | `~/.claude/` | USER スコープの Agents / Skills / Commands |
 | `<projectRoot>/.claude/` | PROJECT スコープの Agents / Skills / Commands |
 
-Kit は **Window 内 singleton** なので、watcher は Window に 1 つだけ (Filer / Git と同じ制御)。
+Kit は **Window 内 singleton** なので、監視も Window に 1 つだけ (Filer / Git と同じ制御)。
+2 つの監視パスは 1 つの監視ストリームでまとめて扱う。
 
 ### 挙動
 
-- 監視パス配下でファイルイベントが起きたら **200ms デバウンス後に `reloadAll()`** を実行する (連続イベントで過剰 reload しないため)
-- `projectRoot` が変化したら監視対象のプロジェクトパスを差し替えて再 start する
-- Session 破棄時に watcher を stop する
+- 監視パス配下でファイルイベントが起きたら **200ms デバウンス後に全セクションを再読み込み**する (連続イベントで過剰 reload しないため)
+- `projectRoot` が変化したら監視対象のプロジェクトパスを差し替えて監視を張り直す
+- Session 破棄時に監視を停止する
 
 ### `~/.claude.json` (MCP 設定) の扱い
 
-`~/.claude.json` は単一ファイルで FSEvents の直接監視が難しいため、個別 watcher は設けない。代わりに以下でカバー:
+`~/.claude.json` は単一ファイルで FSEvents の直接監視が難しいため、個別の監視は設けない。代わりに以下でカバー:
 
-- `~/.claude/` 配下の任意の変更時に `reloadAll()` が MCP もまとめて再読み込みする
-- Kit Session 活性化時 (`onAppear`) の既存 `reloadAll()` 呼び出しも維持する
+- `~/.claude/` 配下の任意の変更時の再読み込みが MCP もまとめて再読み込みする
+- Kit Session 活性化時 (表示されたタイミング) の再読み込みも維持する
 
 → MCP だけ単独変更した場合の即時反映は見送る。実運用で問題になれば将来拡張。
-
-### FileWatcher の拡張
-
-既存の `FileWatcher.start(path:onChange:)` は単一パス前提なので、複数パスを受け付ける `start(paths:onChange:)` オーバーロードを追加する。`FSEventStreamCreate` は複数パスの配列を受け付けるため、内部変更のみで対応できる。既存呼び出し元 (Filer / Git / SpeechWatcher) は影響なし。
 
 ---
 
@@ -136,14 +133,14 @@ code-reviewer              inherit      USER
 
 - **name**: 項目名 (Commands は先頭に `/` を付ける、それ以外は生の名前)
 - **status**: ステータスバッジ (configured / inherit など)。該当なしの項目は空
-- **scope**: USER / PROJECT バッジ (既存の `ScopeTagView` を再利用)
+- **scope**: USER / PROJECT バッジ (他ツールと共通のスコープバッジ)
 
 ### 名前グループ化 (Skills / Commands)
 - 旧 Skills/Commands Tool と同じく、名前の `.` / `-` 前方一致でサブグループ化する
 - セクションの中にさらに折りたたみ可能なグループが入るネスト構造
 - 例: `gitnexus-cli` `gitnexus-debugging` `gitnexus-exploring` は `gitnexus` グループにまとまる
-- グループの開閉状態もセクション同様 `SessionState` に保持 (ペイン移動で維持)
-- サブグループの見た目は既存の `TriangleDisclosureStyle` を流用
+- グループの開閉状態もセクション同様 SessionState に保持 (ペイン移動で維持)
+- サブグループの開閉矢印はセクションヘッダーと同じ見た目
 - Agents / MCPs にはグループ化を適用しない
 
 ---
@@ -167,7 +164,7 @@ code-reviewer              inherit      USER
 └───────────────────────────────────────┘
 ```
 
-- **▼ / ▶**: 展開/折りたたみ矢印 (`play.fill` を 90 度回転、既存の `TriangleDisclosureStyle` を流用)
+- **▼ / ▶**: 展開/折りたたみ矢印 (SF Symbols の `play.fill` を 90 度回転した開閉三角形)
 - **セクション名**: 大文字、太字
 - **件数**: 右寄せ (小さめ、灰色)
 - **`+` ボタン**: 件数の右隣 (該当セクションのみ表示)
@@ -195,55 +192,13 @@ code-reviewer              inherit      USER
 | ダブルクリック | [openDetail](#opendetail--項目の詳細を開く) |
 | セクションヘッダークリック | [toggleSection](#togglesection--セクションの折りたたみ展開) |
 | ヘッダー `+` ボタンクリック | [addResource](#addresource--セクション別の新規追加-ヘッダーの--ボタン) |
-| 右クリック | コンテキストメニュー ([共通ルール](../sessions/ui-rules.md#右クリック-コンテキストメニュー)) |
+| 右クリック | コンテキストメニュー ([共通ルール](../sessions/ui-rules.md#右クリック・コンテキストメニュー)) |
 
 ### コンテキストメニュー項目
 - **プレビューで開く** (Enter)
 - **外部エディタで開く** (将来)
 - **Finder で表示** (将来)
 - **パスをコピー** (将来)
-
----
-
-## 実装メモ
-
-### SessionState
-- `KitSessionState` を新規作成
-- 内部に 4 つのローダを保持 (`SkillsLoader`, `CommandsLoader`, `McpLoader`, `AgentsLoader`)
-- 展開状態 `expandedSections: Set<KitSection>` と選択中 `selection: String?` を持つ
-- サブグループの展開状態 `expandedGroups: Set<String>` も保持
-- `KitSection` enum (`.agents`, `.skills`, `.commands`, `.mcps`)
-
-### SwiftUI 実装
-- `KitSessionView`: `ScrollView + LazyVStack(pinnedViews: [.sectionHeaders])`
-  (List ではなく LazyVStack を使う理由: スクロール時のセクションヘッダー固定が必要なため)
-- 各 `Section` にヘッダー (折りたたみトグル) + コンテンツ
-- 行は `HStack` で name + StatusTagView + ScopeTagView の 3 カラム
-- 選択ハイライトは手動 (accentColor 背景 + 白テキスト)、`state.selection` で管理
-- ダブルクリックは `onTapGesture(count: 2)` で `registry.openPreview(for:title:)` を呼ぶ
-- Kit のダブルクリック時は先に `registry.activeSessionID = sessionID` を設定して
-  openPreview のペイン決定ロジック (活動履歴ベース) に自分を起点として伝える
-
-### openPreview の呼び出し規約
-すべての Tool が共通で従うルール:
-1. `registry.activeSessionID` を自分自身の `SessionID` にセット
-2. `registry.openPreview(for: url, title: "表示名")` を呼ぶ
-
-Kit は項目の表示名 (例: `diagram.architecture`) を title に渡すことで、Preview タブの
-ヘッダーに `SKILL.md` ではなく意味のある名前を表示する。
-
-### Models
-- 既存の `Skill` / `Command` / `McpServer` モデルはそのまま流用
-- 新規 `Agent` モデル: `id`, `name`, `description`, `inherit: Bool`, `scope`, `path`
-
-### Loaders
-- 既存の `SkillsLoader` / `CommandsLoader` / `McpLoader` を再利用
-- 新規 `AgentsLoader` を追加 (`~/.claude/agents/*.md` と `<projectRoot>/.claude/agents/*.md` を走査、
-  frontmatter を `FrontmatterParser` で抽出)
-
-### ディレクトリ移行
-
-Skills / Commands / Mcps に分散していたモデル・サービス・ビューを Kit ディレクトリに統合した。`KitSessionState` と `KitSessionView` もここに集約する。
 
 ---
 

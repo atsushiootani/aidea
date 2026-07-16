@@ -1,6 +1,6 @@
 ---
 title: 時計 (Clock)
-description: WidgetView 右端に現在日時 (yyyy/MM/dd EEE HH:mm:ss) を毎秒更新で表示する表示専用の時計 widget
+description: Widget 領域の右端に現在日時 (yyyy/MM/dd EEE HH:mm:ss) を毎秒更新で表示する表示専用の時計 widget
 derived_from: []
 syncs_with:
   - docs/specs/aspects/view-hierarchy.md
@@ -8,31 +8,31 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-06-08
+last_updated: 2026-07-13
 ---
 
 # 時計 (Clock)
 
-`WidgetView` の**一番右**に常駐し、現在日時を表示する表示専用の widget。
+[Widget 領域](./README.md#ui-配置原則-widget-領域) の**一番右**に常駐し、現在日時を表示する表示専用の widget。
 
 ## 表示
 
-- **3 行表示**: 1 行目に日付 `yyyy/MM/dd`、2 行目に曜日 `EEE`、3 行目に時刻 `HH:mm:ss`（例: `2026/06/08` / `Tue` / `12:12:30`）。曜日は英語 3 文字 (`en_US_POSIX` 固定)、右揃え。
-- **毎秒更新**する（SwiftUI の TimelineView による定期更新）。
+- **3 行表示**: 1 行目に日付 `yyyy/MM/dd`、2 行目に曜日 `EEE`、3 行目に時刻 `HH:mm:ss`（例: `2026/06/08` / `Tue` / `12:12:30`）。曜日は**英語 3 文字で固定**（システムの言語設定に依存しない）、右揃え。
+- **毎秒更新**する。
 - システムのローカルタイムゾーンで表示する。
 - 等幅数字 (monospaced) で桁の揺れを抑える。
 
 ## 配置
 
-`WidgetView` 内の並びの末尾（`TimerView` の右）に置く。
+Widget 領域内の並びの末尾（ポモドーロ widget の右）に置く。
 
 ```
-WidgetView
-├─ SchedulerView
-├─ RemindView
-├─ QuickMemoButton
-├─ TimerView
-└─ ClockView        ← 一番右 (現在日時)
+Widget 領域
+├─ スケジューラ widget
+├─ リマインド widget
+├─ クイックメモボタン
+├─ ポモドーロ widget
+└─ 時計 widget        ← 一番右 (現在日時)
 ```
 
 ## 境界

@@ -9,7 +9,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-05
+last_updated: 2026-07-13
 ---
 
 # Backchannel Output 仕様
@@ -29,7 +29,7 @@ Claude がレスポンスのテキストを `.aidea/backchannels/<companion-inde
 | 形式 | プレーンテキスト |
 | 内容 | Claude のレスポンス全文 |
 
-- `<companion-index>`: `0..8` の整数 (BackchannelPath の検証規約に準拠)
+- `<companion-index>`: `0..8` の整数 ([backchannel.md のハンドラ通過条件](./backchannel.md#ハンドラ通過条件) に準拠)
 - `{timestamp}`: ISO 8601 コンパクト形式 (`YYYYMMDDTHHmmss`)
 - 1 ファイル 1 レスポンス (追記ではなく新規作成)
 - ファイルは削除しない (ADR 0024: 作業履歴として保全)
@@ -38,17 +38,17 @@ Claude がレスポンスのテキストを `.aidea/backchannels/<companion-inde
 
 ## ファイル監視 (Aidea 側)
 
-`OutputWatcher` が `.aidea/backchannels/` を FSEvents で再帰監視し、`output-*.txt` ファイルを検知したら `OutputState` に通知する。
+output 監視が `.aidea/backchannels/` を FSEvents で再帰監視し、`output-*.txt` ファイルを検知したら出力履歴に通知する。
 
 | チェック項目 | 動作 |
 |-------------|------|
 | 親ディレクトリが `0..8` 以外 | 警告ログのみで無視 |
 | ファイルが空 | スキップ (ログなし) |
-| 正常検知 | `OutputState` のコールバックを呼ぶ |
+| 正常検知 | 出力履歴に通知する |
 
-### OutputState
+### 出力履歴の保持
 
-`OutputWatcher` からの通知を受け取り、コンパニオン別の出力履歴を保持する状態管理クラス。インデックスをキーとして出力エントリを蓄積する。
+output 監視からの通知を受け取り、コンパニオン別の出力履歴を保持する。Companion index をキーとして出力エントリを蓄積する。
 
 ---
 
@@ -62,7 +62,7 @@ Claude は以下のタイミングで output ファイルを書き出す。
 
 ## 機能宣言 (Claude 側)
 
-`.aidea/claude/output.md` を `instructions.md` から参照することで有効化する (機能宣言チェーン)。`BackchannelSetup` がアプリ起動時にこのファイルを Bundle からコピーする。
+`.aidea/claude/output.md` を `instructions.md` から参照することで有効化する (機能宣言チェーン)。初回セットアップ処理がアプリ起動時にこのファイルを Bundle からコピーする。
 
 ---
 
@@ -72,7 +72,7 @@ Claude は以下のタイミングで output ファイルを書き出す。
 
 - output ファイルは `.aidea/backchannels/<companion-index>/output-{timestamp}.txt` に書き出す
 - Aidea 側でファイルを削除しない (ADR 0024)
-- `OutputWatcher` は `BackchannelPath.extractCompanionIndex` で親ディレクトリを検証する
+- 親ディレクトリが `0..8` の整数であることを検証してから処理する (共通の [ハンドラ通過条件](./backchannel.md#ハンドラ通過条件))
 
 ### Never
 

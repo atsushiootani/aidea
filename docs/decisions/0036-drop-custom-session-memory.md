@@ -31,7 +31,7 @@ last_updated: 2026-06-27
   `.aidea/backchannels/<companion-index>/context.txt` へ**手書きで要約・上書き**する
 - 次回セッション開始時に Claude がそれを読み返して記憶を引き継ぐ
 
-仕様は [backchannels/context.md](../specs/backchannels/context.md)。
+仕様は backchannels/context.md (本 ADR により廃止・削除済み)。
 
 その後 issue #209 (セッションの記憶管理) と #229 (context.md は不要で claude 自体のコンテキストを
 参照すればよいのでは) で、「この独自機構は Claude ネイティブのメモリ/コンテキスト機能と

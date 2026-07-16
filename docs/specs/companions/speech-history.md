@@ -9,7 +9,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-05
+last_updated: 2026-07-13
 ---
 
 # Companion Speech 履歴ビュー
@@ -23,7 +23,7 @@ last_updated: 2026-05-05
 
 ## 概要
 
-- `CompanionEditView` に「speech 履歴」ボタンを追加し、`SpeechHistoryView` を sheet として表示する
+- コンパニオン編集シート ([companion.md](./companion.md)) に「speech 履歴」ボタンを追加し、speech 履歴ビューを sheet として表示する
 - `.aidea/backchannels/<companion-index>/speech-*.txt` を読み込み、ファイル名のタイムスタンプ降順で一覧表示する
 - スクロール可能なリスト。ファイルが 0 件の場合は「履歴がありません」を表示する
 
@@ -31,20 +31,17 @@ last_updated: 2026-05-05
 
 ## エントリポイント
 
-`CompanionEditView` の「指示書」ボタンの下に「speech 履歴」ボタンを追加する。
+コンパニオン編集シートの「指示書」ボタンの下に「speech 履歴」ボタンを追加する。
 
 - ラベル: `"speech 履歴"` / SF Symbol: `"waveform"` 
-- ボタンをタップすると `SpeechHistoryView` の sheet が開く
-- `projectRoot` が `nil` (未設定) の場合はボタンを disabled にする
+- ボタンをタップすると speech 履歴ビューの sheet が開く
+- プロジェクトルートが未設定の場合はボタンを disabled にする
 
 ---
 
-## SpeechHistoryView
+## speech 履歴ビュー
 
-| 要素 | 詳細 |
-|------|------|
-| 型 | `SpeechHistoryView` |
-| 引数 | `companionIndex: Int`, `projectRoot: URL?` |
+対象の Companion index とプロジェクトルートを受け取り、該当 Companion の speech 履歴を一覧表示する。
 
 ### 表示内容
 
@@ -61,7 +58,7 @@ last_updated: 2026-05-05
 
 ### ファイル読み込み
 
-- `.aidea/backchannels/<companionIndex>/speech-*.txt` を `FileManager` で列挙する
+- `.aidea/backchannels/<companionIndex>/speech-*.txt` のファイル一覧を列挙する
 - 親ディレクトリが不在 (= speech 書き出し 0 件) の場合は空リストとして扱い「履歴がありません」を表示する
 - ファイル読み取りに失敗したエントリは無視する
 
@@ -72,7 +69,7 @@ last_updated: 2026-05-05
 ### Always
 - ファイルは読むだけ。削除・書き込みは行わない
 - タイムスタンプ降順で表示する (最新が上)
-- スピーカーID行の除外は `SpeechWatcher.parse(_:)` と同じロジックに従う
+- スピーカーID行の除外は speech 監視処理の解析ルール ([voicevox.md](../backchannels/voicevox.md)) と同じロジックに従う
 
 ### Never
 - speech ファイルを削除・移動しない (ADR 0024)

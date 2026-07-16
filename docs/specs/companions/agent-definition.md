@@ -9,7 +9,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-27
+last_updated: 2026-07-13
 ---
 
 # コンパニオンのエージェント定義 (agent.md)
@@ -87,7 +87,7 @@ frontmatter は必須ではない。Markdown 本文だけでも動作するが�
 ## Bundle テンプレート
 
 Aidea には `companion-agent.md` という Bundle テンプレートが付属する。
-BackchannelSetup などから参照して新規プロジェクトのサンプルとして使える。
+初回セットアップ処理 ([../backchannels/backchannel.md](../backchannels/backchannel.md)) などから参照して新規プロジェクトのサンプルとして使える。
 
 ---
 
@@ -105,8 +105,7 @@ BackchannelSetup などから参照して新規プロジェクトのサンプル
 .aidea/claude/companions/<index>/instructions.md を読んで従ってね
 ```
 
-コマンド生成ロジックは起動直前に同期的にファイル存在確認を行う。
-存在確認には OS 標準のファイル存在チェック API を同期的に使用する。
+起動コマンドの生成は、起動直前に同期的に `agent.md` の存在確認を行って分岐する。
 
 ---
 

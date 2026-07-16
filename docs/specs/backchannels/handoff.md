@@ -1,6 +1,6 @@
 ---
 title: "Backchannel: コンパニオン間ハンドオフ"
-description: Companion 間でタスクを受け渡す Handoff メッセージ (.aidea/backchannels/<n>/handoff-*.json) の JSON スキーマ・宛先解決・Aidea 側 Watcher/Dispatcher 実装仕様
+description: Companion 間でタスクを受け渡す Handoff メッセージ (.aidea/backchannels/<n>/handoff-*.json) の JSON スキーマ・宛先解決・Aidea 側の監視/配送仕様
 derived_from:
   - docs/decisions/0023-companion-handoff.md
   - docs/decisions/0024-backchannel-per-companion-archive.md
@@ -13,7 +13,7 @@ impacts:
   - docs/specs/backchannels/companion-roster.md
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-03
+last_updated: 2026-07-13
 ---
 
 # Backchannel: コンパニオン間ハンドオフ
@@ -51,19 +51,20 @@ last_updated: 2026-05-03
 3. 送信元 Claude が .aidea/backchannels/<from>/handoff-{timestamp}.json を書き出す
    (ディレクトリがなければ Claude 側で mkdir -p 相当で作成)
 4. Aidea が FSEvents で <0..8>/handoff-*.json の作成を検知
-5. HandoffWatcher が親ディレクトリ名 (<from>) を読み取り、JSON をパース
+5. handoff 監視が親ディレクトリ名 (<from>) を読み取り、JSON をパース
    a. JSON の `from` と親ディレクトリが一致することを検証 (不一致はエラー、ファイルは残す)
-   b. (HandoffMessage, 元ファイル URL, companionIndex) を HandoffDispatcher に渡す
-6. HandoffDispatcher:
+   b. パース結果 (メッセージ・元ファイル・送信元 index) を配送処理に渡す
+6. 配送処理:
    a. to を index 解決 (index 指定 or name 逆引き)
-   b. 宛先 Companion が未起動なら自動起動 (CompanionLauncher 経由)
-   c. 宛先 ClaudeSessionState.sendMessage(".aidea/backchannels/<from>/{filename} の作業をやってね") を送信
+   b. 宛先 Companion が未起動なら自動起動
+   c. 宛先 Claude セッションにファイル参照メッセージ
+      (".aidea/backchannels/<from>/{filename} の作業をやってね") を送信
    d. 宛先タブをアクティブ化
 7. handoff-*.json は残す (受信側 Claude が読むため + 作業履歴として、ADR 0024)
 8. 受信側 Claude が handoff.md の受信側セクションに従って:
    a. speech 機能が有効 (.aidea/claude/speech.md を読み込んでいる) なら、
       handoff-*.json を読む前に acknowledge 用の speech-*.txt を書き出す (即応サイン)
-      → Aidea の SpeechWatcher が検知して VOICEVOX で読み上げ → ユーザは即座に
+      → Aidea の speech 監視が検知して VOICEVOX で読み上げ → ユーザは即座に
       ハンドオフが宛先 Companion に届いたことを音で確認できる
    b. 指定された handoff-*.json を読む
    c. JSON の `message` を作業指示として解釈し、そのまま実行する
@@ -126,13 +127,13 @@ Aidea 側の実装変更は **不要**。完全に `.aidea/claude/handoff.md` �
 
 | `to` の値 | 解決ルール |
 |---|---|
-| 整数 (0..8) | `CompanionStore.companions[to]` を直接参照 |
-| 整数 (範囲外) | エラー: ファイル削除 + ログ出力 |
-| 文字列 (空でない) | `CompanionStore.companions` を先頭から走査し、`name` を前後空白除去・大文字小文字無視で比較。最初にマッチした `index` を使う |
-| 文字列 (マッチなし) | エラー: ファイル削除 + ログ出力 |
-| 文字列 (空) / null | エラー: ファイル削除 + ログ出力 |
+| 整数 (0..8) | Companion 一覧の index `to` を直接参照 |
+| 整数 (範囲外) | エラー: ログ出力 + ヘッダにエラー表示 (ファイルは残す) |
+| 文字列 (空でない) | Companion 一覧を先頭から走査し、`name` を前後空白除去・大文字小文字無視で比較。最初にマッチした `index` を使う |
+| 文字列 (マッチなし) | エラー: ログ出力 + ヘッダにエラー表示 (ファイルは残す) |
+| 文字列 (空) / null | エラー: ログ出力 + ヘッダにエラー表示 (ファイルは残す) |
 
-送信元 Claude が宛先 Companion の name を知るための一覧は `.aidea/claude/aidea.md` 内の自動管理セクション (`<!-- aidea:companions:start --> ... <!-- aidea:companions:end -->`) に常駐する。Aidea が `CompanionStore.companions[].name` の変更に追従して書き換えるため、Claude は aidea.md を読むだけで最新の index ↔ name 対応表を得られる。詳細は [companion-roster.md](./companion-roster.md) を参照。
+送信元 Claude が宛先 Companion の name を知るための一覧は `.aidea/claude/aidea.md` 内の自動管理セクション (`<!-- aidea:companions:start --> ... <!-- aidea:companions:end -->`) に常駐する。Aidea が Companion 名 (`companions[].name`) の変更に追従して書き換えるため、Claude は aidea.md を読むだけで最新の index ↔ name 対応表を得られる。詳細は [companion-roster.md](./companion-roster.md) を参照。
 
 name 検索のマッチ例:
 
@@ -146,11 +147,10 @@ name 検索のマッチ例:
 
 ### 未起動の宛先
 
-解決で得た `index` の Companion が `sessionID == nil` の場合:
+解決で得た `index` の Companion にセッションが紐付いていない場合:
 
-1. [companion.md の未起動時起動フロー](../companions/companion.md#起動フロー-claude-セッション未起動) を再利用する (`registry.createSession` → `ClaudeSessionState.companionPrompt` にセット → `store.bind`)
-2. Claude CLI の起動と `companionPrompt` の自動送信は `ClaudeSessionState.autoStartClaude` が担うため、ハンドオフ側は PTY ready を検知してから **ファイル参照メッセージ**を送信する
-3. PTY ready 検知は既存の `autoStartClaude` の状態監視を踏襲する (詳細は実装時に `ClaudeSessionState` と合わせて詰める)
+1. [companion.md の未起動時起動フロー](../companions/companion.md#起動フロー-claude-セッション未起動) を再利用する (セッション生成 → 起動時指示コマンドのセット → Companion への bind)
+2. Claude CLI の起動と起動時指示コマンドの自動送信は [自動起動シーケンス](../sessions/claude.md#自動起動シーケンス) が担うため、ハンドオフ側はセッションが受付可能になってから **ファイル参照メッセージ**を送信する
 
 ### 自分自身宛 (`from == to`)
 
@@ -247,25 +247,21 @@ Aidea から以下のような短いメッセージが届くことがあるよ�
 
 ---
 
-## Aidea 側の実装コンポーネント
+## Aidea 側の役割分担
 
-| コンポーネント | 責務 |
+| 役割 | 責務 |
 |---|---|
-| **HandoffMessage** | `handoff-*.json` をデコードする Codable 構造体。`from` は `Int` (0..8) 必須、`to` は `Int` / `String` どちらも受け付ける enum (`.index(Int)` / `.name(String)`) |
-| **HandoffWatcher** | FSEvents で `.aidea/backchannels/<0..8>/handoff-*.json` を再帰監視。親ディレクトリ名 (`<from>`) を読み取り、JSON `from` と一致することを検証してから `(HandoffMessage, ファイル URL, companionIndex)` を HandoffDispatcher に投げる。ファイルは削除せず残す |
-| **HandoffDispatcher** | 宛先解決 → Companion 自動起動 (必要時) → `ClaudeSessionState.sendMessage(".aidea/backchannels/<from>/{filename} の作業をやってね")` でファイル参照メッセージを送信 → タブアクティブ化。`message` 本文は PTY に流さない (受信側 Claude がファイルから読む) |
-
-配置: `Services/Backchannel/Handoff/` ディレクトリ (既存) に 3 ファイルを収める。
-
-`HandoffDispatcher` は `CompanionStore` / `SessionRegistry` / `LayoutConfig` を参照する必要があるため、`AideaApp` から依存を注入する (既存 `BackchannelSetup` と並ぶ位置付け)。
+| **メッセージのデコード** | `handoff-*.json` を上記スキーマとしてデコードする。`from` は整数 (0..8) 必須、`to` は整数 / 文字列どちらも受け付ける |
+| **handoff 監視** | FSEvents で `.aidea/backchannels/<0..8>/handoff-*.json` を再帰監視。親ディレクトリ名 (`<from>`) を読み取り、JSON `from` と一致することを検証してから配送処理に渡す。ファイルは削除せず残す |
+| **配送処理** | 宛先解決 → Companion 自動起動 (必要時) → ファイル参照メッセージ (`.aidea/backchannels/<from>/{filename} の作業をやってね`) を宛先 Claude セッションに送信 → タブアクティブ化。`message` 本文は PTY に流さない (受信側 Claude がファイルから読む) |
 
 ---
 
 ## UI 動作 (MVP)
 
-- **宛先タブの自動アクティブ化**: Frontchannel と同じく `send(txt:)` 後に対象 Session をアクティブ化する
+- **宛先タブの自動アクティブ化**: Frontchannel と同じく送信後に対象 Session をアクティブ化する
 - **送信元タブの表示変更**: MVP では行わない (将来 `task` ラベルを使ったバッジ表示を追加する足場を残す)
-- **エラー通知**: パース失敗・宛先不明時はヘッダのエラー表示領域に短文で出す (SpeechWatcher が VOICEVOX 未起動時に出しているのと同じ枠を再利用)。ユーザ操作で消える
+- **エラー通知**: パース失敗・宛先不明時はヘッダのエラー表示領域に短文で出す (読み上げ機能が VOICEVOX 未起動時に出しているのと同じ枠を再利用)。ユーザ操作で消える
 
 ハンドオフ履歴の UI (サイドパネル / トースト) は別チケットに切り出し、MVP では実装しない。
 
@@ -284,8 +280,8 @@ Aidea から以下のような短いメッセージが届くことがあるよ�
 | `to` 欠落 / 型不正 / 範囲外 index / name 未マッチ | ログ出力 + ヘッダにエラー 1 行表示 |
 | `message` 欠落 / 空文字 | ログ出力 |
 | 宛先 Companion の自動起動失敗 | ログ出力 + ヘッダにエラー表示 |
-| PTY 未 ready で `send` 失敗 | 自動起動完了を待ってから送る。タイムアウト時はログ出力 |
-| 同 handoff ファイルが同時に複数 | FSEvents のタイムスタンプ順で逐次処理 (既存 SpeechWatcher と同じ) |
+| 宛先セッションが受付可能になる前 | 自動起動シーケンスの完了を待ってから送る。タイムアウト時はログ出力 |
+| 同 handoff ファイルが同時に複数 | FSEvents のタイムスタンプ順で逐次処理 (speech 監視と同じ) |
 
 ---
 

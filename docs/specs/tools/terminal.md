@@ -13,7 +13,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-26
+last_updated: 2026-07-13
 ---
 
 # Tool 仕様: Terminal
@@ -28,23 +28,12 @@ Session 内部状態は [sessions/terminal.md](../sessions/terminal.md) を参�
 
 ## 概要
 
-- SwiftTerm (`LocalProcessTerminalView`) ベースの PTY ターミナル
+- SwiftTerm ベースの PTY ターミナル
 - **複数インスタンス可** — Window 内で複数の Terminal セッションを開ける
-- `WorkspaceState.projectRoot` を初期ディレクトリとして起動
+- ワークスペースの projectRoot を初期ディレクトリとして起動
 - tmux が利用可能な場合は `exec tmux new-session -A -s <name>` で起動し、Aidea を閉じてもシェルプロセスが継続する ([sessions/terminal.md#永続化](../sessions/terminal.md#永続化) 参照)
 - tmux が利用不可の場合は対話シェル (`exec zsh -l`) で起動（ADR 0008 参照）
 - `claude` の自動起動は**行わない** — 純粋なシェル環境のみ
-
----
-
-## 実装コンポーネント
-
-| コンポーネント | 役割 |
-|---------------|------|
-| `TerminalSessionState` | PTY の生成・キャッシュ、フォーカス管理 |
-| `PersistentTerminalView` | SwiftTerm の LocalProcessTerminalView 拡張。ペイン移動時のバッファ消失防止 |
-| `TerminalSessionView` | NSViewRepresentable ラッパ |
-| `TmuxLauncher` | tmux の有無検出・セッション名生成・起動コマンド生成 |
 
 ---
 
@@ -52,7 +41,7 @@ Session 内部状態は [sessions/terminal.md](../sessions/terminal.md) を参�
 
 ```
 (tmux あり)
-1. TmuxLauncher が tmux のパスを検出 (/opt/homebrew / /usr/local / /usr/bin の順)
+1. tmux のパスを検出 (/opt/homebrew / /usr/local / /usr/bin の順)
 2. exec <tmux> new-session -A -s <name> -c <dir> でセッション起動または再 attach
 3. 環境変数: TERM=xterm-256color, SHELL=/bin/zsh (tmux クライアント側)
 
@@ -64,13 +53,13 @@ Session 内部状態は [sessions/terminal.md](../sessions/terminal.md) を参�
 
 ---
 
-## PersistentTerminalView
+## 端末 View のバッファ保持
 
-ペイン間移動時に NSView が一時的に detach される（superview = nil, bounds = 0）際、
-SwiftTerm がバッファをクリアしてしまう問題を回避するサブクラス。
+ペイン間移動時に端末 View が一時的に View 階層から外れる際、SwiftTerm がバッファをクリアしてしまう問題を回避している (経緯は [ADR 0019](../../decisions/0019-all-tabs-zstack-rendering.md) を参照)。
 
-- bounds が 10pt 未満のときレイアウト処理をスキップ
-- PTY プロセスは初回アクセス時に 1 回だけ起動し、以降はキャッシュを返す
+- ペイン移動・タブ切替で端末バッファ・スクロールバックは失われない
+- PTY プロセスは初回アクセス時に 1 回だけ起動し、以降は同一の端末 View を使い回す
+- 端末 View は Terminal と Claude で共用する
 
 ---
 
@@ -84,17 +73,17 @@ SwiftTerm がバッファをクリアしてしまう問題を回避するサブ�
 
 ## クリック起動
 
-ターミナル上のテキストを **単純クリック (mouseDown→ドラッグなしで mouseUp)** すると、種別に応じて action を発火する。`PersistentTerminalView` が提供する機能なので、Claude Tool でも同じ挙動になる。ドラッグでの範囲選択は維持される。
+ターミナル上のテキストを **単純クリック (mouseDown→ドラッグなしで mouseUp)** すると、種別に応じて action を発火する。Terminal / Claude が共用する端末 View の機能なので、Claude Tool でも同じ挙動になる。ドラッグでの範囲選択は維持される。
 
 | 種別 | 検出 | アクション |
 |---|---|---|
-| URL (http/https) | SwiftTerm 標準の URL/OSC 8 ハイパーリンク検出 | `SessionRegistry.openWeb(for:)` で **Web Tool** に開く ([tools/web.md](./web.md#url-クリックルーティング-terminal--claude--web)) |
-| URL (その他 scheme) | 同上 | `NSWorkspace.shared.open(url)` で外部アプリ起動 |
+| URL (http/https) | SwiftTerm 標準の URL/OSC 8 ハイパーリンク検出 | **Web Tool** に開く ([tools/web.md](./web.md#url-クリックルーティング-terminal--claude--web)) |
+| URL (その他 scheme) | 同上 | OS デフォルトアプリで開く |
 | ファイルパス | Aidea 独自の regex 検出 + 実在確認 (issue #71) | ターミナルと同じペインの右隣に Preview タブを開く |
 
-クリックターゲット (URL またはファイルパス) 上にマウスがホバーしたとき、カーソルを `NSCursor.pointingHand` (指マーク) に変えてクリック可能であることを示す。ターゲットから外れたら通常 (`NSCursor.iBeam`) に戻す。
+クリックターゲット (URL またはファイルパス) 上にマウスがホバーしたとき、カーソルを指マークに変えてクリック可能であることを示す。ターゲットから外れたら通常 (I ビーム) に戻す。
 
-mouseMoved による URL 自動オープン (ホバーだけでブラウザが開く SwiftTerm 標準挙動) は NSEvent モニターで握りつぶす ([issue #54](https://github.com/atsushiootani/aidea/issues/54) 対策、既存)。クリック起動はあくまで mouseUp でのみ発火する。
+mouseMoved による URL 自動オープン (ホバーだけでブラウザが開く SwiftTerm 標準挙動) はイベント監視で握りつぶす ([issue #54](https://github.com/atsushiootani/aidea/issues/54) 対策、既存)。クリック起動はあくまで mouseUp でのみ発火する。
 
 ### クリック判定 (tap vs drag)
 
@@ -102,10 +91,10 @@ mouseDown と mouseUp の位置が **threshold (4 pt) 以下** に収まり、�
 
 ### URL クリック
 
-- SwiftTerm の `TerminalViewDelegate.requestOpenLink` を `TerminalLinkGuard` でプロキシし、上記「クリック判定」を満たすときに起動する
-- 起動先: **http / https** は `SessionRegistry.openWeb(for:)` で Web Tool に開く
+- SwiftTerm のリンクオープン要求をプロキシし、上記「クリック判定」を満たすときに起動する
+- 起動先: **http / https** は Web Tool に開く
   (配置先は「カレントを除く最新のペイン」に常に新規タブ。詳細は [tools/web.md](./web.md#url-クリックルーティング-terminal--claude--web))。
-  それ以外の scheme は `NSWorkspace.shared.open(url)` (従来挙動)
+  それ以外の scheme は OS デフォルトアプリで開く (従来挙動)
 - OSC 8 ハイパーリンク (`\e]8;;<url>\e\\<text>\e]8;;\e\\`) と、SwiftTerm 標準の URL detector の両方に対応
 
 ### ファイルパスのクリック起動 (issue #71)
@@ -134,7 +123,7 @@ mouseDown と mouseUp の位置が **threshold (4 pt) 以下** に収まり、�
 #### パス解決
 
 1. 検出した `path` が絶対パス (`/` 始まり) なら **そのまま実在確認** → 実在すれば Preview で開く
-2. 相対パスなら `WorkspaceState.projectRoot` を起点に絶対化し、実在すれば Preview で開く
+2. 相対パスなら projectRoot を起点に絶対化し、実在すれば Preview で開く
 3. 上記で見つからない場合: **プロジェクト内検索** フォールバック
    - `projectRoot` 以下を再帰的に検索し、ファイル名一致または末尾パス一致するファイルを列挙する
    - 検索範囲は `.gitignore` の内容を**考慮しない** (`node_modules` 等も含めて全検索)
@@ -144,36 +133,26 @@ mouseDown と mouseUp の位置が **threshold (4 pt) 以下** に収まり、�
 
 #### Preview 起動
 
-検出 + 実在確認後、以下を呼ぶ:
+検出 + 実在確認後、Preview を同じペインの右隣に新規タブとして開く。
 
-Preview を同じペインの右隣に新規タブとして開く。
-
-- `title` は projectRoot からの相対パス (絶対パスは長くタブで読みにくいため)
+- タブタイトルは projectRoot からの相対パス (絶対パスは長くタブで読みにくいため)
 - **同じペインの右隣に新規 Preview タブを挿入する**。ターミナルで作業中に他ペインへフォーカスを奪われない方が体感が自然なため。Filer / Kit のダブルクリックが使う「別ペイン配置で開く」とはここが異なる
 - 既存の Preview dedupe 規約 ([sessions/active-session.md#preview-を開くときの呼び出し規約](../sessions/active-session.md#preview-を開くときの呼び出し規約)) に従い、同じ URL の Preview がすでに存在すれば新規作成せずアクティブ化する
 
 #### `:行数` 指定の行ジャンプ (将来拡張)
 
-issue #71 の `(want)` 項目。Preview 側のコード/テキストビューが現状行ジャンプ機構を持たないため、**MVP では行番号を検出はするが Preview への引き渡しは行わない** (= ファイルを開くだけ)。Preview 側に行ジャンプ機能が追加された段階で Preview 起動 API の拡張を検討する (別 issue)。
+issue #71 の `(want)` 項目。Preview 側のコード/テキストビューが現状行ジャンプ機構を持たないため、**MVP では行番号を検出はするが Preview への引き渡しは行わない** (= ファイルを開くだけ)。Preview 側に行ジャンプ機能が追加された段階で Preview 起動経路の拡張を検討する (別 issue)。
 
 ### ホバー時カーソル変化
 
 クリックターゲット (URL / ファイルパス) 上にマウスがホバーしたら指マークに切り替える。
 
-- mouseMoved を `addLocalMonitorForEvents` で観測し、座標→セル変換でホバー位置の文字を取得する
-- そのセルが SwiftTerm 標準の URL 検出範囲内、または `TerminalPathResolver` がパスとして検出した範囲内なら `NSCursor.pointingHand.set()` を呼ぶ
+- マウス移動イベントを観測し、座標→セル変換でホバー位置の文字を取得する
+- そのセルが SwiftTerm 標準の URL 検出範囲内、または Aidea のパス検出がパスとして検出した範囲内なら指マークカーソルに切り替える
 - ファイルパス判定には**プロジェクト内検索フォールバック**も含む — 直接解決できない相対パスでも、プロジェクト内に候補が存在する場合は指マークを表示する
-- ターゲット外に出たら `NSCursor.iBeam.set()` (ターミナル既定) に戻す
+- ターゲット外に出たら I ビーム (ターミナル既定) に戻す
 - 実在しないファイルパス候補 (regex は通るが直接解決も検索もヒットしない) はカーソルを変えない (クリックしても何も起きないため)
 - SwiftTerm 内部の mouseMoved 経由 URL 自動オープンは引き続き抑制 (issue #54 対策、既存挙動を維持)
-
-### 実装コンポーネント
-
-| コンポーネント | 役割 |
-|---|---|
-| `PersistentTerminalView` (拡張) | mouseDown/mouseUp/mouseMoved を捕捉し、(1) クリック判定 (tap vs drag)、(2) ホバーカーソル変化、(3) パス検出時の Preview 起動を行う |
-| `TerminalLinkGuard` (拡張) | `requestOpenLink` プロキシ。クリック判定 OK のとき http/https は `SessionRegistry.openWeb(for:)`、その他 scheme は `NSWorkspace.shared.open` (Cmd 修飾チェックは外す) |
-| `TerminalPathResolver` (新規) | regex 定義・projectRoot 起点の絶対化・実在確認を担う純関数ヘルパ。`Foundation` のみで完結し、SwiftTerm/UI 依存を持たない (テスト容易性) |
 
 ---
 
@@ -182,11 +161,11 @@ issue #71 の `(want)` 項目。Preview 側のコード/テキストビューが
 Aidea は Terminal / Claude を **tmux 経由**で起動する ([sessions/terminal.md#永続化](../sessions/terminal.md#永続化))。
 tmux は常時 **alternate screen** を使い、かつ **mouse on** で動作する。ここで問題が 2 つ重なる:
 
-1. SwiftTerm の `scrollWheel` は**自前のスクロールバックを動かすだけで、ホイールをマウスイベントとして
+1. SwiftTerm のホイール処理は**自前のスクロールバックを動かすだけで、ホイールをマウスイベントとして
    PTY に転送しない**。tmux の alternate screen 下では外側スクロールバックは空なので、ホイールが無反応になる。
 2. tmux は `mouse on` でホイールを待っているのに、上記のとおりイベントが届かない。
 
-そこで **マウストラッキング中 (`terminal.mouseMode != .off`) はホイールを SGR マウスホイールイベントとして
+そこで **マウストラッキング中はホイールを SGR マウスホイールイベントとして
 PTY に転送**し、tmux (やマウス対応 TUI) にスクロールを解釈させる。tmux が場面に応じて正しく振り分ける:
 
 | 場面 (tmux 内) | tmux の挙動 |
@@ -198,19 +177,18 @@ PTY に転送**し、tmux (やマウス対応 TUI) にスクロールを解釈�
 この方式は Terminal と Claude で**共通**。tmux は自身が管理する「内側の alternate screen 状態」を
 知っているため、外側から判別できない「プロンプトか TUI か」を正しく振り分けられる。
 
-- ホイールボタンは X11 マウスプロトコルの up=4 / down=5 (`terminal.encodeButton` が 64/65 に変換)、
-  送信は `terminal.sendEvent(buttonFlags:x:y:)` を使い、エンコード方式 (SGR 等) は SwiftTerm 側に委ねる
-- マウス位置は `cellPosition` から算出 (Aidea は 1 セッション 1 tmux ペインなので厳密でなくてよい)
-- 転送量: マウスホイールは 1 ノッチ 1 回、トラックパッドは `scrollingDeltaY` を 16 pt ごとに 1 回へ換算 (1 イベントあたり上限あり)。1 回あたりのスクロール行数は tmux 側が決める
-- macOS の `deltaY > 0` (ナチュラル/クラシック双方の符号を反映済み) を「上スクロール」とする
+- ホイールボタンは X11 マウスプロトコルの up=4 / down=5 (エンコード上は 64/65)。イベントの送出とエンコード方式 (SGR 等) は SwiftTerm 側に委ねる
+- マウス位置はホイール発生位置のセル座標から算出 (Aidea は 1 セッション 1 tmux ペインなので厳密でなくてよい)
+- 転送量: マウスホイールは 1 ノッチ 1 回、トラックパッドはスクロール量 16 pt ごとに 1 回へ換算 (1 イベントあたり上限あり)。1 回あたりのスクロール行数は tmux 側が決める
+- 上下方向は macOS のスクロールイベントの符号 (ナチュラル/クラシック双方を反映済み) に従う
 
-### フォールバック (mouseMode == off)
+### フォールバック (マウストラッキングなし)
 
 tmux 未使用などでマウストラッキングが無い場合:
 
 - **Claude**: トランスクリプトモード時のみホイールを Ctrl+U/D に変換 (通常モードで Ctrl+D 2 回は EOF に
   なるため厳密判定)。ホイールクリック → Ctrl+O のトグルも維持。[ADR 0017](../../decisions/0017-alternate-screen-scroll-handling.md) と
-  [tools/claude.md#ターミナル内操作aidea-が-nsevent-モニターで変換](./claude.md#ターミナル内操作aidea-が-nsevent-モニターで変換) を参照
+  [tools/claude.md#ターミナル内操作aidea-が変換](./claude.md#ターミナル内操作aidea-が変換) を参照
 - **Terminal**: SwiftTerm 標準のスクロールバック (通常バッファのみ有効) に委ねる
 
 ---
@@ -231,11 +209,11 @@ Markdown Preview の実行ボタン押下時に呼ばれる。既存 Terminal �
 - tmux が利用可能なら `exec tmux new-session -A -s <name>` で PTY プロセスを tmux セッション内に起動する
 - tmux が利用不可なら対話シェル (`exec zsh -l`) にフォールバックする
 - PTY は初回生成後にキャッシュし、タブ切替・ペイン移動で再生成しない
-- クリック起動は Terminal Tool / Claude Tool の両方で同じ挙動 (PersistentTerminalView 共用)
+- クリック起動は Terminal Tool / Claude Tool の両方で同じ挙動 (端末 View 共用)
 - クリック起動は mouseDown→mouseUp の距離が threshold (4 pt) 以下かつドラッグなしのときのみ発火
 - URL とファイルパスの両方が **単純クリック** で開く (Cmd 修飾は不要・押されていても同じ挙動)
-- クリックターゲット (URL / 実在するファイルパス / フォールバック検索でヒットするパス) 上では `NSCursor.pointingHand` でクリック可能であることを示す
-- ファイルパスのクリック起動は `WorkspaceState.projectRoot` を相対パスの一次解決の起点とし、見つからない場合はプロジェクト内検索フォールバックに進む
+- クリックターゲット (URL / 実在するファイルパス / フォールバック検索でヒットするパス) 上では指マークカーソルでクリック可能であることを示す
+- ファイルパスのクリック起動は projectRoot を相対パスの一次解決の起点とし、見つからない場合はプロジェクト内検索フォールバックに進む
 - 直接解決もフォールバック検索もヒットしない場合は無音で無視 (URL クリックの失敗時挙動に揃える)
 - フォールバック検索で複数候補が見つかった場合は NSMenu ポップアップを表示してユーザに選択させる
 - ファイルパスから開く Preview は **ターミナルと同じペインの右隣** に新規タブで挿入する
@@ -248,4 +226,4 @@ Markdown Preview の実行ボタン押下時に呼ばれる。既存 Terminal �
 - PTY の `cwd` 追跡で相対パスを解決しない (projectRoot 起点 + プロジェクト内検索で代替)
 - `:行数` を Preview に引き渡さない (MVP)
 - フォールバック検索は projectRoot が未設定の場合、または絶対パスが対象の場合は実行しない
-- `TerminalLinkGuard.requestOpenLink` で scheme を持たない link 文字列を `NSWorkspace.shared.open` に渡さない (SwiftTerm の link detector がファイルパスを link として渡してきても、Preview 起動は `handlePathClickIfNeeded` が担うため。`open` に渡すと Finder が `-50` ダイアログを出してしまう)
+- scheme を持たない link 文字列を OS の URL オープンに渡さない (SwiftTerm の link detector がファイルパスを link として渡してきても、Preview 起動はファイルパスクリック処理が担う。そのまま渡すと Finder が `-50` ダイアログを出してしまう)

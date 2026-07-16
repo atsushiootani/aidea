@@ -1,3 +1,14 @@
+---
+title: Coding Style
+description: Swift コーディング規約 / プロパティラッパ並び順 / コメント方針 / 並行性の静的ルール集
+derived_from: []
+syncs_with: []
+impacts: []
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-15
+---
+
 # Coding Style
 
 Aidea のコーディング規約。静的なルールのみを集約。アーキテクチャは

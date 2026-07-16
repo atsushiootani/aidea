@@ -1,3 +1,14 @@
+---
+title: E2E キー入力シミュレーション (実機自動テスト) の知見
+description: OS レベルのキー入力シミュレーションによる E2E テストの作業記録と再開手順 (TCC / CGEvent / IME)
+derived_from: []
+syncs_with: []
+impacts: []
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-07-05
+---
+
 # E2E キー入力シミュレーション (実機自動テスト) の知見
 
 issue #125 (Preview 編集モードで日本語入力中に文字が消える) の実機検証のために試した、

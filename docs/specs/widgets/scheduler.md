@@ -12,7 +12,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-06-19
+last_updated: 2026-07-13
 ---
 
 # スケジューラ (Scheduler)
@@ -29,7 +29,7 @@ last_updated: 2026-06-19
 |---|---|---|
 | トリガ源 | Companion が書いたファイル（ファイル名=絶対時刻） | **アプリ内** (定時 / アプリ起動時 / 手動) |
 | 繰り返し | 1 回だけ（絶対時刻） | トリガー種別による (定時=毎日 / 起動時=毎起動 / 手動=都度) |
-| 発火先 | SpeechQueue（音声読み上げ） | **指定セッション** (Claude Companion / 新規 Terminal) へプロンプト送信 |
+| 発火先 | 音声キュー（音声読み上げ） | **指定セッション** (Claude Companion / 新規 Terminal) へプロンプト送信 |
 | 取りこぼし時 | 過去なら読み上げずスキップ | **定時ジョブのみ** 自動実行せず「未実行」を widget で通知 |
 
 ---
@@ -292,9 +292,9 @@ last_updated: 2026-06-19
 
 ---
 
-## UI: SchedulerView（ヘッダ常駐 widget）
+## UI: スケジューラ widget（ヘッダ常駐）
 
-[widgets/README.md](./README.md) の `WidgetView` 内に、`RemindView`（カレンダー）の左隣に配置する。時計アイコン + テキスト + Popover の UI とする。[../aspects/view-hierarchy.md](../aspects/view-hierarchy.md) の AppHeaderView 階層図も同期更新する。
+[Widget 領域](./README.md#ui-配置原則-widget-領域) 内に、リマインド widget（カレンダー）の左隣に配置する。時計アイコン + テキスト + Popover の UI とする。[../aspects/view-hierarchy.md](../aspects/view-hierarchy.md) のヘッダ階層図も同期更新する。
 
 ### ヘッダ表示要素
 
@@ -313,7 +313,7 @@ last_updated: 2026-06-19
 | **次回待ち** | 要対応が無く、有効な `scheduled` / `cron` ジョブの次回発火が 1 件以上 | 直近の次回発火 `HH:mm` をグレー表示 |
 | **全停止** | 有効な時刻発火ジョブが無い / ジョブ無し | グレーで「停止中」 |
 
-### Popover: SchedulerPopoverView
+### Popover: ジョブ一覧
 
 登録ジョブを一覧し、**追加・編集・削除**も popover 内で完結する。各ジョブ行はトリガー種別と送信先が分かるように表示する。
 
@@ -326,7 +326,7 @@ last_updated: 2026-06-19
 | ON/OFF トグル | ジョブ単位の `enabled` 切替 |
 | 空状態 | ジョブが 1 件も無いとき「ジョブなし」 |
 
-#### 編集フォーム: SchedulerJobEditView
+#### 編集フォーム
 
 「＋ 追加」または行の「編集」で同じ popover 内に展開する。
 
@@ -338,7 +338,7 @@ last_updated: 2026-06-19
 | 曜日 (`weekdays`) | 日〜土の 7 トグルチップ | **定時のときだけ**表示。1 つ以上選択必須 |
 | cron 式 (`expr`) | テキスト入力 + プリセット | **cron のときだけ**表示。プリセット（5分 / 6時間 等）で式を流し込める。入力に応じて次回発火 `HH:mm` かパースエラーをライブ表示 |
 | **送信先種別** | セグメント（Claude / Terminal） | 選択で送信先ピッカーの表示が切り替わる |
-| 送信先 (`companionIndex`) | Companion ピッカー | **Claude のときだけ**表示。CompanionStore の名前を表示 |
+| 送信先 (`companionIndex`) | Companion ピッカー | **Claude のときだけ**表示。Companion の表示名を出す |
 | 送信先 (`sessionTitle`) | タブ名入力 (選択 + 自由入力) | **Terminal のときだけ**表示。「新規タブ」+ 現在のターミナルタブ名をクイック選択でき、任意のタブ名をテキスト入力もできる (未起動のタブ名も指定可) |
 | プロンプト (`prompt`) | テキスト入力 | 必須 |
 | 有効 (`enabled`) | トグル | |
@@ -386,7 +386,7 @@ last_updated: 2026-06-19
 - [../sessions/terminal.md](../sessions/terminal.md) — Terminal セッション（送信先 `terminal`）
 - [../backchannels/remind.md](../backchannels/remind.md) — 定時発火 + widget の姉妹仕様（発火源・発火先が異なる）
 - [../backchannels/handoff.md](../backchannels/handoff.md) — 未起動セッションを起動して送る挙動の先行実装
-- [./README.md](./README.md) — WidgetView 配置原則（SchedulerView の置き場）
-- [../aspects/view-hierarchy.md](../aspects/view-hierarchy.md) — AppHeaderView 階層図（SchedulerView）
+- [./README.md](./README.md) — Widget 領域の配置原則（スケジューラ widget の置き場）
+- [../aspects/view-hierarchy.md](../aspects/view-hierarchy.md) — ヘッダ階層図（スケジューラ widget）
 - [../aspects/persistence.md](../aspects/persistence.md) — `.aidea/config/` `.aidea/state/` の配置
 - `quickmemo/general/system/mac-wake.md` — 定刻に Mac を起こす pmset 設定（別系統）

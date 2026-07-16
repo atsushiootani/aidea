@@ -1,3 +1,14 @@
+---
+title: Rules
+description: コードを書くときに常に守る (Always) / 立ち止まる (Confirm First) / 絶対やらない (Never) ルール集
+derived_from: []
+syncs_with: []
+impacts: []
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-24
+---
+
 # Rules
 
 コードを書くときに **常に守る / 立ち止まる / 絶対やらない** ルール。

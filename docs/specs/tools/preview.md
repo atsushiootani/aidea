@@ -14,13 +14,12 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-07-04
+last_updated: 2026-07-13
 ---
 
 # Tool 仕様: Preview
 
-ファイルを読み取り専用で表示する Tool。Kit や Filer から `SessionRegistry.openPreview(for:title:)` 経由で呼ばれる。
-実装: `Aidea/Sessions/Preview/` と `Aidea/Views/Sessions/Preview/` 配下。
+ファイルを読み取り専用で表示する Tool。Kit や Filer から共通の Preview 起動経路で開かれる。
 
 概念モデルは [sessions/ui-rules.md#概念モデル](../sessions/ui-rules.md#概念モデル) / [glossary.md](../glossary.md) を参照。
 Session 内部状態は [sessions/preview.md](../sessions/preview.md) を参照。
@@ -32,18 +31,18 @@ Session 内部状態は [sessions/preview.md](../sessions/preview.md) を参照�
 
 - Preview Session は 1 つのファイルを表示する
 - ファイルの種別に応じて **コンテンツハンドラ**を切り替える (同じ Preview Session で複数の種別を透過的に扱う)
-- タブタイトルは `PreviewSessionState.title` があればそれ、無ければ URL の最終要素
+- タブタイトルは呼び出し元が指定したタイトルがあればそれ、無ければ URL の最終要素
 - Preview は Window 内に複数インスタンス同時存在可
 
 ## ファイル種別とコンテンツハンドラ
 
 | 拡張子 / 条件 | ハンドラ | 状態 |
 |---|---|---|
-| `.md` / `.markdown` | `MarkdownPreview` (軽量 SwiftUI パーサ) | 実装済 |
-| `.png` `.jpg` `.jpeg` `.gif` `.heic` `.webp` `.bmp` | `NSImage` + `Image(nsImage:)` | 実装済 |
-| `.mp4` `.mov` `.m4v` `.mkv` `.avi` | `VideoPreview` (AVKit プレーヤー) | 実装済 |
-| `.drawio.svg` / `.drawio` | `DrawioPreview` (後述) | 実装済 |
-| テキスト全般 (バイナリ判定で NUL を含まない) | `NSTextPreview` (NSTextView ラッパ) | 実装済 |
+| `.md` / `.markdown` | Markdown プレビュー (外部依存なしの軽量パーサ) | 実装済 |
+| `.png` `.jpg` `.jpeg` `.gif` `.heic` `.webp` `.bmp` | 画像表示 (ネイティブ画像ロード) | 実装済 |
+| `.mp4` `.mov` `.m4v` `.mkv` `.avi` | 動画プレーヤー (AVKit) | 実装済 |
+| `.drawio.svg` / `.drawio` | drawio プレビュー (後述) | 実装済 |
+| テキスト全般 (バイナリ判定で NUL を含まない) | テキスト表示 (NSTextView ベース) | 実装済 |
 | サイズ > 1MB | "ファイルが大きすぎます" メッセージ | 実装済 |
 | バイナリ (NUL を含む) | "プレビュー非対応のバイナリ" メッセージ | 実装済 |
 
@@ -52,15 +51,15 @@ Session 内部状態は [sessions/preview.md](../sessions/preview.md) を参照�
 ## 機能
 
 ### openFile — ファイルを開く
-- `SessionRegistry.openPreview(for:title:)` 経由で呼ばれる
-- state.url を更新 → ハンドラが自動判定
-- 既存 Preview に同じ URL がある場合は新規作成せずアクティブ化 (openPreview が dedupe)
+- 共通の Preview 起動経路から呼ばれる
+- 表示対象 URL を更新すると、種別に応じたコンテンツハンドラが自動判定される
+- 既存 Preview に同じ URL がある場合は新規作成せずアクティブ化 (起動経路側が dedupe する)
 - 詳細は [sessions/active-session.md#preview-を開くときの呼び出し規約](../sessions/active-session.md#preview-を開くときの呼び出し規約) を参照
 
 ### renderMarkdown — Markdown を見やすく表示
-- `.md` / `.markdown` を `MarkdownPreview` で表示
+- `.md` / `.markdown` を Markdown プレビューで表示
 - 見出し (`# ~ ####`) / コードブロック / Mermaid 図 / 箇条書き / 水平線 / frontmatter / インライン (bold・italic・リンク・`code`) をサポート
-- 外部依存なし (SwiftUI `Text(.init(String))` のネイティブ Markdown に委譲)
+- 外部依存なし (インライン装飾は SwiftUI ネイティブの Markdown 解釈に委譲)
 
 #### runShellScript — シェルスクリプトコードブロックの実行
 
@@ -74,14 +73,14 @@ Session 内部状態は [sessions/preview.md](../sessions/preview.md) を参照�
 #### 見出し内インラインコード
 
 - 見出し行 (`` # ~ #### ``) 内のバッククォートコードスパン (`` `code` ``) は等幅フォントで表示する
-- 見出しの文字サイズ・ウェイトはそのままに、コードスパン部分のみ `monospaced` デザインを適用する
-- コードスパン部分には薄いグレー背景 (`Color.secondary.opacity(0.15)`) と角丸 (radius 3) を付与し、インラインコードブロックと視覚的に一貫したスタイルにする
+- 見出しの文字サイズ・ウェイトはそのままに、コードスパン部分のみ等幅デザインを適用する
+- コードスパン部分には薄いグレー背景と角丸 (radius 3) を付与し、インラインコードブロックと視覚的に一貫したスタイルにする
 - 目次 (ToC) 表示では、バッククォート記号を除いたプレーンテキストで表示する
 
 #### frontmatter 表示
 
-- フォント: 本文と同サイズ (`.body`) のモノスペースフォント
-- 背景: `Color.secondary.opacity(0.08)` のラウンドコーナーブロック
+- フォント: 本文と同サイズのモノスペースフォント
+- 背景: 薄いグレーのラウンドコーナーブロック
 - YAML 行を `key: value` および配列項目 `  - value` の形式で行ごとに解析する
 - **ファイルパスのクリック**: 値がローカルファイルパスと判定される場合 (`/` を含み `http` / `[` / `{` で始まらない) はリンクとして表示し、タップすると隣タブで Preview が開く
 - パス解決順: ① ファイルの親ディレクトリからの相対パス → ② 親を順にさかのぼって最初に一致するパス (上限 10 段) → 見つからなければリンク非表示
@@ -89,36 +88,35 @@ Session 内部状態は [sessions/preview.md](../sessions/preview.md) を参照�
 #### Mermaid 図の表示
 
 - Markdown 内の ` ```mermaid ... ``` ` ブロックを Mermaid 図として描画する
-- **view モード**: `MermaidView` (WKWebView + CDN の Mermaid.js) でレンダリング。描画完了後に高さを自動調整
+- **view モード**: WKWebView + CDN の Mermaid.js でレンダリング。描画完了後に高さを自動調整
 - **edit モード**: 通常のコードブロックとして表示 (生テキスト)
 - パース失敗時はエラーメッセージを赤文字で表示
 - ネットワーク接続が必要 (drawio embed と同様、オフライン対応は将来検討)
-- 実装: `MermaidView` (WKWebView + Mermaid.js)
 
 #### view / edit モード切替 UI
 
-Markdown は `MarkdownContainer` で **view / edit の 2 モード**を扱う。右上にフローティングで **アイコンのみのセグメントコントロール** を配置し、ユーザーはワンタップで切り替えられる。
+Markdown は **view / edit の 2 モード**を持つ。右上にフローティングで **アイコンのみのセグメントコントロール** を配置し、ユーザーはワンタップで切り替えられる。
 
 | モード | SF Symbols | 意味 |
 |---|---|---|
-| **view** | `eye` | プレビュー表示 (純 SwiftUI `MarkdownPreview`) |
-| **edit** | `chevron.left.forwardslash.chevron.right` | 編集 (NSTextView の `EditableTextView`) |
+| **view** | `eye` | プレビュー表示 |
+| **edit** | `chevron.left.forwardslash.chevron.right` | 編集 (NSTextView ベースのエディタ) |
 
-- **表示形式**: SwiftUI `Picker` の `.segmented` スタイル。ラベルはアイコンのみ (テキストなし) で `Image(systemName:)` を使う
-- **操作**: セグメントタップで即座にモード切替。edit → view に戻すときは、未保存の draftText を **切替直前に flush 保存** してから view に遷移する (500ms デバウンスの自動保存と同じ経路)
+- **表示形式**: セグメントコントロール。ラベルはアイコンのみ (テキストなし)
+- **操作**: セグメントタップで即座にモード切替。edit → view に戻すときは、未保存の編集テキストを **切替直前に flush 保存** してから view に遷移する (500ms デバウンスの自動保存と同じ経路)
 - **配置**: 既存の右上フローティング位置 (padding top 10 / trailing 22) を維持
 - **キーボード**: view モードで `E` を押すと edit に切替 (セグメントボタンと等価)。既存仕様維持
-- **翻訳「日本語」ボタン**: 従来どおりセグメントコントロールの下に配置される (表示条件は `mode == .view && isEnglish && !isCachedFile`)
+- **翻訳「日本語」ボタン**: 従来どおりセグメントコントロールの下に配置される (view モードかつ英語判定かつ翻訳キャッシュファイルでないときに表示)
 
 #### 編集中のテキスト保護 (issue #125)
 
-edit モードの `EditableTextView` (NSTextView ラッパ) は、SwiftUI の再レンダリングから編集中のテキストを保護する。
+edit モードのエディタは、外部要因の再描画から編集中のテキストを保護する。
 
-- **IME 未確定文字列の保護**: 日本語入力の変換中 (`hasMarkedText()`) は、`updateNSView` で NSTextView の storage に一切触れない。未確定文字列は binding に含まれないため「storage ≠ binding」が変換中は常に成立し、無条件に同期すると外部要因の再レンダリング (500ms 自動保存による state 更新など) のたびに未確定文字列が破棄される
-- **binding 往復の巻き戻し防止**: エディタ発の変更が binding を往復して `updateNSView` に戻ってきただけの場合は同期しない (Coordinator が最後に binding へ書いた値を記憶して比較)。連続入力中に古い render の値で storage を巻き戻さない
-- **未確定文字列は保存しない**: 変換中のテキストは binding に伝搬しない (= 自動保存にも乗らない)。確定・取消時の `textDidChange` で確定分だけが伝搬される
+- **IME 未確定文字列の保護**: 日本語入力の変換中は、外部要因の再描画 (500ms 自動保存による状態更新など) が起きても未確定文字列を破棄しない
+- **巻き戻し防止**: 連続入力中に、古い描画サイクルの値でエディタ内容を巻き戻さない
+- **未確定文字列は保存しない**: 変換中のテキストは自動保存に乗らない。確定・取消時に確定分だけが保存対象になる
 
-**Never**: `updateNSView` で IME 変換中 (`hasMarkedText()`) の NSTextView の storage を書き換えない。
+**Never**: IME 変換中にエディタのテキストを外部から書き換えない。
 
 #### キャッシュファイル (`.aidea/ja/`) の扱い
 
@@ -130,17 +128,17 @@ edit モードの `EditableTextView` (NSTextView ラッパ) は、SwiftUI の再
 
 #### フロー
 
-1. `LanguageDetector` が先頭 1000 文字をサンプルし英語と判定 → 右上に「日本語」ボタンを表示
-2. ボタン押下 → `TranslationService` が `TranslationCache` でキャッシュの有無と鮮度 (mtime 比較) を確認
+1. 言語判定が先頭 1000 文字をサンプルし英語と判定 → 右上に「日本語」ボタンを表示
+2. ボタン押下 → 翻訳処理がキャッシュの有無と鮮度 (mtime 比較) を確認
 3. キャッシュが新鮮ならそのまま表示。古い or 無ければ Claude API で SSE ストリーミング翻訳
-4. `ClaudeTranslator` が `claude-haiku-4-5-20251001` に `stream: true` でリクエスト送信 (Markdown 構造・コード識別子は保持)
+4. Claude API の `claude-haiku-4-5-20251001` に `stream: true` でリクエスト送信 (Markdown 構造・コード識別子は保持)
 5. チャンク受信のたびに `.aidea/ja/<相対パス>/<filename>` へ累積テキストを書き込む
-6. 最初のチャンク受信時に sibling タブを開く → FileWatcher がその後の書き込みを検知して表示を逐次更新
+6. 最初のチャンク受信時に sibling タブを開く → ファイル監視 (FSEvents) がその後の書き込みを検知して表示を逐次更新
 7. 翻訳完了 (ストリーム終端) 後にボタン状態を完了に更新する
 
 #### ストリーミング (SSE)
 
-- `URLSession.bytes(for:)` で行単位に SSE イベントを受信する (タイムアウト不要)
+- 行単位に SSE イベントをストリーミング受信する (タイムアウト不要)
 - `data: {...}` 行のみ処理し、`type == "content_block_delta"` かつ `delta.type == "text_delta"` の `delta.text` を取り出す
 - エラー終了時はキャッシュファイルを削除して不完全なキャッシュを残さない
 
@@ -152,77 +150,67 @@ edit モードの `EditableTextView` (NSTextView ラッパ) は、SwiftUI の再
 #### API キー設定
 
 - Anthropic API キーを **macOS Keychain** に保存 (サービス: `com.aidea.anthropic-api-key`)
-- 初回翻訳時またはメニュー「Aidea → API キー設定...」で NSSecureTextField ダイアログを表示
-
-#### 実装コンポーネント
-
-| コンポーネント | 役割 |
-|---|---|
-| `TranslationService` | キャッシュ確認 → API 呼び出し → 保存のオーケストレーション |
-| `ClaudeTranslator` | Claude API との通信、API キー管理 |
-| `TranslationCache` | `.aidea/ja/` のキャッシュ管理、mtime 鮮度判定 |
-| `LanguageDetector` | 言語識別による英語判定 |
+- 初回翻訳時またはメニュー「Aidea → API キー設定...」でセキュアテキスト入力ダイアログを表示
 
 #### UI 表示箇所
 
-- `MarkdownContainer` — Markdown 表示時の右上フローティングボタン
-- `PreviewSessionView` — テキストファイル表示時の翻訳ボタン
+- Markdown 表示時: 右上フローティングの「日本語」ボタン
+- テキストファイル表示時: 翻訳ボタン
 
 ### manualReload — 右クリックからの手動リロード (issue #241)
 
 右クリックメニューの「リロード」で、表示中のファイルをディスクから明示的に再読み込みする。
 自動リロード (FSEvents) が効かないケース (動画 / drawio の取りこぼし等) や、ユーザが任意に更新したいときの手段。
 
-- `PreviewSessionState.reloadToken: Int` を `requestReload()` でインクリメントし、各プレビュー子ビューが
-  `state.reloadToken` の変化を観測して再読み込みする (全コンテンツ種別: テキスト / 画像 / Markdown / Drawio / 動画)
+- リロード要求を発行すると、各プレビュー子ビューがそれを観測して再読み込みする (全コンテンツ種別: テキスト / 画像 / Markdown / Drawio / 動画)
 - Markdown / Drawio が **edit モードのときは無視**する (未保存の編集を破棄しないため。自動リロードと同じ方針)
-- 対象は `preview.url` を持つ Preview タブのみ (メニュー自体が Preview タブにしか出ない)
+- 対象は表示対象ファイル (url) を持つ Preview タブのみ (メニュー自体が Preview タブにしか出ない)
 
 ### autoReload — 外部変更の自動再読み込み
 
 プレビュー表示中のファイルが外部 (Claude など) によって変更されたとき、プレビュー表示を自動的に更新する。
 
-- ファイルの変更は **FSEvents** で検知する (実装: 既存の `FileWatcher` を流用)
-- 監視パス・比較対象は `resolvingSymlinksInPath()` で解決した実パスに揃える。FSEvents はシンボリックリンクを
+- ファイルの変更は **FSEvents** で検知する
+- 監視パス・比較対象はシンボリックリンクを解決した実パスに揃える。FSEvents はシンボリックリンクを
   解決した実パスで変更を通知するため、揃えないとリンク経由で開いたファイル (issue #119) の変更が
   検知できない (issue #254)
 - 変更を検知したら直ちにファイルを再読み込みしてプレビューを更新する
-- **編集モード中は更新しない**: `MarkdownContainer` / `DrawioPreview` が edit モードのときはスキップし、view モードに戻ったタイミングで反映される
-- 対象: Markdown (`MarkdownContainer`) / Drawio (`DrawioPreview`) の **view モード**、およびテキスト / 画像ファイル (`NSTextPreview` / `NSImage`)
-- Drawio は **view モードのみ**自動リロードする。edit モード (embed.diagrams.net エディタ) は未保存の外部状態を持つため対象外 (Markdown の view/edit と同じ作法)
-- 動画 (`VideoPreview`) は自動リロード対象外 (手動リロードのみ)
+- **編集モード中は更新しない**: Markdown / drawio が edit モードのときはスキップし、view モードに戻ったタイミングで反映される
+- 対象: Markdown / drawio の **view モード**、およびテキスト / 画像ファイル
+- drawio は **view モードのみ**自動リロードする。edit モード (embed.diagrams.net エディタ) は未保存の外部状態を持つため対象外 (Markdown の view/edit と同じ作法)
+- 動画は自動リロード対象外 (手動リロードのみ)
 
 ### tabHoverTooltip — タブホバー時のパス表示
 
 Preview タブにマウスカーソルを合わせると、ツールチップでファイルのパスを表示する。
 
-- `workspace.projectRoot` が設定されており `preview.url` がその配下にある場合: プロジェクトルートからの相対パスを表示 (例: `docs/specs/tools/preview.md`)
-- `preview.url` が projectRoot 配下にない場合、または projectRoot 未設定の場合: 絶対パスを表示
-- `preview.url` が nil の場合: ツールチップなし
+- projectRoot が設定されており表示対象ファイルがその配下にある場合: プロジェクトルートからの相対パスを表示 (例: `docs/specs/tools/preview.md`)
+- 表示対象ファイルが projectRoot 配下にない場合、または projectRoot 未設定の場合: 絶対パスを表示
+- 表示対象ファイルが無い場合: ツールチップなし
 
 ### タブ右クリックメニュー (issue #238)
 
-Preview タブを右クリックすると、コンテキストメニューを表示する。対象は `preview.url` を持つ Preview タブのみで、
+Preview タブを右クリックすると、コンテキストメニューを表示する。対象は表示対象ファイル (url) を持つ Preview タブのみで、
 url が無いタブ・Preview 以外のタブにはメニューを出さない (空メニューを表示しない)。共通の右クリック規約は
 [sessions/ui-rules.md#右クリックコンテキストメニュー](../sessions/ui-rules.md#右クリック・コンテキストメニュー) に従う。
 
 | 項目 | 動作 |
 |---|---|
-| タブ名を変更 | タブのインラインリネームを開始する (タブのダブルクリックと同じ。`startRename`) |
-| リロード | 表示中のファイルをディスクから再読み込みする (後述「手動リロード」) |
-| ファイル名をコピー | `url.lastPathComponent` をクリップボードにコピー |
+| タブ名を変更 | タブのインラインリネームを開始する (タブのダブルクリックと同じ) |
+| リロード | 表示中のファイルをディスクから再読み込みする ([manualReload](#manualreload--右クリックからの手動リロード-issue-241)) |
+| ファイル名をコピー | ファイル名 (URL の最終要素) をクリップボードにコピー |
 | プロジェクト相対パスをコピー | projectRoot 相対パス (ツールチップと同じ算出) をコピー。projectRoot 外/未設定なら絶対パス |
-| 絶対パスをコピー | `url.standardizedFileURL.path` をコピー |
+| 絶対パスをコピー | 正規化した絶対パスをコピー |
 | ファイラで選択 | Filer セッションで当該ファイルを選択し、**スクロール位置を中央に寄せて** フォーカスする |
-| タブを閉じる | このタブを閉じる (`closeTab`) |
+| タブを閉じる | このタブを閉じる (× ボタンと同じ) |
 
-- クリップボード書き込みは `NSPasteboard.general` を `clearContents()` してから `setString(_:forType: .string)`
-- 「ファイラで選択」は `SessionRegistry.revealInFiler(_:)` 経由で Filer の `FileTreeViewController.focusOnURL(_:centered:)` を呼ぶ。
-  親ディレクトリを展開して対象行を選択し、`scrollRowToVisible` ではなく**中央寄せスクロール**で表示する。
+- クリップボードへは文字列としてコピーする (既存内容をクリアしてから書き込む)
+- 「ファイラで選択」は Filer の外部エントリポイント ([tools/filer.md#revealinfiler--外部からのファイル選択-issue-238](./filer.md#revealinfiler--外部からのファイル選択-issue-238)) を呼ぶ。
+  親ディレクトリを展開して対象行を選択し、「見える位置まで」ではなく**中央寄せスクロール**で表示する。
   Filer セッションが存在しない場合は何もしない
 
 ### renderImage — 画像表示
-- 対応拡張子を `NSImage` でロードして `ScrollView` + `Image(nsImage:)` で表示
+- 対応拡張子をネイティブ画像としてロードし、スクロール可能なビューで表示
 
 ### renderVideo — 動画再生
 
@@ -231,7 +219,7 @@ url が無いタブ・Preview 以外のタブにはメニューを出さない (
 - 再生・停止・シークバー・音量などの標準コントロールを表示する
 - ファイルを開いた時点で再生を開始しない (ユーザーが再生ボタンを押してから再生)
 - タブを切り替えるなどビューが非表示になったとき、再生を自動停止する
-- 動画ファイルはサイズ制限 (1 MB) および バイナリ判定を適用しない (ファイルは直接 AVPlayer へ渡す)
+- 動画ファイルはサイズ制限 (1 MB) および バイナリ判定を適用しない (ファイルは直接プレーヤーへ渡す)
 
 ### renderDrawio — drawio 図の表示・編集
 
@@ -239,13 +227,13 @@ drawio ファイル (`.drawio.svg` / `.drawio`) を **プレビューと編集�
 Obsidian の drawio プラグインと同等の UX を目指す。
 
 #### プレビューモード (初期表示)
-- `.drawio.svg` の場合: SVG 部分を `NSImage` で表示 (drawio ファイルはそのまま有効な SVG)
+- `.drawio.svg` の場合: SVG 部分をネイティブ画像として表示 (drawio ファイルはそのまま有効な SVG)
 - `.drawio` の場合: XML のみなので SVG 表現がない → **初回は WKWebView で drawio エディタを隠れた状態で動かして SVG を export** してキャッシュ表示
   (MVP では `.drawio` サポートは後回し、まず `.drawio.svg` を優先)
 - 右上に **`✎ Edit` ボタン**
 
 #### 編集モード (Edit ボタン押下)
-- `WKWebView` に **`https://embed.diagrams.net/?embed=1&ui=dark&spin=1&proto=json`** をロード
+- WKWebView に **`https://embed.diagrams.net/?embed=1&ui=dark&spin=1&proto=json`** をロード
 - `postMessage` で drawio に現ファイルの XML を送る (action: `load`)
 - drawio エディタが表示され、ユーザーが自由に編集できる
 - 上部に **`✓ 保存` / `✗ キャンセル`** ボタン
@@ -291,14 +279,10 @@ aidea://open?path=%2FUsers%2Fme%2F.claude%2Fprojects%2Faidea%2Fabc123.jsonl
 #### 動作
 
 - Aidea がフォアグラウンドでなければ前面に出る
-- `path` パラメータのファイルを Preview セッションで開く (既存の `openPreview` ルーティングに準拠)
+- `path` パラメータのファイルを Preview セッションで開く (既存の Preview 起動経路のルーティングに準拠)
 - 同一 URL の Preview が既に存在する場合はアクティブ化 (dedupe)
 - `path` パラメータが欠如・不正の場合は何もしない (エラー表示なし)
-
-#### 実装ポイント
-
-- `AideaApp.swift` の `WindowGroup` に `.onOpenURL { url in ... }` を追加
-- URL スキームは `Info.plist` の `CFBundleURLTypes` で登録 (スキーム名: `aidea`)
+- URL スキームは `Info.plist` の `CFBundleURLTypes` で登録する (スキーム名: `aidea`)
 - `file://` URL を直接受信した場合も同様に Preview で開く
 
 #### Claude Code トランスクリプトの設定方法
@@ -313,19 +297,9 @@ open "aidea://open?path=$(python3 -c "import urllib.parse,sys; print(urllib.pars
 
 ---
 
-## 実装メモ
+## 依存
 
-### 既存コード
-- `PreviewSessionState.url: URL?` `title: String?` を保持
-- `PreviewSessionView` が state.url の拡張子を見て SwiftUI 分岐
-
-### drawio 実装コンポーネント
-- `DrawioPreview` — View/Edit モード切替、保存/キャンセル UI
-- `DrawioStaticView` — `.drawio.svg` の静的表示 / `.drawio` の chrome=0 レンダリング
-- `DrawioEditor` — `embed.diagrams.net` embed mode の WKWebView ラッパ、postMessage プロトコル仲介
-
-### 依存追加の有無
-- **外部依存追加なし** (embed.diagrams.net をオンラインで使用、WebKit は既に使用中)
+- **外部依存追加なし** (embed.diagrams.net / Mermaid.js はオンライン CDN で使用、WebKit は既に使用中)
 - オフライン対応は将来検討
 
 ---

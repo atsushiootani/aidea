@@ -17,7 +17,7 @@ impacts:
   - docs/specs/sessions/web.md
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-23
+last_updated: 2026-07-13
 ---
 
 # Frontchannel: Scene
@@ -65,7 +65,7 @@ Claude セッションは Companion と 1:1 で紐付くため、Scene 識別子
 
 ## 永続化
 
-`workspace.json` v7 の `recommends` フィールドに Scene 識別子 → `SceneConfig` のマッピングを保存する。詳細は [../aspects/persistence.md](../aspects/persistence.md) を参照。
+`workspace.json` v7 の `recommends` フィールドに、Scene 識別子 → レコメンド設定 (プロンプト一覧 + 既定 Companion index) のマッピングを保存する。詳細は [../aspects/persistence.md](../aspects/persistence.md) を参照。
 
 ```json
 {
@@ -77,11 +77,11 @@ Claude セッションは Companion と 1:1 で紐付くため、Scene 識別子
 
 ### 初期値の SSoT
 
-各 Scene のデフォルトプロンプトは **Bundle 同梱の `Aidea/Resources/default-workspace.json` の `recommends` フィールド** を唯一のソースとする。Swift コード側 (SessionState 等) にハードコードしない。
+各 Scene のデフォルトプロンプトは **アプリ同梱の `default-workspace.json` の `recommends` フィールド** を唯一のソースとする。コード側にハードコードしない。
 
 新しい Scene を追加する手順:
 
-1. 該当 SessionState の `currentScene()` で識別子を返すようにする
+1. 該当 Session の状態が新しい Scene 識別子を返すようにする ([SessionState プロトコル](#sessionstate-プロトコル))
 2. `default-workspace.json` の `recommends` にエントリを追加する
 
 ---
@@ -92,12 +92,12 @@ Claude セッションは Companion と 1:1 で紐付くため、Scene 識別子
    - 起動時に workspace.json が無い場合は `default-workspace.json` から流入したエントリが使われる
 2. エントリが無い Scene ではレコメンドなし (Cmd+Enter 無反応)
 
-ハードコードフォールバックは持たない。Scene ごとの初期値はすべて `default-workspace.json` 経由で `RecommendStore` に流入する。
+ハードコードフォールバックは持たない。Scene ごとの初期値はすべて `default-workspace.json` 経由でレコメンド設定ストアに流入する。
 
 ---
 
 ## SessionState プロトコル
 
-各ビューの SessionState は `currentScene()` を実装し、現在の Scene 識別子 (`String?`) を返す。
+各 Session の状態 (SessionState) は「現在の Scene 識別子を返す」責務を持つ。Scene を持たない Session は識別子を返さない (= レコメンド無反応)。
 
-`recommendedPrompts()` は廃止 (初期値の二重管理を防ぐため)。RecommendState は `currentScene()` で識別子を取得し、RecommendStore から対応するプロンプトを引く。
+レコメンドプロンプト自体を Session 側に持たせる方式は廃止 (初期値の二重管理を防ぐため)。レコメンド UI は Session から Scene 識別子だけを取得し、レコメンド設定ストアから対応するプロンプトを引く。

@@ -13,7 +13,7 @@ impacts:
   - docs/specs/companions/*
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-21
+last_updated: 2026-07-13
 ---
 
 # Session UI ルール
@@ -39,11 +39,11 @@ Window
 
 用語の定義は [../glossary.md](../glossary.md) を参照。
 アクティブ Session の切替・履歴・Filer ダブルクリック時の挙動は [active-session.md](./active-session.md) を参照。
-各 Tool の `SessionState` 実装は本ディレクトリの per-tool ファイル ([filer.md](./filer.md) / [kit.md](./kit.md) / [terminal.md](./terminal.md) / [claude.md](./claude.md) / [web.md](./web.md) / [preview.md](./preview.md) / [git.md](./git.md) / [git-diff.md](./git-diff.md)) を参照。
+各 Tool の SessionState の詳細は本ディレクトリの per-tool ファイル ([filer.md](./filer.md) / [kit.md](./kit.md) / [terminal.md](./terminal.md) / [claude.md](./claude.md) / [web.md](./web.md) / [preview.md](./preview.md) / [git.md](./git.md) / [git-diff.md](./git-diff.md)) を参照。
 
 ### シングルトン制約
 
-以下の Tool は Window 全体で **1 つだけ** に制限される (`PaneView` の `+` メニューで条件付き非表示)。
+以下の Tool は Window 全体で **1 つだけ** に制限される (ペインの `+` メニューで条件付き非表示)。
 
 - **`filer`** — ファイラは Window につき 1 つ
 - **`git`** — Git ツールも Window につき 1 つ
@@ -59,9 +59,9 @@ Window
 - **Enter** で確定 / **Esc** でキャンセル / フォーカス喪失で確定
 - **空文字 (空白のみ含む) で確定するとカスタム名を解除** し、デフォルトの導出名
   (Preview のタイトル / Web の URL / Claude のコンパニオン名 / tool 名) に戻る
-- カスタム名は `displayLabel` の **最優先**。Web タブの URL 追従 ([../tools/web.md#タブ名](../tools/web.md#タブ名))
+- カスタム名はタブ表示名の導出で **最優先**。Web タブの URL 追従 ([../tools/web.md#タブ名](../tools/web.md#タブ名))
   よりもカスタム名が優先される
-- 保存先は `SessionRegistry.customTitles: [SessionID: String]`。タブクローズ (destroySession) で破棄する
+- カスタム名は SessionRegistry が SessionID ごとに保持し、タブクローズ (Session 破棄) で破棄する
 - `workspace.json` に永続化され、再起動後も保持される ([../aspects/persistence.md](../aspects/persistence.md))
 - 1 クリック目のタブアクティブ化は従来通り即時発火する (ダブルクリックの 1 打目でアクティブ化、
   2 打目で編集開始)
@@ -71,11 +71,10 @@ Window
 ## 右クリック・コンテキストメニュー
 
 - **各 Session は、そのツールの主要機能を右クリックで呼び出せるようにする**
-  - NSOutlineView など AppKit を直接使う Session は `menu(for:)` をオーバーライド
-  - SwiftUI 主体の Session は `.contextMenu` モディファイアを使う
+  (AppKit を直接使う Session でも SwiftUI 主体の Session でも、それぞれの標準のコンテキストメニュー機構で提供する)
 - **右クリック位置の項目が未選択なら、まずその項目を選択してからメニューを表示する**
 - メニュー項目はキーボードショートカットと 1:1 で対応させ、メニュー項目のタイトルに同じショートカット (`⏎` `⌘N` `⌫` 等) を併記する
-- メニュー項目の有効/無効は現在の選択状態に応じて切り替える (`NSMenu.autoenablesItems = false` + 明示的な `isEnabled`)
+- メニュー項目の有効/無効は自動判定に任せず、現在の選択状態に応じて明示的に切り替える
 
 ---
 
@@ -92,16 +91,16 @@ Window
 
 リスト/ツリーを扱うすべての Session は、以下のキーバインディングを必ずサポートする。
 
-| キー | 動作 | マップ先 |
-|---|---|---|
-| **Ctrl + P** | 上へ移動 | `moveUp` |
-| **Ctrl + N** | 下へ移動 | `moveDown` |
-| **Ctrl + F** | 右へ移動 | `moveRight` |
-| **Ctrl + B** | 左へ移動 | `moveLeft` |
-| **Ctrl + V** | ページダウン | `pageDown` |
-| **Ctrl + Z** | ページアップ | `pageUp` |
+| キー | 動作 |
+|---|---|
+| **Ctrl + P** | 上へ移動 |
+| **Ctrl + N** | 下へ移動 |
+| **Ctrl + F** | 右へ移動 |
+| **Ctrl + B** | 左へ移動 |
+| **Ctrl + V** | ページダウン |
+| **Ctrl + Z** | ページアップ |
 
-`EmacsNavigation` ヘルパを使い、NSOutlineView / NSTableView サブクラスの `keyDown` 処理に統合する。SwiftUI 主体の Session も同等のショートカットを提供する。
+キーから標準のカーソル移動操作への変換は共通のナビゲーションヘルパに集約し、リスト/ツリー系 Session のキー処理に統合する。SwiftUI 主体の Session も同等のショートカットを提供する。
 
 ---
 

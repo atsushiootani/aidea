@@ -1,6 +1,6 @@
 ---
 title: Frontchannels (Aidea → Claude 通信) インデックス
-description: PTY send 経由の Aidea → Claude 通信と Scene ベースのレコメンド解決仕様のインデックス
+description: PTY 送信経由の Aidea → Claude 通信と Scene ベースのレコメンド解決仕様のインデックス
 derived_from:
   - docs/LAYOUT.md
 syncs_with: []
@@ -8,12 +8,12 @@ impacts:
   - docs/specs/frontchannels/*
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-17
+last_updated: 2026-07-13
 ---
 
 # Frontchannels (Aidea → Claude 通信) インデックス
 
-Aidea が PTY の `send(txt:)` 経由で Claude にプロンプトを送る通信チャネル。Backchannel の逆方向。
+Aidea が PTY 送信経由で Claude にプロンプトを送る通信チャネル。Backchannel の逆方向。
 
 ## ファイル一覧
 
@@ -21,7 +21,7 @@ Aidea が PTY の `send(txt:)` 経由で Claude にプロンプトを送る通�
 |---|---|
 | [frontchannel.md](./frontchannel.md) | PTY への送信メカニズム全般 |
 | [scene.md](./scene.md) | レコメンドプロンプトを解決する Scene 識別子の仕様 |
-| [voice-input.md](./voice-input.md) | AppHeader 🎤 ボタンから音声入力ダイアログ経由で active Claude へ送信する入力経路 |
+| [voice-input.md](./voice-input.md) | アプリヘッダの 🎤 ボタンから音声入力ダイアログ経由でアクティブな Claude へ送信する入力経路 |
 
 ## 関連
 

@@ -12,7 +12,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-06-30
+last_updated: 2026-07-13
 ---
 
 # Backchannel: リマインド
@@ -44,9 +44,9 @@ last_updated: 2026-06-30
 3. Companion: .aidea/backchannels/<N>/remind-{YYYYMMDDTHHmmss}.txt を書き出す
    - {YYYYMMDDTHHmmss} はトリガ時刻 (= 発火時刻)
    - ファイル内容は speech ファイルと同じ形式
-4. Aidea (RemindWatcher) が FSEvents で検知 → RemindScheduler に登録
-5. RemindScheduler が指定時刻まで待機し、トリガ時刻に SpeechQueue へ投入
-6. SpeechQueue が VOICEVOX で読み上げ (speech ファイルと同じ再生経路)
+4. Aidea (remind 監視) が FSEvents で検知 → 発火スケジューラに登録
+5. 発火スケジューラが指定時刻まで待機し、トリガ時刻に音声キューへ投入
+6. 音声キューが VOICEVOX で読み上げ (speech ファイルと同じ再生経路)
 7. 発火後、Aidea が当該ファイルを remind-{ts}.fired.txt にリネーム
 ```
 
@@ -120,7 +120,7 @@ remind-20260527T135900.fired.txt   ← 発火後
 
 ### 監視パターン
 
-Aidea (RemindWatcher) は `.aidea/backchannels/` 配下を FSEvents で再帰監視し、以下を満たすファイルのみを処理する。
+Aidea (remind 監視) は `.aidea/backchannels/` 配下を FSEvents で再帰監視し、以下を満たすファイルのみを処理する。
 
 - 親ディレクトリ名が `0..8` の整数
 - ファイル名が **厳密な** 正規表現 `^remind-\d{8}T\d{6}\.txt$` にマッチする
@@ -142,13 +142,13 @@ Aidea (RemindWatcher) は `.aidea/backchannels/` 配下を FSEvents で再帰監
       (Aidea 起動前に発火予定だった場合の取りこぼし扱い)
 3. 発火時:
    - ファイル内容を読み取り、speech ファイルと同じパース処理を行う
-   - (speakerId?, companionIndex, text) を SpeechQueue に投入
+   - (スピーカーID?, companionIndex, テキスト) を音声キューに投入
    - 投入直後にファイル名を remind-{ts}.fired.txt にリネーム
 ```
 
 ### 起動時スキャン
 
-Aidea 起動時 (および `projectRoot` 切替時)、`.aidea/backchannels/<0..8>/` 配下を走査し、上記パターンに一致する全ファイルを **FSEvents 検知時と同じロジック** で処理する。これにより前回終了時に未発火だったタイマーを復元する。
+Aidea 起動時 (およびプロジェクトルート切替時)、`.aidea/backchannels/<0..8>/` 配下を走査し、上記パターンに一致する全ファイルを **FSEvents 検知時と同じロジック** で処理する。これにより前回終了時に未発火だったタイマーを復元する。
 
 ---
 
@@ -182,19 +182,17 @@ Aidea が初回セットアップ時に Bundle (`Backchannels/remind.md`) から
 
 - ユーザが Finder / シェルで該当 `remind-*.txt` を削除する
 - Companion に「さっきのリマインドキャンセルして」と依頼すれば Companion が `rm` 相当の操作で削除する
-- Aidea (RemindScheduler) は FSEvents の削除イベントを検知し、登録済みタイマーを破棄する
+- Aidea (発火スケジューラ) は FSEvents の削除イベントを検知し、登録済みタイマーを破棄する
 
 ---
 
-## Aidea 側のコンポーネント
+## Aidea 側の役割分担
 
-| コンポーネント | 責務 |
+| 役割 | 責務 |
 |---|---|
-| **RemindWatcher** | `.aidea/backchannels/<0..8>/remind-{YYYYMMDDTHHmmss}.txt` の FSEvents 再帰監視。パターン検証 (厳密な正規表現) を行い、適格なファイルを RemindScheduler に渡す。起動時スキャンも担当する |
-| **RemindScheduler** | 検知ファイルのトリガ時刻まで待機し、時刻到達時に SpeechQueue へ投入してから `.fired` リネームを行う。ファイル削除イベントで該当タイマーを破棄する |
-| **SpeechQueue** | 既存。VOICEVOX 合成 → AVAudioPlayer 再生。リマインド由来か speech 由来かは区別せず、`companionIndex` 込みで投入される |
-
-実装ファイルの配置は `Services/Backchannel/Remind/` (Speech / Handoff / Output と同じレイアウト)。
+| **remind 監視** | `.aidea/backchannels/<0..8>/remind-{YYYYMMDDTHHmmss}.txt` の FSEvents 再帰監視。パターン検証 (厳密な正規表現) を行い、適格なファイルを発火スケジューラに渡す。起動時スキャンも担当する |
+| **発火スケジューラ** | 検知ファイルのトリガ時刻まで待機し、時刻到達時に音声キューへ投入してから `.fired` リネームを行う。ファイル削除イベントで該当タイマーを破棄する |
+| **音声キュー** | 既存 ([voicevox.md](./voicevox.md))。VOICEVOX 合成 → 音声プレイヤー再生。リマインド由来か speech 由来かは区別せず、companionIndex 込みで投入される |
 
 ---
 
@@ -205,10 +203,10 @@ Aidea が初回セットアップ時に Bundle (`Backchannels/remind.md`) から
 | ファイル名のタイムスタンプがパース不能 | 警告ログ、ファイルは放置 (`.fired` にもしない) |
 | トリガ時刻が過去 (起動時スキャン時など) | 警告ログ、`.fired` にリネーム、読み上げはしない |
 | ファイル内容が空 | 警告ログ、`.fired` にリネーム、読み上げはしない |
-| 読み上げ中に Aidea 終了 | 中断 (SpeechQueue が処理中だった分はキャンセル)。ファイルは `.fired` 状態 |
+| 読み上げ中に Aidea 終了 | 中断 (音声キューが処理中だった分はキャンセル)。ファイルは `.fired` 状態 |
 | トリガ時刻直前に Aidea 終了 | タイマー破棄。次回起動時の scan で「過去のリマインド」として `.fired` にされる (取りこぼし) |
-| リマインド機能 OFF (`RemindState.isEnabled == false`) | `RemindWatcher` 停止 + `RemindScheduler` のタイマー全破棄。発火しない。ファイルはそのまま (`.fired` リネームもしない)。ON 復帰時に再スキャンで取り込み |
-| 読み上げ機能 OFF (`SpeechState.isEnabled == false`) | `RemindScheduler` から `SpeechQueue` への投入は通常どおり行うが、`SpeechQueue` 側で再生がスキップされる ([voicevox.md の OFF 中の挙動](./voicevox.md#off-中の挙動) と同じ経路)。リマインドのタイマー発火自体は止めない |
+| リマインド機能 OFF | remind 監視の停止 + 発火スケジューラのタイマー全破棄。発火しない。ファイルはそのまま (`.fired` リネームもしない)。ON 復帰時に再スキャンで取り込み |
+| 読み上げ機能 OFF | 発火スケジューラから音声キューへの投入は通常どおり行うが、音声キュー側で再生がスキップされる ([voicevox.md の OFF 中の挙動](./voicevox.md#off-中の挙動) と同じ経路)。リマインドのタイマー発火自体は止めない |
 
 ---
 
@@ -220,11 +218,11 @@ Aidea が初回セットアップ時に Bundle (`Backchannels/remind.md`) から
 - 発火後はファイルを `.fired` リネームする (削除しない、ADR 0024)
 - `<companion-index>` は `0..8` の整数のみ有効。それ以外のパスは警告ログのみで無視
 - 監視は FSEvents で再帰的に行い、起動時に既存ファイルもスキャンする
-- 読み上げ経路は SpeechQueue に統一する (リマインド専用の再生パスを持たない)
+- 読み上げ経路は音声キューに統一する (リマインド専用の再生パスを持たない)
 - 読み上げ文とウィジェット表示文は独立して扱う。表示文行が無いファイルは表示文 = 読み上げ文にフォールバックする (旧書式互換)
 - リマインドファイルは書き出し元 Companion の `companion-index` ディレクトリに置き、その Companion として読み上げる (表情・読み上げ中インジケータも同じ扱い)
-- ヘッダ常駐 UI には「直近の予定 最大 3 件」(= `pendingReminds` 先頭 3 件) を縦並びで表示し、空のときは「（予定なし）」、機能 OFF 時は「（停止中）」を表示する。横幅は Pomodoro (`TimerView`) と同じ 146pt を上限とし、超過テキストは末尾 truncate する
-- リマインド機能 ON/OFF の状態変更は `RemindState.toggle()` を経由する (UI トグルから直接 `isEnabled` を書き換えない)
+- ヘッダ常駐 UI には「直近の予定 最大 3 件」(= 未発火リストの先頭 3 件) を縦並びで表示し、空のときは「（予定なし）」、機能 OFF 時は「（停止中）」を表示する。横幅は Pomodoro タイマーと同じ 146pt を上限とし、超過テキストは末尾 truncate する
+- リマインド機能 ON/OFF の状態変更は共通のトグル経路を通す (UI トグルから状態を直接書き換えない)
 
 ### Never
 
@@ -239,21 +237,20 @@ Aidea が初回セットアップ時に Bundle (`Backchannels/remind.md`) から
 
 ---
 
-## UI: RemindView (ヘッダ常駐)
+## UI: リマインドウィジェット (ヘッダ常駐)
 
 ### 配置
 
-`WidgetView` の `HStack` 内、`QuickMemoButton` の左隣に追加する。
+ヘッダのウィジェット領域内、クイックメモボタンの左隣に置く。
 
 ```
-WidgetView
-└─ HStack
-   ├─ RemindView         ← カレンダーアイコン + 直近最大 3 件 (幅上限 146pt)
-   ├─ QuickMemoButton    (✏️ クイックメモ)
-   └─ TimerView          (ポモドーロ)
+ウィジェット領域 (横並び)
+├─ リマインド          ← カレンダーアイコン + 直近最大 3 件 (幅上限 146pt)
+├─ クイックメモ        (✏️)
+└─ ポモドーロタイマー
 ```
 
-[../aspects/view-hierarchy.md](../aspects/view-hierarchy.md) の AppHeaderView 階層図も同期更新する。
+[../aspects/view-hierarchy.md](../aspects/view-hierarchy.md) のヘッダ階層図も同期更新する。
 
 ### ヘッダ表示要素
 
@@ -266,22 +263,22 @@ WidgetView
 | 空状態 | 未発火の予定が 1 件も無い場合は **「（予定なし）」** とラベル表示 (グレー) |
 | 機能 OFF 時 | 「（停止中）」と表示 (グレー) |
 
-「直近の予定 最大 3 件」とは、`RemindScheduler` の保持する未発火タイマーのうち、トリガ時刻が現在時刻より未来かつ近い順の先頭 3 件 (`pendingReminds` の先頭 3 件)。
+「直近の予定 最大 3 件」とは、発火スケジューラの保持する未発火タイマーのうち、トリガ時刻が現在時刻より未来かつ近い順の先頭 3 件 (未発火リストの先頭 3 件)。
 
 #### 横幅の上限と truncate
 
-- ヘッダの RemindView は**横幅に上限**を設ける。上限は Pomodoro タイマー (`TimerView`) と同じ **146pt**
+- ヘッダのリマインドウィジェットは**横幅に上限**を設ける。上限は Pomodoro タイマーと同じ **146pt**
 - 各行のテキストが上限幅を超える場合は末尾を truncate (`…`) する (折り返さない、1 行省略)
 - 表示件数 (最大 3) と幅上限により、ヘッダ占有面積を一定に保つ
 
 ヘッダ全域 (アイコン + 行リスト) を 1 つのクリック領域とし、どこを押しても Popover が開く。
 
-### Popover: RemindPopoverView
+### Popover: リマインド一覧
 
-クイックメモ入力 popover と同じスタイル (`.popover` 装飾) で表示する。
+クイックメモ入力 popover と同じスタイルで表示する。
 
 ```
-┌─ RemindPopoverView ─────────────────────┐
+┌─ リマインド一覧 Popover ─────────────────┐
 │  リマインド一覧                          │
 │                                         │
 │  ┌─ 未発火リスト (トリガ時刻昇順) ───────┐ │
@@ -301,21 +298,21 @@ WidgetView
 | タイトル | 「リマインド一覧」 |
 | 一覧 | 未発火 (`.fired.txt` でない) かつ未来トリガの `remind-*.txt` をトリガ時刻昇順で全件表示 |
 | 各行 | `HH:mm` (トリガ時刻) + 表示文プレビュー (表示文。無ければ読み上げ文) + 削除ボタン (`✕`) |
-| 削除ボタン | クリックで該当 `remind-*.txt` を即時削除 (キャンセル相当)。`RemindScheduler` が FSEvents の削除イベントを受けてタイマー破棄、一覧からも除外される。**確認ダイアログなし** — [削除確認ルール](../aspects/destructive-actions.md)の明示的例外 (リマインドは Companion に再依頼すれば容易に作り直せる軽量データで、キャンセル操作の即応性を優先) |
+| 削除ボタン | クリックで該当 `remind-*.txt` を即時削除 (キャンセル相当)。発火スケジューラが FSEvents の削除イベントを受けてタイマー破棄、一覧からも除外される。**確認ダイアログなし** — [削除確認ルール](../aspects/destructive-actions.md)の明示的例外 (リマインドは Companion に再依頼すれば容易に作り直せる軽量データで、キャンセル操作の即応性を優先) |
 | 空状態 | リスト領域に「予定なし」と表示 |
 | 機能トグル | Popover 下部にリマインド機能 ON/OFF スイッチを配置 |
 
 - Popover 幅: 約 320pt (QuickMemo の 300pt より少し広い目安)
-- ESC で閉じる (`.cancelAction` のキーボードショートカット)
+- ESC で閉じる
 
 ### リマインド機能 ON/OFF (Popover 内トグル)
 
-リマインド機能全体の ON/OFF を切り替えるスイッチ。SpeechState の読み上げトグルと同じ「一時オフ」用途。
+リマインド機能全体の ON/OFF を切り替えるスイッチ。読み上げトグル ([voicevox.md](./voicevox.md#読み上げトグル-issue-128)) と同じ「一時オフ」用途。
 
 | 状態 | 挙動 |
 |------|------|
-| **ON** (デフォルト) | `RemindWatcher` が FSEvents 監視と起動時スキャンを実行。`RemindScheduler` がトリガ時刻に発火する |
-| **OFF** | `RemindScheduler` の全タイマーを破棄。`RemindWatcher` の FSEvents 監視を停止。ヘッダ上ラベルは「（停止中）」と表示 |
+| **ON** (デフォルト) | remind 監視が FSEvents 監視と起動時スキャンを実行。発火スケジューラがトリガ時刻に発火する |
+| **OFF** | 発火スケジューラの全タイマーを破棄。remind 監視の FSEvents 監視を停止。ヘッダ上ラベルは「（停止中）」と表示 |
 
 #### OFF 中の挙動
 
@@ -326,35 +323,36 @@ WidgetView
 #### 永続化
 
 - ON/OFF 状態は **永続化しない** (`workspace.json` に保存しない)
-- アプリ再起動時は常に ON に戻る (`SpeechState` の読み上げトグルと同じ方針)
+- アプリ再起動時は常に ON に戻る (読み上げトグルと同じ方針)
 
-### 状態管理 (RemindState)
+### 状態管理
 
-| プロパティ | 用途 |
+リマインドの UI 状態として以下を保持する。
+
+| 状態 | 用途 |
 |---|---|
-| `pendingReminds` | 未発火・未来トリガのエントリ一覧 (トリガ時刻昇順)。各エントリは Companion index / トリガ時刻 / 読み上げ文 / ウィジェット表示文 (任意) / ファイル URL を保持。プレビューは表示文 (無ければ読み上げ文) を整形した文字列 |
-| `isPopoverPresented` | Popover の開閉 |
-| `isEnabled` | リマインド機能 ON/OFF |
-| `nextPending` (computed) | `pendingReminds` の先頭 1 件 (空なら nil) |
-| `topPending` (computed) | `pendingReminds` の先頭 最大 3 件 (ヘッダの縦並び表示用) |
+| 未発火リスト | 未発火・未来トリガのエントリ一覧 (トリガ時刻昇順)。各エントリは Companion index / トリガ時刻 / 読み上げ文 / ウィジェット表示文 (任意) / 元ファイルの場所を保持。プレビューは表示文 (無ければ読み上げ文) を整形した文字列 |
+| Popover の開閉 | Popover が開いているかどうか |
+| 機能 ON/OFF | リマインド機能 ON/OFF |
 
-`pendingReminds` は `RemindWatcher` / `RemindScheduler` の状態と一方向に同期する (ファイル追加 / 削除 / 発火 / 起動時スキャン / OFF→ON 切替のタイミングで更新)。
+ヘッダの縦並び表示は未発火リストの先頭 最大 3 件を使う。
+未発火リストは remind 監視 / 発火スケジューラの状態と一方向に同期する (ファイル追加 / 削除 / 発火 / 起動時スキャン / OFF→ON 切替のタイミングで更新)。
 
 ### キー操作
 
 - Popover 内: ESC で閉じる
 - 専用グローバルショートカットは **設けない** (初版)
 
-### 関連 UI コンポーネント (Aidea 側)
+### 関連 UI の役割分担 (Aidea 側)
 
-| コンポーネント | 責務 |
+| 役割 | 責務 |
 |---|---|
-| `RemindView` | ヘッダ常駐ビュー。アイコン + 直近最大 3 件を縦並び表示 (幅上限 146pt・超過は truncate)。クリックで Popover を開く |
-| `RemindPopoverView` | Popover 本体。未発火リスト + ON/OFF トグルを表示 |
-| `RemindRowView` | Popover 一覧 1 行 (`HH:mm` + 本文プレビュー + 削除ボタン) |
-| `RemindState` | 上記プロパティを公開。`RemindWatcher` / `RemindScheduler` から更新される |
+| ヘッダ常駐ビュー | アイコン + 直近最大 3 件を縦並び表示 (幅上限 146pt・超過は truncate)。クリックで Popover を開く |
+| Popover 本体 | 未発火リスト + ON/OFF トグルを表示 |
+| 一覧の行表示 | Popover 一覧 1 行 (`HH:mm` + 本文プレビュー + 削除ボタン) |
+| リマインド状態 | 上記の状態を公開。remind 監視 / 発火スケジューラから更新される |
 
-Backchannel ドメイン (`RemindWatcher` / `RemindScheduler`) と UI コンポーネント (`RemindView` / `RemindPopoverView` / `RemindRowView`) は別レイヤに分離し、`RemindState` がその橋渡しを担う。
+監視・発火のドメイン層と UI 層は分離し、リマインド状態がその橋渡しを担う。
 
 ---
 
@@ -363,7 +361,7 @@ Backchannel ドメイン (`RemindWatcher` / `RemindScheduler`) と UI コンポ�
 - [backchannel.md](./backchannel.md) — Backchannel 全体の設計原則
 - [voicevox.md](./voicevox.md) — speech ファイルの読み上げ実装 (本仕様の発火経路と共通)
 - [../aspects/persistence.md](../aspects/persistence.md) — `.aidea/` 配下の永続化仕様
-- [../aspects/view-hierarchy.md](../aspects/view-hierarchy.md) — AppHeaderView 階層図 (RemindView 配置)
+- [../aspects/view-hierarchy.md](../aspects/view-hierarchy.md) — ヘッダ階層図 (リマインドウィジェット配置)
 - [../widgets/README.md](../widgets/README.md) — Widgets UI 配置原則
 - [../widgets/quick-memo.md](../widgets/quick-memo.md) — Popover 装飾のリファレンス実装
 - [../../decisions/0024-backchannel-per-companion-archive.md](../../decisions/0024-backchannel-per-companion-archive.md) — Companion 別保管と履歴保全

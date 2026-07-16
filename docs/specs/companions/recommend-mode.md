@@ -1,6 +1,6 @@
 ---
 title: レコメンドモード
-description: Cmd+Enter で起動するコンパニオンプロンプト選択 UI・RecommendState/RecommendStore・Scene 解決とキー操作
+description: Cmd+Enter で起動するコンパニオンプロンプト選択 UI・レコメンド状態と設定ストア・Scene 解決とキー操作
 derived_from:
   - docs/specs/frontchannels/frontchannel.md
   - docs/specs/frontchannels/scene.md
@@ -20,7 +20,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-04-23
+last_updated: 2026-07-13
 ---
 
 # レコメンドモード
@@ -51,7 +51,7 @@ last_updated: 2026-04-23
 6. 左右キーでコンパニオンを切替（吹き出しも一緒に移動、プロンプトは同じ）
 7. 決定キー（Enter）で送信
    - 選択したコンパニオンの Claude セッションをアクティブにする
-   - プロンプトを PTY に send() する
+   - プロンプトを PTY にキー送信する
 8. Esc でレコメンドモードを終了
 ```
 
@@ -82,11 +82,11 @@ last_updated: 2026-04-23
 
 ## レコメンドプロンプトの提供
 
-各ビュー（Tool の SessionState）が「**現在の Scene 識別子**」を提供する。Scene に紐付くプロンプト一覧自体は `RecommendStore` (起動時に `default-workspace.json` から流入する) が SSoT。
+各ビュー（Tool の SessionState）が「**現在の Scene 識別子**」を提供する。Scene に紐付くプロンプト一覧自体はレコメンド設定ストア (起動時に `default-workspace.json` から流入する) が SSoT。
 
 ### プロトコル
 
-各ビューの SessionState は `currentScene()` メソッドを実装し、現在の Scene 識別子 (`String?`) を返す。
+各ビューの SessionState は「現在の Scene 識別子を返す」操作を実装する (該当 Scene がなければ返さない)。
 
 ### 初期定義 (Bundle 同梱の `default-workspace.json` の `recommends` に格納)
 
@@ -105,10 +105,10 @@ last_updated: 2026-04-23
 | 上記以外 | エントリ無し → Cmd+Enter は何もしない | — |
 
 - **Claude Scene のみ `defaultCompanionIndex` が自 Companion に一致する** (`claude:5` なら `5`)。これにより Claude セッションで Cmd+Enter した際に、最初に選択されるのが「そのセッション自身が紐付く Companion」になる。
-- 他セッションの初期 `defaultCompanionIndex` は `0` (= Companion 1)。ユーザが ScenePromptsEditorView から変更できる。
-- `prompts` が空の Scene では Cmd+Enter しても吹き出しが出ない (レコメンドなし)。ユーザが ScenePromptsEditorView で追加することで有効化される。
+- 他セッションの初期 `defaultCompanionIndex` は `0` (= Companion 1)。ユーザがプロンプト編集エリアから変更できる。
+- `prompts` が空の Scene では Cmd+Enter しても吹き出しが出ない (レコメンドなし)。ユーザがプロンプト編集エリアで追加することで有効化される。
 
-新たな Scene へのプロンプト追加は `default-workspace.json` の `recommends` を編集するか、実行時に ScenePromptsEditorView から編集する (Swift コードへのハードコードは禁止)。
+新たな Scene へのプロンプト追加は `default-workspace.json` の `recommends` を編集するか、実行時にプロンプト編集エリアから編集する (コードへのハードコードは禁止)。
 
 将来の拡張例 (参考):
 
@@ -134,30 +134,30 @@ last_updated: 2026-04-23
 
 ## 状態管理
 
-レコメンドモードの状態は `RecommendState` が持つ。
+レコメンドモードのランタイム状態として以下を保持する。
 
-| プロパティ | 用途 |
+| 状態 | 用途 |
 |---|---|
-| `isActive` | レコメンドモード中か |
-| `selectedCompanionIndex` | 選択中のコンパニオン |
-| `selectedPromptIndex` | 選択中のプロンプト |
-| `prompts` | 現在表示中のプロンプト一覧 |
+| モード中か | レコメンドモード中かどうか |
+| 選択中のコンパニオン | 左右キーで移動する選択位置 |
+| 選択中のプロンプト | 上下キーで移動する選択位置 |
+| プロンプト一覧 | 現在表示中のプロンプト一覧 |
 
 ### 実装コンポーネント
 
-| 型 | 責務 |
+| 役割 | 責務 |
 |---|---|
-| `RecommendState` | レコメンドモードのランタイム状態。有効化・無効化とプロンプト・コンパニオン選択のループ移動を管理する |
-| `RecommendStore` | Scene ごとの設定 (`SceneConfig`) をインメモリで保持する静的 API。永続化は `WorkspaceSnapshotManager` 経由で `workspace.json` v7 に統合される |
-| `SceneConfig` | Scene ごとのプロンプト一覧とデフォルトコンパニオン index を保持するデータ構造 |
-| `ScenePromptsEditorView` | 各セッションの本体 View 下部に挿入される編集 UI。表示中 Scene のプロンプト追加/削除とデフォルトコンパニオンの切替を行う |
+| レコメンド状態 | レコメンドモードのランタイム状態。有効化・無効化とプロンプト・コンパニオン選択のループ移動を管理する |
+| レコメンド設定ストア | Scene ごとの設定をインメモリで保持する。永続化はワークスペーススナップショット管理経由で `workspace.json` v7 に統合される |
+| Scene 設定 | Scene ごとのプロンプト一覧とデフォルトコンパニオン index を保持するデータ構造 |
+| プロンプト編集エリア | 各セッションの本体 View 下部に挿入される編集 UI。表示中 Scene のプロンプト追加/削除とデフォルトコンパニオンの切替を行う |
 
-`SessionRegistry.view(for:)` は **Git / GitDiff 以外**の各セッション View を `VStack` で本体 + `ScenePromptsEditorView` の縦並びにラップする統一パターンを取る。GitDiff は `GitDiffSessionContainer` 側で挿入済みのため二重挿入しない。
+SessionRegistry がセッション View を生成する際、**Git / GitDiff 以外**の各セッション View を本体 + プロンプト編集エリアの縦並びにラップする統一パターンを取る。GitDiff は自身のコンテナ側で挿入済みのため二重挿入しない。
 
-Scene キー (`"git:prPreview"` `"git:workingChanges"` 等) は各 SessionState の `currentScene()` が文脈に応じて生成し、
-`RecommendStore.prompts(for:)` で対応エントリを引く。エントリが無ければ空配列 (Cmd+Enter 無反応)。
+Scene キー (`"git:prPreview"` `"git:workingChanges"` 等) は各 SessionState が文脈に応じて生成し、
+レコメンド設定ストアから対応エントリを引く。エントリが無ければ空扱い (Cmd+Enter 無反応)。
 
-`default-workspace.json` から流入する初期エントリが SSoT。Swift コード内にデフォルトプロンプトのハードコードは置かない (詳細は [../frontchannels/scene.md](../frontchannels/scene.md))。
+`default-workspace.json` から流入する初期エントリが SSoT。コード内にデフォルトプロンプトのハードコードは置かない (詳細は [../frontchannels/scene.md](../frontchannels/scene.md))。
 
 ---
 

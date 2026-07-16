@@ -1,6 +1,6 @@
 ---
 title: "Backchannel: 外部 inbox"
-description: 外部プロセス (スクリプト等) が .aidea/backchannels/inbox/*.json を書き出すと、Aidea が宛先 Companion を解決してプロンプトとして送信する外部入力チャネルの JSON スキーマ・宛先解決・Watcher/Dispatcher 仕様。返信経路は持たない
+description: 外部プロセス (スクリプト等) が .aidea/backchannels/inbox/*.json を書き出すと、Aidea が宛先 Companion を解決してプロンプトとして送信する外部入力チャネルの JSON スキーマ・宛先解決・監視/配送仕様。返信経路は持たない
 derived_from:
   - docs/decisions/0037-external-inbox-backchannel.md
   - docs/decisions/0023-companion-handoff.md
@@ -12,7 +12,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-07-01
+last_updated: 2026-07-13
 ---
 
 # Backchannel: 外部 inbox
@@ -51,11 +51,12 @@ inbox は「通常のプロンプトを投げる」用途のため、本文を�
 1. 外部プロセスが .aidea/backchannels/inbox/ に JSON を書き出す
    (ディレクトリが無ければ外部側で mkdir -p 相当で作成)
 2. Aidea が FSEvents で inbox/*.json の作成を検知
-3. InboxWatcher が JSON をパースし、message が空でないことを検証
-4. InboxDispatcher (AideaApp):
-   a. to を index 解決 (index 指定 or name 逆引き。handoff の Target 解決を再利用)
+3. inbox 監視が JSON をパースし、message が空でないことを検証
+4. 配送処理:
+   a. to を index 解決 (index 指定 or name 逆引き。handoff の宛先解決規則を再利用)
    b. 宛先 Companion が未起動なら自動起動・bind・tab 追加
-   c. 宛先 ClaudeSessionState.sendMessageWhenReady(message + 返信不要文言) を送信
+   c. 宛先 Claude セッションに message + 返信不要文言を送信
+      (受付可能になる前なら保留され、自動起動シーケンス完了後に送られる)
 5. ファイルは削除せず残す
 ```
 
@@ -80,14 +81,14 @@ inbox は「通常のプロンプトを投げる」用途のため、本文を�
 
 ### ファイル名の推奨: `handoff-{timestamp}.json`
 
-InboxWatcher は `inbox/*.json` であれば**ファイル名を問わず**発火するが、**推奨は `handoff-{YYYYMMDDTHHmmss}.json`** とする。
+inbox 監視は `inbox/*.json` であれば**ファイル名を問わず**発火するが、**推奨は `handoff-{YYYYMMDDTHHmmss}.json`** とする。
 
 - handoff 機能 ([handoff.md](./handoff.md)) の `handoff-{timestamp}.json` と命名を揃えることで、
   外部の Claude / スクリプトが inbox に書き出すファイルの作法を handoff と共通化できる
   (「Companion にタスクを渡すファイルは `handoff-{timestamp}.json`」という 1 つの型に統一)
 - テンプレートとして `inbox/handoff-YYYYMMDDTHHmmss.json` を置いておき、外部のエージェントはこれを雛形にする
-- inbox の `handoff-*.json` は親ディレクトリが `inbox` (0..8 ではない) のため、HandoffWatcher からは
-  「invalid parent dir」として無視される (ログ 1 行のみ、二重処理はされない)。InboxWatcher だけが処理する
+- inbox の `handoff-*.json` は親ディレクトリが `inbox` (0..8 ではない) のため、handoff 監視からは
+  親ディレクトリ不正として無視される (警告ログ 1 行のみ、二重処理はされない)。inbox 監視だけが処理する
 
 > 注意: inbox の JSON スキーマは `{to, message}` で、handoff の `{from, to, task, message}` とは異なる。
 > ファイル名の作法だけを揃える (inbox に `from` は不要)。
@@ -109,12 +110,12 @@ mv "$tmp" "$dir/handoff-$(date +%Y%m%dT%H%M%S).json"
 
 ## ファイル監視
 
-`InboxWatcher` は `.aidea/backchannels/` を FSEvents で再帰監視し、以下を満たすファイルのみ処理する。
+inbox 監視は `.aidea/backchannels/` を FSEvents で再帰監視し、以下を満たすファイルのみ処理する。
 
 - 親ディレクトリ名が `inbox`
 - ファイル名が `*.json`
 
-既存の Watcher (handoff 等) は親が `0..8` を要求するため inbox の JSON を弾き、競合しない。
+既存の監視 (handoff 等) は親が `0..8` を要求するため inbox の JSON を弾き、競合しない。
 
 ### 処理タイミング
 
@@ -137,28 +138,28 @@ mv "$tmp" "$dir/handoff-$(date +%Y%m%dT%H%M%S).json"
 
 ---
 
-## Aidea 側のコンポーネント
+## Aidea 側の役割分担
 
-| コンポーネント | 責務 |
+| 役割 | 責務 |
 |---|---|
-| `InboxMessage` | `inbox/*.json` をデコードした構造体 (`to` / `message`)。`to` は handoff の `Target` (index/name) を再利用 |
-| `InboxWatcher` | `.aidea/backchannels/` を FSEvents 再帰監視し、親が `inbox` の `*.json` をパースしてコールバック通知 (設計は HandoffWatcher を踏襲) |
-| `AideaApp.dispatchInbox` | 宛先解決 → 未起動なら Claude セッション起動・bind → `sendMessageWhenReady(message + 返信不要文言)` |
+| メッセージのデコード | `inbox/*.json` を `{to, message}` としてデコードする。`to` は handoff と同じ宛先指定 (index/name) を再利用 |
+| inbox 監視 | `.aidea/backchannels/` を FSEvents 再帰監視し、親が `inbox` の `*.json` をパースして配送処理に通知 (設計は handoff 監視を踏襲) |
+| 配送処理 | 宛先解決 → 未起動なら Claude セッション起動・bind → message + 返信不要文言を送信 (受付可能まで保留可) |
 
-配送は scheduler (`dispatchScheduledJob`) / handoff (`dispatchHandoff`) と同型。宛先解決は `resolveHandoffTarget` を再利用する。
+配送はスケジューラ / handoff の配送と同型。宛先解決は handoff の解決規則を再利用する。
 
 ---
 
 ## 外部エージェント向け指示書 (`.aidea/claude/inbox.md`)
 
-Bundle リソース `Resources/Backchannels/inbox.md` を `BackchannelSetup` が初回セットアップ時に
-`.aidea/claude/inbox.md` へコピーする (`knownFeatures` に `inbox` を含む)。外部の Claude / エージェントが
+Bundle 同梱テンプレ `Backchannels/inbox.md` を初回セットアップ処理が
+`.aidea/claude/inbox.md` へコピーする (既知機能ファイルの一覧に `inbox` を含む)。外部の Claude / エージェントが
 inbox にファイルを書くときの作法 (書き出し先・`handoff-{timestamp}.json` 命名・JSON 形式・原子的書き込み) の
 参照とする。
 
 - **companion の `instructions.md` からは参照しない**。inbox は受信側 Companion が特別な準備をする必要がなく
   (届いた本文を通常プロンプトとして処理するだけ)、指示書は「送る側」のための参照だから
-- 既存ワークスペースにも `backfillMissingFeatures` で後から配布される
+- 既存ワークスペースにも、不足している機能ファイルを後追い配布する仕組みで後から配布される
 
 ## 信頼境界
 
@@ -188,6 +189,6 @@ Aidea は App Sandbox 無効の個人用ローカルツールであり、inbox �
 ## 関連ドキュメント
 
 - [backchannel.md](./backchannel.md) — Backchannel 全体の設計原則
-- [handoff.md](./handoff.md) — 宛先解決 (`Target`) と dispatch の元実装
+- [handoff.md](./handoff.md) — 宛先解決と配送の元仕様
 - [../../decisions/0037-external-inbox-backchannel.md](../../decisions/0037-external-inbox-backchannel.md) — 本機能の設計判断と信頼境界
 - [../aspects/persistence.md](../aspects/persistence.md) — `.aidea/` 配下の永続化仕様

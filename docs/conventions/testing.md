@@ -1,3 +1,14 @@
+---
+title: Testing Strategy
+description: テストは最小限・手動動作確認優先の方針と、手動確認チェックリストの運用
+derived_from: []
+syncs_with: []
+impacts: []
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-15
+---
+
 # Testing Strategy
 
 ## 基本方針

@@ -1,3 +1,14 @@
+---
+title: Swift / SwiftUI 規約
+description: SwiftUI を第一選択とし NSView を最小範囲に閉じ込める使い分け規約
+derived_from: []
+syncs_with: []
+impacts: []
+conventions:
+  - docs/LAYOUT.md
+last_updated: 2026-04-24
+---
+
 # Swift / SwiftUI 規約
 
 SwiftUI と AppKit (NSView) の使い分けに関する規約。Aidea は **SwiftUI を第一選択** とし、

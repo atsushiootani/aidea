@@ -10,7 +10,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-03
+last_updated: 2026-07-13
 ---
 
 # Backchannel: コンパニオン名簿の自動同期
@@ -19,7 +19,7 @@ last_updated: 2026-05-03
 
 ハンドオフ ([handoff.md](./handoff.md)) の `to` フィールドは index と name の両対応 ([ADR 0023](../../decisions/0023-companion-handoff.md))。送信元 Claude が他コンパニオンの name を自然言語で指定できるようにするため、9 体全員の index ↔ name 対応表を **aidea.md 内に常駐させる** ([issue #137](https://github.com/atsushiootani/aidea/issues/137))。
 
-ユーザは `CompanionEditView` で各コンパニオンの name を自由にリネームできるため、aidea.md 側はリネームに追従しなければ陳腐化する。本仕様は aidea.md 内に Aidea 専用の名簿セクションをマーカーで囲んで配置し、Aidea が `CompanionStore.companions[].name` の変更に応じて自動的に書き換える機構を定める。
+ユーザはコンパニオン編集 UI で各コンパニオンの name を自由にリネームできるため、aidea.md 側はリネームに追従しなければ陳腐化する。本仕様は aidea.md 内に Aidea 専用の名簿セクションをマーカーで囲んで配置し、Aidea が Companion 名 (`companions[].name`) の変更に応じて自動的に書き換える機構を定める。
 
 ---
 
@@ -27,8 +27,8 @@ last_updated: 2026-05-03
 
 - `.aidea/claude/aidea.md` の本文中に **マーカー領域**を 1 箇所設け、その内側にコンパニオン 9 体全員の index ↔ name 対応表を Markdown リストで保持する
 - マーカー外はユーザの自由編集領域。Aidea は触らない
-- マーカー内は Aidea の自動管理領域。`CompanionStore.companions[].name` が更新された瞬間に書き換える
-- Bundle 同梱テンプレ (`Aidea/Resources/Backchannels/aidea.md`) にもマーカー + デフォルト名のリストを最初から含める。新規プロジェクトはマーカー込みで `.aidea/claude/aidea.md` がコピーされる
+- マーカー内は Aidea の自動管理領域。Companion 名 (`companions[].name`) が更新された瞬間に書き換える
+- Bundle 同梱テンプレ (`Backchannels/aidea.md`) にもマーカー + デフォルト名のリストを最初から含める。新規プロジェクトはマーカー込みで `.aidea/claude/aidea.md` がコピーされる
 - 旧版から移行した既存ユーザの aidea.md にマーカーが無い場合は、起動時に **末尾へ自動追記** する (本文を破壊しない)
 
 ---
@@ -64,14 +64,14 @@ last_updated: 2026-05-03
 ```
 
 - 必ず 9 行 (index 0..8 全て)
-- `<name-N>` は `CompanionStore.companions[N].name` の値そのまま
+- `<name-N>` はワークスペースの Companion 名 (`companions[N].name`) の値そのまま
 - 行頭 `- ` 固定 (BulletList)、ハイフン後ろ半角スペース 1 つ
 - index と name の区切りは `: ` (半角コロン + 半角スペース)
 - name 内に Markdown 特殊文字が含まれていてもエスケープしない (生の文字列として書く)
 
 ### マーカー外のフォーマット (テンプレ提示)
 
-aidea.md 全体の構造は次のとおり (Bundle 同梱の `Aidea/Resources/Backchannels/aidea.md` テンプレ):
+aidea.md 全体の構造は次のとおり (Bundle 同梱テンプレ `Backchannels/aidea.md`):
 
 ```markdown
 # Aidea Backchannel 指示
@@ -109,34 +109,34 @@ aidea.md 全体の構造は次のとおり (Bundle 同梱の `Aidea/Resources/Ba
 
 ## 更新タイミング
 
-`CompanionRosterWriter` の roster 書き込みは以下の 2 経路から呼び出す:
+名簿 (roster) の書き込みは以下の 2 経路から呼び出す:
 
-| 経路 | タイミング | 呼び出し元 |
-|---|---|---|
-| **スナップショット復元 (起動時 + リロード時)** | `WorkspaceSnapshotManager` の apply 末尾、`CompanionStore.companions` セット直後 | `AideaApp` 起動シーケンス経由 |
-| **コンパニオンの編集確定時** | `CompanionStore` のコンパニオン更新処理で `companions[index].name` が変化した瞬間 | `CompanionEditView` の OK ハンドラ |
+| 経路 | タイミング |
+|---|---|
+| **スナップショット復元 (起動時 + リロード時)** | スナップショット復元処理の末尾、Companion 一覧のセット直後 |
+| **コンパニオンの編集確定時** | コンパニオン編集 UI の確定で `companions[index].name` が変化した瞬間 |
 
-`AideaApp` の起動シーケンス上、`BackchannelSetup` が `WorkspaceSnapshotManager` の apply より先に走ることで `.aidea/claude/aidea.md` がコピー済みになる。Bundle 同梱テンプレに既にデフォルトの roster ブロックが含まれているため、apply 末尾の `writeRoster` 呼び出しは差分なし (no-op) で完結することが多い。`workspace.json` でユーザがコンパニオンをリネーム済みの場合のみ、apply の末尾で aidea.md の roster がユーザ設定に追従する。
+起動シーケンス上、初回セットアップ処理がスナップショット復元より先に走ることで `.aidea/claude/aidea.md` がコピー済みになる。Bundle 同梱テンプレに既にデフォルトの roster ブロックが含まれているため、復元末尾の名簿書き込みは差分なし (no-op) で完結することが多い。`workspace.json` でユーザがコンパニオンをリネーム済みの場合のみ、復元の末尾で aidea.md の roster がユーザ設定に追従する。
 
-両経路とも `CompanionStore.companions` の最新スナップショットを渡す。`writeRoster` は内部で差分を判定し、aidea.md に書き出す内容が現在と同一なら **書き込みをスキップ** する (mtime 更新を避け、不要な FSEvents を発生させない)。
+両経路とも Companion 一覧の最新スナップショットを渡す。名簿書き込みは内部で差分を判定し、aidea.md に書き出す内容が現在と同一なら **書き込みをスキップ** する (mtime 更新を避け、不要な FSEvents を発生させない)。
 
 ### コンパニオン更新時のフック
 
-`CompanionStore` のコンパニオン更新処理自身は永続化や副作用を持たない (純粋なインメモリ更新)。aidea.md への反映は呼び出し側で行う:
+コンパニオン更新処理自身は永続化や副作用を持たない (純粋なインメモリ更新)。aidea.md への反映は呼び出し側で行う:
 
-- `CompanionEditView` の編集確定 → コンパニオン更新処理 → 直後に `CompanionRosterWriter` の roster 書き込みを呼ぶ
-- セッション紐付けのみ変更する操作 (bind / unbind / unbindSession) では呼ばない (name は変わらないため)
+- コンパニオン編集 UI の編集確定 → コンパニオン更新 → 直後に名簿書き込みを呼ぶ
+- セッション紐付けのみ変更する操作 (bind / unbind) では呼ばない (name は変わらないため)
 
-`WorkspaceSnapshotManager` 等からコンパニオン更新処理を経由して name が変わるパスでも、apply 末尾で writeRoster を一度だけ呼ぶことで包括的にカバーされる。
+スナップショット復元経由で name が変わるパスでも、復元末尾で名簿書き込みを一度だけ呼ぶことで包括的にカバーされる。
 
 ---
 
 ## 書き換えアルゴリズム
 
-`CompanionRosterWriter.writeRoster(projectRoot:companions:)` の挙動:
+名簿書き込み (プロジェクトルートと Companion 一覧を受け取る) の挙動:
 
-1. `aideaURL = projectRoot + ".aidea/claude/aidea.md"` を解決
-2. ファイルが存在しなければ **no-op** (BackchannelSetup が未実行 or ユーザが削除した。次回 setup 時に再生成される)
+1. `<projectRoot>/.aidea/claude/aidea.md` のパスを解決
+2. ファイルが存在しなければ **no-op** (初回セットアップが未実行 or ユーザが削除した。次回セットアップ時に再生成される)
 3. 既存ファイルを UTF-8 で読み込む
 4. **マーカーが両方含まれる場合**:
    - 先頭の `<!-- aidea:companions:start -->` 行と末尾の `<!-- aidea:companions:end -->` 行を境界とし、その**内側を 9 行の roster リストで置き換える**
@@ -146,7 +146,7 @@ aidea.md 全体の構造は次のとおり (Bundle 同梱の `Aidea/Resources/Ba
    - ファイル末尾に空行 1 つ + 推奨セクション (テンプレと同じ「## ワークスペースのコンパニオン一覧」見出し以降) を追記する
    - 既存の本文は一切触らない
 6. 生成した新内容が **既存ファイルと完全に同一**であれば書き込まずに終了 (FSEvents 抑止)
-7. 異なる場合のみ atomic 書き込み (`Data.write(to:options: .atomic)`) で aidea.md を上書き
+7. 異なる場合のみ atomic 書き込みで aidea.md を上書き
 
 ### 文字コード・改行コード
 
@@ -161,10 +161,10 @@ aidea.md 全体の構造は次のとおり (Bundle 同梱の `Aidea/Resources/Ba
 | 編集対象 | 挙動 |
 |---|---|
 | マーカー**外**の本文を書き換え | Aidea は完全に保護。書き戻しもしない |
-| マーカー**内**の roster を書き換え | 次回 `writeRoster` 実行時に Aidea 由来の値で上書き (警告コメントで予告済み) |
-| マーカー行自体を削除 | 次回 `writeRoster` 実行時にファイル末尾へ追記される (本文は破壊しない) |
+| マーカー**内**の roster を書き換え | 次回の名簿書き込みで Aidea 由来の値で上書き (警告コメントで予告済み) |
+| マーカー行自体を削除 | 次回の名簿書き込みでファイル末尾へ追記される (本文は破壊しない) |
 | 片方のマーカーだけ残った状態 | 「両方ない」と同じ扱いで末尾に追記 (壊れたマーカーは触らない) |
-| aidea.md ファイルそのものを削除 | 次回 `BackchannelSetup` 実行時に Bundle テンプレからコピー (マーカー込み) |
+| aidea.md ファイルそのものを削除 | 次回の初回セットアップ処理実行時に Bundle テンプレからコピー (マーカー込み) |
 
 ユーザが「自動更新を止めて手動管理に切り替えたい」場合は、マーカーを削除すればその後 Aidea は本文中央には書かなくなる (末尾追記が走るので、追記されたセクションも削除すれば実質的に止められる)。**自動更新の完全 off 設定は MVP では持たない** (将来の拡張ポイント)。
 
@@ -178,21 +178,21 @@ handoff.md には次の一文を追記する (本仕様への参照)。本文の
 
 ---
 
-## Aidea 側の実装コンポーネント
+## Aidea 側の役割分担
 
-| コンポーネント | 配置 | 責務 |
-|---|---|---|
-| `CompanionRosterWriter` | aidea.md のマーカー領域を読み書きする純関数的ヘルパ。プロジェクトルートとコンパニオン設定リストを受け取り、必要に応じて aidea.md を更新する |
-| `WorkspaceSnapshotManager` | スナップショット復元後にロスター書き込みを実行する |
-| `CompanionEditView` | コンパニオン設定を更新した後にロスター書き込みを実行する |
+| 役割 | 責務 |
+|---|---|
+| 名簿書き込み | aidea.md のマーカー領域を読み書きする。プロジェクトルートとコンパニオン設定リストを受け取り、必要に応じて aidea.md を更新する |
+| スナップショット復元 | 復元後に名簿書き込みを実行する |
+| コンパニオン編集 UI | コンパニオン設定を更新した後に名簿書き込みを実行する |
 
-`CompanionRosterWriter` は外部依存を持たず、`Foundation` のみで完結する。VOICEVOX や FSEvents との連携は不要。
+名簿書き込みは VOICEVOX や FSEvents との連携を持たない (ファイル読み書きのみで完結する)。
 
 ### Bundle テンプレの更新
 
-`Aidea/Resources/Backchannels/aidea.md` (Bundle 同梱) を本仕様の「マーカー外のフォーマット (テンプレ提示)」に書き換える。新規プロジェクトはマーカー込みのテンプレが `.aidea/claude/aidea.md` にコピーされる。
+Bundle 同梱テンプレ `Backchannels/aidea.md` を本仕様の「マーカー外のフォーマット (テンプレ提示)」に書き換える。新規プロジェクトはマーカー込みのテンプレが `.aidea/claude/aidea.md` にコピーされる。
 
-旧版から移行した既存ユーザの aidea.md は **上書きしない** (`BackchannelSetup` の既存方針)。代わりに起動時の `writeRoster` がマーカー追記モードで末尾にセクションを追加する。
+旧版から移行した既存ユーザの aidea.md は **上書きしない** (初回セットアップ処理の既存方針)。代わりに起動時の名簿書き込みがマーカー追記モードで末尾にセクションを追加する。
 
 ---
 
@@ -200,6 +200,6 @@ handoff.md には次の一文を追記する (本仕様への参照)。本文の
 
 - [ADR 0023: コンパニオン間ハンドオフ](../../decisions/0023-companion-handoff.md) — name 指定の正当化根拠
 - [handoff.md](./handoff.md) — `to` フィールドのスキーマと name 解決ルール
-- [companion.md](../companions/companion.md) — `CompanionConfig.name` のデータモデル
-- [backchannel.md](./backchannel.md) — Bundle テンプレと `BackchannelSetup` の責務
+- [companion.md](../companions/companion.md) — Companion 名のデータモデル
+- [backchannel.md](./backchannel.md) — Bundle テンプレと初回セットアップ処理の責務
 - [issue #137](https://github.com/atsushiootani/aidea/issues/137) — 本仕様の起票チケット

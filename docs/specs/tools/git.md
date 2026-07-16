@@ -15,7 +15,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-22
+last_updated: 2026-07-13
 ---
 
 # Tool 仕様: Git
@@ -32,7 +32,7 @@ Session 内部状態は [sessions/git.md](../sessions/git.md) / [sessions/git-di
 ## 概要
 
 - **Window 全体で 1 つだけ**のシングルトン Session (Filer と同じ制約)
-- `WorkspaceState.projectRoot` をリポジトリルートとして使用
+- ワークスペースの projectRoot をリポジトリルートとして使用
 - 2 つのモードをセグメントピッカーで切替:
   - **Working Changes**: `git diff` (ワーキングツリーの変更)
   - **PR Preview**: `git diff main...HEAD` (現在ブランチと main の差分)
@@ -60,11 +60,11 @@ Session 内部状態は [sessions/git.md](../sessions/git.md) / [sessions/git-di
 - 変更ディレクトリは変更ファイルを祖先に持つものだけ展開可能
 - **初期表示は最大 50 件**: 変更ファイル数が 50 を超える場合は最初の 50 件のみ表示し、超過分は「さらに表示」ボタンで 50 件ずつ追加ロードする
 - **並び順**: 各階層は Filer と同じ Finder 互換自然順 (ファイル/ディレクトリを区別せず混在)。詳細は [aspects/sort-order.md](../aspects/sort-order.md) を参照
-- **デコレーション**: Filer と同じデコレーションルール (`FilerSessionState.defaultDecorationRules` + `userDecorationRules`) を適用する
+- **デコレーション**: Filer と同じデコレーションルール (デフォルト + ユーザ定義。[tools/filer.md#デコレーション](./filer.md#デコレーション)) を適用する
   - **ファイルアイコン**: デコレーションルールが解決したファイル種別アイコン (`.swift` → `swift`、`.md` → `doc.text` 等)。マッチするルールがない場合はステータスアイコンにフォールバック
   - **ディレクトリアイコン**: `folder.fill` (固定)
   - **行背景色**: デコレーションルールで指定した背景色 (Filer と同じ `alpha 0.2`)。選択中は AppKit 標準ハイライトが優先
-  - **アイコン tint 色**: `.labelColor` で統一 (テキストと同色)。Git ステータスによる色分けは行わない
+  - **アイコン tint 色**: テキストと同色で統一。Git ステータスによる色分けは行わない
 - Git ステータスは **`+N -M` の変更行数表示**と GitDiff ツールの差分で識別する (アイコン色では区別しない)
 - ファイルごとに変更行数 `+N -M` を右端に表示する:
   - ステージ済みファイル: ステージ差分のみの行数 (`git diff --cached --numstat`)
@@ -124,24 +124,12 @@ Git ツールのファイル一覧からダブルクリック / Enter で開か�
 
 ### diff2html 統合
 
-WKWebView にラッパ HTML をロードし、`git diff` の出力を JavaScript 経由で diff2html に渡す:
+WKWebView にラッパ HTML をロードし、`git diff` の出力を JavaScript 経由で diff2html に渡して描画する。diff2html の設定は以下:
 
-```html
-<script src="diff2html-bundle.min.js"></script>
-<script>
-const diffString = `<diff output from git>`;
-const targetElement = document.getElementById('diff');
-const configuration = {
-    drawFileList: false,
-    outputFormat: 'side-by-side',
-    matching: 'lines',
-    highlight: true,
-};
-const diff2htmlUi = new Diff2HtmlUI(targetElement, diffString, configuration);
-diff2htmlUi.draw();
-diff2htmlUi.highlightCode();
-</script>
-```
+- 出力形式: side-by-side (左右分割)
+- 行マッチング: 行単位 (`lines`)
+- シンタックスハイライト: 有効
+- ファイルリスト表示: 無効 (一覧は Git ツール側が担うため)
 
 diff2html の JS/CSS は **オンライン CDN** (`https://cdn.jsdelivr.net/npm/diff2html/`) から取得。
 (Aidea にバンドルしない。外部依存最小化方針 ADR 0006 との整合: diff2html は npm パッケージではなく
@@ -170,12 +158,10 @@ diff2html の JS/CSS は **オンライン CDN** (`https://cdn.jsdelivr.net/npm/
 
 issue #26 では 2 つの Tool が必要:
 
-| Tool (enum case) | 名前 | シングルトン | 用途 |
-|---|---|---|---|
-| `.git` | Git | ✅ (1 つだけ) | 変更ファイル一覧 + モード切替 |
-| `.gitDiff` | GitDiff | ❌ (複数可) | 個別ファイルの差分表示 + discard |
-
-`Tool` enum に `.git` と `.gitDiff` を追加。
+| Tool | シングルトン | 用途 |
+|---|---|---|
+| **Git** | ✅ (1 つだけ) | 変更ファイル一覧 + モード切替 |
+| **GitDiff** | ❌ (複数可) | 個別ファイルの差分表示 + discard |
 
 ---
 
@@ -206,18 +192,6 @@ issue #26 では 2 つの Tool が必要:
 | シングルクリック | ファイル選択 |
 | ダブルクリック | GitDiff を別ペインの新規タブに開く |
 | 右クリック | コンテキストメニュー (将来) |
-
----
-
-## 実装メモ
-
-詳細な実装構造はソースコードを参照。
-
-### シングルトン制約
-- `.git` は Filer と同様の「シングルトン制約」で多重起動を防ぐ
-
-### GitDiff の開き方
-- Git ツールのダブルクリック → Preview と同じパターンで GitDiff Session を作成する
 
 ---
 
