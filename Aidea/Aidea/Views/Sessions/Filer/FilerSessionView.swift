@@ -467,6 +467,14 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
         updateNavigateBar()
     }
 
+    /// タブ右クリック「リロード」からの手動リロード要求 (issue #270)。
+    /// FSEvents の自動反映を待たず、展開状態と選択状態を保持したまま即座に再読み込みする。
+    /// 仕様: docs/specs/tools/filer.md#manualreload--タブ右クリックからの手動リロード-issue-270
+    func requestManualReload() {
+        reloadWorkItem?.cancel()
+        handleFileSystemChange()
+    }
+
     /// FSEvents 通知を受けたときの処理。展開状態と選択状態を可能な限り保持する。
     private func handleFileSystemChange() {
         guard let root = currentRoot else { return }

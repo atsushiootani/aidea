@@ -190,6 +190,7 @@ struct PaneView: View {
     /// タブ種別ごとに右クリックメニューを付与する。メニューを持たないタブには付与しない (空メニューを出さない)。
     /// - Preview タブ (url あり): 仕様 docs/specs/tools/preview.md#タブ右クリックメニュー-issue-238
     /// - Claude タブ: 仕様 docs/specs/tools/claude.md#タブ右クリックメニュー
+    /// - Filer タブ: 仕様 docs/specs/tools/filer.md#タブ右クリックメニュー-issue-270
     @ViewBuilder
     private func tabContextMenu<Content: View>(_ content: Content, sessionID: SessionID, index: Int) -> some View {
         if let url = previewURL(for: sessionID) {
@@ -213,6 +214,10 @@ struct PaneView: View {
                     .disabled(companionStore.companion(for: sessionID)?.index == nil)
                 Divider()
                 Button("タブを閉じる") { closeTab(at: index) }
+            }
+        } else if sessionID.tool == .filer {
+            content.contextMenu {
+                Button("リロード") { requestFilerReload(sessionID) }
             }
         } else {
             content
@@ -246,6 +251,15 @@ struct PaneView: View {
               let s = registry.session(for: sessionID),
               let preview = s.state as? PreviewSessionState else { return }
         preview.requestReload()
+    }
+
+    /// Filer タブのツリー表示を手動リロードする (issue #270)。FSEvents の自動反映が
+    /// 遅延・欠落するケースへのフォールバック。
+    private func requestFilerReload(_ sessionID: SessionID) {
+        guard sessionID.tool == .filer,
+              let s = registry.session(for: sessionID),
+              let filer = s.state as? FilerSessionState else { return }
+        filer.controller.requestManualReload()
     }
 
     /// 文字列を一般ペーストボードにコピーする。
