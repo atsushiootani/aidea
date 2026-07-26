@@ -16,7 +16,7 @@ import Observation
 @MainActor
 @Observable
 final class SchedulerState {
-    /// config から読み込んだ有効ジョブ一覧 (起動時に確定。time 昇順)
+    /// config から読み込んだ有効ジョブ一覧 (設定ファイルの `jobs` 配列順 = 表示順、issue #274)
     private(set) var jobs: [SchedulerConfig.Job] = []
     /// 取りこぼし (当日未実行・時刻超過・有効) のジョブ id 集合 = widget の「未実行」対象
     private(set) var overdueJobIDs: Set<String> = []
@@ -81,7 +81,7 @@ final class SchedulerState {
         let config = store.loadConfig()
         let runState = store.loadState()
         self.lastRun = runState.lastRun
-        self.jobs = config.validJobs().sorted { Self.sortKey($0) < Self.sortKey($1) }
+        self.jobs = config.validJobs()
 
         engine.onFire = { [weak self] job in
             self?.handleFire(job)
@@ -170,11 +170,38 @@ final class SchedulerState {
         persist(config)
     }
 
+    /// 設定・状態ファイルを再読込し、一覧・ヘッダ表示・次回発火登録を最新化する (issue #274)。
+    /// popover を開くたびに呼ばれ、Aidea の外で scheduler.json を編集した場合も再起動なしで反映される。
+    func reloadFromDisk() {
+        guard let store else { return }
+        let config = store.loadConfig()
+        lastRun = store.loadState().lastRun
+        jobs = config.validJobs()
+        engine.schedule(jobs: jobs) { [weak self] id in
+            self?.lastRun[id] == SchedulerStore.dateString()
+        }
+        recomputeOverdue()
+    }
+
+    /// ジョブを並べ替える (issue #274): sourceID のジョブを targetID のジョブの位置へ移動する。
+    /// 下方向への移動はターゲットの後、上方向への移動はターゲットの前に入る
+    /// (「落とした行の位置を奪う」直感に合わせる)。配列順は設定ファイルに即保存され表示順の SSoT になる。
+    func moveJob(sourceID: String, to targetID: String) {
+        guard sourceID != targetID, let store else { return }
+        var config = store.loadConfig()
+        guard let from = config.jobs.firstIndex(where: { $0.id == sourceID }),
+              let originalTo = config.jobs.firstIndex(where: { $0.id == targetID }) else { return }
+        let job = config.jobs.remove(at: from)
+        guard let targetNow = config.jobs.firstIndex(where: { $0.id == targetID }) else { return }
+        config.jobs.insert(job, at: from < originalTo ? targetNow + 1 : targetNow)
+        persist(config)
+    }
+
     /// 編集系操作の共通後処理: config を保存し、メモリ上の jobs を更新、Engine を再登録、overdue を再計算する。
     private func persist(_ config: SchedulerConfig) {
         guard let store else { return }
         store.saveConfig(config)
-        jobs = config.validJobs().sorted { Self.sortKey($0) < Self.sortKey($1) }
+        jobs = config.validJobs()
         engine.schedule(jobs: jobs) { [weak self] id in
             self?.lastRun[id] == SchedulerStore.dateString()
         }
@@ -220,15 +247,5 @@ final class SchedulerState {
             jobs: jobs,
             isDoneToday: { [weak self] id in self?.lastRun[id] == today }
         )
-    }
-
-    /// ジョブ一覧の表示順キー。定時 (時刻順) → cron (式順) → 起動時 → 手動 の順に並べる。
-    private static func sortKey(_ job: SchedulerConfig.Job) -> String {
-        switch job.trigger {
-        case .scheduled(let time, _): return "0" + time
-        case .cron(let expr): return "1" + expr
-        case .onLaunch: return "2"
-        case .manual: return "3"
-        }
     }
 }
