@@ -20,7 +20,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-07-13
+last_updated: 2026-07-26
 ---
 
 # コンパニオン
@@ -151,7 +151,7 @@ Aidea が起動時に PTY へ送る文字列は Companion index から派生す�
    なければ「instructions.md を読んで従ってね」のフォールバック。
    ターミナル起動後に自動送信される → [tools/claude.md](../tools/claude.md))
 6. コンパニオン N と生成したセッションを bind する
-7. アクティブ pane の末尾にタブ追加しアクティブ化する
+7. **中央ペイン** ([active-session.md#固定配置先とペインの並び順-issue-275](../sessions/active-session.md#固定配置先とペインの並び順-issue-275)) の末尾にタブ追加しアクティブ化する
 
 `instructions.md` が不在のまま起動した場合の挙動は初回セットアップ処理の責務 (新規プロジェクト初回セットアップ時にコピー)。詳細は [../backchannels/backchannel.md](../backchannels/backchannel.md) を参照。
 

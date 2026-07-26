@@ -380,7 +380,7 @@ struct AideaApp: App {
                 state.speechQueue = speechState.queue
             }
             companionStore.bind(index: index, sessionID: session.id)
-            if let pane = registry.activePane ?? layout.allPanes.first {
+            if let pane = layout.centerPane {
                 pane.tabs.append(session.id)
                 registry.setActiveTab(paneID: pane.id, tabIndex: pane.tabs.count - 1)
             }
@@ -531,7 +531,7 @@ struct AideaApp: App {
             claudeState.speechQueue = speechState.queue
         }
         companionStore.bind(index: index, sessionID: session.id)
-        if let pane = registry.activePane ?? layout.allPanes.first {
+        if let pane = layout.centerPane {
             pane.tabs.append(session.id)
             registry.setActiveTab(paneID: pane.id, tabIndex: pane.tabs.count - 1)
         }
@@ -735,7 +735,7 @@ struct AideaApp: App {
             claudeState.speechQueue = speechState.queue
         }
         companionStore.bind(index: index, sessionID: session.id)
-        if let pane = registry.activePane ?? layout.allPanes.first {
+        if let pane = layout.centerPane {
             pane.tabs.append(session.id)
             registry.setActiveTab(paneID: pane.id, tabIndex: pane.tabs.count - 1)
         }
@@ -804,7 +804,7 @@ struct AideaApp: App {
             claudeState.speechQueue = speechState.queue
         }
         companionStore.bind(index: index, sessionID: session.id)
-        if let pane = registry.activePane ?? layout.allPanes.first {
+        if let pane = layout.centerPane {
             pane.tabs.append(session.id)
             registry.setActiveTab(paneID: pane.id, tabIndex: pane.tabs.count - 1)
         }
@@ -917,7 +917,7 @@ struct AideaApp: App {
             claudeState.speechQueue = speechState.queue
         }
         companionStore.bind(index: index, sessionID: session.id)
-        if let pane = registry.activePane ?? layout.allPanes.first {
+        if let pane = layout.centerPane {
             pane.tabs.append(session.id)
             registry.setActiveTab(paneID: pane.id, tabIndex: pane.tabs.count - 1)
         }

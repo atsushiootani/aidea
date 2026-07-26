@@ -196,7 +196,7 @@ struct CompanionView: View {
         }
         store.bind(index: companion.index, sessionID: id)
 
-        if let pane = registry.activePane ?? layout.allPanes.first {
+        if let pane = layout.centerPane {
             pane.tabs.append(id)
             registry.setActiveTab(paneID: pane.id, tabIndex: pane.tabs.count - 1)
         }
