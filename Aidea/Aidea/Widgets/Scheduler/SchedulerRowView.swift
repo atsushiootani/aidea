@@ -8,6 +8,7 @@ import SwiftUI
 /// `SchedulerPopoverView` のリスト 1 行ぶん。
 /// `name` / トリガー (定時/起動時/手動) / 送信先 (Companion / Terminal) / `prompt` / 実行状態を表示し、
 /// 「今すぐ実行」「編集」「削除」ボタンと ON/OFF トグルを置く。
+/// 左端の掴みハンドル (≡) のドラッグ & 行へのドロップで並べ替えできる (issue #274)。
 /// docs/specs/widgets/scheduler.md 参照。
 struct SchedulerRowView: View {
     let job: SchedulerConfig.Job
@@ -24,8 +25,38 @@ struct SchedulerRowView: View {
     @State private var showDeleteConfirm = false
     /// スニペットへの移動 (元削除) 確認ダイアログの表示状態。
     @State private var showConvertConfirm = false
+    /// 並べ替えドラッグのドロップ先としてホバーされているか (アクセント枠の表示用)。
+    @State private var isDropTargeted = false
 
     var body: some View {
+        HStack(spacing: 6) {
+            // 掴みハンドル: ドラッグで並べ替え (issue #274)。ペイロードはジョブ id
+            Image(systemName: "line.3.horizontal")
+                .font(.system(size: 11))
+                .foregroundStyle(.tertiary)
+                .draggable(job.id)
+                .help("ドラッグで並べ替え")
+
+            rowContent
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .background(
+            RoundedRectangle(cornerRadius: 4)
+                .fill(Color(nsColor: .controlBackgroundColor).opacity(0.5))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 4)
+                .stroke(Color.accentColor, lineWidth: isDropTargeted ? 1.5 : 0)
+        )
+        .dropDestination(for: String.self) { items, _ in
+            guard let sourceID = items.first else { return false }
+            scheduler.moveJob(sourceID: sourceID, to: job.id)
+            return true
+        } isTargeted: { isDropTargeted = $0 }
+    }
+
+    private var rowContent: some View {
         VStack(alignment: .leading, spacing: 4) {
             // 1 行目: 状態アイコン + name + トリガー (定時 HH:mm 曜日 / 起動時 / 手動)
             HStack(spacing: 6) {
@@ -112,12 +143,6 @@ struct SchedulerRowView: View {
                 .labelsHidden()
             }
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
-        .background(
-            RoundedRectangle(cornerRadius: 4)
-                .fill(Color(nsColor: .controlBackgroundColor).opacity(0.5))
-        )
     }
 
     /// ジョブをスニペットへ「移動」する (元ジョブは削除)。

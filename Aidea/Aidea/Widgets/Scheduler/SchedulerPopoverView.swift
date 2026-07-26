@@ -43,6 +43,9 @@ struct SchedulerPopoverView: View {
         }
         .padding(12)
         .frame(width: 400)
+        // popover を開くたびに設定・状態ファイルを再読込する (issue #274)。
+        // 外部編集 (手編集 / Claude による編集) が再起動なしで反映される。開いている間は再読込しない。
+        .onAppear { scheduler.reloadFromDisk() }
     }
 
     private var header: some View {
