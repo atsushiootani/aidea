@@ -42,6 +42,7 @@ struct PaneView: View {
                 ForEach(pane.tabs, id: \.self) { id in
                     let isActive = (pane.activeSessionID == id)
                     registry.view(for: id)
+                        .environment(\.isTabVisible, isActive)
                         .opacity(isActive ? 1 : 0)
                         .allowsHitTesting(isActive)
                         .simultaneousGesture(

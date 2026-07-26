@@ -16,6 +16,9 @@ import SwiftTerm
 struct ClaudeSessionView: NSViewRepresentable {
     let state: ClaudeSessionState
 
+    /// ペインの表示中タブかどうか (PaneView が設定)。非表示タブは描画を停止する (issue #273)。
+    @Environment(\.isTabVisible) private var isTabVisible
+
     func makeNSView(context: Context) -> PersistentTerminalView {
         let view = state.terminalView
         // bridge に NSView 参照を登録 (SwiftUI update cycle と分離)。
@@ -26,5 +29,8 @@ struct ClaudeSessionView: NSViewRepresentable {
         return view
     }
 
-    func updateNSView(_ nsView: PersistentTerminalView, context: Context) {}
+    func updateNSView(_ nsView: PersistentTerminalView, context: Context) {
+        // 非表示タブの描画停止 (issue #273)。表示に戻った瞬間に一括再描画される。
+        nsView.setDisplaySuspended(!isTabVisible)
+    }
 }
