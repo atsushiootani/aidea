@@ -79,7 +79,7 @@ Session 内部状態は [sessions/terminal.md](../sessions/terminal.md) を参�
 |---|---|---|
 | URL (http/https) | SwiftTerm 標準の URL/OSC 8 ハイパーリンク検出 | **Web Tool** に開く ([tools/web.md](./web.md#url-クリックルーティング-terminal--claude--web)) |
 | URL (その他 scheme) | 同上 | OS デフォルトアプリで開く |
-| ファイルパス | Aidea 独自の regex 検出 + 実在確認 (issue #71) | ターミナルと同じペインの右隣に Preview タブを開く |
+| ファイルパス | Aidea 独自の regex 検出 + 実在確認 (issue #71) | 右端ペインに Preview タブを開く ([sessions/active-session.md#固定配置先とペインの並び順-issue-275](../sessions/active-session.md#固定配置先とペインの並び順-issue-275)) |
 
 クリックターゲット (URL またはファイルパス) 上にマウスがホバーしたとき、カーソルを指マークに変えてクリック可能であることを示す。ターゲットから外れたら通常 (I ビーム) に戻す。
 
@@ -133,10 +133,9 @@ mouseDown と mouseUp の位置が **threshold (4 pt) 以下** に収まり、�
 
 #### Preview 起動
 
-検出 + 実在確認後、Preview を同じペインの右隣に新規タブとして開く。
+検出 + 実在確認後、Preview を**右端ペイン**に新規タブとして開く ([sessions/active-session.md#固定配置先とペインの並び順-issue-275](../sessions/active-session.md#固定配置先とペインの並び順-issue-275)、issue #275)。
 
 - タブタイトルは projectRoot からの相対パス (絶対パスは長くタブで読みにくいため)
-- **同じペインの右隣に新規 Preview タブを挿入する**。ターミナルで作業中に他ペインへフォーカスを奪われない方が体感が自然なため。Filer / Kit のダブルクリックが使う「別ペイン配置で開く」とはここが異なる
 - 既存の Preview dedupe 規約 ([sessions/active-session.md#preview-を開くときの呼び出し規約](../sessions/active-session.md#preview-を開くときの呼び出し規約)) に従い、同じ URL の Preview がすでに存在すれば新規作成せずアクティブ化する
 
 #### `:行数` 指定の行ジャンプ (将来拡張)
@@ -227,7 +226,7 @@ Markdown Preview の実行ボタン押下時に呼ばれる。既存 Terminal �
 - ファイルパスのクリック起動は projectRoot を相対パスの一次解決の起点とし、見つからない場合はプロジェクト内検索フォールバックに進む
 - 直接解決もフォールバック検索もヒットしない場合は無音で無視 (URL クリックの失敗時挙動に揃える)
 - フォールバック検索で複数候補が見つかった場合は NSMenu ポップアップを表示してユーザに選択させる
-- ファイルパスから開く Preview は **ターミナルと同じペインの右隣** に新規タブで挿入する
+- ファイルパスから開く Preview は **右端ペイン** に新規タブで挿入する (issue #275)
 
 ### Never
 - Terminal ツールから `claude` を自動起動しない（Claude ツールの責務）
