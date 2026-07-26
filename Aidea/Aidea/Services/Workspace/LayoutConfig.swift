@@ -37,6 +37,31 @@ final class LayoutConfig {
     /// 全 leaf LayoutNode の配列
     var allLeafNodes: [LayoutNode] { root.collectLeafNodes() }
 
+    /// 右端ペイン: 画面上最も右のペイン。右端の領域が上下分割されている場合は上のペイン
+    /// (左右分割では右端の子・上下分割では先頭 = 上の子を選んで木を辿った先)。
+    /// Preview の固定配置先 (issue #275)。
+    /// 仕様: docs/specs/sessions/active-session.md#固定配置先とペインの並び順-issue-275
+    var rightmostPane: Pane? {
+        func descend(_ node: LayoutNode) -> Pane? {
+            switch node.value {
+            case .leaf(let pane):
+                return pane
+            case .split(let axis, let children):
+                guard let child = (axis == .horizontal ? children.last : children.first) else { return nil }
+                return descend(child)
+            }
+        }
+        return descend(root)
+    }
+
+    /// 中央ペイン: ペインの並び順 (レイアウト走査順) の中央。偶数個のときは左寄り。
+    /// Claude セッションの固定配置先 (issue #275)。
+    var centerPane: Pane? {
+        let panes = allPanes
+        guard !panes.isEmpty else { return nil }
+        return panes[(panes.count - 1) / 2]
+    }
+
     /// 指定 tool の新しい Session インスタンス番号を採番する
     func nextSessionInstance(of tool: Tool) -> Int {
         let used = Set(allPanes.flatMap { $0.tabs }.filter { $0.tool == tool }.map { $0.instance })

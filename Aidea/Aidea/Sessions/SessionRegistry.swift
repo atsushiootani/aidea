@@ -222,7 +222,7 @@ final class SessionRegistry {
     // MARK: - Preview routing
 
     /// Filer / Kit のダブルクリック等から呼ばれる: 新しい Preview Tab を
-    /// 「呼び出し元 (activeSessionID) のペイン以外」に作成する。
+    /// 右端ペインに作成する (issue #275)。
     func openPreview(for url: URL, title: String? = nil) {
         // 既に同じ URL を開いている Preview があればアクティブ化
         for pane in layout.allPanes {
@@ -236,20 +236,8 @@ final class SessionRegistry {
                 }
             }
         }
-        // 呼び出し元ペインを回避して配置先を決定
-        let callerPane = activePane
-        var targetPane: Pane?
-        for id in activeSessionHistory.reversed() {
-            if let pane = layout.allPanes.first(where: { $0.tabs.contains(id) }),
-               pane !== callerPane {
-                targetPane = pane
-                break
-            }
-        }
-        if targetPane == nil {
-            targetPane = layout.allPanes.first { $0 !== callerPane }
-        }
-        guard let pane = targetPane else { return }
+        // 固定配置: 右端ペイン (issue #275)
+        guard let pane = layout.rightmostPane else { return }
 
         let instance = layout.nextSessionInstance(of: .preview)
         let session = createSession(tool: .preview, instance: instance)
@@ -334,33 +322,10 @@ final class SessionRegistry {
         webPopups.removeAll { $0 === controller }
     }
 
-    /// Preview 内リンクから呼ばれる: 同じペインの右隣に Preview を挿入する。
+    /// Preview 内リンク・ターミナル・GitDiff から呼ばれる開き口。
+    /// 配置は issue #275 で右端ペインに一本化されたため、通常の開き口に委譲する。
     func openPreviewAsSibling(for url: URL, title: String? = nil) {
-        // 既存 dedupe
-        for pane in layout.allPanes {
-            for (index, id) in pane.tabs.enumerated() where id.tool == .preview {
-                if let s = session(for: id),
-                   let preview = s.state as? PreviewSessionState,
-                   preview.url == url {
-                    if let title = title { preview.title = title }
-                    setActiveTab(paneID: pane.id, tabIndex: index)
-                    return
-                }
-            }
-        }
-        guard let callerID = activeSessionID,
-              let pane = layout.allPanes.first(where: { $0.tabs.contains(callerID) }),
-              let currentIndex = pane.tabs.firstIndex(of: callerID) else {
-            openPreview(for: url, title: title)
-            return
-        }
-        let instance = layout.nextSessionInstance(of: .preview)
-        let session = createSession(tool: .preview, instance: instance)
-        (session.state as? PreviewSessionState)?.url = url
-        (session.state as? PreviewSessionState)?.title = title
-        let insertIndex = currentIndex + 1
-        pane.tabs.insert(session.id, at: insertIndex)
-        setActiveTab(paneID: pane.id, tabIndex: insertIndex)
+        openPreview(for: url, title: title)
     }
 
     /// TabSlot へのファイル D&D から呼ばれる: ドロップされた slot 位置
