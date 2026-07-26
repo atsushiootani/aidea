@@ -58,6 +58,38 @@ final class PersistentTerminalView: LocalProcessTerminalView {
     /// クリック起動でファイルを Preview に開くためのレジストリ (Session 側で注入)。
     weak var sessionRegistry: SessionRegistry?
 
+    // MARK: - 非表示タブの描画停止 (issue #273)
+
+    /// true の間、dirty マーキング (setNeedsDisplay) を抑制して再描画を止め、
+    /// マウスイベント監視も早期 return する。
+    /// PTY 受信・内部状態更新 (feed) は継続するため、実行中判定やトランスクリプト検出は
+    /// 非表示中も正しく動き続ける。解除時は全面再描画して最新状態を一括反映する。
+    /// (SwiftTerm の draw は non-open で override できないため、描画要求の側を止める)
+    /// 仕様: docs/specs/sessions/terminal.md#非表示タブの描画停止-issue-273
+    private(set) var isDisplaySuspended = false
+
+    /// 表示状態の変化を受け取る (TerminalSessionView / ClaudeSessionView の updateNSView から)。
+    func setDisplaySuspended(_ suspended: Bool) {
+        guard suspended != isDisplaySuspended else { return }
+        isDisplaySuspended = suspended
+        if !suspended {
+            needsDisplay = true
+        }
+    }
+
+    override var needsDisplay: Bool {
+        get { super.needsDisplay }
+        set {
+            if isDisplaySuspended && newValue { return }
+            super.needsDisplay = newValue
+        }
+    }
+
+    override func setNeedsDisplay(_ invalidRect: NSRect) {
+        if isDisplaySuspended { return }
+        super.setNeedsDisplay(invalidRect)
+    }
+
     override func layout() {
         if bounds.width < Self.minimumLayoutSize || bounds.height < Self.minimumLayoutSize {
             return
@@ -133,7 +165,7 @@ final class PersistentTerminalView: LocalProcessTerminalView {
         // ホバー位置がクリックターゲット (URL / 実在するファイルパス) なら
         // カーソルを `pointingHand` に変える (issue #71)。
         mouseMoveMonitor = NSEvent.addLocalMonitorForEvents(matching: [.mouseMoved, .mouseEntered, .mouseExited]) { [weak self] event in
-            guard let self else { return event }
+            guard let self, !self.isDisplaySuspended else { return event }
             if let hitView = event.window?.contentView?.hitTest(event.locationInWindow),
                hitView === self || hitView.isDescendant(of: self) {
                 self.updateHoverCursor(at: event.locationInWindow)
@@ -151,7 +183,7 @@ final class PersistentTerminalView: LocalProcessTerminalView {
         // その内部の `requestOpenLink` が `TerminalLinkGuard.requestOpenLink` 経由で起動可否を
         // 判定する。
         mouseDownMonitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak self] event in
-            guard let self,
+            guard let self, !self.isDisplaySuspended,
                   let hitView = event.window?.contentView?.hitTest(event.locationInWindow),
                   hitView === self || hitView.isDescendant(of: self) else {
                 return event
@@ -162,7 +194,7 @@ final class PersistentTerminalView: LocalProcessTerminalView {
             return event
         }
         mouseDraggedMonitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDragged) { [weak self] event in
-            guard let self,
+            guard let self, !self.isDisplaySuspended,
                   let start = self.mouseDownLocation,
                   !self.didDragSinceMouseDown else { return event }
             let dx = event.locationInWindow.x - start.x
@@ -173,7 +205,7 @@ final class PersistentTerminalView: LocalProcessTerminalView {
             return event
         }
         mouseUpMonitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseUp) { [weak self] event in
-            guard let self else { return event }
+            guard let self, !self.isDisplaySuspended else { return event }
             // hitView が自 View 配下、かつ mouseDown を観測していた場合のみ tap 判定を立てる。
             // hitView が外れた場合 (drag-out して別 View で離した) は tap 扱いしない。
             let isTap: Bool
@@ -210,7 +242,7 @@ final class PersistentTerminalView: LocalProcessTerminalView {
         // 「プロンプト=コピーモード / alt-screen アプリ (less/vim 等)=矢印・マウス転送」を正しく振り分ける。
         // 仕様: docs/specs/tools/terminal.md#ホイールスクロール-issue-260 / ADR 0017
         scrollMonitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { [weak self] event in
-            guard let self,
+            guard let self, !self.isDisplaySuspended,
                   let hitView = event.window?.contentView?.hitTest(event.locationInWindow),
                   hitView === self || hitView.isDescendant(of: self) else {
                 return event
@@ -236,7 +268,7 @@ final class PersistentTerminalView: LocalProcessTerminalView {
         // ホイールクリック（ミドルクリック）→ Ctrl+O は Claude 専用 (トランスクリプトモードのトグル)
         guard isClaudeSession else { return }
         middleClickMonitor = NSEvent.addLocalMonitorForEvents(matching: .otherMouseDown) { [weak self] event in
-            guard let self,
+            guard let self, !self.isDisplaySuspended,
                   event.buttonNumber == 2,
                   let hitView = event.window?.contentView?.hitTest(event.locationInWindow),
                   hitView === self || hitView.isDescendant(of: self) else {
