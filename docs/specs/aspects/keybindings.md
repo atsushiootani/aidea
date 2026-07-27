@@ -5,6 +5,7 @@ derived_from:
   - docs/decisions/0014-no-ctrl-number-shortcuts.md
   - docs/decisions/0016-terminal-mouse-event-suppression.md
   - docs/decisions/0017-alternate-screen-scroll-handling.md
+  - docs/decisions/0041-open-in-chrome-matched-size.md
 syncs_with:
   - docs/specs/tools/claude.md
   - docs/specs/tools/filer.md
@@ -23,7 +24,7 @@ impacts: []
 conventions:
   - docs/LAYOUT.md
   - docs/specs/aspects/README.md
-last_updated: 2026-07-13
+last_updated: 2026-07-27
 ---
 
 # キー操作・マウス操作一覧
@@ -244,6 +245,20 @@ Aidea の全キーボードショートカットとマウス操作のリファ�
 
 ※ トランスクリプトモード = 最下行に `"transcript"` を含む状態（[ADR 0017](../../decisions/0017-alternate-screen-scroll-handling.md)）
 ※ Terminal ツールでも同じマウス操作が有効（端末 View を共用）
+
+---
+
+## Web
+
+### マウス
+
+| 操作 | アクション |
+|------|-----------|
+| 地球アイコン 単純クリック | 現在の URL を OS デフォルトブラウザで開く |
+| 地球アイコン ⌘クリック | 現在の URL を Web タブと同じ位置・サイズの Chrome ウィンドウで開く (Chrome 未インストール時は単純クリックと同じ挙動にフォールバック) |
+
+※ この ⌘クリックは Web ツール固有の例外 ([ADR 0041](../../decisions/0041-open-in-chrome-matched-size.md))。
+Terminal 節の「単純クリックは Cmd 修飾の有無を問わない」というルールとは対象操作が異なる (地球アイコンのボタンクリックであり、ファイルパス/URL テキスト上のクリックではない)。
 
 ---
 

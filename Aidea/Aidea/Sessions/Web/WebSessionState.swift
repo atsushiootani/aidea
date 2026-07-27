@@ -76,6 +76,15 @@ final class WebSessionState: SessionState, FocusBridgeOwner {
         return webView
     }
 
+    /// 現在の WebView の画面上の frame (screen 座標系: 左下原点・Y 上向き)。
+    /// Chrome を同じ位置・サイズで開くために使う (ADR 0041)。
+    /// まだ画面に描画されておらず window が無い場合は nil。
+    var screenFrame: NSRect? {
+        guard let webView = cached, let window = webView.window else { return nil }
+        let windowRect = webView.convert(webView.bounds, to: nil)
+        return window.convertToScreen(windowRect)
+    }
+
     /// window.open / target="_blank" で WebKit から渡された WKWebView を引き取る。
     /// 自前生成・初期ロードはしない (WebKit が navigationAction を自動ロードするため)。
     /// 仕様: docs/specs/sessions/web.md#子-webview-の-adopt ([ADR 0035](../../decisions/0035-web-window-open-tab-and-popup.md))

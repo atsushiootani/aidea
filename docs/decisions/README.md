@@ -8,7 +8,7 @@ impacts:
   - docs/decisions/*
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-05-27
+last_updated: 2026-07-27
 ---
 
 # Architecture Decision Records
@@ -59,6 +59,7 @@ Aidea の設計判断を 1 件ずつ記録する。フォーマットは [Michae
 | [0038](./0038-disable-cmd-z-undo.md) | Cmd+Z (undo / redo) をアプリ全域で無効化する | 提案 |
 | [0039](./0039-docs-layer-taxonomy.md) | docs の文書レイヤを「変更トリガ」と「記述する現象」で分類する | 採用 |
 | [0040](./0040-rpc-backchannel-mcp.md) | 外部と Companion の往復通信 rpc backchannel を設け、MCP サーバから利用する | 提案 |
+| [0041](./0041-open-in-chrome-matched-size.md) | Web タブの表示領域と同じ位置・サイズで Chrome を開く | 採用 |
 
 ## 状態の値
 
