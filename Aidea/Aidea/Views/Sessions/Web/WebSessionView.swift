@@ -63,8 +63,8 @@ struct WebSessionView: View {
                     isURLFieldFocused = false
                 }
 
-            toolbarButton("globe", help: "ブラウザで開く") {
-                NSWorkspace.shared.open(state.url)
+            toolbarButton("globe", help: "ブラウザで開く (⌘クリック: Chrome を同じ位置・サイズで開く)") {
+                openInBrowser()
             }
             toolbarButton("magnifyingglass", help: "ページ内検索", active: isSearchVisible) {
                 if isSearchVisible { closeSearch() } else { openSearch() }
@@ -134,6 +134,19 @@ struct WebSessionView: View {
             disabled ? Color.secondary.opacity(0.4) : (active ? Color.accentColor : Color.primary)
         )
         .help(help)
+    }
+
+    /// 地球アイコンのアクション。単純クリックは OS デフォルトブラウザ、⌘クリックは
+    /// 現在の Web タブと同じ位置・サイズの Chrome ウィンドウで開く (ADR 0041)。
+    /// Chrome 未インストール、または frame が取得できない場合は単純クリックと同じ挙動にフォールバックする。
+    private func openInBrowser() {
+        if NSEvent.modifierFlags.contains(.command),
+           ChromeWindowLauncher.isChromeInstalled,
+           let frame = state.screenFrame {
+            ChromeWindowLauncher.open(state.url, matching: frame)
+        } else {
+            NSWorkspace.shared.open(state.url)
+        }
     }
 
     /// 検索バーを開いて検索フィールドにフォーカスする

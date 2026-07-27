@@ -3,6 +3,7 @@ title: "Tool 仕様: Web"
 description: WKWebView ベースの Web ブラウザ Tool 仕様 (ナビゲーションツールバー / URL クリックルーティング)
 derived_from:
   - docs/decisions/0015-wkwebview-scope-and-chrome-coexistence.md
+  - docs/decisions/0041-open-in-chrome-matched-size.md
   - docs/specs/sessions/ui-rules.md
   - docs/specs/window/
 syncs_with:
@@ -12,7 +13,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-07-10
+last_updated: 2026-07-27
 ---
 
 # Tool 仕様: Web
@@ -23,6 +24,7 @@ WKWebView ベースの内蔵ブラウザ Tool。
 Session 内部状態は [sessions/web.md](../sessions/web.md) を参照。
 WKWebView の制約と Chrome 併用方針は [ADR 0015](../../decisions/0015-wkwebview-scope-and-chrome-coexistence.md) を参照。
 `window.open` / `target="_blank"` の扱いは [ADR 0035](../../decisions/0035-web-window-open-tab-and-popup.md) を参照。
+地球アイコンの ⌘クリックで Chrome を同じ位置・サイズで開く挙動は [ADR 0041](../../decisions/0041-open-in-chrome-matched-size.md) を参照。
 
 ## ナビゲーションツールバー
 
@@ -38,7 +40,7 @@ WKWebView の制約と Chrome 併用方針は [ADR 0015](../../decisions/0015-wk
 | 進む (→) | 1 つ先のページへ進む | 進めないとき disabled (履歴状態に追従) |
 | 更新 (⟳) | 現在のページを再読み込みする | |
 | URL 欄 | 現在の URL を表示。**編集可能**: Enter 押下でその URL へ移動 | ページ遷移に追従。編集中 (フォーカス中) はユーザ入力を追従更新で上書きしない |
-| 地球アイコン (🌐) | 現在の URL を **OS デフォルトブラウザ** で開く | ADR 0015 の「Chrome 併用」への導線 |
+| 地球アイコン (🌐) | 現在の URL を **OS デフォルトブラウザ** で開く。**⌘クリック**すると現在の Web タブと同じ位置・サイズの Chrome ウィンドウで開く | ADR 0015 の「Chrome 併用」への導線。⌘クリックの詳細は [ADR 0041](../../decisions/0041-open-in-chrome-matched-size.md) と後述の[Chrome を同じ位置・サイズで開く](#chrome-を同じ位置サイズで開く-⌘クリック)を参照 |
 | 検索アイコン (🔍) | ツールバー下の **ページ内検索バー** をトグルする | 開いている間はアクセントカラーで点灯。後述の[ページ内検索](#ページ内検索)を参照 |
 
 ### URL 欄の入力解釈
@@ -137,6 +139,25 @@ Terminal 側のクリック判定は [tools/terminal.md#url-クリック](./term
 - 窓は妥当な既定サイズで出す (位置・サイズの厳密な再現はしない。
   サイズ指定は「ポップアップとして扱うか」の判定にのみ使う)
 
+## Chrome を同じ位置・サイズで開く (⌘クリック) ([ADR 0041](../../decisions/0041-open-in-chrome-matched-size.md))
+
+WKWebView (Safari 相当) が非対応と判定するサイトに遭遇したとき、Web タブを離れた感覚を
+出さずに Chrome へ切り替えられるようにする導線。
+
+- ツールバーの地球アイコンを **⌘クリック**すると、現在の Web タブの表示領域と**同じ位置・
+  サイズ**の新規 Chrome ウィンドウを開き、同じ URL を読み込む
+- Cmd を押さない単純クリックは従来通り OS デフォルトブラウザで開く (挙動を変えない)
+- 位置・サイズは呼び出し時点の Web タブ (WKWebView) の画面上の frame から算出する
+- 常に**新規 Chrome ウィンドウ**を開く (既存 Chrome ウィンドウの再利用・リサイズはしない)
+
+### フォールバック
+
+以下のいずれかに該当する場合、⌘クリックでも**単純クリックと同じ OS デフォルトブラウザ**へ
+フォールバックする (エラー表示はしない)。
+
+- Google Chrome がインストールされていない
+- Web タブがまだ画面に描画されておらず、表示領域の frame が取得できない
+
 ## JavaScript ダイアログ (alert / confirm / prompt)
 
 ページ内の `window.alert()` / `window.confirm()` / `window.prompt()` を UI デリゲートで受け取り、
@@ -167,6 +188,8 @@ JS ダイアログを**黙って握り潰す** (何も表示されず `confirm` 
 ### Always
 - ツールバーのボタン有効状態 (戻れる / 進める) はページ履歴に追従する
 - URL クリックルーティングは http / https のみを対象とする
+- 地球アイコンの単純クリックは OS デフォルトブラウザで開く。⌘クリックは Chrome 未インストール
+  または frame 取得不可のとき単純クリックと同じ挙動にフォールバックする
 - `window.open` / `target="_blank"` は WebKit から渡された設定で子 WebView を作り、自前ロードしない
 - 新規 Web タブは opener と同じペインの右隣に出す / ポップアップ窓は `window.close()` で閉じる
 - JS の alert / confirm / prompt はネイティブのアラート (シート) で表示し、必ず一度だけ結果を返す
@@ -176,3 +199,4 @@ JS ダイアログを**黙って握り潰す** (何も表示されず `confirm` 
 - 呼び出し元 (カレント) ペインには (URL クリックルーティングでは) Web タブを作らない
 - 子 WebView を自前で生成・ロードしない (opener 関係が切れて OAuth が壊れるため)
 - JS ダイアログを握り潰さない (UI デリゲート未対応のまま放置しない)
+- ⌘クリックで既存 Chrome ウィンドウを再利用・リサイズしない — 常に新規ウィンドウ
