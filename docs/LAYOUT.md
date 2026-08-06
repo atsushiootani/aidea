@@ -51,6 +51,7 @@ docs/
 │   ├── rules.md       # Always / Confirm First / Never
 │   ├── testing.md     # テスト戦略 / 手動確認チェックリスト
 │   ├── quality-gates.md # 機械検査 (scripts/) と検証欄の運用
+│   ├── autonomous-loop.md # 自律開発ループの範囲・ゲート・撤退条件
 │   └── implementations/ # 個別機能の実装規約 (focus.md / e2e-key-simulation.md)
 │
 └── agent-skills/      # agent-skills の入門・スキル構造解説ドキュメント置き場
@@ -196,7 +197,7 @@ specs の Always / Never は**ユーザから観測可能な不変条件**に限
 ### `docs/conventions/` — コードを書くときの規約
 
 - **用途**: 実装者が従うコーディング規約・テスト戦略・設計原則。「何を作るか」ではなく「どう書くか」を扱う
-- **現在のファイル**: `coding-style.md` (Swift 規約) / `swift.md` (SwiftUI/NSView 使い分け) / `design-principles.md` (設計思想) / `rules.md` (Always/Never) / `testing.md` (テスト戦略) / `quality-gates.md` (機械検査)
+- **現在のファイル**: `coding-style.md` (Swift 規約) / `swift.md` (SwiftUI/NSView 使い分け) / `design-principles.md` (設計思想) / `rules.md` (Always/Never) / `testing.md` (テスト戦略) / `quality-gates.md` (機械検査) / `autonomous-loop.md` (自律開発ループ)
 - **直下と `implementations/` の使い分け**: 直下にはコードベース**全体にまたがる規約**だけを置く。特定の機能・仕様に紐づく実装規約・実装知見 (例: `focus.md` = フォーカス契約の実装規約、`e2e-key-simulation.md`) は `conventions/implementations/` に置き、対応する spec からリンクする
 - **判断基準**: プロダクト動作 (spec) ではなくコードの書き方に関する規約は全てここに置く
 - **命名**: kebab-case 全小文字

@@ -27,6 +27,7 @@ Aidea のコードを書く際に従うべき規約とガイドライン。
 | [rules.md](./rules.md) | Always / Confirm First / Never — コードレビュー時のチェックリスト |
 | [testing.md](./testing.md) | テスト戦略 / 手動確認チェックリスト |
 | [quality-gates.md](./quality-gates.md) | 機械検査 (ビルド / テスト / docs リンク / specs 実装詳細) と検証欄の運用 |
+| [autonomous-loop.md](./autonomous-loop.md) | 自律開発ループの範囲 (loop-safe 層) / 1 サイクルの定義 / 撤退条件 / 禁止事項 |
 
 直下はコードベース**全体にまたがる規約**のみを置く。
 
