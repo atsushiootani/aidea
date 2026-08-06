@@ -7,7 +7,7 @@ impacts:
   - docs/README.md
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-07-13
+last_updated: 2026-08-06
 ---
 
 # docs ディレクトリ構成とファイル配置ルール
@@ -50,6 +50,7 @@ docs/
 │   ├── design-principles.md # 設計原則 (Tell Don't Ask / SOLID / GRASP 等)
 │   ├── rules.md       # Always / Confirm First / Never
 │   ├── testing.md     # テスト戦略 / 手動確認チェックリスト
+│   ├── quality-gates.md # 機械検査 (scripts/) と検証欄の運用
 │   └── implementations/ # 個別機能の実装規約 (focus.md / e2e-key-simulation.md)
 │
 └── agent-skills/      # agent-skills の入門・スキル構造解説ドキュメント置き場
@@ -161,7 +162,7 @@ specs の Always / Never は**ユーザから観測可能な不変条件**に限
 - 使い分け: **一度きりの判断の経緯**は ADR (作成後は変更しない凍結文書)。**コードと一緒に進化する実装契約・知見** (ヘルパの使い方、登録・解放の責任、実装に苦労した回避策) は `conventions/` (生きた文書として更新する)。局所的なワークアラウンドはコードコメントでもよい
 - **例外**: `architecture.md` / `view-hierarchy.md` はクラス名・View 名・ファイルパスの列挙を許可する (構造の地図が目的のため)
 
-「避ける」パターンは `/aidea.docs-healthcheck` の「実装詳細チェック」で機械的に検出する。「残してよい」具体値は検出対象外。
+「避ける」パターンのうち機械的に判定できるものは [`scripts/check-spec-impl-details.py`](./conventions/quality-gates.md) が検出する (ERROR = ゲートを落とす / WARN = 報告のみ)。「残してよい」具体値は検出対象外。
 
 ### 用語の定義と参照リンク (造語には本拠地を 1 つ)
 
@@ -195,7 +196,7 @@ specs の Always / Never は**ユーザから観測可能な不変条件**に限
 ### `docs/conventions/` — コードを書くときの規約
 
 - **用途**: 実装者が従うコーディング規約・テスト戦略・設計原則。「何を作るか」ではなく「どう書くか」を扱う
-- **現在のファイル**: `coding-style.md` (Swift 規約) / `swift.md` (SwiftUI/NSView 使い分け) / `design-principles.md` (設計思想) / `rules.md` (Always/Never) / `testing.md` (テスト戦略)
+- **現在のファイル**: `coding-style.md` (Swift 規約) / `swift.md` (SwiftUI/NSView 使い分け) / `design-principles.md` (設計思想) / `rules.md` (Always/Never) / `testing.md` (テスト戦略) / `quality-gates.md` (機械検査)
 - **直下と `implementations/` の使い分け**: 直下にはコードベース**全体にまたがる規約**だけを置く。特定の機能・仕様に紐づく実装規約・実装知見 (例: `focus.md` = フォーカス契約の実装規約、`e2e-key-simulation.md`) は `conventions/implementations/` に置き、対応する spec からリンクする
 - **判断基準**: プロダクト動作 (spec) ではなくコードの書き方に関する規約は全てここに置く
 - **命名**: kebab-case 全小文字

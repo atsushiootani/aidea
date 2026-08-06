@@ -56,7 +56,7 @@ Web セッションは WebView の UI デリゲートを保持し、`window.open
   (状態変化の監視・クリック検知・UI デリゲート設定を共通の初期化処理に集約する)。
   クリック検知の仕組みと、タブ破棄時に必ず解放しなければならない理由は
   [conventions/implementations/focus.md#サブクラス不可能な-nsview-のクリック検知-クリックモニタ](../../conventions/implementations/focus.md#サブクラス不可能な-nsview-のクリック検知-クリックモニタ) を参照。
-- UI デリゲートは `window.open` を windowFeatures のサイズ指定有無で振り分ける ([tools/web.md](../tools/web.md#windowopen--targetblank-のルーティング-adr-0035)):
+- UI デリゲートは `window.open` を windowFeatures のサイズ指定有無で振り分ける ([tools/web.md](../tools/web.md#windowopen--target_blank-のルーティング-adr-0035)):
   - サイズ指定あり → フローティングポップアップ窓を生成
   - サイズ指定なし → 新規 Web タブ (opener の隣) として引き取る
 - どちらも WebKit から渡された設定で子 WebView を生成し、**自前ロードしない**。
