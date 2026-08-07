@@ -115,7 +115,7 @@ Claude セッションも Terminal と同様に tmux で PTY を永続化する 
 
 ## 実行中判定 `isBusy` (issue #45)
 
-Claude セッションは**実行中かどうか**を外部に公開する。Companion アイコンの表情切替 ([../companions/companion.md#表情・状態表示-issue-45](../companions/companion.md#表情・状態表示-issue-45)) が参照する。
+Claude セッションは**実行中かどうか**を外部に公開する。Companion アイコンの表情切替 ([../companions/companion.md#表情状態表示-issue-45](../companions/companion.md#表情状態表示-issue-45)) が参照する。
 
 ### 判定ロジック
 
@@ -152,7 +152,7 @@ Companion アイコンが「実行中」状態のとき、考え中の表情＋�
 
 ## 読み上げ中判定 `isSpeaking` (issue #45)
 
-Claude セッションは**読み上げ中かどうか**を外部に公開する。状態実体は持たず、音声キューが当該 Companion を読み上げ中かどうかを返す薄いファサード。Companion アイコンの表情切替 ([../companions/companion.md#表情・状態表示-issue-45](../companions/companion.md#表情・状態表示-issue-45)) が実行中と対称に参照できるよう揃える位置づけ。
+Claude セッションは**読み上げ中かどうか**を外部に公開する。状態実体は持たず、音声キューが当該 Companion を読み上げ中かどうかを返す薄いファサード。Companion アイコンの表情切替 ([../companions/companion.md#表情状態表示-issue-45](../companions/companion.md#表情状態表示-issue-45)) が実行中と対称に参照できるよう揃える位置づけ。
 
 ### 状態源
 
@@ -196,7 +196,7 @@ Companion アイコンが「読み上げ中」状態のとき、笑顔の表情�
 
 Claude タブを右クリックすると、コンテキストメニューを表示する。対象は Claude タブのみで、
 Terminal など他のタブには従来どおりメニューを出さない (Preview タブは [preview.md#タブ右クリックメニュー-issue-238](./preview.md#タブ右クリックメニュー-issue-238) の既存メニュー)。
-共通の右クリック規約は [sessions/ui-rules.md#右クリックコンテキストメニュー](../sessions/ui-rules.md#右クリック・コンテキストメニュー) に従う。
+共通の右クリック規約は [sessions/ui-rules.md#右クリックコンテキストメニュー](../sessions/ui-rules.md#右クリックコンテキストメニュー) に従う。
 
 | 項目 | 動作 |
 |---|---|

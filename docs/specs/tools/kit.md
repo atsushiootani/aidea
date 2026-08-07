@@ -192,7 +192,7 @@ code-reviewer              inherit      USER
 | ダブルクリック | [openDetail](#opendetail--項目の詳細を開く) |
 | セクションヘッダークリック | [toggleSection](#togglesection--セクションの折りたたみ展開) |
 | ヘッダー `+` ボタンクリック | [addResource](#addresource--セクション別の新規追加-ヘッダーの--ボタン) |
-| 右クリック | コンテキストメニュー ([共通ルール](../sessions/ui-rules.md#右クリック・コンテキストメニュー)) |
+| 右クリック | コンテキストメニュー ([共通ルール](../sessions/ui-rules.md#右クリックコンテキストメニュー)) |
 
 ### コンテキストメニュー項目
 - **プレビューで開く** (Enter)

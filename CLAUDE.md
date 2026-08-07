@@ -10,6 +10,7 @@ Aidea/             → macOS アプリ本体 (Xcode プロジェクト)
 docs/              → 設計ドキュメント (specs / conventions / foundation / decisions)。配置ルールは docs/LAYOUT.md
 skills/            → agent-skills 由来の参照リソース
 tools/             → 補助ツール (aidea-mcp: 外部ツール連携用 MCP サーバ)
+scripts/           → 品質ゲート (ビルド/テスト/docs 検査)。docs/conventions/quality-gates.md
 .claude/           → ローカル個人のスキル/コマンド (gitignore、共有しない)
 ```
 
@@ -46,3 +47,4 @@ tools/             → 補助ツール (aidea-mcp: 外部ツール連携用 MCP 
 - ターミナルから `claude` を自動起動してはならない (理由: [ADR 0008](./docs/decisions/0008-no-claude-autostart.md))
 - 機能群の変更時は [docs/specs/aspects/](./docs/specs/aspects/README.md)（横断的関心事）も合わせて更新する
 - **新機能・新チャネルの specs を書く前に、類似の既存機能（命名・ファイル形式・UI 作法）を洗い出して揃える**。[docs/conventions/design-principles.md](./docs/conventions/design-principles.md) のチェックリストを通すこと
+- **完了報告・PR の「検証」欄は `scripts/gate.sh` の出力をそのまま使う**。自分が実行していない検証を実行したように書かない。実機確認は常に「未実施」で出力されるので、実際に触って確認した人だけが書き換える ([docs/conventions/quality-gates.md](./docs/conventions/quality-gates.md))

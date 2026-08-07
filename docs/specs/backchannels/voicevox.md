@@ -169,7 +169,7 @@ v8 以降、読み上げ機能は各 Companion の `.aidea/claude/companions/<in
 | 次のエントリの再生開始直前 | そのエントリの companionIndex |
 | 再生完了 (または VOICEVOX API エラーでスキップ) | なしに戻す |
 
-Companion アイコン表示はこの値を監視し、一致する index の Companion を「読み上げ中」表示 (笑顔 + heart.fill) に切り替える。詳細は [../companions/companion.md#表情・状態表示-issue-45](../companions/companion.md#表情・状態表示-issue-45) を参照。
+Companion アイコン表示はこの値を監視し、一致する index の Companion を「読み上げ中」表示 (笑顔 + heart.fill) に切り替える。詳細は [../companions/companion.md#表情状態表示-issue-45](../companions/companion.md#表情状態表示-issue-45) を参照。
 
 **Always**: 読み上げ中 companionIndex は単一値 (同時再生しない = キューは 1 つずつ逐次処理)。複数 Companion の speech が重なった場合、タイムスタンプ順で 1 体ずつ切り替わる。
 

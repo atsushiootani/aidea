@@ -68,7 +68,7 @@ PR Preview モードも同様に、`git diff main...HEAD` の出力をファイ�
 - Preview は **右端ペイン**に新規タブとして挿入される ([active-session.md#固定配置先とペインの並び順-issue-275](./active-session.md#固定配置先とペインの並び順-issue-275)、issue #275)
 - 同じ URL の Preview が既に存在する場合は dedupe (新規作成せずアクティブ化)
 
-挙動の詳細は [active-session.md#preview-内から-preview-を開く場合-sibling-配置](./active-session.md#preview-内から-preview-を開く場合-sibling-配置) を参照。
+挙動の詳細は [active-session.md#preview-を開くときの呼び出し規約](./active-session.md#preview-を開くときの呼び出し規約) を参照。
 
 ## 追加制約
 

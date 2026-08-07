@@ -9,7 +9,7 @@ impacts:
   - docs/conventions/implementations/*
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-07-13
+last_updated: 2026-08-06
 ---
 
 # Aidea Conventions
@@ -26,6 +26,8 @@ Aidea のコードを書く際に従うべき規約とガイドライン。
 | [design-principles.md](./design-principles.md) | 設計原則 (Tell Don't Ask / SOLID / GRASP 等) |
 | [rules.md](./rules.md) | Always / Confirm First / Never — コードレビュー時のチェックリスト |
 | [testing.md](./testing.md) | テスト戦略 / 手動確認チェックリスト |
+| [quality-gates.md](./quality-gates.md) | 機械検査 (ビルド / テスト / docs リンク / specs 実装詳細) と検証欄の運用 |
+| [autonomous-loop.md](./autonomous-loop.md) | 自律開発ループの範囲 (loop-safe 層) / 1 サイクルの定義 / 撤退条件 / 禁止事項 |
 
 直下はコードベース**全体にまたがる規約**のみを置く。
 
