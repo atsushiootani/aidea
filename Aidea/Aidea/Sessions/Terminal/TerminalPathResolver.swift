@@ -151,6 +151,33 @@ enum TerminalPathResolver {
         )
     }
 
+    /// projectRoot 起点の相対パスを返す (タブタイトル用)。配下でなければ nil。
+    ///
+    /// 素朴な前方一致だけだと、projectRoot と検索結果でパス表記が食い違うケースを取りこぼす。
+    /// 例: `/var` は macOS の firmlink で、ディレクトリ列挙は `/private/var/...` を返すが
+    /// `resolvingSymlinksInPath()` は `/var/...` のままにする。その場合は双方の正規パス
+    /// (canonicalPath) で比較し直す (issue #280)。
+    private static func relativePath(of url: URL, under root: URL) -> String? {
+        if let relative = dropPrefix(root.path, from: url.path) {
+            return relative
+        }
+        guard let canonicalRoot = canonicalPath(of: root),
+              let canonicalURL = canonicalPath(of: url) else { return nil }
+        return dropPrefix(canonicalRoot, from: canonicalURL)
+    }
+
+    /// `path` が `rootPath` 配下ならルート部分を除いた相対パスを返す。配下でなければ nil。
+    private static func dropPrefix(_ rootPath: String, from path: String) -> String? {
+        let prefix = rootPath.hasSuffix("/") ? rootPath : rootPath + "/"
+        guard path.hasPrefix(prefix) else { return nil }
+        return String(path.dropFirst(prefix.count))
+    }
+
+    /// symlink / firmlink を解決した正規パス。取得できなければ nil。
+    private static func canonicalPath(of url: URL) -> String? {
+        (try? url.resourceValues(forKeys: [.canonicalPathKey]))?.canonicalPath
+    }
+
     /// NSCache の値を保持するためのラッパークラス (NSCache は AnyObject を要求するため)。
     private final class URLArrayBox: NSObject {
         let urls: [URL]
@@ -200,13 +227,7 @@ enum TerminalPathResolver {
 
     /// URL と Candidate から TerminalPathMatch を生成するヘルパー。
     private static func makeMatch(candidate: Candidate, url: URL, projectRoot: URL) -> TerminalPathMatch {
-        let displayPath: String
-        let rootPrefix = projectRoot.path + "/"
-        if url.path.hasPrefix(rootPrefix) {
-            displayPath = String(url.path.dropFirst(rootPrefix.count))
-        } else {
-            displayPath = url.path
-        }
+        let displayPath = relativePath(of: url, under: projectRoot) ?? url.path
         return TerminalPathMatch(
             startColumn: candidate.startColumn,
             endColumn: candidate.endColumn,

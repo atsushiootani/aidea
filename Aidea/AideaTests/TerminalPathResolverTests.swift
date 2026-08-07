@@ -141,6 +141,31 @@ struct TerminalPathResolverTests {
         }
     }
 
+    @Test("symlink 経由の projectRoot でも相対パスに正規化する (issue #280)")
+    func fallbackRelativizesUnderSymlinkedRoot() throws {
+        // projectRoot を正規化せず /var/... の表記のまま渡す (ユーザが symlink 経由の
+        // パスでプロジェクトを開いた状況に相当)。ディレクトリ列挙は /private/var/... を
+        // 返すため、素朴な前方一致だと相対化に失敗して絶対パスになる。
+        let base = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("aidea-symlinked-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: base) }
+        let file = base.appendingPathComponent("deep/nested/unique.swift")
+        try FileManager.default.createDirectory(
+            at: file.deletingLastPathComponent(), withIntermediateDirectories: true
+        )
+        try Data().write(to: file)
+
+        let line = "at unique.swift"
+        let col = try column(of: "unique.swift", in: line)
+
+        switch TerminalPathResolver.matchWithFallback(in: line, at: col, projectRoot: base) {
+        case .single(let match):
+            #expect(match.displayPath == "deep/nested/unique.swift")
+        case .none, .multiple:
+            Issue.record("単一ヒットになるはず")
+        }
+    }
+
     @Test("プロジェクト内検索フォールバック: 複数一致は候補を全部返す")
     func fallbackReturnsMultipleCandidates() throws {
         try withProject(files: ["a/dup.swift", "b/dup.swift"]) { root in
