@@ -14,6 +14,7 @@ struct CompanionView: View {
     @Environment(RecommendState.self) private var recommend
     @Environment(WorkspaceState.self) private var workspace
     @Environment(SpeechState.self) private var speech
+    @Environment(StatusState.self) private var status
 
     @State private var editingCompanion: CompanionConfig?
 
@@ -81,6 +82,8 @@ struct CompanionView: View {
         }()
         let iconState = resolveIconState(for: companion)
         let imageName = imageName(for: companion, state: iconState)
+        // 未起動 Companion にはフキダシを出さない (isActive ゲート、issue #281)
+        let bubbleText = isActive ? status.bubbleText(for: companion.index) : nil
 
         return VStack(spacing: 2) {
             // メインアイコン: タップで起動/フォーカス
@@ -122,6 +125,19 @@ struct CompanionView: View {
                     editingCompanion = companion
                 }
         }
+        .overlay(alignment: .top) {
+            if let bubbleText {
+                // AppHeaderView の上余白は .padding(.vertical, 4) の 4pt しかなく、
+                // それを超えてはみ出す分はウィンドウ描画領域外に切れて見えなくなる
+                // (issue #281 デバッグで実測確認)。-34 は表示されなかったため、
+                // 利用可能な余白に収まる -6 に補正する。
+                StatusBubbleView(text: bubbleText)
+                    .offset(y: -6)
+                    .transition(.opacity)
+                    .allowsHitTesting(false)
+            }
+        }
+        .animation(.default, value: bubbleText)
     }
 
     /// 現在の Companion が取るべきアイコン状態を判定する (issue #45)。

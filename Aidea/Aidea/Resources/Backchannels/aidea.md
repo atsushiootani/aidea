@@ -8,6 +8,7 @@
 - 他の Companion にタスクを受け渡したいとき → `.aidea/claude/handoff.md`
 - レスポンスを記録として残したいとき → `.aidea/claude/output.md`
 - リマインドしたいとき → `.aidea/claude/remind.md`
+- 作業状態をフキダシに表示したいとき → `.aidea/claude/status.md`
 
 ## ワークスペースのコンパニオン一覧
 
