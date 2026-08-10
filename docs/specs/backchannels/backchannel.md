@@ -13,14 +13,13 @@ syncs_with:
   - docs/specs/backchannels/inbox.md
   - docs/specs/backchannels/rpc.md
   - docs/specs/backchannels/companion-roster.md
-  - docs/specs/backchannels/status.md
   - docs/specs/aspects/persistence.md
   - docs/specs/companions/companion.md
 impacts:
   - docs/specs/tools/claude.md
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-08-07
+last_updated: 2026-07-16
 ---
 
 # Backchannel 仕様
@@ -69,9 +68,6 @@ Aidea は `.aidea/` ディレクトリを共有バスとして使用し、FSEven
 │   │   ├── handoff-{timestamp}.json   # Companion 0 が送信したハンドオフ
 │   │   ├── output-{timestamp}.txt     # レスポンス全文の出力記録
 │   │   ├── remind-{timestamp}.txt     # 遅延発火型リマインド ({timestamp} = トリガ時刻)
-│   │   ├── status-signal.json         # hooks が書く実行中/要返答/アイドル信号 (上書き型、status.md)
-│   │   ├── status-{timestamp}.json    # Claude 自身が書く自由文字列ラベル (status.md)
-│   │   ├── hooks-settings.json        # Aidea が起動のたび生成する Claude Code hooks 設定 (status.md)
 │   │   └── notify-{timestamp}.txt     # 通知バナー用テキスト (将来)
 │   ├── 1/
 │   │   └── ...
@@ -145,13 +141,12 @@ instructions.md 内から相対参照 (`./persona.md` など) で他ファイル
 | `handoff.md` | コンパニオン間ハンドオフ機能の定義 ([handoff.md](./handoff.md)) | 同上 |
 | `output.md` | output 記録機能の定義 ([output.md](./output.md)) | 同上 |
 | `remind.md` | リマインド機能の定義 ([remind.md](./remind.md)) | 同上 |
-| `status.md` | 作業状態フキダシ表示 (ラベル自己申告) の定義 ([status.md](./status.md)) | 同上 |
 | `inbox.md` | 外部 → Companion の inbox 書き込み作法 ([inbox.md](./inbox.md))。**外部エージェント向けの参照**で、companion の instructions.md からは参照しない | `.aidea/claude/` 直下 |
 | `{feature}.md` | 将来の共有機能 | 同上 |
 | `companions/<index>/instructions.md` | コンパニオンごとの起動指示 (エントリーポイント) | `.aidea/claude/companions/<0..8>/` |
 | `companions/<index>/*.md` | 段階的開示用の補助ファイル (persona / workflow など) | 同上 |
 
-初回セットアップ処理が Bundle 内の既知ファイルを `.aidea/claude/` にコピーする (`aidea.md` / `speech.md` / `handoff.md` / `output.md` / `remind.md` / `inbox.md` / `status.md` / `companions/<0..8>/instructions.md` を Bundle 同梱テンプレ `Backchannels/companion-instructions.md` から複製)。**既存ファイルは上書きしない** (ユーザ編集の保護)。
+初回セットアップ処理が Bundle 内の既知ファイルを `.aidea/claude/` にコピーする (`aidea.md` / `speech.md` / `handoff.md` / `output.md` / `remind.md` / `inbox.md` / `companions/<0..8>/instructions.md` を Bundle 同梱テンプレ `Backchannels/companion-instructions.md` から複製)。**既存ファイルは上書きしない** (ユーザ編集の保護)。
 
 `aidea.md` 内には Aidea が自動管理するコンパニオン名簿セクション (`<!-- aidea:companions:start -->` / `<!-- aidea:companions:end -->` で囲まれた領域) が含まれる。初回セットアップで aidea.md をコピーした後、スナップショット復元の末尾とコンパニオン編集 UI でのリネーム確定時に名簿書き込み処理が呼ばれ、最新の Companion 名 (`companions[].name`) でこの領域が書き換えられる。詳細は [companion-roster.md](./companion-roster.md) を参照。
 
@@ -168,8 +163,6 @@ Aidea は `.aidea/backchannels/` ディレクトリを FSEvents で **再帰監�
 | `backchannels/<0..8>/handoff-*.json` | handoff 監視 → 配送 → (宛先の) Claude セッション | [handoff.md](./handoff.md) |
 | `backchannels/<0..8>/output-*.txt` | output 監視 → 出力履歴に蓄積 | [output.md](./output.md) |
 | `backchannels/<0..8>/remind-{YYYYMMDDTHHmmss}.txt` | remind 監視 → 発火スケジューラ → 音声キュー (時刻到達時) | [remind.md](./remind.md) |
-| `backchannels/<0..8>/status-signal.json` | status 監視 → 実行中/要返答/アイドル信号として保持 (上書き検知) | [status.md](./status.md) |
-| `backchannels/<0..8>/status-{YYYYMMDDTHHmmss}.json` | status 監視 → 最新ラベルとして保持 | [status.md](./status.md) |
 | `backchannels/inbox/*.json` | inbox 監視 → 配送 → (宛先の) Claude セッション | [inbox.md](./inbox.md) |
 | `backchannels/rpc/req-*.json` | rpc 監視 → 配送 → (宛先の) Claude セッション (`res-*.txt` は Aidea では処理しない) | [rpc.md](./rpc.md) |
 
@@ -193,10 +186,9 @@ Speech / Handoff / Output / Remind は `.aidea/backchannels/<companion-index>/` 
 | **Remind** | `<n>/remind-{timestamp}.txt` | プレーンテキスト | 遅延発火型音声リマインド ({timestamp} = トリガ時刻、発火後 `.fired.txt` にリネーム、[remind.md](./remind.md)) |
 | **Inbox** | `inbox/*.json` | JSON | 外部プロセス → Companion の一方向メッセージ (Companion 別ではない、[inbox.md](./inbox.md)) |
 | **Rpc** | `rpc/req-<id>.json` / `rpc/res-<id>.txt` | JSON / プレーンテキスト | 外部プロセス ⇄ Companion の往復メッセージ (Companion 別ではない、[rpc.md](./rpc.md)) |
-| **Status (signal)** | `<n>/status-signal.json` | JSON | hooks が書く実行中/要返答/アイドル信号 (上書き型、[status.md](./status.md)) |
-| **Status (label)** | `<n>/status-{timestamp}.json` | JSON | Claude 自身が書く自由文字列ラベル ([status.md](./status.md)) |
 | Notification | `<n>/notify-{timestamp}.txt` | プレーンテキスト | 通知バナー表示 |
 | Action | `<n>/action-{timestamp}.json` | JSON | UI 操作の指示 |
+| Status | `<n>/status.json` | JSON | Claude の作業状態表示 |
 
 **太字**は実装済み / 実装予定。それ以外は将来の拡張ポイント。
 

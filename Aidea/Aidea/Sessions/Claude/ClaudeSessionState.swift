@@ -277,9 +277,8 @@ final class ClaudeSessionState: SessionState, FocusBridgeOwner {
     /// 起動シーケンス完了時に `isReady = true` にし、`pendingMessages` を flush する。
     private func autoStartClaude(terminal: PersistentTerminalView) {
         let prompt = companionPrompt
-        let claudeCommand = "claude\(statusHooksLaunchSuffix())\n"
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-            terminal.send(txt: claudeCommand)
+            terminal.send(txt: "claude\n")
             self?.markBusy()
         }
         guard let prompt, !prompt.isEmpty else {
@@ -308,18 +307,6 @@ final class ClaudeSessionState: SessionState, FocusBridgeOwner {
         DispatchQueue.main.asyncAfter(deadline: .now() + 6.0) { [weak self] in
             self?.markReady()
         }
-    }
-
-    /// `claude` コマンドに付与する `--settings '<hooks-settings.json>'` の断片を返す。
-    /// companionIndex / projectRoot が無いセッション (Companion に紐付かない Claude 起動) では
-    /// 空文字列を返し、hooks 注入をスキップする (issue #281, ADR 0042)。
-    private func statusHooksLaunchSuffix() -> String {
-        guard let companionIndex,
-              let projectRoot = workspace.projectRoot,
-              let settingsURL = StatusHookSettings.write(projectRoot: projectRoot, companionIndex: companionIndex) else {
-            return ""
-        }
-        return " " + StatusHookSettings.launchArgument(settingsURL: settingsURL)
     }
 
     /// isReady を true にし、保留中のメッセージを順次 sendMessage で flush する。

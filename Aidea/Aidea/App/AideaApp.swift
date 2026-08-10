@@ -23,7 +23,6 @@ struct AideaApp: App {
     @State private var inboxWatcher = InboxWatcher()
     @State private var rpcWatcher = RpcWatcher()
     @State private var outputState: OutputState
-    @State private var statusState: StatusState
     @State private var pomodoroState: PomodoroState
     @State private var quickMemoState: QuickMemoState
     @State private var remindState: RemindState
@@ -64,7 +63,6 @@ struct AideaApp: App {
         let recommend = RecommendState()
         let handoff = HandoffState()
         let output = OutputState()
-        let status = StatusState()
         let manager = WorkspaceSnapshotManager()
 
         // 起動時に snapshot を読み込んで適用する。読み込めない場合 (Bundle テンプレも失敗) は
@@ -112,7 +110,6 @@ struct AideaApp: App {
         _recommendState = State(initialValue: recommend)
         _handoffState = State(initialValue: handoff)
         _outputState = State(initialValue: output)
-        _statusState = State(initialValue: status)
         _pomodoroState = State(initialValue: pomodoro)
         _quickMemoState = State(initialValue: QuickMemoState())
         _remindState = State(initialValue: RemindState())
@@ -143,7 +140,6 @@ struct AideaApp: App {
                     .environment(recommendState)
                     .environment(handoffState)
                     .environment(outputState)
-                    .environment(statusState)
                     .environment(pomodoroState)
                     .environment(quickMemoState)
                     .environment(remindState)
@@ -165,7 +161,6 @@ struct AideaApp: App {
                         startInbox()
                         startRpc()
                         startOutput()
-                        startStatus()
                         startRemind()
                         startScheduler()
                         startSnippet()
@@ -552,14 +547,6 @@ struct AideaApp: App {
     private func startOutput() {
         guard let projectRoot = workspace.projectRoot else { return }
         outputState.start(projectRoot: projectRoot)
-    }
-
-    // MARK: - Status
-
-    /// StatusState の監視を開始する。projectRoot が未設定なら何もしない。
-    private func startStatus() {
-        guard let projectRoot = workspace.projectRoot else { return }
-        statusState.start(projectRoot: projectRoot)
     }
 
     // MARK: - Remind

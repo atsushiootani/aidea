@@ -14,14 +14,13 @@ syncs_with:
   - docs/specs/aspects/view-hierarchy.md
   - docs/specs/backchannels/backchannel.md
   - docs/specs/backchannels/companion-roster.md
-  - docs/specs/backchannels/status.md
   - docs/specs/backchannels/voicevox.md
   - docs/specs/sessions/claude.md
   - docs/specs/tools/claude.md
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-08-07
+last_updated: 2026-07-26
 ---
 
 # コンパニオン
@@ -239,54 +238,6 @@ SF Symbol オーバーレイの組み合わせで表現する。
 
 ---
 
-## フキダシ表示 (issue #281)
-
-Companion アイコンの上に、作業状態の短いテキストをフキダシ (吹き出し) で表示する。
-表情・状態表示 (issue #45、直前節) がアイコン画像の切替であるのに対し、フキダシは
-「何をしているか / 何を待っているか」を文章で伝える別レイヤの表示。今回のスコープは
-**フキダシのみ** (表情バリアントの追加は行わない、[ADR 0042](../../decisions/0042-claude-hooks-status-signal.md) のスコープ外節)。
-
-### 表示するテキストの決定
-
-状態源は [status.md](../backchannels/status.md) の 2 ファイル (signal / label)。決定ロジックは
-[status.md の「Aidea 側の解釈」](../backchannels/status.md#aidea-側の解釈) をそのまま UI に適用する。
-
-**label がある場合は常に label を優先表示する** (state に関わらず)。signal は
-「label が無いときのフォールバック文言」と「idle 時にフキダシごと隠す」の 2 点にのみ使う。
-
-| signal の state | label あり | label なし |
-|---|---|---|
-| `waiting` | label を表示 | `.aidea/config/status-labels.json` の `waiting` 文言 |
-| `working` | label を表示 | `.aidea/config/status-labels.json` の `working` 文言 |
-| `idle` (未起動 / ファイル不在を含む) | 非表示 | 非表示 |
-
-label は state が更新されても消えない (最後に書かれた文面を保持し続ける)。次の label が
-書かれるか、state が `idle` に戻るまで表示し続ける。
-
-フォールバック文言はユーザが `.aidea/config/status-labels.json` で自由にカスタマイズできる
-(詳細: [status.md の「フォールバック文言のカスタマイズ」](../backchannels/status.md#フォールバック文言のカスタマイズ))。
-`idle` はカスタマイズ対象外 (常にフキダシごと非表示)。
-
-### 表示位置・見た目
-
-- アイコン上部 (吹き出しの先端がアイコンを指す向き) に、既存のレコメンド吹き出し
-  ([レコメンド吹き出し](#view-構成) 節) と同系統のスタイル (角丸・背景色・矢印) で表示する
-- 1 行 truncate (長い label は末尾 `…`)。折り返さない
-- フキダシの表示/非表示は状態変化に駆動される (タイマー polling しない、表情表示と同じ方針)
-
-### 境界
-
-#### Always
-- フキダシの文面決定は [status.md](../backchannels/status.md) の signal/label 合成ロジックに従う
-- 状態変化に駆動して自動更新する
-
-#### Never
-- フキダシ表示のために companion の永続状態 (`workspace.json`) を書き換えない (表情表示の境界と同じ)
-- signal の `waiting` を無視して label だけで要返答を判定しない (label は Claude が停止中の瞬間に書けないため、signal を必ず優先する)
-- 今回のスコープでアイコン画像の表情バリアントを追加・切替しない
-
----
-
 ## 関連ドキュメント
 
 - [../frontchannels/frontchannel.md](../frontchannels/frontchannel.md) — 送信メカニズム (PTY へのキー送信)
@@ -294,7 +245,6 @@ label は state が更新されても消えない (最後に書かれた文面�
 - [speech-history.md](./speech-history.md) — speech 履歴ビュー (コンパニオン編集シートから開く)
 - [../backchannels/handoff.md](../backchannels/handoff.md) — Companion 間ハンドオフ ([ADR 0023](../../decisions/0023-companion-handoff.md))
 - [../backchannels/companion-roster.md](../backchannels/companion-roster.md) — `aidea.md` 内のコンパニオン名簿自動同期
-- [../backchannels/status.md](../backchannels/status.md) — フキダシ表示の状態源 (hooks 信号 + Claude 自己申告ラベル)
 - [../tools/claude.md](../tools/claude.md) — Claude セッション側の挙動
 - [agent-definition.md](./agent-definition.md) — `agent.md` によるエージェント定義・フォールバック挙動
 - [../aspects/persistence.md](../aspects/persistence.md) — `workspace.json` v7 保存・Bundle テンプレ
