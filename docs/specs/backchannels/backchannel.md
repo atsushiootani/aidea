@@ -69,8 +69,7 @@ Aidea は `.aidea/` ディレクトリを共有バスとして使用し、FSEven
 │   │   ├── handoff-{timestamp}.json   # Companion 0 が送信したハンドオフ
 │   │   ├── output-{timestamp}.txt     # レスポンス全文の出力記録
 │   │   ├── remind-{timestamp}.txt     # 遅延発火型リマインド ({timestamp} = トリガ時刻)
-│   │   ├── status.json                # フキダシに出す文字列 (上書き型。hooks と Claude が書く、status.md)
-│   │   ├── hooks-settings.json        # Aidea が起動のたび生成する Claude Code hooks 設定 (status.md)
+│   │   ├── status.json                # フキダシに出す文字列 (上書き型。Claude が書く、status.md)
 │   │   └── notify-{timestamp}.txt     # 通知バナー用テキスト (将来)
 │   ├── 1/
 │   │   └── ...

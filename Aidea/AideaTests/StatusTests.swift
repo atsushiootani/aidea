@@ -73,33 +73,3 @@ struct StatusWatcherReadTests {
         }
     }
 }
-
-/// hooks が書き込む文言の既定値。
-struct StatusLabelsConfigTests {
-
-    @Test("既定値は 作業中 / 要返答")
-    func defaults() {
-        let config = StatusLabelsConfig()
-
-        #expect(config.working == "作業中")
-        #expect(config.waiting == "要返答")
-    }
-
-    @Test("JSON から文言を上書きできる")
-    func decodesCustomLabels() throws {
-        let json = #"{"working": "少女作業中", "waiting": "きて〜！"}"#
-        let config = try JSONDecoder().decode(StatusLabelsConfig.self, from: Data(json.utf8))
-
-        #expect(config.working == "少女作業中")
-        #expect(config.waiting == "きて〜！")
-    }
-
-    @Test("片方だけ指定してももう片方は既定値のまま")
-    func partialOverrideKeepsDefault() throws {
-        let json = #"{"working": "がんばってる"}"#
-        let config = try JSONDecoder().decode(StatusLabelsConfig.self, from: Data(json.utf8))
-
-        #expect(config.working == "がんばってる")
-        #expect(config.waiting == "要返答")
-    }
-}
