@@ -27,6 +27,7 @@ Claude が `.aidea/backchannels/` にファイルを書き出して Aidea に通
 | [inbox.md](./inbox.md) | 外部プロセス → Companion の一方向メッセージ (`inbox/*.json`、返信なし) |
 | [rpc.md](./rpc.md) | 外部プロセス ⇄ Companion の往復メッセージ (`rpc/req-*.json` / `res-*.txt`、MCP サーバ経由で利用) |
 | [companion-roster.md](./companion-roster.md) | aidea.md 内のコンパニオン名簿セクションを Aidea が `companions[].name` に追従して自動更新する仕様 |
+| [status.md](./status.md) | Status メッセージによる作業状態のフキダシ表示。Claude Code hooks が書く信頼できる信号 (`status-signal.json`) と Claude 自身が書く自由文字列ラベル (`status-*.json`) の2系統 (issue #281) |
 
 ## 関連
 

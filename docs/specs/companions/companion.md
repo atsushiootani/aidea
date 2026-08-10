@@ -14,13 +14,14 @@ syncs_with:
   - docs/specs/aspects/view-hierarchy.md
   - docs/specs/backchannels/backchannel.md
   - docs/specs/backchannels/companion-roster.md
+  - docs/specs/backchannels/status.md
   - docs/specs/backchannels/voicevox.md
   - docs/specs/sessions/claude.md
   - docs/specs/tools/claude.md
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-07-26
+last_updated: 2026-08-10
 ---
 
 # コンパニオン
@@ -238,6 +239,48 @@ SF Symbol オーバーレイの組み合わせで表現する。
 
 ---
 
+## フキダシ表示 (issue #281)
+
+Companion アイコンの上に、作業状態の短いテキストをフキダシ (吹き出し) で表示する。
+表情・状態表示 (issue #45、直前節) がアイコン画像の切替であるのに対し、フキダシは
+「何をしているか / 何を待っているか」を文章で伝える別レイヤの表示。今回のスコープは
+**フキダシのみ** (表情バリアントの追加は行わない、[ADR 0042](../../decisions/0042-status-self-report-only.md) のスコープ外節)。
+
+### 表示するテキストの決定
+
+状態源は [status.md](../backchannels/status.md) の **`status.json` 1 ファイル**。
+書かれている文字列をそのまま表示し、Aidea 側は意味を解釈しない。
+
+| `status.json` の状態 | フキダシ |
+|---|---|
+| `status` が非空の文字列 | その文字列をそのまま表示 |
+| `status` が空文字列 | 非表示 |
+| ファイル不在 / JSON 破損 | 非表示 |
+| セッション未起動 | 非表示 (ファイルの内容に関わらず) |
+
+ファイルを書くのは Claude 自身のみで、Aidea は書かない。表示は最後に書かれた内容に追従する
+(自己申告に委ねることの限界は [status.md](../backchannels/status.md#自己申告に委ねることの限界-adr-0042) を参照)。
+
+### 表示位置・見た目
+
+- アイコン上部 (吹き出しの先端がアイコンを指す向き) に、既存のレコメンド吹き出し
+  ([レコメンド吹き出し](#view-構成) 節) と同系統のスタイル (角丸・背景色・矢印) で表示する
+- 1 行 truncate (長い label は末尾 `…`)。折り返さない
+- フキダシの表示/非表示は状態変化に駆動される (タイマー polling しない、表情表示と同じ方針)
+
+### 境界
+
+#### Always
+- フキダシの文面決定は [status.md](../backchannels/status.md) の signal/label 合成ロジックに従う
+- 状態変化に駆動して自動更新する
+
+#### Never
+- フキダシ表示のために companion の永続状態 (`workspace.json`) を書き換えない (表情表示の境界と同じ)
+- signal の `waiting` を無視して label だけで要返答を判定しない (label は Claude が停止中の瞬間に書けないため、signal を必ず優先する)
+- 今回のスコープでアイコン画像の表情バリアントを追加・切替しない
+
+---
+
 ## 関連ドキュメント
 
 - [../frontchannels/frontchannel.md](../frontchannels/frontchannel.md) — 送信メカニズム (PTY へのキー送信)
@@ -245,6 +288,7 @@ SF Symbol オーバーレイの組み合わせで表現する。
 - [speech-history.md](./speech-history.md) — speech 履歴ビュー (コンパニオン編集シートから開く)
 - [../backchannels/handoff.md](../backchannels/handoff.md) — Companion 間ハンドオフ ([ADR 0023](../../decisions/0023-companion-handoff.md))
 - [../backchannels/companion-roster.md](../backchannels/companion-roster.md) — `aidea.md` 内のコンパニオン名簿自動同期
+- [../backchannels/status.md](../backchannels/status.md) — フキダシ表示の状態源 (hooks 信号 + Claude 自己申告ラベル)
 - [../tools/claude.md](../tools/claude.md) — Claude セッション側の挙動
 - [agent-definition.md](./agent-definition.md) — `agent.md` によるエージェント定義・フォールバック挙動
 - [../aspects/persistence.md](../aspects/persistence.md) — `workspace.json` v7 保存・Bundle テンプレ

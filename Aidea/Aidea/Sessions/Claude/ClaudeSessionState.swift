@@ -277,8 +277,9 @@ final class ClaudeSessionState: SessionState, FocusBridgeOwner {
     /// 起動シーケンス完了時に `isReady = true` にし、`pendingMessages` を flush する。
     private func autoStartClaude(terminal: PersistentTerminalView) {
         let prompt = companionPrompt
+        let claudeCommand = "claude\n"
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-            terminal.send(txt: "claude\n")
+            terminal.send(txt: claudeCommand)
             self?.markBusy()
         }
         guard let prompt, !prompt.isEmpty else {
