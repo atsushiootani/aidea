@@ -21,7 +21,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-08-07
+last_updated: 2026-08-10
 ---
 
 # コンパニオン
@@ -248,24 +248,18 @@ Companion アイコンの上に、作業状態の短いテキストをフキダ�
 
 ### 表示するテキストの決定
 
-状態源は [status.md](../backchannels/status.md) の 2 ファイル (signal / label)。決定ロジックは
-[status.md の「Aidea 側の解釈」](../backchannels/status.md#aidea-側の解釈) をそのまま UI に適用する。
+状態源は [status.md](../backchannels/status.md) の **`status.json` 1 ファイル**。
+書かれている文字列をそのまま表示し、Aidea 側は意味を解釈しない。
 
-**label がある場合は常に label を優先表示する** (state に関わらず)。signal は
-「label が無いときのフォールバック文言」と「idle 時にフキダシごと隠す」の 2 点にのみ使う。
+| `status.json` の状態 | フキダシ |
+|---|---|
+| `status` が非空の文字列 | その文字列をそのまま表示 |
+| `status` が空文字列 | 非表示 |
+| ファイル不在 / JSON 破損 | 非表示 |
+| セッション未起動 | 非表示 (ファイルの内容に関わらず) |
 
-| signal の state | label あり | label なし |
-|---|---|---|
-| `waiting` | label を表示 | `.aidea/config/status-labels.json` の `waiting` 文言 |
-| `working` | label を表示 | `.aidea/config/status-labels.json` の `working` 文言 |
-| `idle` (未起動 / ファイル不在を含む) | 非表示 | 非表示 |
-
-label は state が更新されても消えない (最後に書かれた文面を保持し続ける)。次の label が
-書かれるか、state が `idle` に戻るまで表示し続ける。
-
-フォールバック文言はユーザが `.aidea/config/status-labels.json` で自由にカスタマイズできる
-(詳細: [status.md の「フォールバック文言のカスタマイズ」](../backchannels/status.md#フォールバック文言のカスタマイズ))。
-`idle` はカスタマイズ対象外 (常にフキダシごと非表示)。
+ファイルは hooks (ターン境界) と Claude 自身 (自由文字列) の両方が上書きするため、
+表示は最後に書かれた内容に追従する。
 
 ### 表示位置・見た目
 

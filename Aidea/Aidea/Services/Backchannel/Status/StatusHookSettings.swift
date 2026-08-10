@@ -6,10 +6,14 @@
 import Foundation
 
 /// Companion セッション起動時に注入する Claude Code hooks 設定 (`--settings`) を組み立てる。
-/// `UserPromptSubmit`/`PreToolUse`/`PostToolUse`/`PostToolUseFailure` → working、
-/// `Stop`/`Notification` (informational を除く) → waiting を
-/// `.aidea/backchannels/<companion-index>/status-signal.json` に**上書き**するコマンドを登録する
+/// `UserPromptSubmit` → 作業中、`Stop` / `Notification` (informational を除く) → 要返答 を
+/// `.aidea/backchannels/<companion-index>/status.json` に**上書き**するコマンドを登録する
 /// (仕様: docs/specs/backchannels/status.md、判断根拠: ADR 0042)。
+///
+/// ツール実行中のイベント (`PreToolUse`/`PostToolUse`/`PostToolUseFailure`) は登録しない。
+/// 書き込み先が 1 ファイルのため、ツール呼び出しのたびに固定文言で上書きすると
+/// Claude 自身が書いた説明文がターン中に消えてしまうため (ADR 0042)。
+/// 書き込む文言は `.aidea/config/status-labels.json` でカスタマイズでき、生成時に埋め込む。
 ///
 /// hooks の command はここで JSONSerialization を使い組み立てる。手書き文字列結合にしないのは、
 /// python スクリプトや絶対パスに含まれ得る `"` `\` を JSON エンコード時に確実にエスケープするため。
@@ -30,6 +34,7 @@ enum StatusHookSettings {
     /// 空作成しない」方針と衝突しない — hooks を注入する = このディレクトリに書き込む前提のため)。
     /// 生成に失敗したら nil を返す (呼び出し側は `--settings` 注入をスキップする)。
     static func write(projectRoot: URL, companionIndex: Int) -> URL? {
+        let labels = StatusLabelsStore(projectRoot: projectRoot).loadConfig()
         let dir = projectRoot.appending(path: ".aidea/backchannels/\(companionIndex)")
         do {
             try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
@@ -37,8 +42,8 @@ enum StatusHookSettings {
             NSLog("[Aidea] status hooks: failed to create \(dir.path): \(error)")
             return nil
         }
-        let signalURL = dir.appending(path: "status-signal.json")
-        guard let json = buildSettingsJSON(signalPath: signalURL.path) else { return nil }
+        let statusURL = dir.appending(path: "status.json")
+        guard let json = buildSettingsJSON(statusPath: statusURL.path, labels: labels) else { return nil }
         let settingsURL = dir.appending(path: "hooks-settings.json")
         do {
             try json.write(to: settingsURL, atomically: true, encoding: .utf8)
@@ -58,10 +63,10 @@ enum StatusHookSettings {
 
     // MARK: - JSON construction
 
-    private static func buildSettingsJSON(signalPath: String) -> String? {
-        let workingCommand = writeStateCommand(state: "working", signalPath: signalPath)
-        let waitingCommand = writeStateCommand(state: "waiting", signalPath: signalPath)
-        let notificationCommand = notificationStateCommand(signalPath: signalPath)
+    private static func buildSettingsJSON(statusPath: String, labels: StatusLabelsConfig) -> String? {
+        let workingCommand = writeStatusCommand(status: labels.working, statusPath: statusPath)
+        let waitingCommand = writeStatusCommand(status: labels.waiting, statusPath: statusPath)
+        let notificationCommand = notificationStatusCommand(status: labels.waiting, statusPath: statusPath)
 
         func entry(_ command: String, matcher: String? = nil) -> [String: Any] {
             var e: [String: Any] = ["hooks": [["type": "command", "command": command]]]
@@ -69,12 +74,11 @@ enum StatusHookSettings {
             return e
         }
 
+        // ターンの境界のみを登録する。ツール実行中のイベントは Claude の自己申告を
+        // 上書きしてしまうため対象外 (ADR 0042)。
         let settings: [String: Any] = [
             "hooks": [
                 "UserPromptSubmit": [entry(workingCommand)],
-                "PreToolUse": [entry(workingCommand, matcher: "")],
-                "PostToolUse": [entry(workingCommand, matcher: "")],
-                "PostToolUseFailure": [entry(workingCommand, matcher: "")],
                 "Stop": [entry(waitingCommand)],
                 "Notification": [entry(notificationCommand)],
             ],
@@ -86,16 +90,26 @@ enum StatusHookSettings {
         return String(data: data, encoding: .utf8)
     }
 
-    /// `printf` で `status-signal.json` を丸ごと上書きする 1 行コマンド (working/waiting 共通)。
-    private static func writeStateCommand(state: String, signalPath: String) -> String {
-        let payload = "{\"state\":\"\(state)\"}"
-        return "printf '%s' \(shellSingleQuoted(payload)) > \(shellSingleQuoted(signalPath))"
+    /// `printf` で `status.json` を丸ごと上書きする 1 行コマンド。
+    /// 文言に `"` や `\` が含まれても壊れないよう JSON エンコードして埋め込む。
+    private static func writeStatusCommand(status: String, statusPath: String) -> String {
+        let payload = jsonStatusPayload(status)
+        return "printf '%s' \(shellSingleQuoted(payload)) > \(shellSingleQuoted(statusPath))"
+    }
+
+    /// `{"status":"..."}` の JSON 文字列を作る (値のエスケープは JSONSerialization に任せる)。
+    private static func jsonStatusPayload(_ status: String) -> String {
+        guard let data = try? JSONSerialization.data(withJSONObject: ["status": status]),
+              let json = String(data: data, encoding: .utf8) else {
+            return "{\"status\":\"\"}"
+        }
+        return json
     }
 
     /// `Notification` 専用コマンド。標準入力の hook payload (JSON) から `notification_type` を読み、
-    /// informational denylist に該当しなければ waiting を書く。jq 等の追加インストールに頼らず、
+    /// informational denylist に該当しなければ要返答の文言を書く。jq 等の追加インストールに頼らず、
     /// macOS 標準の python3 を使う (status.md の境界: 外部ツールの事前インストールを前提にしない)。
-    private static func notificationStateCommand(signalPath: String) -> String {
+    private static func notificationStatusCommand(status: String, statusPath: String) -> String {
         let denylistLiteral = informationalNotificationTypes
             .map { pythonStringLiteral($0) }
             .joined(separator: ",")
@@ -107,7 +121,7 @@ enum StatusHookSettings {
             p={}
         if p.get("notification_type") in {\(denylistLiteral)}:
             sys.exit(0)
-        open(\(pythonStringLiteral(signalPath)), "w").write('{"state":"waiting"}')
+        open(\(pythonStringLiteral(statusPath)), "w").write(\(pythonStringLiteral(jsonStatusPayload(status))))
         """
         return "python3 -c \(shellSingleQuoted(script))"
     }

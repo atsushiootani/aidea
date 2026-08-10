@@ -5,24 +5,18 @@
 
 import Foundation
 
-/// `.aidea/backchannels/<companion-index>/` 配下の 2 種類のステータスファイルを FSEvents で監視する。
+/// `.aidea/backchannels/<companion-index>/status.json` を FSEvents で監視する。
 ///
-/// - `status-signal.json`: hooks が上書きする signal ({"state": "working"|"waiting"}) — 上書き検知
-/// - `status-{YYYYMMDDTHHmmss}.json`: Claude が書く label ({"label": "..."}) — 新規ファイル検知
-///
+/// hooks (ターン境界) と Claude 自身 (自由文字列) が同じファイルを上書きするため、
+/// 監視対象はこの 1 ファイルのみ。JSON が壊れている場合や `status` が空文字列の場合は
+/// 空文字列として通知し、呼び出し側でフキダシを消す。
 /// 仕様: docs/specs/backchannels/status.md
 final class StatusWatcher {
     private let watcher = FileWatcher()
 
-    /// signal ファイル検知時のコールバック (companionIndex, signal)
-    var onSignalFile: ((_ companionIndex: Int, _ signal: StatusSignal) -> Void)?
-    /// label ファイル検知時のコールバック (companionIndex, label)
-    var onLabelFile: ((_ companionIndex: Int, _ label: String) -> Void)?
-
-    /// label ファイル名の厳密パターン (`status-signal.json` を誤って label と扱わないための区別)。
-    /// タイムスタンプ形式は他の Backchannel ファイル (speech-*.txt 等) と同じ `YYYYMMDDTHHmmss`
-    /// (`T` 区切りを含む 15 文字)。
-    private static let labelFileRegex = try? NSRegularExpression(pattern: #"^status-\d{8}T\d{6}\.json$"#)
+    /// status ファイル検知時のコールバック (companionIndex, status)。
+    /// status が空文字列のときは「表示しない」を意味する。
+    var onStatus: ((_ companionIndex: Int, _ status: String) -> Void)?
 
     func start(projectRoot: URL) {
         let root = projectRoot.appending(path: ".aidea/backchannels").path
@@ -37,38 +31,24 @@ final class StatusWatcher {
 
     private func handleChanges(_ paths: Set<String>) {
         for path in paths {
-            guard FileManager.default.fileExists(atPath: path) else { continue }
             let url = URL(fileURLWithPath: path)
-            let name = url.lastPathComponent
+            guard url.lastPathComponent == "status.json",
+                  let companionIndex = BackchannelPath.extractCompanionIndex(from: url) else { continue }
 
-            guard let companionIndex = BackchannelPath.extractCompanionIndex(from: url) else { continue }
-
-            if name == "status-signal.json" {
-                handleSignalFile(url: url, companionIndex: companionIndex)
-            } else if isLabelFileName(name) {
-                handleLabelFile(url: url, companionIndex: companionIndex)
+            // ファイルが消えた場合もフキダシを消す
+            guard FileManager.default.fileExists(atPath: path) else {
+                onStatus?(companionIndex, "")
+                continue
             }
+            onStatus?(companionIndex, Self.readStatus(at: url))
         }
     }
 
-    private func isLabelFileName(_ name: String) -> Bool {
-        guard let regex = Self.labelFileRegex else { return false }
-        let range = NSRange(name.startIndex..<name.endIndex, in: name)
-        return regex.firstMatch(in: name, range: range) != nil
-    }
-
-    private func handleSignalFile(url: URL, companionIndex: Int) {
+    /// status.json から表示文字列を読む。読めない / 壊れている場合は空文字列 (= 非表示)。
+    static func readStatus(at url: URL) -> String {
         guard let data = try? Data(contentsOf: url),
-              let payload = try? JSONDecoder().decode(StatusSignalPayload.self, from: data) else { return }
-        onSignalFile?(companionIndex, payload.state)
-    }
-
-    private func handleLabelFile(url: URL, companionIndex: Int) {
-        guard let data = try? Data(contentsOf: url),
-              let payload = try? JSONDecoder().decode(StatusLabelPayload.self, from: data) else { return }
-        let label = payload.label.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !label.isEmpty else { return }
-        onLabelFile?(companionIndex, label)
+              let payload = try? JSONDecoder().decode(StatusPayload.self, from: data) else { return "" }
+        return payload.status.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     deinit {
@@ -76,7 +56,7 @@ final class StatusWatcher {
     }
 }
 
-/// `status-{timestamp}.json` のデコード用ペイロード。
-struct StatusLabelPayload: Decodable {
-    let label: String
+/// `status.json` のデコード用ペイロード。
+struct StatusPayload: Decodable {
+    let status: String
 }
