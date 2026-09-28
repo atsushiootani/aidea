@@ -11,6 +11,8 @@ Claude Code をはじめとする AI エージェント連携、本物の WebKit
 | **配布** | 個人用 (Personal Team 署名のみ) |
 | **状態** | MVP 実装中 |
 
+> **個人プロジェクトです。** 作者の手元の運用に合わせて作っており、サポート・互換性の維持・Issue / PR への対応は約束しません。参考実装として読んだり、フォークして使ったりするのは歓迎です。
+
 ## クイックスタート
 
 ```bash
@@ -42,8 +44,8 @@ Vibeyard (Electron 製 IDE) の `<webview>` 制約 (位置情報不可、OAuth �
 
 ## ライセンス
 
-個人用プロジェクトのため未定。
+[MIT](./LICENSE)。派生元 [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills) (MIT, © 2025 Addy Osmani) の著作権表示を LICENSE に併記している。
 
 ---
 
-*このリポジトリは元々 [agent-skills](https://github.com/obra/superpowers) から派生したため、旧 README は [README.agent-skills.md](./README.agent-skills.md) として保存している。*
+*このリポジトリは元々 [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills) から派生したため、旧 README は [README.agent-skills.md](./README.agent-skills.md) として保存している。*
