@@ -55,7 +55,7 @@ struct ScenePromptsEditorView: View {
             showingCompanionPicker.toggle()
         } label: {
             let icons = CompanionIconPresets.imageIcons
-            if defaultCompanionIndex < icons.count {
+            if icons.indices.contains(defaultCompanionIndex) {
                 Image(CompanionIconPresets.thumbnailIcon(for: icons[defaultCompanionIndex]))
                     .resizable()
                     .interpolation(.high)

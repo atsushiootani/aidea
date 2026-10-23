@@ -362,7 +362,9 @@ struct PaneView: View {
             return name
         }
         if sessionID.instance == 0 { return sessionID.tool.displayName }
-        return "\(sessionID.tool.displayName) \(sessionID.instance + 1)"
+        let (number, overflow) = sessionID.instance.addingReportingOverflow(1)
+        if overflow { return sessionID.tool.displayName }
+        return "\(sessionID.tool.displayName) \(number)"
     }
 
     /// 追加メニュー (+) ボタン。クリックで `showToolPickerMenu` を呼び、
@@ -445,7 +447,7 @@ struct PaneView: View {
         let closed = pane.tabs[index]
         let wasActive = (pane.activeIndex == index)
         // 非アクティブタブを閉じた場合はアクティブタブを維持する (削除による index ずれを補正)
-        let activeID: SessionID? = pane.activeIndex < pane.tabs.count ? pane.tabs[pane.activeIndex] : nil
+        let activeID: SessionID? = pane.tabs.indices.contains(pane.activeIndex) ? pane.tabs[pane.activeIndex] : nil
         pane.tabs.remove(at: index)
         companionStore.unbindSession(closed)
         registry.destroySession(closed)
@@ -456,8 +458,8 @@ struct PaneView: View {
                 pane.activeIndex = registry.mostRecentTabIndex(in: pane) ?? min(index, pane.tabs.count - 1)
             } else if let activeID, let idx = pane.tabs.firstIndex(of: activeID) {
                 pane.activeIndex = idx
-            } else if pane.activeIndex >= pane.tabs.count {
-                pane.activeIndex = pane.tabs.count - 1
+            } else if !pane.tabs.indices.contains(pane.activeIndex) {
+                pane.activeIndex = WorkspaceSnapshotSanitizer.clampedActiveIndex(pane.activeIndex, tabCount: pane.tabs.count)
             }
         } else {
             pane.activeIndex = 0

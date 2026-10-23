@@ -388,6 +388,9 @@ final class WorkspaceSnapshotManager {
     func apply(_ snapshot: WorkspaceSnapshot, to layout: LayoutConfig, registry: SessionRegistry,
                 companionStore: CompanionStore? = nil, speechQueue: SpeechQueue? = nil,
                 projectRoot: URL? = nil) {
+        // workspace.json はリポジトリ由来の入力なので、落ちうる値を先に除く (issue #299)
+        let snapshot = WorkspaceSnapshotSanitizer.sanitize(snapshot)
+
         // レイアウトツリーを復元
         layout.root = buildLayoutNode(from: snapshot.layout.tree)
 
@@ -415,25 +418,25 @@ final class WorkspaceSnapshotManager {
         // Preview/Web/Filer/Kit の状態を事前にセット
         for preview in snapshot.sessions.previews {
             let session = registry.ensureSession(for: preview.id)
-            let state = session.state as! PreviewSessionState
+            guard let state = session.state as? PreviewSessionState else { continue }
             state.url = preview.url
             state.title = preview.title
         }
         for web in snapshot.sessions.webs {
             let session = registry.ensureSession(for: web.id)
-            let state = session.state as! WebSessionState
+            guard let state = session.state as? WebSessionState else { continue }
             state.url = web.url
         }
         for filer in snapshot.sessions.filers {
             let session = registry.ensureSession(for: filer.id)
-            let state = session.state as! FilerSessionState
+            guard let state = session.state as? FilerSessionState else { continue }
             state.expandedURLs = Set(filer.expandedURLs)
             state.excludeRules = filer.excludeRules ?? FilerSessionState.defaultExcludeRules
             state.userDecorationRules = filer.userDecorationRules ?? []
         }
         for kit in snapshot.sessions.kits {
             let session = registry.ensureSession(for: kit.id)
-            let state = session.state as! KitSessionState
+            guard let state = session.state as? KitSessionState else { continue }
             state.expandedSections = Set(kit.expandedSections.compactMap { KitSection(rawValue: $0) })
             state.expandedGroups = Set(kit.expandedGroups)
         }

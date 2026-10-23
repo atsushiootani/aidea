@@ -459,7 +459,7 @@ final class SessionRegistry {
             }
             // アクティブタブが生き残れば維持し、消えた場合は MRU で選び直す
             // (docs/specs/window/tab-bar.md#クローズ後のアクティブタブ選択-issue-253)
-            let activeID: SessionID? = pane.activeIndex < pane.tabs.count ? pane.tabs[pane.activeIndex] : nil
+            let activeID: SessionID? = pane.tabs.indices.contains(pane.activeIndex) ? pane.tabs[pane.activeIndex] : nil
             for idx in indicesToRemove.reversed() {
                 let removed = pane.tabs[idx]
                 pane.tabs.remove(at: idx)
@@ -471,8 +471,8 @@ final class SessionRegistry {
                 pane.activeIndex = idx
             } else if let mru = mostRecentTabIndex(in: pane) {
                 pane.activeIndex = mru
-            } else if pane.activeIndex >= pane.tabs.count {
-                pane.activeIndex = pane.tabs.count - 1
+            } else if !pane.tabs.indices.contains(pane.activeIndex) {
+                pane.activeIndex = WorkspaceSnapshotSanitizer.clampedActiveIndex(pane.activeIndex, tabCount: pane.tabs.count)
             }
         }
     }
