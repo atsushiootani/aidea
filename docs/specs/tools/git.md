@@ -135,6 +135,11 @@ diff2html の JS/CSS は **オンライン CDN** (`https://cdn.jsdelivr.net/npm/
 (Aidea にバンドルしない。外部依存最小化方針 ADR 0006 との整合: diff2html は npm パッケージではなく
 ブラウザランタイムで CDN から読み込むため Swift の外部依存には該当しない)
 
+- バージョンを固定し (`diff2html@3.4.56`)、`integrity` (SRI) と `crossorigin="anonymous"` を付けて読み込む。
+  更新するときは URL のバージョンと integrity ハッシュを同時に書き換える
+- ページは作業ツリーの差分を保持するため、CSP で外部への送信 (`connect-src` / `form-action`) を禁止し、
+  スクリプトとスタイルは jsDelivr とインラインだけに限る
+
 ### discard 機能
 
 ハンク (git の `@@` ブロック) 単位で変更を破棄できる。
