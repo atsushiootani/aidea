@@ -17,9 +17,12 @@ enum TranslationCache {
     static func cachedURL(for originalURL: URL, projectRoot: URL) -> URL? {
         let originalPath = originalURL.standardizedFileURL.path
         let rootPath = projectRoot.standardizedFileURL.path
-        guard originalPath.hasPrefix(rootPath) else { return nil }
-        let relative = String(originalPath.dropFirst(rootPath.count))
+        // 区切り文字まで含めて比較し、/foo/bar に対する /foo/barbaz を root 内と誤判定しない
+        let prefix = rootPath.hasSuffix("/") ? rootPath : rootPath + "/"
+        guard originalPath.hasPrefix(prefix) else { return nil }
+        let relative = String(originalPath.dropFirst(prefix.count))
             .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        guard !relative.isEmpty else { return nil }
         return projectRoot
             .appending(path: ".aidea/ja", directoryHint: .isDirectory)
             .appending(path: relative)
@@ -42,10 +45,14 @@ enum TranslationCache {
         return cachedMtime >= originalMtime
     }
 
-    /// 翻訳結果をキャッシュファイルに保存する。中間ディレクトリは自動作成。
-    /// - Parameters:
-    ///   - text: 保存するテキスト
-    ///   - url: 保存先のキャッシュ URL
+    /// キャッシュ URL が `<projectRoot>/.aidea/ja/` 配下に収まり、経路にシンボリックリンクを含まないか判定する。
+    /// `.aidea/ja` はリポジトリ側が用意できるため、リンク経由でプロジェクト外へ書き込む/削除するのを防ぐ。
+    static func isSafeToWrite(_ cachedURL: URL, projectRoot: URL) -> Bool {
+        let jaDir = projectRoot.appending(path: ".aidea/ja", directoryHint: .isDirectory)
+        return ContainedPath.isSafe(cachedURL, under: projectRoot)
+            && ContainedPath.isSafe(cachedURL, under: jaDir)
+    }
+
     /// 指定 URL が `.aidea/ja/` 配下のキャッシュファイルかどうか判定する
     static func isCachedFile(_ url: URL) -> Bool {
         url.standardizedFileURL.path.contains("/.aidea/ja/")
@@ -64,6 +71,10 @@ enum TranslationCache {
         return projectRoot.appending(path: relative)
     }
 
+    /// 翻訳結果をキャッシュファイルに保存する。中間ディレクトリは自動作成。
+    /// - Parameters:
+    ///   - text: 保存するテキスト
+    ///   - url: 保存先のキャッシュ URL
     static func save(text: String, to url: URL) throws {
         let dir = url.deletingLastPathComponent()
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)

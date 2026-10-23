@@ -121,6 +121,7 @@ enum TranslationError: LocalizedError {
     case invalidResponse
     case apiError(statusCode: Int, body: String)
     case parseError
+    case unsafeCachePath
 
     var errorDescription: String? {
         switch self {
@@ -132,6 +133,8 @@ enum TranslationError: LocalizedError {
             return "API エラー (\(code)): \(body)"
         case .parseError:
             return "API の応答を解析できませんでした。"
+        case .unsafeCachePath:
+            return "翻訳キャッシュの保存先がプロジェクト外を指しているため、翻訳を中止しました。"
         }
     }
 }

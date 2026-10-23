@@ -8,7 +8,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-07-13
+last_updated: 2026-10-23
 ---
 
 # スキル・ブートストラップ (aidea.* の自動配置)
@@ -124,6 +124,7 @@ Aidea/ClaudeAssets/                       → Bundle: Aidea.app/Contents/Resourc
 | 存在 & 現ファイル hash == `shippedHash` | 未編集 | Bundle が新しければ上書き更新し `shippedHash` を更新 |
 | 存在 & 現ファイル hash != `shippedHash` | ユーザ編集済み | **上書きしない** (保護)。ログに警告を残すのみ |
 | 存在 & マニフェスト未記載 | 由来不明 | 安全側に倒し上書きしない (ユーザ自作の同名資産を尊重) |
+| 存在 & 読めない (非 UTF-8 等) | 由来不明 | 上書きしない。空ファイル扱いにしない |
 
 - hash は本体ファイル (`SKILL.md` / `<name>.md`) の sha256。付随ファイルを持つ skill は将来ディレクトリ全体の hash に拡張余地を残す (現行は本体単体)。
 - 「未編集なら更新」により、アプリ更新で不具合修正・新資産追加がユーザに自動で行き渡る (Backchannel セットアップの backfill と同じ思想)。
@@ -136,6 +137,7 @@ Aidea/ClaudeAssets/                       → Bundle: Aidea.app/Contents/Resourc
 - 配布物は一般化し、リポジトリ固有情報は別ファイルへ分離する。
 - ユーザが編集した資産 (hash 不一致) は**上書きしない**。
 - 配置は冪等。複数リポジトリ/複数回起動でも結果が一意。
+- project スコープでは、`projectRoot` より下の経路 (`.claude` / `skills` / 資産ディレクトリ / 資産ファイル / マニフェスト) にシンボリックリンクがあれば読み書きしない。開いたリポジトリがリンクを置いてプロジェクト外へ書き込ませるのを防ぐため (issue #297)。user スコープはユーザ自身の環境なのでリンクを尊重する。
 
 ### Never
 - 既存のユーザ編集資産や、マニフェスト未記載の同名資産を破壊しない。

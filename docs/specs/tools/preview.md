@@ -14,7 +14,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-07-13
+last_updated: 2026-10-23
 ---
 
 # Tool 仕様: Preview
@@ -143,6 +143,7 @@ edit モードのエディタは、外部要因の再描画から編集中のテ
 - 行単位に SSE イベントをストリーミング受信する (タイムアウト不要)
 - `data: {...}` 行のみ処理し、`type == "content_block_delta"` かつ `delta.type == "text_delta"` の `delta.text` を取り出す
 - エラー終了時はキャッシュファイルを削除して不完全なキャッシュを残さない
+- キャッシュの作成・書き込み・削除の前に、保存先が `<projectRoot>/.aidea/ja/` 配下に収まり、`projectRoot` より下の経路にシンボリックリンクが無いことを確かめる。満たさなければ翻訳を中止してエラーを出す (リポジトリが置いた `.aidea/ja` リンク経由でプロジェクト外へ書き込まないため。issue #297)
 
 #### 進捗 UI
 

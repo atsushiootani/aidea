@@ -33,22 +33,39 @@ enum SkillSetup {
         guard let assetsRoot = Bundle.main.resourceURL?.appending(path: assetsDir) else { return }
         let home = FileManager.default.homeDirectoryForCurrentUser
 
-        let categories: [(sub: String, dest: URL)] = [
-            ("user/skills",      home.appending(path: ".claude/skills")),
-            ("user/commands",    home.appending(path: ".claude/commands")),
-            ("project/skills",   projectRoot.appending(path: ".claude/skills")),
-            ("project/commands", projectRoot.appending(path: ".claude/commands")),
+        // project スコープの配置先は開いたリポジトリが用意したものなので、
+        // projectRoot より下にシンボリックリンクがあれば書き込まない (外部への書き込み防止)。
+        // user スコープはユーザ自身の環境なのでリンク (dotfiles 管理等) を尊重する。
+        let categories: [(sub: String, dest: URL, containRoot: URL?)] = [
+            ("user/skills",      home.appending(path: ".claude/skills"),          nil),
+            ("user/commands",    home.appending(path: ".claude/commands"),        nil),
+            ("project/skills",   projectRoot.appending(path: ".claude/skills"),   projectRoot),
+            ("project/commands", projectRoot.appending(path: ".claude/commands"), projectRoot),
         ]
         for category in categories {
-            deploy(from: assetsRoot.appending(path: category.sub), to: category.dest)
+            deploy(
+                from: assetsRoot.appending(path: category.sub), to: category.dest,
+                containRoot: category.containRoot
+            )
         }
     }
 
     /// `src` 配下の全ファイルを `destRoot` に同じ相対パスでコピーする (ユーザ編集は保護)。
-    private static func deploy(from src: URL, to destRoot: URL) {
+    /// `containRoot` 指定時は、その配下にリンクを含む経路への読み書きをすべて拒否する。
+    private static func deploy(from src: URL, to destRoot: URL, containRoot: URL?) {
         let fm = FileManager.default
         guard fm.fileExists(atPath: src.path),
               let enumerator = fm.enumerator(at: src, includingPropertiesForKeys: [.isDirectoryKey]) else { return }
+
+        let isAllowed: (URL) -> Bool = { url in
+            guard let containRoot else { return true }
+            guard ContainedPath.isSafe(url, under: containRoot) else {
+                NSLog("[Aidea] SkillSetup: refuse path outside project or via symlink \(url.path)")
+                return false
+            }
+            return true
+        }
+        guard isAllowed(manifestURL(root: destRoot)) else { return }
 
         var manifest = loadManifest(root: destRoot)
         var changed = false
@@ -60,6 +77,7 @@ enum SkillSetup {
 
             let rel = relativePath(of: fileURL, under: src)
             guard let body = try? String(contentsOf: fileURL, encoding: .utf8) else { continue }
+            guard isAllowed(destRoot.appending(path: rel)) else { continue }
             if placeFile(body: body, destRoot: destRoot, rel: rel, manifest: &manifest) {
                 changed = true
             }
@@ -76,7 +94,12 @@ enum SkillSetup {
         let fm = FileManager.default
 
         if fm.fileExists(atPath: dest.path) {
-            let current = (try? String(contentsOf: dest, encoding: .utf8)) ?? ""
+            // 読めないファイル (非 UTF-8 等) を空文字扱いにすると空ハッシュと一致して
+            // 上書きされうるため、由来不明として保護する
+            guard let current = try? String(contentsOf: dest, encoding: .utf8) else {
+                NSLog("[Aidea] SkillSetup: keep unreadable asset \(rel)")
+                return false
+            }
             let currentHash = sha256(current)
             if manifest[rel] == currentHash {
                 // ユーザ未編集 → Bundle が新しければ更新

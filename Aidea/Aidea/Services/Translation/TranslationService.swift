@@ -25,6 +25,10 @@ enum TranslationService {
         guard let cachedURL = TranslationCache.cachedURL(for: originalURL, projectRoot: projectRoot) else {
             throw TranslationError.invalidResponse
         }
+        // 書き込み・削除の前に、保存先がリンク経由でプロジェクト外を指していないか確かめる
+        guard TranslationCache.isSafeToWrite(cachedURL, projectRoot: projectRoot) else {
+            throw TranslationError.unsafeCachePath
+        }
 
         // キャッシュが新鮮ならそのまま返す
         if TranslationCache.isFresh(original: originalURL, cached: cachedURL) {
@@ -42,6 +46,10 @@ enum TranslationService {
         // キャッシュディレクトリを事前作成して FileWatcher が検知できる状態にする
         let cacheDir = cachedURL.deletingLastPathComponent()
         try FileManager.default.createDirectory(at: cacheDir, withIntermediateDirectories: true)
+        // ディレクトリ作成後の実体でも、書き込み前にもう一度確かめる
+        guard TranslationCache.isSafeToWrite(cachedURL, projectRoot: projectRoot) else {
+            throw TranslationError.unsafeCachePath
+        }
 
         var accumulated = ""
         do {
@@ -56,7 +64,9 @@ enum TranslationService {
             }
         } catch {
             // 部分的なキャッシュを残さないよう削除する
-            try? FileManager.default.removeItem(at: cachedURL)
+            if TranslationCache.isSafeToWrite(cachedURL, projectRoot: projectRoot) {
+                try? FileManager.default.removeItem(at: cachedURL)
+            }
             throw error
         }
 
