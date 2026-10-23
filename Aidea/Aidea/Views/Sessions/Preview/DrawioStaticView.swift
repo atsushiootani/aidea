@@ -26,10 +26,8 @@ struct DrawioStaticView: NSViewRepresentable {
 
     func makeNSView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
-        // .drawio (純 XML) のとき drawio からのメッセージを受信する用
-        let controller = WKUserContentController()
-        controller.add(context.coordinator, name: "drawio")
-        config.userContentController = controller
+        // drawio ハンドラは .drawio (純 XML) を表示するときだけ loadDrawio で登録する
+        config.userContentController = WKUserContentController()
 
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.setValue(false, forKey: "drawsBackground")
@@ -66,14 +64,19 @@ struct DrawioStaticView: NSViewRepresentable {
     private func loadDrawio(into webView: WKWebView, coordinator: Coordinator) {
         let name = url.lastPathComponent.lowercased()
         let contents = (try? String(contentsOf: url, encoding: .utf8)) ?? ""
+        let controller = webView.configuration.userContentController
+        controller.removeScriptMessageHandler(forName: Coordinator.handlerName)
+        coordinator.resetForReload()
 
         if name.hasSuffix(".drawio.svg") {
-            // SVG はそのまま inline で表示できる
+            // SVG はそのまま inline で表示できる。
+            // SVG 内のスクリプトは信頼できないので、ネイティブのハンドラは公開しない
             let html = Self.svgWrapperHTML(inlineSVG: contents)
             coordinator.pendingXML = nil
             webView.loadHTMLString(html, baseURL: nil)
         } else {
             // 純 XML は drawio embed (chrome=0) を読み込んで postMessage でロード
+            controller.add(coordinator, name: Coordinator.handlerName)
             coordinator.pendingXML = contents
             let html = Self.embedViewerHTML
             webView.loadHTMLString(html, baseURL: URL(string: "https://embed.diagrams.net/"))
@@ -148,6 +151,10 @@ struct DrawioStaticView: NSViewRepresentable {
 
     /// .drawio (純 XML) ロード時の状態を保持する Coordinator
     final class Coordinator: NSObject, WKScriptMessageHandler {
+        static let handlerName = "drawio"
+        /// メッセージを受け付けるホストページのオリジン (embedViewerHTML の baseURL)
+        static let trustedHost = "embed.diagrams.net"
+
         var lastLoadedURL: URL?
         var lastReloadTick: Int = -1
         var lastConvertTick: Int = 0
@@ -160,11 +167,27 @@ struct DrawioStaticView: NSViewRepresentable {
         var onConvert: ((String) -> Void)?
         /// init 前に export 要求を受けた場合に保留する
         var pendingExportRequest: Bool = false
+        /// export を drawio に送って結果待ちか (頼んでいない export は受け付けない)
+        var isAwaitingExport: Bool = false
+
+        /// 別ファイルの読み込み前に、前のページの状態を捨てる
+        func resetForReload() {
+            isReady = false
+            isAwaitingExport = false
+        }
 
         func userContentController(
             _ userContentController: WKUserContentController,
             didReceive message: WKScriptMessage
         ) {
+            // ホストページ (メインフレーム、embed.diagrams.net オリジン) からのメッセージだけを扱う
+            let origin = message.frameInfo.securityOrigin
+            guard message.webView === webView,
+                  message.frameInfo.isMainFrame,
+                  origin.protocol == "https",
+                  origin.host == Self.trustedHost else {
+                return
+            }
             guard let body = message.body as? String,
                   let data = body.data(using: .utf8),
                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -182,6 +205,8 @@ struct DrawioStaticView: NSViewRepresentable {
                     sendExport()
                 }
             case "export":
+                guard isAwaitingExport else { return }
+                isAwaitingExport = false
                 if let dataURL = json["data"] as? String,
                    let svg = DrawioEditor.Coordinator.decodeDataURLToString(dataURL) {
                     onConvert?(svg)
@@ -208,6 +233,7 @@ struct DrawioStaticView: NSViewRepresentable {
 
         /// drawio embed に export アクションを送る (xmlsvg 形式)
         private func sendExport() {
+            isAwaitingExport = true
             send(payload: ["action": "export", "format": "xmlsvg"])
         }
 

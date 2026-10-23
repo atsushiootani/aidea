@@ -192,8 +192,11 @@ struct GitDiffSessionView: NSViewRepresentable {
         <html>
         <head>
             <meta charset="utf-8">
-            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/diff2html/bundles/css/diff2html.min.css" />
-            <script src="https://cdn.jsdelivr.net/npm/diff2html/bundles/js/diff2html-ui.min.js"></script>
+            <!-- 作業ツリーの差分を扱うページなので、外部への送信 (fetch/XHR/フォーム) を CSP で塞ぐ -->
+            <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src https://cdn.jsdelivr.net 'unsafe-inline'; style-src https://cdn.jsdelivr.net 'unsafe-inline'; img-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'">
+            <!-- バージョン固定 + SRI。更新時は integrity も再計算すること -->
+            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/diff2html@3.4.56/bundles/css/diff2html.min.css" integrity="sha384-PdRCG/+r1waybtXfuDB9Kmv2h7AGoN6WaTZ5OF+ctPeR9BGne0FaKRQnUeGV4nDL" crossorigin="anonymous" />
+            <script src="https://cdn.jsdelivr.net/npm/diff2html@3.4.56/bundles/js/diff2html-ui.min.js" integrity="sha384-NRd5i/CwvZ20mJEQt3yaDU1LeU+tu0bqyVYojXi8d7Lf1B0/TIs2K3FTvlf8aO7p" crossorigin="anonymous"></script>
             <style>
                 body { margin: 0; background: #1e1e1e; color: #d4d4d4; font-family: -apple-system, sans-serif; }
                 .d2h-wrapper { font-size: 13px; }

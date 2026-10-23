@@ -69,10 +69,8 @@ private struct _MermaidWebView: NSViewRepresentable {
         }
 
         private func html(for diagram: String) -> String {
-            let safe = diagram
-                .replacingOccurrences(of: "\\", with: "\\\\")
-                .replacingOccurrences(of: "`", with: "\\`")
-                .replacingOccurrences(of: "$", with: "\\$")
+            // 図のテキストは信頼できないので、script 要素を閉じられない JS リテラルにして渡す
+            let literal = JavaScriptStringLiteral.make(diagram)
             return """
             <!DOCTYPE html><html>
             <head>
@@ -90,7 +88,7 @@ private struct _MermaidWebView: NSViewRepresentable {
               <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
               <script>
                 mermaid.initialize({startOnLoad:false,theme:'neutral'});
-                mermaid.render('mermaid-diagram',`\(safe)`).then(({svg})=>{
+                mermaid.render('mermaid-diagram',\(literal)).then(({svg})=>{
                   document.getElementById('graph').innerHTML=svg;
                   window.webkit.messageHandlers.height.postMessage(document.documentElement.scrollHeight);
                 }).catch(err=>{

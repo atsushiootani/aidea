@@ -90,6 +90,7 @@ Session 内部状態は [sessions/preview.md](../sessions/preview.md) を参照�
 
 - Markdown 内の ` ```mermaid ... ``` ` ブロックを Mermaid 図として描画する
 - **view モード**: WKWebView + CDN の Mermaid.js でレンダリング。描画完了後に高さを自動調整
+  - 図のテキストは JS 文字列リテラル (`<` `>` `&` を `\uXXXX` にエスケープ) としてインライン script に渡し、script 要素を閉じられないようにする
 - **edit モード**: 通常のコードブロックとして表示 (生テキスト)
 - パース失敗時はエラーメッセージを赤文字で表示
 - ネットワーク接続が必要 (drawio embed と同様、オフライン対応は将来検討)
@@ -250,6 +251,10 @@ Obsidian の drawio プラグインと同等の UX を目指す。
 - Aidea (WKWebView) → drawio: `{action: "load", xml: "<xml>"}`
 - drawio → Aidea: `{event: "init"}`, `{event: "save", xml: "...", data: "..."}`, `{event: "exit"}`
 - 詳細: https://www.drawio.com/doc/faq/embed-mode
+- プレビュー用 WebView (`DrawioStaticView`) のネイティブハンドラ `drawio` は `.drawio` (純 XML) 表示時だけ登録する。
+  `.drawio.svg` は SVG を inline 描画するだけなので、SVG 内のスクリプトにハンドラを見せない
+- ハンドラはメインフレームかつ `https://embed.diagrams.net` オリジンからのメッセージだけを受け付け、
+  `export` イベントは Aidea から export を要求して結果待ちのときだけ処理する
 
 ---
 
