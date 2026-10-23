@@ -471,17 +471,25 @@ final class TerminalLinkGuard: NSObject, TerminalViewDelegate {
     /// (例: `Sources/Foo.swift`) はここでは無視する — 実体は scheme なしの URL になり、
     /// `NSWorkspace.shared.open` に渡すと Finder が `-50` ダイアログを出してしまうため。
     /// ファイルパスのクリック起動は `PersistentTerminalView.handlePathClickIfNeeded` が担う。
-    /// http/https は Web Tool で開き (docs/specs/tools/web.md)、その他 scheme は外部アプリに渡す。
+    /// 行き先は `ExternalURLPolicy.terminalLink` の許可リストで決める (issue #294)。
+    /// http/https は Web Tool (docs/specs/tools/web.md)、file: の通常ファイルはアプリ内 Preview で開き、
+    /// file: のディレクトリ・バンドルは開かない。その他 scheme は実際のリンク先を見せて確認してから外部アプリに渡す
+    /// (OSC 8 ハイパーリンクは表示テキストとリンク先が食い違いうるため)。
     func requestOpenLink(source: TerminalView, link: String, params: [String : String]) {
         guard let view = source as? PersistentTerminalView,
               view.lastInteractionWasTap,
               let url = URL(string: link),
               let scheme = url.scheme,
               !scheme.isEmpty else { return }
-        if (scheme == "http" || scheme == "https"), let registry = view.sessionRegistry {
-            registry.openWeb(for: url)
-        } else {
-            NSWorkspace.shared.open(url)
+        switch ExternalURLPolicy.terminalLink(url) {
+        case .openWeb:
+            view.sessionRegistry?.openWeb(for: url)
+        case .openPreview(let fileURL):
+            view.sessionRegistry?.openPreviewAsSibling(for: fileURL)
+        case .confirmExternal:
+            ExternalURLConfirmation.confirmAndOpen(url, in: view.window)
+        case .reject:
+            NSSound.beep()
         }
     }
 

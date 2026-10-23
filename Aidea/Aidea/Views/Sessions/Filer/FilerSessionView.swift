@@ -1226,14 +1226,20 @@ final class FileTreeViewController: NSViewController, NSOutlineViewDataSource, N
     /// Ctrl+O: 選択ノードを Finder で開く (単一選択かつ非 root のときのみ)。
     /// ファイル: 親フォルダを開いて該当ファイルを選択状態にする。
     /// ディレクトリ: そのフォルダ自体を Finder で開く。
+    /// アプリ・パッケージ (`.app` 等): 起動せず、親フォルダで選択状態にする。
     /// 条件不一致のときは NSBeep して no-op。
+    /// `NSWorkspace.open` は使わない (issue #294): ディレクトリに見えるアプリバンドルを渡すと
+    /// Finder で表示せずに起動してしまうため、Finder の表示専用 API だけを使う。
     func openInFinderAction() {
         guard let node = singleSelectedNonRoot() else {
             NSSound.beep()
             return
         }
-        if node.isDirectory {
-            NSWorkspace.shared.open(node.url)
+        // シンボリックリンク先がバンドルのケースも拾うため、解決後の実体で判定する
+        let resolved = node.url.resolvingSymlinksInPath()
+        let isPackage = (try? resolved.resourceValues(forKeys: [.isPackageKey]))?.isPackage ?? false
+        if node.isDirectory && !isPackage {
+            _ = NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: resolved.path)
         } else {
             NSWorkspace.shared.activateFileViewerSelecting([node.url])
         }

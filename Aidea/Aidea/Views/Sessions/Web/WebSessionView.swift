@@ -139,7 +139,12 @@ struct WebSessionView: View {
     /// 地球アイコンのアクション。単純クリックは OS デフォルトブラウザ、⌘クリックは
     /// 現在の Web タブと同じ位置・サイズの Chrome ウィンドウで開く (ADR 0041)。
     /// Chrome 未インストール、または frame が取得できない場合は単純クリックと同じ挙動にフォールバックする。
+    /// http / https 以外 (復元された workspace.json 由来の URL 等) は外部へ渡さない (issue #294)。
     private func openInBrowser() {
+        guard ExternalURLPolicy.isWebURL(state.url) else {
+            NSSound.beep()
+            return
+        }
         if NSEvent.modifierFlags.contains(.command),
            ChromeWindowLauncher.isChromeInstalled,
            let frame = state.screenFrame {

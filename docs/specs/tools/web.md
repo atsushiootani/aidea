@@ -13,7 +13,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-07-27
+last_updated: 2026-10-23
 ---
 
 # Tool 仕様: Web
@@ -96,7 +96,7 @@ Web セッションのタブヘッダには **現在の URL** を表示する。
 Terminal / Claude セッションのターミナル出力中の URL をクリックしたとき、
 外部ブラウザではなく **Web Tool で開く**。
 
-- 対象 scheme は **http / https のみ**。それ以外 (`mailto:` 等) は従来通り OS デフォルトアプリで開く
+- 対象 scheme は **http / https のみ**。それ以外の扱いは [tools/terminal.md の URL クリック](./terminal.md#url-クリック) を参照 (issue #294)
 - 配置先は **「呼び出し元 (カレント) ペインを除く最新のペイン」**:
   アクティブ履歴を新しい順に走査し、呼び出し元ペイン以外で最初に見つかった
   セッションが属するペインを選ぶ。見つからなければ呼び出し元以外の先頭ペイン
@@ -139,6 +139,22 @@ Terminal 側のクリック判定は [tools/terminal.md#url-クリック](./term
 - 窓は妥当な既定サイズで出す (位置・サイズの厳密な再現はしない。
   サイズ指定は「ポップアップとして扱うか」の判定にのみ使う)
 
+## 外部 scheme のナビゲーション
+
+WebKit が自分で読み込めない scheme (`vscode:` / `zoommtg:` / `smb:` 等) を、ページが
+**確認なしに OS のハンドラへ渡せないようにする** (issue #294)。通常タブ・新規 Web タブ・
+フローティングポップアップ窓のすべてで同じ判定を使う。
+
+| scheme | 扱い |
+|---|---|
+| http / https / about / blob / data | そのまま読み込む |
+| file | 読み込まず、外部アプリにも渡さない |
+| その他 | **メインフレームでユーザがリンクを押したときだけ**、実 URL と起動するアプリ名を示す確認ダイアログを出し、「開く」を選んだら OS デフォルトアプリで開く。スクリプト・リダイレクト・iframe による遷移は黙って破棄する |
+
+- 確認ダイアログの既定ボタン (Enter) は「キャンセル」
+- 起動できるアプリが無い scheme はビープして何もしない
+- `workspace.json` から復元する Web タブの URL は **http / https のみ**受け付け、それ以外は既定 URL で開く
+
 ## Chrome を同じ位置・サイズで開く (⌘クリック) ([ADR 0041](../../decisions/0041-open-in-chrome-matched-size.md))
 
 WKWebView (Safari 相当) が非対応と判定するサイトに遭遇したとき、Web タブを離れた感覚を
@@ -157,6 +173,9 @@ WKWebView (Safari 相当) が非対応と判定するサイトに遭遇したと
 
 - Google Chrome がインストールされていない
 - Web タブがまだ画面に描画されておらず、表示領域の frame が取得できない
+
+表示中の URL が http / https 以外のときは、単純クリック・⌘クリックとも**何も開かずビープする**
+(URL をブラウザのコマンドラインオプションとして解釈させないため。issue #294)。
 
 ## JavaScript ダイアログ (alert / confirm / prompt)
 
@@ -193,6 +212,7 @@ JS ダイアログを**黙って握り潰す** (何も表示されず `confirm` 
 - `window.open` / `target="_blank"` は WebKit から渡された設定で子 WebView を作り、自前ロードしない
 - 新規 Web タブは opener と同じペインの右隣に出す / ポップアップ窓は `window.close()` で閉じる
 - JS の alert / confirm / prompt はネイティブのアラート (シート) で表示し、必ず一度だけ結果を返す
+- http / https / about / blob / data 以外へのナビゲーションは、ユーザのリンク操作 + 確認ダイアログを経た場合だけ外部アプリに渡す
 
 ### Never
 - 既存 Web セッションへの URL ロード (再利用) は行わない — 常に新規タブ
@@ -200,3 +220,5 @@ JS ダイアログを**黙って握り潰す** (何も表示されず `confirm` 
 - 子 WebView を自前で生成・ロードしない (opener 関係が切れて OAuth が壊れるため)
 - JS ダイアログを握り潰さない (UI デリゲート未対応のまま放置しない)
 - ⌘クリックで既存 Chrome ウィンドウを再利用・リサイズしない — 常に新規ウィンドウ
+- ページのスクリプトや iframe が起こした外部 scheme 遷移を外部アプリに渡さない
+- http / https 以外の URL を Chrome / 外部ブラウザに渡さない
