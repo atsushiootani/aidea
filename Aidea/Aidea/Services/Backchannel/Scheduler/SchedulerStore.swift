@@ -30,13 +30,23 @@ struct SchedulerStore {
             .appending(path: "scheduler.json")
     }
 
-    // MARK: - Config (read only)
+    // MARK: - Config
 
     /// config を読み込む。ファイル不在 / デコード失敗時は空 config (ジョブ無し) を返す。
     func loadConfig() -> SchedulerConfig {
-        guard let data = try? Data(contentsOf: configURL) else {
-            return SchedulerConfig()
-        }
+        Self.decodeConfig(loadConfigData())
+    }
+
+    /// config ファイルの生バイト列を読む (不在なら nil)。
+    /// 承認判定 (`SchedulerTrustStore`) は「実際に読んで解釈したバイト列」のハッシュで行うため、
+    /// 読み込みとデコードを分けて同じバイト列を使えるようにしている。
+    func loadConfigData() -> Data? {
+        try? Data(contentsOf: configURL)
+    }
+
+    /// config のバイト列をデコードする。nil / デコード失敗時は空 config (ジョブ無し) を返す。
+    static func decodeConfig(_ data: Data?) -> SchedulerConfig {
+        guard let data else { return SchedulerConfig() }
         do {
             return try JSONDecoder().decode(SchedulerConfig.self, from: data)
         } catch {
@@ -75,8 +85,9 @@ struct SchedulerStore {
     }
 
     /// config を書き出す。ON/OFF トグルなど popover からの即時反映に使う。
-    /// ディレクトリは自動作成。失敗時はログのみ。
-    func saveConfig(_ config: SchedulerConfig) {
+    /// ディレクトリは自動作成。失敗時はログのみ。書き込んだバイト列を返す (失敗時 nil。承認記録の更新に使う)。
+    @discardableResult
+    func saveConfig(_ config: SchedulerConfig) -> Data? {
         let dir = configURL.deletingLastPathComponent()
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         do {
@@ -84,8 +95,10 @@ struct SchedulerStore {
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             let data = try encoder.encode(config)
             try data.write(to: configURL, options: .atomic)
+            return data
         } catch {
             NSLog("[Aidea] scheduler config save failed: \(error.localizedDescription)")
+            return nil
         }
     }
 

@@ -26,6 +26,35 @@ enum WorkspaceLauncher {
         spawn(projectRoot: normalized)
     }
 
+    /// 外部 (`aidea://open-workspace` URL) からのワークスペースを開く要求を、フルパスを見せて確認する (issue #293)。
+    /// URL は Web ページや他アプリから渡せる信頼できない入力のため、ユーザが「開く」を選んだときだけ true。
+    /// 存在しないパス / ディレクトリでないパスは確認せず false。
+    @MainActor
+    static func confirmExternalOpen(projectRoot: URL) -> Bool {
+        let path = projectRoot.standardizedFileURL.path
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory), isDirectory.boolValue else {
+            NSLog("[Aidea] open-workspace: ディレクトリが無いため無視: \(path)")
+            return false
+        }
+        let alert = NSAlert()
+        alert.messageText = "外部からワークスペースを開く要求がありました"
+        alert.informativeText = """
+            次のディレクトリをワークスペースとして開きますか？
+
+            \(path)
+
+            心当たりがなければ「キャンセル」を選んでください。
+            """
+        alert.alertStyle = .warning
+        // 既定 (Return) は安全側のキャンセル
+        alert.addButton(withTitle: "キャンセル")
+        let openButton = alert.addButton(withTitle: "開く")
+        openButton.keyEquivalent = ""
+        NSApp.activate(ignoringOtherApps: true)
+        return alert.runModal() == .alertSecondButtonReturn
+    }
+
     /// `open -n` で自バンドルの新インスタンスを起動し、起動引数で projectRoot を渡す。
     /// `NSWorkspace.OpenConfiguration.arguments` は空配列化する既知不具合があるため、
     /// 引数が確実に渡る `open --args` の経路を使う。

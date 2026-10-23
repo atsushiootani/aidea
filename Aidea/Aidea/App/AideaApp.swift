@@ -1044,7 +1044,10 @@ struct AideaApp: App {
                   let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
                   let path = components.queryItems?.first(where: { $0.name == "path" })?.value {
             // 指定リポジトリを新プロセスで開く (既に開いていれば前面化)。ADR 0030 / multi-instance.md
-            WorkspaceLauncher.openInNewProcess(projectRoot: URL(fileURLWithPath: path, isDirectory: true))
+            // 外部から渡る信頼できない入力のため、フルパスを見せて確認してから開く (issue #293)
+            let root = URL(fileURLWithPath: path, isDirectory: true)
+            guard WorkspaceLauncher.confirmExternalOpen(projectRoot: root) else { return }
+            WorkspaceLauncher.openInNewProcess(projectRoot: root)
         }
     }
 

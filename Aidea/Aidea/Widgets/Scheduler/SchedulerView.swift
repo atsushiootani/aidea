@@ -41,6 +41,7 @@ struct SchedulerView: View {
     /// ヘッダラベル: 「未実行 N」/「HH:mm」/「停止中」
     private var labelText: String {
         switch scheduler.headerStatus {
+        case .untrusted: return "未承認"
         case .overdue(let count): return "未実行 \(count)"
         case .next(let time): return time
         case .idle: return "停止中"
@@ -50,13 +51,14 @@ struct SchedulerView: View {
     /// 未実行は警告色 (orange)、それ以外はグレー
     private var labelColor: Color {
         switch scheduler.headerStatus {
-        case .overdue: return .orange
+        case .untrusted, .overdue: return .orange
         case .next, .idle: return .secondary
         }
     }
 
     private var helpText: String {
         switch scheduler.headerStatus {
+        case .untrusted: return "定時スケジューラ: ジョブ設定が未承認のため自動実行していません (クリックで内容を確認)"
         case .overdue(let count): return "定時スケジューラ: 未実行 \(count) 件 (クリックで手動実行)"
         case .next(let time): return "定時スケジューラ: 次回 \(time)"
         case .idle: return "定時スケジューラ (停止中 / ジョブなし)"
