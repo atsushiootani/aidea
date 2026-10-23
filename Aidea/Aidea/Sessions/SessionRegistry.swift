@@ -406,7 +406,9 @@ final class SessionRegistry {
     /// Markdown Preview の実行ボタンから呼ばれる。
     /// 既存 Terminal セッションがあればコマンドを送信し、なければ新規作成して送信する。
     func openTerminalAndRun(_ command: String) {
-        let trimmed = command.trimmingCharacters(in: .whitespacesAndNewlines)
+        // 送信直前にも制御文字を除去する (呼び出し側の除去漏れに備える。issue #296)
+        let trimmed = ShellCommandSanitizer.sanitize(command)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
 
         // 既存の Terminal セッションを探して送信
