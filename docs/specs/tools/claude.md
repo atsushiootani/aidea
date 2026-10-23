@@ -14,7 +14,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-07-10
+last_updated: 2026-10-23
 ---
 
 # Tool 仕様: Claude
@@ -67,23 +67,25 @@ tmux の有無と既存セッションの有無で 3 経路に分岐する。詳
 ```
 1. PTY で zsh 起動 (経路 A は tmux 経由、経路 C は直接)
 2. +1.0s: "claude\n" を送って claude を起動
-3. +5.0s: Companion 指示書読み込みコマンドを送信
-4. +5.3s: "\r" を送って submit
-5. +6.0s: 受付可能 (isReady) にマーク (Frontchannel からの送信が安全に使える状態)
+3. 画面に入力欄が出るまで待つ (確認画面が出ている間は待ち続ける)
+4. Companion 指示書読み込みコマンドを送信
+5. +0.3s: "\r" を送って submit
+6. 再び入力欄を確認してから受付可能 (isReady) にマーク (Frontchannel からの送信が安全に使える状態)
 ```
 
 ### 自動送信のタイミング
 
-| ステップ | 遅延 | 内容 |
+| ステップ | 契機 | 内容 |
 |---------|------|------|
 | zsh 起動 | 0s | PTY プロセス開始 (tmux 経由 or 直接) |
 | claude 送信 | +1.0s | `claude\n` を PTY に送信 |
-| 指示書読み込みコマンド送信 | +5.0s | 固定パターン文字列 `.aidea/claude/companions/<index>/instructions.md を読んで従ってね` を PTY に送信 |
-| Enter 送信 | +5.3s | `\r` を送って submit させる |
-| 受付可能 (isReady) | +6.0s | Frontchannel からの送信を受け付け可能とマーク。待機中の送信はこのタイミングで実行される |
+| 指示書読み込みコマンド送信 | 入力欄の表示を確認 | 固定パターン文字列 `.aidea/claude/companions/<index>/instructions.md を読んで従ってね` を PTY に送信 |
+| Enter 送信 | 本文送信 +0.3s | 確認画面が出ていなければ `\r` を送って submit させる |
+| 受付可能 (isReady) | Enter +0.7s 以降、入力欄の表示を確認 | Frontchannel からの送信を受け付け可能とマーク。待機中の送信はこのタイミングで実行される |
 
+- claude 起動後は固定タイマーでキーを送らない。フォルダ信頼などの確認画面に自動の Enter が入るとユーザーの代わりに承認してしまうため、確認画面の間は送らずに待つ (issue #295、判定の詳細は [sessions/claude.md#自動起動シーケンス](../sessions/claude.md#自動起動シーケンス))
 - PTY へのキー送信は対話シェル内での手入力と同等 (ADR 0008 の非対話シェル問題を回避)
-- 指示書読み込みコマンドが空の場合はステップ 3-4 をスキップし、受付可能は `+1.3s` でセット
+- 指示書読み込みコマンドが空の場合はステップ 4-5 をスキップし、入力欄の表示を確認した時点で受付可能にする
 - 本文と `\r` を分離するのは、Claude Code (Ink 製 TUI) が bracketed paste を有効にしており、両者を一度に送ると `\r` も paste の一部とみなされ submit されないため。本文の入力処理が終わる間 (≈0.3s) を挟む
 - v8 以降、Aidea が送るのは固定パターン文字列のみ。Claude が Read ツールで `instructions.md` 本文を取りに行く (ADR 0022)。Claude 側は `instructions.md` 冒頭から `.aidea/claude/aidea.md` / `speech.md` / `handoff.md` 等を段階的に読み込む
 - 経路 B (再 attach) では自動起動シーケンスを **完全にスキップ** し、受付可能だけを即セットする。既に起動中の Claude TUI に `claude\n` を再送すると入力欄に "claude" 文字列が入力されてしまうため
