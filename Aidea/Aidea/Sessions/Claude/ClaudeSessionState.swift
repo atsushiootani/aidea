@@ -80,6 +80,13 @@ final class ClaudeSessionState: SessionState, FocusBridgeOwner {
     /// 3s 以内に PTY 出力が来れば `noteTerminalOutput` の 0.5s デバウンスに切り替わる。
     @ObservationIgnored private static let busySendDebounceInterval: TimeInterval = 3.0
 
+    /// 自動起動シーケンスで入力欄の表示を確認する間隔 (0.25s)
+    @ObservationIgnored private static let claudeReadyPollInterval: TimeInterval = 0.25
+
+    /// 自動起動シーケンスが入力欄の表示を待つ上限 (10 分)。
+    /// フォルダ信頼の確認画面でユーザーが考える時間も含めて待てるよう長めに取る
+    @ObservationIgnored private static let claudeReadyTimeout: TimeInterval = 600
+
     /// 出力が途切れて `busyDebounceInterval` 経過したら busy=false に戻すためのタイマー
     @ObservationIgnored private var busyDebounceTimer: Timer?
 
@@ -274,39 +281,75 @@ final class ClaudeSessionState: SessionState, FocusBridgeOwner {
     /// 固定パターンで、Claude が Read ツールで本体を取りに行く (ADR 0022)。
     /// send() は PTY へのキー入力なので、ユーザーが手で打ったのと同等。
     /// (ADR 0008 の非対話シェル問題を回避)
+    ///
+    /// claude 起動後のキー送信は固定タイマーで行わず、画面に入力欄が出たのを確認してから送る
+    /// (issue #295 F7)。フォルダ信頼などの確認画面が出ている間は送らずに待ち、
+    /// ユーザーが自分で答えて入力欄が出たら続きを送る。
     /// 起動シーケンス完了時に `isReady = true` にし、`pendingMessages` を flush する。
     private func autoStartClaude(terminal: PersistentTerminalView) {
         let prompt = companionPrompt
         let claudeCommand = "claude\n"
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self, weak terminal] in
+            guard let self, let terminal else { return }
             terminal.send(txt: claudeCommand)
-            self?.markBusy()
-        }
-        guard let prompt, !prompt.isEmpty else {
-            // companionPrompt が無い場合は claude コマンド送信後すぐ ready とみなす。
-            // 0.3s の余裕は PTY が claude 起動 (TUI 描画開始) を完了する目安。
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.3) { [weak self] in
-                self?.markReady()
+            self.markBusy()
+            let deadline = Date().addingTimeInterval(Self.claudeReadyTimeout)
+            guard let prompt, !prompt.isEmpty else {
+                // companionPrompt が無い場合は入力欄が出た時点で ready とみなす
+                self.whenClaudeInputReady(terminal: terminal, deadline: deadline) { [weak self] in
+                    self?.markReady()
+                }
+                return
             }
-            return
+            self.whenClaudeInputReady(terminal: terminal, deadline: deadline) { [weak self, weak terminal] in
+                guard let self, let terminal else { return }
+                self.submitCompanionPrompt(prompt, terminal: terminal, deadline: deadline)
+            }
         }
+    }
+
+    /// 起動時指示コマンドを送り、submit 後に再び入力欄を確認してから ready にする。
+    private func submitCompanionPrompt(_ prompt: String, terminal: PersistentTerminalView, deadline: Date) {
         // 本文と Enter を分離して送る。
         // Claude Code (Ink 製 TUI) は bracketed paste を有効にしており、
         // 本文と \r を一度に送ると \r も paste の一部とみなされ submit されないため、
         // 本文の入力処理が終わる間 (≈0.3s) を挟んでから \r を送って submit させる。
-        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) { [weak self] in
-            terminal.send(txt: prompt)
-            self?.markBusy()
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 5.3) { [weak self] in
+        terminal.send(txt: prompt)
+        markBusy()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self, weak terminal] in
+            guard let self, let terminal else { return }
+            // 本文送信の間に確認画面へ切り替わっていたら Enter は送らない
+            guard ClaudeScreenClassifier.classify(lines: terminal.visibleScreenLines()) != .blocked else { return }
             terminal.send(txt: "\r")
-            self?.markBusy()
+            self.markBusy()
+            // Enter 送信後 0.7s 待ってから、権限確認などが出ていないことを確かめて ready にする。
+            // 待機中の sendMessage の flush (本文 + \r) が確認画面を承認してしまわないようにするため。
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) { [weak self, weak terminal] in
+                guard let self, let terminal else { return }
+                self.whenClaudeInputReady(terminal: terminal, deadline: deadline) { [weak self] in
+                    self?.markReady()
+                }
+            }
         }
-        // Enter 送信後 0.7s で ready とみなし、待機中の sendMessage を flush する。
-        // 0.7s は従来 dispatchHandoff / sendRecommendedPrompt が使っていた固定遅延 6.0s と
-        // 等価 (5.3 + 0.7 = 6.0) で、過去実績値を温存しつつ仕組みを「状態遷移ベース」に置き換える。
-        DispatchQueue.main.asyncAfter(deadline: .now() + 6.0) { [weak self] in
-            self?.markReady()
+    }
+
+    /// 画面に Claude Code の入力欄が出る (= `ClaudeScreenClassifier` が `.ready`) まで
+    /// `claudeReadyPollInterval` ごとに確認し、出たら `action` を呼ぶ。
+    /// 確認画面 (`.blocked`) の間は何も送らずに待ち続ける。`deadline` を過ぎたら諦め、
+    /// 以降の自動送信は行わない (isReady は false のまま、ユーザーが手で操作する)。
+    private func whenClaudeInputReady(
+        terminal: PersistentTerminalView,
+        deadline: Date,
+        action: @escaping () -> Void
+    ) {
+        if ClaudeScreenClassifier.classify(lines: terminal.visibleScreenLines()) == .ready {
+            action()
+            return
+        }
+        guard Date() < deadline else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.claudeReadyPollInterval) { [weak self, weak terminal] in
+            guard let self, let terminal else { return }
+            self.whenClaudeInputReady(terminal: terminal, deadline: deadline, action: action)
         }
     }
 

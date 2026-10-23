@@ -148,6 +148,13 @@ final class PersistentTerminalView: LocalProcessTerminalView {
         return text.contains("transcript")
     }
 
+    /// 表示中の画面の各行テキスト (右端の空白は除く)。Claude 自動起動の準備完了判定に使う (issue #295)
+    func visibleScreenLines() -> [String] {
+        (0..<terminal.rows).compactMap {
+            terminal.getLine(row: $0)?.translateToString(trimRight: true)
+        }
+    }
+
     /// terminalDelegate をプロキシに差し替え、mouseMoved を抑制して URL 誤発火を防ぐ。
     /// isClaudeSession = true の場合、スクロール変換とホイールクリックも有効にする。
     func installLinkGuard(isClaudeSession: Bool = false) {
