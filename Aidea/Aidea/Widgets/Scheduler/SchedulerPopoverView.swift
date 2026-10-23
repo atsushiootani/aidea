@@ -33,6 +33,10 @@ struct SchedulerPopoverView: View {
         VStack(alignment: .leading, spacing: 8) {
             header
 
+            if !scheduler.isTrusted {
+                untrustedBanner
+            }
+
             if let editing {
                 SchedulerJobEditView(target: editing) {
                     self.editing = nil
@@ -62,6 +66,24 @@ struct SchedulerPopoverView: View {
                 .controlSize(.small)
             }
         }
+    }
+
+    /// 設定ファイルが未承認のときの案内 (issue #293)。承認するまで自動発火も「今すぐ実行」もしない。
+    private var untrustedBanner: some View {
+        HStack(alignment: .top, spacing: 6) {
+            Image(systemName: "exclamationmark.shield")
+                .foregroundStyle(.orange)
+            Text("このワークスペースのジョブ設定は未承認のため、自動実行を止めています。")
+                .font(.caption)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer()
+            Button("内容を確認…") {
+                scheduler.requestTrustIfNeeded()
+            }
+            .controlSize(.small)
+        }
+        .padding(8)
+        .background(Color.orange.opacity(0.1), in: RoundedRectangle(cornerRadius: 6))
     }
 
     @ViewBuilder

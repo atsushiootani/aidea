@@ -44,7 +44,9 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 3. **Bundle Resources** — アプリ同梱の初期値テンプレ・指示書 (読み取り専用)
 4. **`<projectRoot>/.aidea/`** — プロジェクト固有の状態・リソース・通信データ・Widget 永続テキスト (メイン)
 
-`~/Library/Application Support/Aidea/` は **現時点では使用していない**。プロジェクト固有の情報は `.aidea/` 配下に集約することで、プロジェクトをまたいだ干渉を防いでいる。
+`~/Library/Application Support/Aidea/` は **スケジューラ設定の承認記録 (`scheduler-trust.json`) にだけ使う**。それ以外のプロジェクト固有の情報は `.aidea/` 配下に集約することで、プロジェクトをまたいだ干渉を防いでいる。
+
+- `scheduler-trust.json` は「プロジェクトパス → 承認した `.aidea/config/scheduler.json` の内容ハッシュ (SHA-256)」の対応表。`.aidea/` はリポジトリに含めて配布できるため、承認の記録をリポジトリ側に置くとリポジトリが承認を偽装できてしまう。そのためこの記録だけはプロジェクトの外に置く ([../widgets/scheduler.md](../widgets/scheduler.md#ジョブ設定の承認-ワークスペースの信頼))
 
 ---
 
@@ -130,7 +132,7 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
 - `.aidea/claude/aidea.md` 内のマーカー領域 (`<!-- aidea:companions:start --> ... <!-- aidea:companions:end -->`) は、スナップショット適用の末尾とコンパニオン編集でのリネーム確定時に runtime 更新される (詳細: [../backchannels/companion-roster.md](../backchannels/companion-roster.md))
 - v2 以前の旧ファイル `.aidea/companions.json` / `.aidea/recommends.json` は起動時に `workspace.json` v3 に統合して自動削除する
 - `.aidea/widgets/` 配下は **Widget が初回保存時に自動生成** する (Aidea 起動時の一括初期化は行わない)。Widget が永続化するユーザ編集可能テキストを置くカテゴリで、現状は `quickmemo/memo.md` のみ。今後 Widget が増えたら `.aidea/widgets/<widget-name>/` に並べる
-- `.aidea/config/scheduler.json` は**ユーザが宣言的に編集**する定時スケジューラの設定 (ジョブ配列)。不在時はジョブ無し扱い。起動時に読込のみ行い (ランタイム再読込なし)、popover からの ON/OFF トグルだけ read-modify-write する ([../widgets/scheduler.md](../widgets/scheduler.md))
+- `.aidea/config/scheduler.json` は**ユーザが宣言的に編集**する定時スケジューラの設定 (ジョブ配列)。不在時はジョブ無し扱い。起動時と popover を開いたときに読み込み、popover からの編集 (追加・編集・削除・並べ替え・ON/OFF) は read-modify-write する。内容が未承認の間はジョブを自動実行しない ([../widgets/scheduler.md](../widgets/scheduler.md))
 - `.aidea/state/scheduler.json` は**自動管理**の `lastRun` マップ (jobId→`YYYY-MM-DD`)。定刻発火・手動「今すぐ実行」時に、整形・キーソート済み JSON としてアトミック書き込みされる。ディレクトリは書込時に自動生成
 
 ---
@@ -311,7 +313,7 @@ Claude → Aidea 方向の通信は**ファイル経由**で行う。詳細は [
 | 外部から inbox 受信時 | `inbox/*.json` → 宛先 Companion を解決して `message` を送信 (ファイルは残す、[../backchannels/inbox.md](../backchannels/inbox.md)) | inbox 監視処理 + 配送処理 |
 | 外部から rpc リクエスト受信時 | `rpc/req-*.json` → 宛先 Companion を解決して `message` + 返信書き出し指示を送信 (`res-*.txt` は監視しない、ファイルは残す、[../backchannels/rpc.md](../backchannels/rpc.md)) | rpc 監視処理 + 配送処理 |
 | クイックメモ保存時 | `.aidea/widgets/quickmemo/memo.md` を上書き (親ディレクトリ自動生成、[../widgets/quick-memo.md](../widgets/quick-memo.md)) | クイックメモ保存処理 |
-| 起動時 (scheduler) | `.aidea/config/scheduler.json` 読込 → 有効ジョブ登録 + 取りこぼし判定。`state/scheduler.json` で当日実行済みを照合 ([../widgets/scheduler.md](../widgets/scheduler.md)) | スケジューラの設定読込・判定処理 |
+| 起動時 (scheduler) | `.aidea/config/scheduler.json` 読込 → 承認記録 (`~/Library/Application Support/Aidea/scheduler-trust.json`) と内容ハッシュを照合 → 承認済みなら有効ジョブ登録 + 取りこぼし判定。`state/scheduler.json` で当日実行済みを照合 ([../widgets/scheduler.md](../widgets/scheduler.md)) | スケジューラの設定読込・判定処理 |
 | スケジューラ発火 / 今すぐ実行時 | 指定 Companion へ command 送信 → `state/scheduler.json` の `lastRun[id]` を当日日付で更新 (アトミック書き込み) | スケジューラ実行処理 |
 | ディレクトリ要約 生成時 | `state/dir-summaries.json` を上書き保存 (アトミック書き込み。保存済みは再生成しない、[../tools/filer.md](../tools/filer.md)#showdirectorysummary) | ディレクトリ要約キャッシュ管理 |
 | スケジューラ ON/OFF トグル時 | `config/scheduler.json` の該当ジョブ `enabled` を read-modify-write | スケジューラ設定の更新処理 |
