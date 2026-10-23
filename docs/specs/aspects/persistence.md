@@ -30,7 +30,7 @@ impacts: []
 conventions:
   - docs/LAYOUT.md
   - docs/specs/aspects/README.md
-last_updated: 2026-07-16
+last_updated: 2026-10-23
 ---
 
 # Persistence (データ永続化)
@@ -146,6 +146,11 @@ Aidea が **どのデータをどこに、どのタイミングで保存する�
   1. `<projectRoot>/.aidea/workspace.json` が存在 → 読込・マイグレーション適用
   2. 不在 → Bundle 同梱の `default-workspace.json` を読込・初期スナップショットとして返す
   3. Bundle 読込も失敗 → 緊急フォールバックへ
+- **復元前の値の補正** (issue #299): `workspace.json` はリポジトリに含まれ第三者も書けるため、型として読めても値は信用しない。適用前に次を補正する
+  - Session ID の instance 番号が範囲外 (負または 9999 超) → そのタブ・状態・履歴・カスタム名・コンパニオン紐付けを捨てる
+  - `sessions` の各一覧 (previews / webs / filers / kits) で Session ID の種別が一覧と食い違う → その状態を捨てる
+  - ペインの `activeIndex` が範囲外 → タブの範囲に収める
+  - `recommends` の `defaultCompanionIndex` がコンパニオン数 (9) の範囲外 → 0 に戻す
 - **書出タイミング**: 初回起動時にテンプレを適用しても **即書出はしない**。アプリ終了時 / バックグラウンド化時に通常の保存フローで `<projectRoot>/.aidea/workspace.json` が初めて生成される
 - **緊急フォールバック**: Bundle 読込にも失敗した場合は **Filer 1 ペインの最小レイアウト** を生成して継続起動する (通常は発生しない)
 

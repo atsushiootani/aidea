@@ -18,7 +18,8 @@ final class RecommendState {
     func activate(prompts: [String], companionIndex: Int = 0) {
         guard !prompts.isEmpty else { return }
         self.prompts = prompts
-        self.selectedCompanionIndex = companionIndex
+        // 範囲外の値は 0 に戻す (moveLeft / moveRight の剰余計算が溢れないように)
+        self.selectedCompanionIndex = WorkspaceSnapshotSanitizer.validCompanionIndex(companionIndex)
         self.selectedPromptIndex = 0
         self.isActive = true
     }
@@ -48,12 +49,14 @@ final class RecommendState {
     /// コンパニオン選択を左に移動（ループ）
     func moveLeft() {
         let count = CompanionIconPresets.imageIcons.count
-        selectedCompanionIndex = (selectedCompanionIndex - 1 + count) % count
+        let current = WorkspaceSnapshotSanitizer.validCompanionIndex(selectedCompanionIndex)
+        selectedCompanionIndex = (current - 1 + count) % count
     }
 
     /// コンパニオン選択を右に移動（ループ）
     func moveRight() {
         let count = CompanionIconPresets.imageIcons.count
-        selectedCompanionIndex = (selectedCompanionIndex + 1) % count
+        let current = WorkspaceSnapshotSanitizer.validCompanionIndex(selectedCompanionIndex)
+        selectedCompanionIndex = (current + 1) % count
     }
 }
