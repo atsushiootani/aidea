@@ -313,8 +313,14 @@ final class PersistentTerminalView: LocalProcessTerminalView {
             col = 0
             row = 0
         }
+        // SwiftTerm は 1006 (SGR) 未有効時に X10 形式 `UInt8(32 + x + 1)` で符号化し、x/y >= 223 でトラップする。
+        // 現在の符号化方式は SwiftTerm 外から参照できないため常に X10 の上限 (222) に収める。
+        // ホイールは位置に依存しない (1 セッション 1 ペイン) ので、幅広ターミナルの右端でも挙動は変わらない
+        let maxX10Coordinate = 222 // 255 - 32 - 1
+        let x = min(col, maxX10Coordinate)
+        let y = min(row, maxX10Coordinate)
         for _ in 0..<ticks {
-            terminal.sendEvent(buttonFlags: flags, x: col, y: row)
+            terminal.sendEvent(buttonFlags: flags, x: x, y: y)
         }
     }
 
