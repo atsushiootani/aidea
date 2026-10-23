@@ -164,8 +164,10 @@ struct MarkdownPreview: View {
             MermaidView(diagram: source)
         case .code(let text, let language):
             let isShell = Self.shellLanguages.contains(language)
+            // シェルブロックは表示と送信を同じ文字列にするため、制御文字を除いてから使う
+            let shown = isShell ? ShellCommandSanitizer.sanitize(text) : text
             ZStack(alignment: .topTrailing) {
-                Text(text)
+                Text(shown)
                     .font(.system(.callout, design: .monospaced))
                     .foregroundStyle(.primary)
                     .padding(8)
@@ -176,7 +178,7 @@ struct MarkdownPreview: View {
                     )
                 if isShell, let run = onRunScript {
                     Button {
-                        run(text)
+                        run(shown)
                     } label: {
                         Image(systemName: "play.fill")
                             .font(.system(size: 10))
