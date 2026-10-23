@@ -30,6 +30,8 @@ final class WebSessionState: SessionState, FocusBridgeOwner {
     /// window.open / target="_blank" を処理する UI デリゲート。
     /// WKWebView.uiDelegate は weak 参照なので state が強参照で保持する (仕様: docs/specs/sessions/web.md#ui-デリゲートと子-webview)。
     @ObservationIgnored private let uiDelegate = WebUIDelegate()
+    /// 外部 scheme へのナビゲーションを止めるデリゲート (issue #294)。navigationDelegate も weak なので state が保持する。
+    @ObservationIgnored private let navigationDelegate = WebNavigationPolicyDelegate()
     /// 全 Web タブで共有する WKProcessPool。タブごとに専用プールを持つと WebContent プロセスも
     /// タブ数分だけ生成され、Web タブが他ツールより重くなる要因になる (issue #263)。
     private static let sharedProcessPool = WKProcessPool()
@@ -94,7 +96,7 @@ final class WebSessionState: SessionState, FocusBridgeOwner {
         cached = webView
     }
 
-    /// 通常生成・adopt 共通の WKWebView セットアップ (KVO 登録・クリックモニタ・uiDelegate 設定)。
+    /// 通常生成・adopt 共通の WKWebView セットアップ (KVO 登録・クリックモニタ・uiDelegate / navigationDelegate 設定)。
     /// 「load を呼ぶか」だけが両経路の違い。
     private func configureWebView(_ webView: WKWebView) {
         webView.isInspectable = true
@@ -102,6 +104,8 @@ final class WebSessionState: SessionState, FocusBridgeOwner {
         uiDelegate.registry = registry
         uiDelegate.owner = self
         webView.uiDelegate = uiDelegate
+        // WebKit が読み込めない scheme を確認なしに外部アプリへ渡させない (issue #294)
+        webView.navigationDelegate = navigationDelegate
         // WKWebView は mouseDown をオーバーライドできないので、
         // becomeFirstResponder 時にこのセッションをアクティブにする
         let reg = registry

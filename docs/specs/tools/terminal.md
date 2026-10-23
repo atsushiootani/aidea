@@ -13,7 +13,7 @@ syncs_with:
 impacts: []
 conventions:
   - docs/LAYOUT.md
-last_updated: 2026-07-26
+last_updated: 2026-10-23
 ---
 
 # Tool 仕様: Terminal
@@ -78,7 +78,8 @@ Session 内部状態は [sessions/terminal.md](../sessions/terminal.md) を参�
 | 種別 | 検出 | アクション |
 |---|---|---|
 | URL (http/https) | SwiftTerm 標準の URL/OSC 8 ハイパーリンク検出 | **Web Tool** に開く ([tools/web.md](./web.md#url-クリックルーティング-terminal--claude--web)) |
-| URL (その他 scheme) | 同上 | OS デフォルトアプリで開く |
+| URL (file:) | 同上 | 通常ファイルなら右端ペインに Preview タブを開く。ディレクトリ・アプリバンドル・存在しないパスは何もしない |
+| URL (その他 scheme) | 同上 | 実際のリンク先と起動するアプリ名を示す確認ダイアログの後、OS デフォルトアプリで開く |
 | ファイルパス | Aidea 独自の regex 検出 + 実在確認 (issue #71) | 右端ペインに Preview タブを開く ([sessions/active-session.md#固定配置先とペインの並び順-issue-275](../sessions/active-session.md#固定配置先とペインの並び順-issue-275)) |
 
 クリックターゲット (URL またはファイルパス) 上にマウスがホバーしたとき、カーソルを指マークに変えてクリック可能であることを示す。ターゲットから外れたら通常 (I ビーム) に戻す。
@@ -94,7 +95,9 @@ mouseDown と mouseUp の位置が **threshold (4 pt) 以下** に収まり、�
 - SwiftTerm のリンクオープン要求をプロキシし、上記「クリック判定」を満たすときに起動する
 - 起動先: **http / https** は Web Tool に開く
   (配置先は「カレントを除く最新のペイン」に常に新規タブ。詳細は [tools/web.md](./web.md#url-クリックルーティング-terminal--claude--web))。
-  それ以外の scheme は OS デフォルトアプリで開く (従来挙動)
+  `file:` は通常ファイルのみアプリ内 Preview で開き、OS の URL オープンには渡さない (アプリバンドルやスクリプトを起動させないため)。
+  それ以外の scheme は、**実際のリンク先 URL** と起動するアプリ名を示す確認ダイアログを出し、「開く」を選んだときだけ OS デフォルトアプリで開く。
+  OSC 8 ハイパーリンクは表示テキストとリンク先が食い違いうるため、確認ダイアログには必ず実 URL を出す (issue #294)
 - OSC 8 ハイパーリンク (`\e]8;;<url>\e\\<text>\e]8;;\e\\`) と、SwiftTerm 標準の URL detector の両方に対応
 
 ### ファイルパスのクリック起動 (issue #71)
@@ -236,4 +239,5 @@ Markdown Preview の実行ボタン押下時に呼ばれる。既存 Terminal �
 - PTY の `cwd` 追跡で相対パスを解決しない (projectRoot 起点 + プロジェクト内検索で代替)
 - `:行数` を Preview に引き渡さない (MVP)
 - フォールバック検索は projectRoot が未設定の場合、または絶対パスが対象の場合は実行しない
+- `file:` URL や、確認ダイアログを経ていない http / https 以外の URL を OS の URL オープンに渡さない (issue #294)
 - scheme を持たない link 文字列を OS の URL オープンに渡さない (SwiftTerm の link detector がファイルパスを link として渡してきても、Preview 起動はファイルパスクリック処理が担う。そのまま渡すと Finder が `-50` ダイアログを出してしまう)

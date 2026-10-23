@@ -425,7 +425,10 @@ final class WorkspaceSnapshotManager {
         for web in snapshot.sessions.webs {
             let session = registry.ensureSession(for: web.id)
             guard let state = session.state as? WebSessionState else { continue }
-            state.url = web.url
+            // workspace.json はリポジトリ同梱でありうるため http / https 以外は復元せず既定 URL のままにする (issue #294)
+            if ExternalURLPolicy.isWebURL(web.url) {
+                state.url = web.url
+            }
         }
         for filer in snapshot.sessions.filers {
             let session = registry.ensureSession(for: filer.id)

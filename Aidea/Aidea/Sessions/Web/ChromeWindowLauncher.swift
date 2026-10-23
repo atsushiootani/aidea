@@ -20,7 +20,9 @@ enum ChromeWindowLauncher {
 
     /// `screenRect` (AppKit 座標系: 主画面左下原点・Y 上向き) と同じ位置・サイズの
     /// 新規 Chrome ウィンドウを開いて `url` を読み込む。呼び出し前に `isChromeInstalled` を確認すること。
+    /// http / https 以外は開かない (issue #294: スキームなしの文字列は Chrome のスイッチとして解釈されうる)。
     static func open(_ url: URL, matching screenRect: NSRect) {
+        guard ExternalURLPolicy.isWebURL(url) else { return }
         guard let primaryScreenHeight = NSScreen.screens.first?.frame.height else { return }
         // Chrome の --window-position / --window-size は主画面左上原点・Y 下向きを期待するため変換する
         let topLeftX = Int(screenRect.origin.x.rounded())
@@ -35,6 +37,8 @@ enum ChromeWindowLauncher {
             "--new-window",
             "--window-position=\(topLeftX),\(topLeftY)",
             "--window-size=\(width),\(height)",
+            // `--` 以降はスイッチとして解釈されない (URL をスイッチ扱いさせないための終端)
+            "--",
             url.absoluteString,
         ]
         // 起動失敗は致命的でないためログのみ残す (WorkspaceLauncher と同じ個人アプリ方針)

@@ -17,6 +17,8 @@ final class WebPopupController: NSObject, WKUIDelegate, NSWindowDelegate {
     let webView: WKWebView
     private let window: NSWindow
     private weak var registry: SessionRegistry?
+    /// 外部 scheme へのナビゲーションを止めるデリゲート (issue #294)。navigationDelegate は weak なので保持する。
+    private let navigationDelegate = WebNavigationPolicyDelegate()
 
     /// windowFeatures のサイズが無いときの既定サイズ (OAuth ポップアップの一般的な大きさ)
     private static let defaultSize = NSSize(width: 480, height: 640)
@@ -44,6 +46,7 @@ final class WebPopupController: NSObject, WKUIDelegate, NSWindowDelegate {
         super.init()
 
         webView.uiDelegate = self
+        webView.navigationDelegate = navigationDelegate
         window.delegate = self
         window.center()
         window.makeKeyAndOrderFront(nil)
